@@ -21,6 +21,12 @@ import {
   type CandidateReferenceFact,
   type CandidateExtractedClaim
 } from "./evaluator-batch06";
+import {
+  resolveEvidenceQuotesToSpanIds,
+  validateRoleDocument,
+  validateCandidateDocument
+} from "./ingest-batch06-human-truth";
+import type { StructuredMetric } from "../../src/lib/intelligence/extraction/CandidateProofExtractorV1";
 
 describe("Batch 06 Evaluator — Role Evaluation", () => {
   const syntheticDocId = "SYNTHETIC_ROLE_001";
@@ -223,7 +229,7 @@ describe("Batch 06 Evaluator — Candidate Evaluation", () => {
         exactText: "Led commercial growth generating $50M in ARR",
         metric: "$50M",
         employer: "Acme Corp",
-        proofType: "REVENUE_EXPANSION",
+        proofTypes: ["REVENUE_GROWTH"],
         evidenceClass: "WORK_HISTORY"
       },
       {
@@ -233,7 +239,7 @@ describe("Batch 06 Evaluator — Candidate Evaluation", () => {
         spanId: "span_adv",
         metric: "12",
         employer: "Beta Inc",
-        proofType: "STRATEGIC_ADVISORY",
+        proofTypes: ["MANDATE"],
         evidenceClass: "WORK_HISTORY"
       }
     ];
@@ -244,7 +250,7 @@ describe("Batch 06 Evaluator — Candidate Evaluation", () => {
       exactText: "Led commercial growth generating $50M in ARR with a team of 45 engineers.",
       employer: "Acme Corp",
       metrics: ["$50M"],
-      proofTypes: ["REVENUE_EXPANSION"],
+      proofTypes: ["REVENUE_GROWTH"],
       evidenceClass: "WORK_HISTORY"
     };
 
@@ -255,7 +261,7 @@ describe("Batch 06 Evaluator — Candidate Evaluation", () => {
       exactText: "Advised founders on go-to-market strategy with enterprise accounts",
       employer: "Acme Corp", // Wrong employer binding! Ref has Beta Inc
       metrics: [], // Dropped metric!
-      proofTypes: ["STRATEGIC_ADVISORY"],
+      proofTypes: ["MANDATE"],
       evidenceClass: "WORK_HISTORY"
     };
 
@@ -275,6 +281,292 @@ describe("Batch 06 Evaluator — Candidate Evaluation", () => {
     expect(result.metricRetentionRate).toBe(0.5);
     expect(result.employerBindingAccuracy).toBe(0.5);
     expect(result.crossPositionContaminationCount).toBe(1);
+  });
+
+  it("evaluates plural proofTypes matching and canonical StructuredMetric objects", () => {
+    const metricRef: StructuredMetric = {
+      exactText: "45 engineers",
+      startOffset: 120,
+      endOffset: 132,
+      metricType: "COUNT",
+      rawValue: "45",
+      normalizedValue: 45,
+      comparator: "EXACT",
+      unit: "engineers"
+    };
+
+    const refFacts: CandidateReferenceFact[] = [
+      {
+        id: "rf_plural_01",
+        documentId: syntheticDocId,
+        exactText: "Led commercial growth generating $50M in ARR with a team of 45 engineers.",
+        employer: "Acme Corp",
+        proofTypes: ["PEOPLE_SCOPE", "ORGANIZATION_BUILD"],
+        evidenceClass: "WORK_HISTORY",
+        metrics: [metricRef]
+      }
+    ];
+
+    // Claim matches one of the plural proofTypes and has exact matching StructuredMetric
+    const claimMatch: CandidateExtractedClaim = {
+      sourceDocumentId: syntheticDocId,
+      exactText: "Led commercial growth generating $50M in ARR with a team of 45 engineers.",
+      employer: "Acme Corp",
+      proofTypes: ["PEOPLE_SCOPE"],
+      evidenceClass: "WORK_HISTORY",
+      metrics: [metricRef]
+    };
+
+    const result = evaluateCandidateDocument(
+      syntheticDocId,
+      "TEST_CAND_ARCH",
+      rawResumeText,
+      refFacts,
+      [claimMatch]
+    );
+
+    expect(result.typedRecallCount).toBe(1);
+    expect(result.metricRetentionCount).toBe(1);
+    expect(result.metricRetentionRate).toBe(1.0);
+  });
+
+  it("enforces Gate 9 Chronology Binding: employer AND title AND tenure/current-status", () => {
+    const refFacts: CandidateReferenceFact[] = [
+      {
+        id: "rf_chrono_01",
+        documentId: syntheticDocId,
+        exactText: "Acme Corp VP of Growth role",
+        employer: "Acme Corp",
+        title: "VP of Growth",
+        startDate: "2020",
+        endDate: "2024",
+        isCurrent: false,
+        proofTypes: ["REVENUE_GROWTH"],
+        evidenceClass: "WORK_HISTORY"
+      },
+      {
+        id: "rf_chrono_02",
+        documentId: syntheticDocId,
+        exactText: "Beta Inc Advisor role",
+        employer: "Beta Inc",
+        title: "Advisor",
+        startDate: "2024",
+        isCurrent: true,
+        proofTypes: ["MANDATE"],
+        evidenceClass: "WORK_HISTORY"
+      }
+    ];
+
+    // Claim 1 matches employer, title, startDate, endDate, isCurrent -> 100% chronology match
+    const claim1: CandidateExtractedClaim = {
+      sourceDocumentId: syntheticDocId,
+      exactText: "Acme Corp VP of Growth role",
+      employer: "Acme Corp",
+      title: "VP of Growth",
+      startDate: "2020",
+      endDate: "2024",
+      isCurrent: false,
+      proofTypes: ["REVENUE_GROWTH"],
+      evidenceClass: "WORK_HISTORY"
+    };
+
+    // Claim 2 matches employer, but has WRONG title ("Board Member" instead of "Advisor")
+    const claim2: CandidateExtractedClaim = {
+      sourceDocumentId: syntheticDocId,
+      exactText: "Beta Inc Advisor role",
+      employer: "Beta Inc",
+      title: "Board Member", // Mismatched title!
+      startDate: "2024",
+      isCurrent: true,
+      proofTypes: ["MANDATE"],
+      evidenceClass: "WORK_HISTORY"
+    };
+
+    const result = evaluateCandidateDocument(
+      syntheticDocId,
+      "TEST_CAND_ARCH",
+      rawResumeText,
+      refFacts,
+      [claim1, claim2]
+    );
+
+    // Both match employer (diagnostic employerBindingAccuracy = 1.0)
+    expect(result.employerBindingMatches).toBe(2);
+    expect(result.employerBindingAccuracy).toBe(1.0);
+
+    // But only claim1 matches employer AND title AND dates -> chronologyBindingAccuracy = 1/2 = 0.5
+    expect(result.chronologyBindingMatches).toBe(1);
+    expect(result.totalWorkHistoryInReference).toBe(2);
+    expect(result.chronologyBindingAccuracy).toBe(0.5);
+  });
+
+  it("enforces literal character-for-character provenance without whitespace fallback", () => {
+    const textSlice = "Acme Corp";
+    const start = rawResumeText.indexOf(textSlice);
+    const end = start + textSlice.length;
+
+    // Slice with 1 extra space or off-by-one must FAIL
+    const badOffsetClaim: CandidateExtractedClaim = {
+      sourceDocumentId: syntheticDocId,
+      exactText: textSlice,
+      startOffset: start,
+      endOffset: end + 1 // points to "Acme Corp "
+    };
+
+    const missingOffsetClaim: CandidateExtractedClaim = {
+      sourceDocumentId: syntheticDocId,
+      exactText: textSlice
+      // missing startOffset and endOffset
+    };
+
+    const result = evaluateCandidateDocument(
+      syntheticDocId,
+      "TEST_CAND_ARCH",
+      rawResumeText,
+      [],
+      [badOffsetClaim, missingOffsetClaim]
+    );
+
+    expect(result.offsetVerificationCount).toBe(2);
+    expect(result.offsetVerificationFailures).toBe(2);
+    expect(result.offsetAccuracyRate).toBe(0.0);
+  });
+});
+
+describe("Batch 06 Evaluator — Human Truth Ingestion & Span Resolution", () => {
+  it("resolves literal human quotes to exact MechanicalSourceSegmenter span IDs", () => {
+    const jdText =
+      "CloudPoint Global Solutions is seeking a Senior Director.\nIn this role, you will manage an annual marketing program budget of $6,500,000 across digital acquisition.\nYou will report to the Chief Operating Officer.";
+    const quotes = ["manage an annual marketing program budget of $6,500,000"];
+
+    const resolution = resolveEvidenceQuotesToSpanIds(quotes, jdText);
+    expect(resolution.errors.length).toBe(0);
+    expect(resolution.spanIds.length).toBeGreaterThanOrEqual(1);
+
+    // Missing quote produces error
+    const missingQuoteRes = resolveEvidenceQuotesToSpanIds(["Non-existent quote in text"], jdText);
+    expect(missingQuoteRes.errors.length).toBe(1);
+    expect(missingQuoteRes.spanIds.length).toBe(0);
+  });
+
+  it("rejects role documents with missing materiality, invalid families, or single reviewer", () => {
+    const jdText = "Role overview text here for testing.";
+
+    // Missing materiality
+    const missingMat = {
+      opaqueId: "ROLE_01",
+      reviewerId: "REV1",
+      reviewer2Id: "REV2",
+      facts: [
+        {
+          id: "f1",
+          propositionText: "Some fact",
+          sourceEvidence: ["Role overview"],
+          canonicalTypes: ["ROLE_PURPOSE"],
+          appliesTo: "ROLE",
+          polarity: "AFFIRMED"
+          // materiality omitted!
+        }
+      ]
+    };
+    const res1 = validateRoleDocument(missingMat, jdText, "test.json");
+    expect(res1.valid).toBe(false);
+    expect(res1.errors.some(e => e.includes("Missing or invalid materiality"))).toBe(true);
+
+    // Invalid high risk family (COMMERCIAL_ACCOUNTABILITY)
+    const invalidFam = {
+      opaqueId: "ROLE_02",
+      reviewerId: "REV1",
+      reviewer2Id: "REV2",
+      facts: [
+        {
+          id: "f1",
+          propositionText: "Some fact",
+          sourceEvidence: ["Role overview"],
+          canonicalTypes: ["REVENUE_ACCOUNTABILITY"],
+          appliesTo: "ROLE",
+          polarity: "AFFIRMED",
+          materiality: "MATERIAL_SELECTED",
+          highRiskFamily: "COMMERCIAL_ACCOUNTABILITY" // INVALID!
+        }
+      ]
+    };
+    const res2 = validateRoleDocument(invalidFam, jdText, "test.json");
+    expect(res2.valid).toBe(false);
+    expect(res2.errors.some(e => e.includes("Invalid highRiskFamily"))).toBe(true);
+
+    // Single reviewer (reviewerId === reviewer2Id)
+    const singleRev = {
+      opaqueId: "ROLE_03",
+      reviewerId: "REV1",
+      reviewer2Id: "REV1", // NOT INDEPENDENT!
+      facts: [
+        {
+          id: "f1",
+          propositionText: "Some fact",
+          sourceEvidence: ["Role overview"],
+          canonicalTypes: ["ROLE_PURPOSE"],
+          appliesTo: "ROLE",
+          polarity: "AFFIRMED",
+          materiality: "MATERIAL_SELECTED"
+        }
+      ]
+    };
+    const res3 = validateRoleDocument(singleRev, jdText, "test.json");
+    expect(res3.valid).toBe(false);
+    expect(res3.errors.some(e => e.includes("distinct independent reviewers"))).toBe(true);
+  });
+
+  it("rejects candidate documents with non-canonical proof types or invalid offsets", () => {
+    const resumeText = "Acme Corp (2020-2024)\nJohn Doe worked here.";
+
+    // Non-canonical proof type
+    const badProofType = {
+      opaqueId: "CAND_01",
+      reviewerId: "REV1",
+      reviewer2Id: "REV2",
+      facts: [
+        {
+          id: "cf1",
+          employer: "Acme Corp",
+          title: "Lead",
+          startDate: "2020",
+          isCurrent: false,
+          proofTypes: ["REVENUE_EXPANSION"], // NON-CANONICAL!
+          evidenceClass: "WORK_HISTORY",
+          exactText: "John Doe worked here.",
+          startOffset: resumeText.indexOf("John Doe worked here."),
+          endOffset: resumeText.indexOf("John Doe worked here.") + "John Doe worked here.".length
+        }
+      ]
+    };
+    const res1 = validateCandidateDocument(badProofType, resumeText, "test.json");
+    expect(res1.valid).toBe(false);
+    expect(res1.errors.some(e => e.includes("Invalid candidate proof type"))).toBe(true);
+
+    // Mismatched offset slice
+    const badOffset = {
+      opaqueId: "CAND_02",
+      reviewerId: "REV1",
+      reviewer2Id: "REV2",
+      facts: [
+        {
+          id: "cf1",
+          employer: "Acme Corp",
+          title: "Lead",
+          startDate: "2020",
+          isCurrent: false,
+          proofTypes: ["OUTCOME"],
+          evidenceClass: "WORK_HISTORY",
+          exactText: "John Doe worked here.",
+          startOffset: 0,
+          endOffset: 5 // slice(0, 5) !== "John Doe worked here."
+        }
+      ]
+    };
+    const res2 = validateCandidateDocument(badOffset, resumeText, "test.json");
+    expect(res2.valid).toBe(false);
+    expect(res2.errors.some(e => e.includes("Literal provenance mismatch"))).toBe(true);
   });
 });
 
@@ -419,5 +711,25 @@ describe("Batch 06 Evaluator — Aggregate Certification Gates & Classification"
     const detail = summary.gateDetails.find(g => g.metricName === "Overall Typed Recall");
     expect(detail?.passed).toBe(false);
     expect(detail?.classification).toBe("IMPLEMENTATION_TUNABLE");
+  });
+
+  it("evaluates Gate 7 silent dimension abstention vs affirmative breach", () => {
+    // Passes when silent dimensions are preserved with zero affirmative assertions
+    const summaryPass = scoreBatch06CertificationRun([], [], {
+      totalSilentHighRiskDimensions: 5,
+      silentDimensionsEmittedAsUnknownOrBlocked: 5
+    });
+    const gate7Pass = summaryPass.gateDetails.find(g => g.metricName === "Insufficient-Evidence Capture Rate");
+    expect(gate7Pass?.passed).toBe(true);
+    expect(gate7Pass?.observedValue).toBe("100.0%");
+
+    // Fails when affirmative assertions are emitted on silent dimensions
+    const summaryFail = scoreBatch06CertificationRun([], [], {
+      totalSilentHighRiskDimensions: 5,
+      silentDimensionsEmittedAsUnknownOrBlocked: 3 // 60% < 90%
+    });
+    const gate7Fail = summaryFail.gateDetails.find(g => g.metricName === "Insufficient-Evidence Capture Rate");
+    expect(gate7Fail?.passed).toBe(false);
+    expect(gate7Fail?.observedValue).toBe("60.0%");
   });
 });

@@ -27,7 +27,11 @@ import type {
 } from "./RichSemanticPropositionContract";
 import type { SourceUnit } from "./MechanicalSourceSegmenter";
 import type { RoleSemanticType } from "./RoleIntelligenceExtractorV1";
-import type { SemanticVerificationResult } from "./HighRiskSemanticVerifier";
+import {
+  HIGH_RISK_SEMANTIC_FAMILIES,
+  type HighRiskSemanticFamily,
+  type SemanticVerificationResult
+} from "./HighRiskSemanticVerifier";
 
 export type StructuralAdmissionStatus =
   | "ADMITTED_AFFIRMATIVE"
@@ -53,6 +57,7 @@ export interface StructuralAdmissionBatchResult {
   readonly admittedConditional: readonly StructuralAdmissionDecision[];
   readonly rejected: readonly StructuralAdmissionDecision[];
   readonly unmappedMaterialCount: number;
+  readonly unknownHighRiskDimensions: readonly HighRiskSemanticFamily[];
 }
 
 const CANONICAL_ROLE_TYPES_SET = new Set<RoleSemanticType>([
@@ -303,12 +308,35 @@ export class StructuralAdmissionEngine {
       }
     }
 
+    // Collect all high-risk families covered by admitted affirmative or boundary decisions
+    const coveredFamilies = new Set<string>();
+    for (const d of admittedAffirmative) {
+      for (const t of d.admittedTypes) {
+        if (HIGH_RISK_SEMANTIC_FAMILIES.includes(t as HighRiskSemanticFamily)) {
+          coveredFamilies.add(t);
+        }
+      }
+    }
+    for (const d of admittedBoundaries) {
+      for (const t of d.admittedTypes) {
+        if (HIGH_RISK_SEMANTIC_FAMILIES.includes(t as HighRiskSemanticFamily)) {
+          coveredFamilies.add(t);
+        }
+      }
+    }
+
+    // Explicit post-admission UNKNOWN set: any high-risk family with zero admitted affirmative or boundary assertions
+    const unknownHighRiskDimensions = HIGH_RISK_SEMANTIC_FAMILIES.filter(
+      f => !coveredFamilies.has(f)
+    );
+
     return {
       admittedAffirmative,
       admittedBoundaries,
       admittedConditional,
       rejected,
-      unmappedMaterialCount
+      unmappedMaterialCount,
+      unknownHighRiskDimensions
     };
   }
 }

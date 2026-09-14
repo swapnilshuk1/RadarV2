@@ -7,8 +7,10 @@
   "sha256": "5dcdd4f89ec3d45bd55d8e77c26a83cb4c586eaa56bb3db83980741b5bfa0afb",
   "sourceText": "PROCUREMENT DIRECTOR - INDIRECT SPEND\nCompany: Sterling Healthcare Global\nLocation: Bengaluru, India (Hybrid)\n\nPURPOSE:\nManage indirect procurement, facilities contracts, and technology vendor agreements across Indian hospital operations.\n\nSIGNATORY AUTHORITY LIMITS:\nThe Procurement Director is authorized to independently approve procurement orders and service requisitions up to ₹25 Lakhs ($30,000).\nCONDITIONAL GOVERNANCE: Any contract, master service agreement, or purchase commitment exceeding ₹25 Lakhs requires mandatory formal counter-signature and written approval from the Chief Financial Officer and General Counsel. The role cannot independently bind the company to major multi-year commitments without CFO sign-off.\n\nPRIMARY DUTIES:\n- Negotiate indirect supplier contracts and run competitive RFP processes.\n- Implement automated e-procurement workflows via SAP Ariba.\n- Maintain vendor audit scorecards and risk compliance documentation.",
   "reviewerId": "",
+  "reviewer2Id": "",
   "reviewTimestamp": "",
   "facts": [],
   "highRiskNegatives": [],
+  "highRiskSilentDimensions": [],
   "adjudicationNotes": ""
 }

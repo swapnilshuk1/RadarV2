@@ -1,8 +1,8 @@
 {
   "manifestVersion": "gate1b-batch06-secondary-manifest/v1",
   "holdout": "SECONDARY_REMEDIATION_HOLDOUT",
-  "createdAt": "2026-09-13T15:58:21.447Z",
-  "governingScopeRevision": 2,
+  "createdAt": "2026-09-14T08:11:04.043Z",
+  "governingScopeRevision": 3,
   "summary": {
     "totalRoles": 25,
     "naturalRolesCount": 15,

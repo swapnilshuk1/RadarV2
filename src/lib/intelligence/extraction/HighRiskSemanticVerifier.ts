@@ -33,7 +33,6 @@ export const HIGH_RISK_SEMANTIC_FAMILIES = [
   "FOUNDER_CEO_PROXIMITY",
   "BOARD_EXPOSURE",
   "PNL_OWNERSHIP",
-  "COMMERCIAL_ACCOUNTABILITY",
   "REVENUE_ACCOUNTABILITY",
   "PROFITABILITY_ACCOUNTABILITY",
   "DECISION_AUTHORITY",
@@ -69,7 +68,6 @@ export interface SemanticVerifier {
  * Checks whether a given canonical type belongs to the high-risk families.
  */
 export function isHighRiskSemanticType(type: RoleSemanticType | string): boolean {
-  if (type === "COMMERCIAL_ACCOUNTABILITY") return true;
   return HIGH_RISK_SEMANTIC_FAMILIES.includes(type as HighRiskSemanticFamily);
 }
 
@@ -90,8 +88,6 @@ export function identifyHighRiskFamilies(
       families.add("REVENUE_ACCOUNTABILITY");
     } else if (cType === "PROFITABILITY_ACCOUNTABILITY") {
       families.add("PROFITABILITY_ACCOUNTABILITY");
-    } else if ((cType as string) === "COMMERCIAL_ACCOUNTABILITY") {
-      families.add("COMMERCIAL_ACCOUNTABILITY");
     } else if (cType === "DECISION_AUTHORITY") families.add("DECISION_AUTHORITY");
     else if (cType === "PEOPLE_LEADERSHIP") families.add("PEOPLE_LEADERSHIP");
     else if (cType === "PEOPLE_SCALE") families.add("PEOPLE_SCALE");
@@ -103,7 +99,10 @@ export function identifyHighRiskFamilies(
   if (/\breports? to\b|\breporting to\b/i.test(textLower)) families.add("REPORTING_LINE");
   if (/\bceo\b|\bfounder\b|\bchief executive\b/i.test(textLower)) families.add("FOUNDER_CEO_PROXIMITY");
   if (/\bboard of directors\b|\bboard exposure\b|\bboard reporting\b/i.test(textLower)) families.add("BOARD_EXPOSURE");
-  if (/\bcommercial growth\b|\brevenue target\b|\bquota\b|\barr\b/i.test(textLower)) families.add("COMMERCIAL_ACCOUNTABILITY");
+  // Explicit revenue cues only; generic "commercial growth" is excluded to avoid over-generalization
+  if (/\brevenue target\b|\bquota\b|\barr\b|\bsales target\b|\bnet new arr\b/i.test(textLower)) {
+    families.add("REVENUE_ACCOUNTABILITY");
+  }
   if (/\bmanage (a )?team\b|\bteam of [0-9]+\b|\bheadcount\b/i.test(textLower)) families.add("PEOPLE_LEADERSHIP");
 
   return Array.from(families);
@@ -135,11 +134,8 @@ const CONTRADICTION_PATTERNS: Record<HighRiskSemanticFamily, RegExp[]> = {
     /\bno\s+board\s+seat\b/i,
     /\bno\s+interaction\s+with\s+(the\s+)?board\b/i
   ],
-  COMMERCIAL_ACCOUNTABILITY: [
-    /\b(non-revenue|no quota|no revenue accountability|does not carry quota|cost center only)\b/i
-  ],
   REVENUE_ACCOUNTABILITY: [
-    /\b(non-revenue|no quota|no revenue targets?|does not carry quota)\b/i
+    /\b(non-revenue|no quota|no revenue targets?|does not carry quota|cost center only|no revenue accountability)\b/i
   ],
   PROFITABILITY_ACCOUNTABILITY: [
     /\b(no profitability mandate|not held to ebitda|not responsible for margin)\b/i
@@ -181,14 +177,10 @@ const ENTAILMENT_PATTERNS: Record<HighRiskSemanticFamily, RegExp[]> = {
     /\bboard\s+(meeting\s+attendance|exposure|interaction|presentations?)\b/i,
     /\binteract\s+regularly\s+with\s+the\s+board\b/i
   ],
-  COMMERCIAL_ACCOUNTABILITY: [
-    /\b(own|drive|deliver|responsible for|target|quota of)\s+([$\u20B9\u00A3\u20AC0-9\.]+[MKBkmb]?\+?\s+)?(in\s+)?(revenue|arr|mrr|ebitda|gross margin|profitability|top-line|bottom-line)\b/i,
-    /\bcommercial\s+(growth|scale|revenue|p&l)\s+accountability\b/i,
-    /\bcarrying\s+a\s+quota\b/i
-  ],
   REVENUE_ACCOUNTABILITY: [
     /\b(own|drive|deliver|responsible for|target|quota of|hold|carry|carries)\s+([$\u20B9\u00A3\u20AC0-9\.]+[MKBkmb]?\+?\s+)?(in\s+)?(revenue|arr|mrr|top-line)\b/i,
-    /\b([$\u20B9\u00A3\u20AC0-9\.]+[MKBkmb]?\+?\s+)?revenue\s+(target|responsibility|quota|generation|growth\s+mandate)\b/i
+    /\b([$\u20B9\u00A3\u20AC0-9\.]+[MKBkmb]?\+?\s+)?revenue\s+(target|responsibility|quota|generation|growth\s+mandate)\b/i,
+    /\bcarrying\s+a\s+quota\b/i
   ],
   PROFITABILITY_ACCOUNTABILITY: [
     /\b(own|responsible for|manage|deliver)\s+(the\s+)?(profitability|ebitda|net margin|operating margin)\b/i,

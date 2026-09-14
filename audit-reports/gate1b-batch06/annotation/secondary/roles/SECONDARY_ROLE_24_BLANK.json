@@ -7,8 +7,10 @@
   "sha256": "7d535e264140ef4faaa1e48b241cd6461d0eb8f785d4bbf75d32db952609bc2d",
   "sourceText": "SELECTION NOTICE - MANAGING DIRECTOR\nCompany: State Renewable Energy Development Agency\nLocation: Jaipur, India (On-site)\n\nRECRUITMENT APPLICATION PROCEDURES:\nAll applications must be submitted via the official portal by 5:00 PM IST on November 15, 2026.\nIncomplete applications or applications without certified degree copies will be rejected without notice.\nOnly shortlisted applicants will be called for the final interview with the selection panel.",
   "reviewerId": "",
+  "reviewer2Id": "",
   "reviewTimestamp": "",
   "facts": [],
   "highRiskNegatives": [],
+  "highRiskSilentDimensions": [],
   "adjudicationNotes": ""
 }

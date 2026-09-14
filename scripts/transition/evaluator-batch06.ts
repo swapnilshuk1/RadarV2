@@ -16,6 +16,7 @@
  */
 
 import * as crypto from "node:crypto";
+import type { StructuredMetric } from "../../src/lib/intelligence/extraction/CandidateProofExtractorV1";
 
 // ============================================================================
 // 1. Domain Constants & Taxonomy
@@ -26,7 +27,6 @@ export const HIGH_RISK_FAMILIES = [
   "FOUNDER_CEO_PROXIMITY",
   "BOARD_EXPOSURE",
   "PNL_OWNERSHIP",
-  "COMMERCIAL_ACCOUNTABILITY", // Validation term covering revenue and profitability
   "REVENUE_ACCOUNTABILITY",
   "PROFITABILITY_ACCOUNTABILITY",
   "DECISION_AUTHORITY",
@@ -166,6 +166,8 @@ export interface RoleDocumentEvaluationResult {
   exhaustiveTypedRecall?: number;
   factBreakdowns: FactFailureClassification[];
   highRiskBreakdown: HighRiskSafetyBreakdown;
+  silentDimensionsCount?: number;
+  silentDimensionsCapturedCount?: number;
   totalAssertionsEmitted: number;
   retainedAtomsCount?: number;
   rejectedAtomsCount?: number;
@@ -180,15 +182,20 @@ export interface CandidateReferenceFact {
   exactText: string;
   spanId?: string;
   proofType?: CandidateProofType | string;
-  proofTypes?: (CandidateProofType | string)[];
-  evidenceClass?: CandidateEvidenceClass | string;
+  proofTypes: (CandidateProofType | string)[];
+  evidenceClass: CandidateEvidenceClass | string;
   metric?: string;
+  metrics?: StructuredMetric[];
   employer?: string;
   title?: string;
   dates?: string;
+  startDate?: string;
+  endDate?: string | null;
   isCurrent?: boolean;
   startOffset?: number;
   endOffset?: number;
+  dualReviewStatus?: "CONFIRMED" | "ADJUDICATED";
+  secondReviewerConfirmed?: boolean;
 }
 
 export interface CandidateExtractedClaim {
@@ -198,11 +205,16 @@ export interface CandidateExtractedClaim {
   parentBulletExactText?: string;
   spanId?: string;
   proofType?: string;
-  proofTypes?: string[];
+  proofTypes?: (CandidateProofType | string)[];
   evidenceClass?: string;
-  metrics?: string[];
+  metric?: string;
+  metrics?: (StructuredMetric | string)[];
   employer?: string;
+  title?: string;
   dates?: string;
+  startDate?: string;
+  endDate?: string | null;
+  isCurrent?: boolean;
   startOffset?: number;
   endOffset?: number;
 }
@@ -223,6 +235,9 @@ export interface CandidateEvaluationResult {
   employerBindingMatches: number;
   totalEmployersInReference: number;
   employerBindingAccuracy: number;
+  chronologyBindingMatches: number;
+  totalWorkHistoryInReference: number;
+  chronologyBindingAccuracy: number;
   offsetVerificationCount: number;
   offsetVerificationFailures: number;
   offsetAccuracyRate: number;
@@ -242,6 +257,7 @@ export interface PreRegisteredGates {
   longDocTypedRecallMin: number; // 0.35 (35%)
   insufficientEvidenceCaptureMin: number; // 0.90 (90%)
   candidateMetricFidelityMin: number; // 0.90 (90%)
+  candidateChronologyBindingMin: number; // 0.90 (90%)
   candidateEmployerBindingMin: number; // 0.90 (90%)
   p95LatencyMsMax: number; // 15000 (15.0s)
   costPerDocUsdMax: number; // 0.04 ($0.04)
@@ -256,6 +272,7 @@ export const DEFAULT_BATCH06_GATES: PreRegisteredGates = {
   longDocTypedRecallMin: 0.35,
   insufficientEvidenceCaptureMin: 0.90,
   candidateMetricFidelityMin: 0.90,
+  candidateChronologyBindingMin: 0.90,
   candidateEmployerBindingMin: 0.90,
   p95LatencyMsMax: 15000,
   costPerDocUsdMax: 0.04
@@ -291,6 +308,7 @@ export interface Batch06CertificationSummary {
     candidateSpanProvenanceAccuracy: number;
     candidateMetricFidelity: number;
     candidateEmployerBinding: number;
+    candidateChronologyBinding: number;
     p95LatencyMs: number;
     averageCostPerDocUsd: number;
   };
@@ -406,12 +424,31 @@ export function evaluateRoleDocument(
     rejectedCount?: number;
     latencyMs?: number;
     costUsd?: number;
+    highRiskSilentDimensions?: string[];
+    unknownHighRiskDimensions?: string[];
   }
 ): RoleDocumentEvaluationResult {
   let selectionMatches = 0;
   let typedMatches = 0;
   const factBreakdowns: FactFailureClassification[] = [];
   const unmappedConcepts: string[] = [];
+
+  // Evaluate High-Risk Silent Dimensions
+  let silentDimensionsCount = 0;
+  let silentDimensionsCapturedCount = 0;
+  if (Array.isArray(options?.highRiskSilentDimensions)) {
+    const unknownEmitted = new Set(options?.unknownHighRiskDimensions ?? []);
+    for (const silentFamily of options.highRiskSilentDimensions) {
+      silentDimensionsCount++;
+      const affirmedHr = assertions.some(a =>
+        a.polarity === "AFFIRMED" &&
+        a.canonicalTypes.includes(silentFamily)
+      );
+      if (!affirmedHr && unknownEmitted.has(silentFamily)) {
+        silentDimensionsCapturedCount++;
+      }
+    }
+  }
 
   // Evaluate each reference fact
   for (const rf of refFacts) {
@@ -597,6 +634,8 @@ export function evaluateRoleDocument(
       couldNotRepresentPolarityHighRiskFacts
     },
     totalAssertionsEmitted: assertions.length,
+    silentDimensionsCount,
+    silentDimensionsCapturedCount,
     retainedAtomsCount: options?.retainedCount,
     rejectedAtomsCount: options?.rejectedCount,
     unmappedConcepts,
@@ -621,16 +660,20 @@ export function evaluateCandidateDocument(
   let evidenceClassMatches = 0;
   let metricRetentionCount = 0;
   let employerBindingMatches = 0;
+  let chronologyBindingMatches = 0;
   let totalMetricsInReference = 0;
   let totalEmployersInReference = 0;
+  let totalWorkHistoryInReference = 0;
   let selfSummaryPromotionCount = 0;
   let crossPositionContaminationCount = 0;
   let crossDocumentContaminationCount = 0;
 
   // 1. Reference Matching & Fidelity
   for (const rf of refFacts) {
-    if (rf.metric) totalMetricsInReference++;
+    if (rf.metrics && rf.metrics.length > 0) totalMetricsInReference += rf.metrics.length;
+    else if (rf.metric) totalMetricsInReference++;
     if (rf.employer) totalEmployersInReference++;
+    if (rf.evidenceClass === "WORK_HISTORY" && (rf.employer || rf.title)) totalWorkHistoryInReference++;
 
     // Find claim covering this reference fact
     const matchingClaim = claims.find(c => {
@@ -649,16 +692,18 @@ export function evaluateCandidateDocument(
     if (matchingClaim) {
       refRecallCount++;
 
-      // Typed recall
-      const cTypes: string[] = matchingClaim.proofTypes ?? (matchingClaim.proofType ? [matchingClaim.proofType] : []);
-      if (
-        rf.proofType &&
-        cTypes.some(
-          t =>
-            t.toUpperCase() === rf.proofType!.toUpperCase() ||
-            rf.proofType!.toUpperCase().includes(t.toUpperCase())
-        )
-      ) {
+      // Typed recall (plural array match with fallback to singular)
+      const cTypes: string[] = matchingClaim.proofTypes
+        ? matchingClaim.proofTypes.map(t => String(t).toUpperCase())
+        : matchingClaim.proofType
+          ? [matchingClaim.proofType.toUpperCase()]
+          : [];
+      const rfTypes: string[] = rf.proofTypes && rf.proofTypes.length > 0
+        ? rf.proofTypes.map(t => String(t).toUpperCase())
+        : rf.proofType
+          ? [rf.proofType.toUpperCase()]
+          : [];
+      if (rfTypes.some(rt => cTypes.some(ct => ct === rt || rt.includes(ct) || ct.includes(rt)))) {
         typedRecallCount++;
       }
 
@@ -670,7 +715,41 @@ export function evaluateCandidateDocument(
       }
 
       // Metric retention
-      if (rf.metric) {
+      if (rf.metrics && rf.metrics.length > 0) {
+        for (const rm of rf.metrics) {
+          const claimMetrics = Array.isArray(matchingClaim.metrics) ? matchingClaim.metrics : [];
+          let metricMatched = false;
+          for (const cm of claimMetrics) {
+            if (typeof cm === "object" && cm !== null) {
+              const typeMatch = !rm.metricType || cm.metricType === rm.metricType;
+              const valMatch = typeof cm.normalizedValue === "number" &&
+                Math.abs(cm.normalizedValue - rm.normalizedValue) < 1e-6;
+              const unitMatch = !rm.unit || (cm.unit && cm.unit.toLowerCase() === rm.unit.toLowerCase());
+              const currMatch = !rm.currency || cm.currency === rm.currency;
+              const compMatch = !rm.comparator || cm.comparator === rm.comparator;
+              if (typeMatch && valMatch && unitMatch && currMatch && compMatch) {
+                metricMatched = true;
+                break;
+              }
+            } else if (typeof cm === "string") {
+              const rmNumStr = String(rm.normalizedValue);
+              if (cm.includes(rmNumStr)) {
+                metricMatched = true;
+                break;
+              }
+            }
+          }
+          if (!metricMatched && matchingClaim.exactText) {
+            const rmNumStr = String(rm.normalizedValue);
+            if (matchingClaim.exactText.includes(rmNumStr)) {
+              metricMatched = true;
+            }
+          }
+          if (metricMatched) {
+            metricRetentionCount++;
+          }
+        }
+      } else if (rf.metric) {
         const hasDeclaredMetric = Array.isArray(matchingClaim.metrics) && matchingClaim.metrics.length > 0;
         const textHasNumber = /\d+/.test(matchingClaim.exactText ?? "");
         const containsRefNumber = rf.metric.replace(/[^0-9]/g, "");
@@ -680,7 +759,44 @@ export function evaluateCandidateDocument(
         }
       }
 
-      // Employer binding
+      // Chronology & Position Binding for WORK_HISTORY
+      if (rf.evidenceClass === "WORK_HISTORY" && (rf.employer || rf.title)) {
+        let employerMatch = false;
+        if (rf.employer && matchingClaim.employer) {
+          const mEmp = matchingClaim.employer.toLowerCase().trim();
+          const rEmp = rf.employer.toLowerCase().trim();
+          employerMatch = mEmp === rEmp || mEmp.includes(rEmp) || rEmp.includes(mEmp);
+        } else if (!rf.employer) {
+          employerMatch = true;
+        }
+
+        let titleMatch = false;
+        if (rf.title && matchingClaim.title) {
+          const mTitle = matchingClaim.title.toLowerCase().trim();
+          const rTitle = rf.title.toLowerCase().trim();
+          titleMatch = mTitle === rTitle || mTitle.includes(rTitle) || rTitle.includes(mTitle);
+        } else if (!rf.title) {
+          titleMatch = true;
+        }
+
+        let tenureMatch = true;
+        if (typeof rf.isCurrent === "boolean" && typeof matchingClaim.isCurrent === "boolean") {
+          tenureMatch = matchingClaim.isCurrent === rf.isCurrent;
+        }
+        if (tenureMatch && (rf.dates || rf.startDate)) {
+          const rDates = (rf.dates || rf.startDate || "").toLowerCase().trim();
+          const mDates = (matchingClaim.dates || matchingClaim.startDate || "").toLowerCase().trim();
+          if (rDates && mDates) {
+            tenureMatch = rDates === mDates || mDates.includes(rDates) || rDates.includes(mDates);
+          }
+        }
+
+        if (employerMatch && titleMatch && tenureMatch) {
+          chronologyBindingMatches++;
+        }
+      }
+
+      // Employer binding (secondary diagnostic)
       if (rf.employer) {
         if (
           matchingClaim.employer &&
@@ -695,7 +811,7 @@ export function evaluateCandidateDocument(
     }
   }
 
-  // 2. Mechanical Verification of Candidate Source Offsets
+  // 2. Mechanical Verification of Candidate Source Offsets (Literal 100% Provenance)
   let offsetVerificationCount = 0;
   let offsetVerificationFailures = 0;
 
@@ -704,22 +820,19 @@ export function evaluateCandidateDocument(
       crossDocumentContaminationCount++;
     }
 
-    if (typeof c.startOffset === "number" && typeof c.endOffset === "number") {
-      offsetVerificationCount++;
-      if (
-        c.startOffset < 0 ||
-        c.endOffset > rawSourceText.length ||
-        c.startOffset >= c.endOffset
-      ) {
+    offsetVerificationCount++;
+    if (typeof c.startOffset !== "number" || typeof c.endOffset !== "number") {
+      offsetVerificationFailures++;
+    } else if (
+      c.startOffset < 0 ||
+      c.endOffset > rawSourceText.length ||
+      c.startOffset >= c.endOffset
+    ) {
+      offsetVerificationFailures++;
+    } else {
+      const slice = rawSourceText.slice(c.startOffset, c.endOffset);
+      if (slice !== (c.exactText ?? "")) {
         offsetVerificationFailures++;
-      } else if (c.exactText) {
-        const slice = rawSourceText.slice(c.startOffset, c.endOffset);
-        // Normalize whitespace for robust comparison
-        const normSlice = slice.replace(/\s+/g, " ").trim();
-        const normExact = c.exactText.replace(/\s+/g, " ").trim();
-        if (normSlice !== normExact && !normSlice.includes(normExact) && !normExact.includes(normSlice)) {
-          offsetVerificationFailures++;
-        }
       }
     }
   }
@@ -730,6 +843,8 @@ export function evaluateCandidateDocument(
     offsetVerificationCount > 0
       ? (offsetVerificationCount - offsetVerificationFailures) / offsetVerificationCount
       : 1.0;
+  const chronologyBindingAccuracy =
+    totalWorkHistoryInReference > 0 ? chronologyBindingMatches / totalWorkHistoryInReference : 1.0;
 
   return {
     documentId: docId,
@@ -747,6 +862,9 @@ export function evaluateCandidateDocument(
     employerBindingMatches,
     totalEmployersInReference,
     employerBindingAccuracy: totalEmployersInReference > 0 ? employerBindingMatches / totalEmployersInReference : 0,
+    chronologyBindingMatches,
+    totalWorkHistoryInReference,
+    chronologyBindingAccuracy,
     offsetVerificationCount,
     offsetVerificationFailures,
     offsetAccuracyRate,
@@ -789,6 +907,8 @@ export function scoreBatch06CertificationRun(
   let longDocRefFacts = 0;
   let longDocTypedMatches = 0;
 
+  let docSilentTotal = 0;
+  let docSilentCaptured = 0;
   const latencies: number[] = [];
   let totalCost = 0;
   let costCount = 0;
@@ -803,6 +923,8 @@ export function scoreBatch06CertificationRun(
     totalHighRiskFalseAffirmatives += r.highRiskBreakdown.observedFalseAffirmatives;
     totalPolarityInversions += r.factBreakdowns.filter(f => f.polarityStatus === "WRONG_POLARITY").length;
     totalApplicabilityLeaks += r.highRiskBreakdown.subjectApplicabilityErrors;
+    if (typeof r.silentDimensionsCount === "number") docSilentTotal += r.silentDimensionsCount;
+    if (typeof r.silentDimensionsCapturedCount === "number") docSilentCaptured += r.silentDimensionsCapturedCount;
 
     if (r.rawDocLength > 20000) {
       longDocRefFacts += roleMatCount;
@@ -827,8 +949,12 @@ export function scoreBatch06CertificationRun(
   const averageCostPerDocUsd = costCount > 0 ? totalCost / costCount : 0;
 
   // Insufficient-Evidence Capture Rate
-  const silentTotal = options?.totalSilentHighRiskDimensions ?? 0;
-  const silentCaptured = options?.silentDimensionsEmittedAsUnknownOrBlocked ?? 0;
+  const silentTotal = options?.totalSilentHighRiskDimensions !== undefined
+    ? options.totalSilentHighRiskDimensions
+    : docSilentTotal;
+  const silentCaptured = options?.silentDimensionsEmittedAsUnknownOrBlocked !== undefined
+    ? options.silentDimensionsEmittedAsUnknownOrBlocked
+    : docSilentCaptured;
   const insufficientEvidenceCaptureRate = silentTotal > 0 ? silentCaptured / silentTotal : 1.0;
 
   // 2. Compute Aggregate Candidate Metrics
@@ -837,6 +963,8 @@ export function scoreBatch06CertificationRun(
   let totalCandidateMetricsRetained = 0;
   let totalCandidateEmployersInRef = 0;
   let totalCandidateEmployersBound = 0;
+  let totalWorkHistoryInRef = 0;
+  let totalChronologyBound = 0;
   let totalOffsetChecks = 0;
   let totalOffsetFailures = 0;
 
@@ -845,6 +973,8 @@ export function scoreBatch06CertificationRun(
     totalCandidateMetricsRetained += c.metricRetentionCount;
     totalCandidateEmployersInRef += c.totalEmployersInReference;
     totalCandidateEmployersBound += c.employerBindingMatches;
+    totalWorkHistoryInRef += c.totalWorkHistoryInReference ?? c.totalEmployersInReference;
+    totalChronologyBound += c.chronologyBindingMatches ?? c.employerBindingMatches;
     totalOffsetChecks += c.offsetVerificationCount;
     totalOffsetFailures += c.offsetVerificationFailures;
   }
@@ -853,6 +983,8 @@ export function scoreBatch06CertificationRun(
     totalCandidateMetricsInRef > 0 ? totalCandidateMetricsRetained / totalCandidateMetricsInRef : 1.0;
   const candidateEmployerBinding =
     totalCandidateEmployersInRef > 0 ? totalCandidateEmployersBound / totalCandidateEmployersInRef : 1.0;
+  const candidateChronologyBinding =
+    totalWorkHistoryInRef > 0 ? totalChronologyBound / totalWorkHistoryInRef : 1.0;
   const candidateSpanProvenanceAccuracy =
     totalOffsetChecks > 0 ? (totalOffsetChecks - totalOffsetFailures) / totalOffsetChecks : 1.0;
 
@@ -979,20 +1111,20 @@ export function scoreBatch06CertificationRun(
       : "Marginal candidate metric variance: between 80.0% and 90.0%"
   );
 
-  // Gate 9: Candidate Employer Binding
-  const candidateEmployerPassed =
-    totalCandidateEmployersInRef === 0 || candidateEmployerBinding >= gates.candidateEmployerBindingMin;
+  // Gate 9: Candidate Chronology Binding (Employer + Title + Tenure)
+  const candidateChronologyPassed =
+    totalWorkHistoryInRef === 0 || candidateChronologyBinding >= gates.candidateChronologyBindingMin;
   evaluateGate(
-    "Candidate Employer Binding",
-    `>= ${(gates.candidateEmployerBindingMin * 100).toFixed(1)}%`,
-    totalCandidateEmployersInRef === 0
-      ? "N/A (No ref employers)"
-      : `${(candidateEmployerBinding * 100).toFixed(1)}%`,
-    candidateEmployerPassed,
-    candidateEmployerBinding < 0.80 ? "FATAL_DEFICIT_FAILURE" : "IMPLEMENTATION_TUNABLE",
-    candidateEmployerBinding < 0.80
-      ? "Candidate integrity collapse: Employer binding fell below 80.0%"
-      : "Marginal candidate employer binding variance: between 80.0% and 90.0%"
+    "Candidate Chronology Binding (Employer + Title + Tenure)",
+    `>= ${(gates.candidateChronologyBindingMin * 100).toFixed(1)}%`,
+    totalWorkHistoryInRef === 0
+      ? "N/A (No ref work history)"
+      : `${(candidateChronologyBinding * 100).toFixed(1)}%`,
+    candidateChronologyPassed,
+    candidateChronologyBinding < 0.80 ? "FATAL_DEFICIT_FAILURE" : "IMPLEMENTATION_TUNABLE",
+    candidateChronologyBinding < 0.80
+      ? "Candidate integrity collapse: Chronology binding fell below 80.0%"
+      : "Marginal candidate chronology binding variance: between 80.0% and 90.0%"
   );
 
   // Gate 10: Ingestion Latency (P95)
@@ -1048,6 +1180,7 @@ export function scoreBatch06CertificationRun(
       candidateSpanProvenanceAccuracy,
       candidateMetricFidelity,
       candidateEmployerBinding,
+      candidateChronologyBinding,
       p95LatencyMs,
       averageCostPerDocUsd
     }

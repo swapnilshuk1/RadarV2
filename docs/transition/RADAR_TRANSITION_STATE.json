@@ -1,6 +1,6 @@
 {
   "schemaVersion": "radar-transition-state/v1",
-  "controlRevision": "2026-09-13.15",
+  "controlRevision": "2026-09-14.01",
   "controlDocument": "docs/RADAR_TRANSITION_CONTROL.md",
   "workingBranch": "phase5/gate1-architecture-recon",
   "gate1AStatus": "COMPLETE",
@@ -8,7 +8,7 @@
   "activeGateTitle": "Substrate, provenance, and extraction architecture decision",
   "activeBatchId": "GATE_1B_BATCH_06",
   "currentBatchManifest": "docs/transition/CURRENT_BATCH.json",
-  "currentBatchScopeRevision": 2,
+  "currentBatchScopeRevision": 3,
   "implementationLedger": "docs/transition/IMPLEMENTATION_LEDGER.json",
   "agentChangeProtocol": "docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md",
   "requirePerCommitAcknowledgement": true,
@@ -24,7 +24,7 @@
     "gate1": null,
     "gate2": null
   },
-  "nextAuthorizedProductionWork": "GATE_1B_BATCH_06 Scope Revision 2 is ACTIVE. Program executes Steps 1-5 uninterrupted under strict blind-validation integrity invariants: human truth ownership (agent stops at adjudication boundary), two disjoint pre-frozen holdouts (primary certification + secondary remediation), historical evaluator immutability, audit path containment to audit-reports/gate1b-batch06/, and refined failure semantics. Step 6 shadow mode deployment remains a deliberate checkpoint requiring explicit governance approval.",
+  "nextAuthorizedProductionWork": "GATE_1B_BATCH_06 Scope Revision 3 is ACTIVE. Pre-adjudication contract and tooling repairs completed across taxonomy (9 canonical families), structural admission UNKNOWN set, mechanical quote-to-spanId resolution, canonical StructuredMetric/plural proofTypes candidate contract, exact Gate 9 chronology formula, Gate 7 silent-dimension capture rate, dual-review proof, and literal character offset provenance. Reviewer materials packaged and hashed. Human adjudication proceeds out-of-band; agent halts at adjudication boundary.",
   "transitionRules": {
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,

@@ -67,11 +67,18 @@ Each reference claim in `*_BLANK.json` must adhere to this JSON structure:
   "exactText": "Directed global engineering and infrastructure org of 420 engineers across Bengaluru, Pune, and Seattle.",
   "startOffset": 1240,
   "endOffset": 1345,
-  "metric": {
-    "value": 420,
-    "unit": "engineers",
-    "rawText": "420 engineers"
-  }
+  "metrics": [
+    {
+      "exactText": "420 engineers",
+      "startOffset": 1297,
+      "endOffset": 1310,
+      "metricType": "COUNT",
+      "rawValue": "420",
+      "normalizedValue": 420,
+      "comparator": "EXACT",
+      "unit": "engineers"
+    }
+  ]
 }
 ```
 
@@ -83,13 +90,14 @@ Reviewers and the evaluator must adhere strictly to these 10 binding rules:
 
 ### 1. Exact-Text & Character Offset Grounding (Gate 4)
 - `exactText` MUST be a character-for-character exact substring of the raw resume text.
-- `startOffset` and `endOffset` must index the exact slice in the source file: `sourceText.slice(startOffset, endOffset) === exactText`.
+- `startOffset` and `endOffset` must index the exact slice in the source file: `sourceText.slice(startOffset, endOffset) === exactText`. Zero whitespace normalization, zero substring containment fallback.
 - Paraphrasing, summarizing, or approximating text spans is strictly forbidden.
 - Evaluator enforces **`candidateSpanProvenanceMin: 1.0`** (100% mechanical text containment; 0 tolerance for hallucinated or floating spans).
 
-### 2. Employer Binding Invariant (Gate 9)
-- Every proof claim must bind strictly to the verified `employer` entity under whose section the bullet appears.
-- Evaluator enforces **`candidateEmployerBindingMin: 0.90`** (>= 90% accuracy).
+### 2. Chronology & Position Binding Invariant (Gate 9)
+- Every proof claim must bind strictly to the verified employer, executive title, and tenure dates/current status:
+  $$\text{candidateChronologyBinding} = \frac{\text{work-history reference claims with correct employer AND title AND tenure/current-status}}{\text{all applicable work-history reference claims}}$$
+- Evaluator enforces **`candidateChronologyBindingMin: 0.90`** (>= 90% accuracy). Employer-only binding is evaluated as a secondary diagnostic.
 
 ### 3. Position / Title Binding Invariant
 - Every proof claim must bind to the specific executive title held during that tenure (e.g. "Chief Technology Officer", "VP Engineering").
@@ -100,7 +108,7 @@ Reviewers and the evaluator must adhere strictly to these 10 binding rules:
 - If employment is ongoing, `endDate` must be `null` and `isCurrent` must be `true`.
 
 ### 5. Metric, Value, Unit & Currency Fidelity (Gate 8)
-- For quantitative claims, numerical values, currency symbols (`$`, `₹`, `EUR`, `GBP`), scale words (`M`, `Cr`, `B`, `K`), and units (`engineers`, `transactions`, `bps`, `%`) must be faithfully preserved.
+- For quantitative claims, numerical values, currency symbols (`$`, `₹`, `EUR`, `GBP`), scale words (`M`, `Cr`, `B`, `K`), and units (`engineers`, `transactions`, `bps`, `%`) must be faithfully preserved in `StructuredMetric` entries.
 - Evaluator enforces **`candidateMetricFidelityMin: 0.90`** (>= 90% token retention).
 
 ### 6. Current-Role Status
@@ -119,22 +127,22 @@ Reviewers and the evaluator must adhere strictly to these 10 binding rules:
 - Promoting a self-summary assertion to `WORK_HISTORY` without verified bullet provenance under an employer is evaluated as an evidence-class error.
 
 ### 10. Metric Comparators
-- When a metric includes qualifiers ("at least", "over", "approximately", "between X and Y"), reviewers should record the comparator (`EXACT`, `AT_LEAST`, `MORE_THAN`, `APPROXIMATELY`, `RANGE`) to preserve semantic intent.
+- When a metric includes qualifiers ("at least", "over", "approximately", "between X and Y"), reviewers should record the comparator (`EXACT`, `AT_LEAST`, `MORE_THAN`, `APPROXIMATELY`, `RANGE`) in the `StructuredMetric` record to preserve semantic intent.
 
 ---
 
-## 5. DUAL HUMAN CONFIRMATION & CRYPTOGRAPHIC FREEZE
+## 5. DUAL HUMAN CONFIRMATION & ARTIFACT PROTOCOL
 
-1. **Independent Dual Review**: Two human reviewers annotate candidate documents independently.
-2. **Reconciliation**:
-   - Employer bindings, positions, and tenure dates require 100% concordance.
-   - Proof types must match canonical definitions. Disagreements are reconciled by an Adjudication Reviewer before locking.
-3. **Sealing Semantics**:
+1. **Independent Dual Review Artifacts**:
+   - Reviewer 1 annotates `*_REV1.json`.
+   - Reviewer 2 annotates `*_REV2.json` independently.
+2. **Reconciliation Record (`*_RECONCILIATION.json`)**:
+   - Employer bindings, positions, and tenure dates require concordance.
+   - Proof types must match canonical definitions. Disagreements are reconciled by an Adjudication Reviewer in `*_RECONCILIATION.json` with an explicit adjudicator ID.
+3. **Mechanical Ingestion**:
+   - `scripts/transition/ingest-batch06-human-truth.ts` enforces dual reviews, validates schemas, and generates the compiled reference truth.
+4. **Sealing Semantics**:
    - **Primary Population**: Annotated, dual-reviewed, and cryptographically frozen before model extraction runs.
    - **Secondary Holdout**: SEALED FROM implementation agent inspection of completed truth, model/extractor execution, tuning, and scoring until the permitted remediation condition occurs.
    - **Secondary is NOT sealed from independent human adjudicators**: Both Primary and Secondary must be human-annotated, dual-reviewed where required, and cryptographically frozen before the Primary model run.
-4. **Ingestion Verification**:
-   ```bash
-   npx tsx scripts/transition/ingest-batch06-human-truth.ts primary
-   ```
 

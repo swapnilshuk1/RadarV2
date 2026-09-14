@@ -1,12 +1,12 @@
 {
   "schemaVersion": "radar-transition-batch/v1",
-  "controlRevision": "2026-09-13.15",
-  "scopeRevision": 2,
+  "controlRevision": "2026-09-14.01",
+  "scopeRevision": 3,
   "id": "GATE_1B_BATCH_06",
   "gate": "GATE_1B",
   "title": "Extraction architecture implementation & blind pre-certification",
   "status": "ACTIVE",
-  "batchStartCommit": "127e9a96b641d34f21b8f42d4623b426895a591b",
+  "batchStartCommit": "f07634b32c8e2adc4ef390ec4219a6e72fbd8313",
   "objective": "Implement the asymmetric hybrid role extraction architecture (Layers 1-5), commit and lock the new independent evaluator (evaluator-batch06.ts), package primary (50 roles, 16 candidate resumes) and secondary (25 roles, 8 candidate resumes; sealed for single remediation cycle) blind validation corpora with blank annotation templates for external human adjudication and dual-review across 9 canonical high-risk families, pre-register thresholds and refined failure consequence semantics, and execute single-pass blind validation scoring on the Primary Set (Steps 1-5). Step 6 shadow mode deployment remains a deliberate checkpoint requiring governance approval.",
   "mustNotChange": [
     "deterministic Extraction V1 semantics or frozen-baseline behavior until certified",
@@ -48,6 +48,7 @@
   "completionEvidence": [
     "docs/transition/GATE_1B_BATCH_06_AUTHORIZATION.md",
     "docs/transition/GATE_1B_BATCH_06_SCOPE_REVISION_2.md",
+    "docs/transition/GATE_1B_BATCH_06_SCOPE_REVISION_3.md",
     "docs/transition/GATE_1B_BATCH_06_VALIDATION_RUNBOOK.md",
     "Step 1 evaluator hash commitment",
     "Step 2 verifier and structural admission implementation",

@@ -67,7 +67,7 @@ A fact should be tagged as `SUPPORTING_NON_MATERIAL` if it represents:
    Certification Typed Reference Recall = (Typed Matches on MATERIAL_SELECTED facts) / (Total MATERIAL_SELECTED facts)
    ```
    - Certification Typed Reference Recall >= 50% must be computed against `MATERIAL_SELECTED` facts.
-   - Preserves exact historical comparability with the Batch 04C/R2 Selected Material Reference Fact set.
+   - Preserves historically anchored/comparable benchmarks with the Batch 04C/R2 Selected Material Reference Fact set.
 
 2. **Diagnostic Metric**:
    ```text
@@ -91,9 +91,9 @@ A fact should be tagged as `SUPPORTING_NON_MATERIAL` if it represents:
 
 ---
 
-## 5. Annotation Template Syntax
+## 5. Annotation Template Syntax & Silent Dimensions
 
-In the `*_BLANK.json` role annotation files, every fact in the `"facts"` array must explicitly include the `"materiality"` key:
+In the role annotation files, every fact in the `"facts"` array must explicitly include the `"materiality"` key:
 
 ```json
 {
@@ -122,3 +122,15 @@ If an annotator identifies a contextual or secondary statement worthy of capture
   "materiality": "SUPPORTING_NON_MATERIAL"
 }
 ```
+
+### High-Risk Silent Dimensions (Gate 7)
+At the document root level, reviewers must specify `highRiskSilentDimensions: HighRiskFamily[]` listing any of the 9 high-risk families that are completely absent or silent in the job description:
+```json
+{
+  "highRiskSilentDimensions": [
+    "BOARD_EXPOSURE",
+    "FOUNDER_CEO_PROXIMITY"
+  ]
+}
+```
+The evaluator scores Gate 7 (Insufficient-Evidence Capture Rate >= 90%) by verifying that the extraction model explicitly identifies these families in its post-admission `unknownHighRiskDimensions` set and asserts zero affirmative claims over them.

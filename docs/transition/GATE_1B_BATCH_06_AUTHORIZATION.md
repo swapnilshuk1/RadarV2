@@ -5,10 +5,10 @@
 - **Gate**: `GATE_1B` (Substrate, Provenance, and Extraction Architecture Decision)
 - **Batch ID**: `GATE_1B_BATCH_06`
 - **Title**: `Extraction architecture implementation & blind pre-certification`
-- **Scope Revision**: `2`
+- **Scope Revision**: `3`
 - **Status**: `ACTIVE`
 - **Preceding Batch**: `GATE_1B_BATCH_05` (`CLOSED`, Architecture Decided, Evaluator Provenance Resolved)
-- **Scope Revision Record**: `docs/transition/GATE_1B_BATCH_06_SCOPE_REVISION_2.md`
+- **Scope Revision Record**: `docs/transition/GATE_1B_BATCH_06_SCOPE_REVISION_3.md`
 - **Extraction Architecture Decision**: `DECIDED`
   - **Role**: `ASYMMETRIC_HYBRID_RICH_PROPOSITION_VERIFIED`
   - **Candidate**: `DETERMINISTIC_FOR_CURRENT_TRANSITION`

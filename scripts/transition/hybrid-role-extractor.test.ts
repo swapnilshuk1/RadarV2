@@ -32,7 +32,12 @@ describe("Layer 3: HighRiskSemanticVerifier", () => {
     expect(isHighRiskSemanticType("FOUNDER_CEO_PROXIMITY")).toBe(true);
     expect(isHighRiskSemanticType("BOARD_EXPOSURE")).toBe(true);
     expect(isHighRiskSemanticType("PEOPLE_LEADERSHIP")).toBe(true);
-    expect(isHighRiskSemanticType("COMMERCIAL_ACCOUNTABILITY")).toBe(true);
+    expect(isHighRiskSemanticType("REVENUE_ACCOUNTABILITY")).toBe(true);
+    expect(isHighRiskSemanticType("PROFITABILITY_ACCOUNTABILITY")).toBe(true);
+    expect(isHighRiskSemanticType("DECISION_AUTHORITY")).toBe(true);
+    expect(isHighRiskSemanticType("PEOPLE_SCALE")).toBe(true);
+    expect(isHighRiskSemanticType("BUDGET_SCOPE")).toBe(false);
+    expect(isHighRiskSemanticType("COMMERCIAL_ACCOUNTABILITY")).toBe(false);
     expect(isHighRiskSemanticType("ROLE_PURPOSE")).toBe(false);
     expect(isHighRiskSemanticType("GEOGRAPHIC_SCOPE")).toBe(false);
 

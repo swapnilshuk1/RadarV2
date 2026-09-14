@@ -104,11 +104,18 @@ Reviewers must extract candidate career milestones and executive proof points st
   "exactText": "Directed global engineering and infrastructure org of 420 engineers across Bengaluru, Pune, and Seattle.",
   "startOffset": 1240,
   "endOffset": 1345,
-  "metric": {
-    "value": 420,
-    "unit": "engineers",
-    "rawText": "420 engineers"
-  }
+  "metrics": [
+    {
+      "exactText": "420 engineers",
+      "startOffset": 1297,
+      "endOffset": 1310,
+      "metricType": "COUNT",
+      "rawValue": "420",
+      "normalizedValue": 420,
+      "comparator": "EXACT",
+      "unit": "engineers"
+    }
+  ]
 }
 ```
 
@@ -123,22 +130,27 @@ Reviewers must extract candidate career milestones and executive proof points st
 
 ### C. Candidate Scoring Rules & Invariants
 1. **Exact-Text / Source-Span Invariant**: `exactText` must match character-for-character as an exact substring of the resume text, with exact `startOffset` and `endOffset` satisfying `sourceText.slice(startOffset, endOffset) === exactText`. Hallucinated or loosely paraphrased spans fail Gate 4 (`candidateSpanProvenanceMin: 1.0`).
-2. **Employer Binding**: Each claim must bind strictly to the verified `employer` entity where the work occurred. Evaluated by Gate 9 (`candidateEmployerBindingMin: 0.90`).
+2. **Chronology Gate 9 Invariant**: Evaluates exact work-history binding:
+   chronologyBindingAccuracy = (work-history reference claims with correct employer AND title AND tenure/current-status) / (all applicable work-history reference claims).
+   Evaluated by Gate 9 (`candidateChronologyBindingMin: 0.90`). Employer-only binding is evaluated as a secondary diagnostic.
 3. **Position / Title Binding**: Each claim must bind to the specific executive title held during that tenure.
 4. **Date / Tenure Binding**: Each claim must bind to verified employment dates (`startDate`, `endDate`) in `YYYY-MM` or `YYYY` format.
-5. **Metric, Value, Unit & Currency Fidelity**: Numbers, percentages, currency symbols, and units must be preserved without distortion. Evaluated by Gate 8 (`candidateMetricFidelityMin: 0.90`).
+5. **Metric Fidelity (Gate 8)**: Canonical `StructuredMetric` records preserve numerical values, currencies, units, and comparators. Evaluated by Gate 8 (`candidateMetricFidelityMin: 0.90`).
 6. **Current-Role Status**: Correctly identify whether the role is active (`isCurrent: true`) or historical (`false`).
 7. **Zero Cross-Position Leakage**: Attributing accomplishments achieved at Position A to Position B is a fatal contamination error.
 8. **Zero Cross-Document Leakage**: Candidate claims must never reference facts from other candidate resumes or job postings.
 
 ---
 
-## 5. DUAL HUMAN CONFIRMATION WORKFLOW
+## 5. DUAL HUMAN CONFIRMATION & ARTIFACT PROTOCOL
 
-1. Reviewer 1 and Reviewer 2 annotate independently.
-2. For any High-Risk Negative Boundary or High-Risk Affirmative assertion:
-   - Both Reviewer 1 and Reviewer 2 must agree (100% concordance).
-   - In case of disagreement, an Adjudication Reviewer reconciles the final canonical label.
-3. Both Primary and Secondary reference files are finalized and cryptographically hashed before Step 4 model extraction runs.
-4. Ingestion is performed via:
-   `npx tsx scripts/transition/ingest-batch06-human-truth.ts`
+1. **Independent Review Artifacts**:
+   - Reviewer 1 annotates `*_REV1.json`.
+   - Reviewer 2 annotates `*_REV2.json` independently.
+2. **Reconciliation Record (`*_RECONCILIATION.json`)**:
+   - For all high-risk role facts, negative boundaries, and candidate work-history chronology bindings, both reviews are compared.
+   - In case of divergence, an Adjudication Reviewer documents the resolution in `*_RECONCILIATION.json` with an explicit adjudicator ID.
+3. **Mechanical Ingestion**:
+   - `scripts/transition/ingest-batch06-human-truth.ts` verifies independent dual-review proofs (`reviewerId !== reviewer2Id`), resolves verbatim quotes to frozen span IDs, validates canonical schemas, and generates the compiled authoritative reference truth files.
+4. **Cryptographic Sealing**:
+   - Both Primary and Secondary reference files are finalized and cryptographically hashed before Step 4 model extraction runs.
