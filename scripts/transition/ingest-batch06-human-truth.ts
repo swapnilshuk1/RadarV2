@@ -266,17 +266,25 @@ export function validateRoleDocument(
     }
   }
 
-  // Dual-review requirement: Reviewer 1 and Reviewer 2 / Adjudicator
+  // Reviewer requirements: dual-review for reconciliation artifacts, single reviewer for REV1/REV2
+  const isSingleReview = /_(REV1|REV2)\.json$/i.test(filename);
   const rev1Id = doc.reviewer1Id || doc.reviewerId;
   const rev2Id = doc.reviewer2Id;
-  if (!rev1Id || typeof rev1Id !== "string" || rev1Id.trim().length === 0) {
-    errors.push(`[${opaqueId || filename}] Missing mandatory reviewerId / reviewer1Id (Reviewer 1)`);
-  }
-  if (!rev2Id || typeof rev2Id !== "string" || rev2Id.trim().length === 0) {
-    errors.push(`[${opaqueId || filename}] Missing mandatory reviewer2Id (Reviewer 2 / Adjudicator)`);
-  }
-  if (rev1Id && rev2Id && rev1Id.trim() === rev2Id.trim()) {
-    errors.push(`[${opaqueId || filename}] reviewerId and reviewer2Id must be distinct independent reviewers`);
+  if (!isSingleReview) {
+    if (!rev1Id || typeof rev1Id !== "string" || rev1Id.trim().length === 0) {
+      errors.push(`[${opaqueId || filename}] Missing mandatory reviewerId / reviewer1Id (Reviewer 1)`);
+    }
+    if (!rev2Id || typeof rev2Id !== "string" || rev2Id.trim().length === 0) {
+      errors.push(`[${opaqueId || filename}] Missing mandatory reviewer2Id (Reviewer 2 / Adjudicator)`);
+    }
+    if (rev1Id && rev2Id && rev1Id.trim() === rev2Id.trim()) {
+      errors.push(`[${opaqueId || filename}] reviewerId and reviewer2Id must be distinct independent reviewers`);
+    }
+  } else {
+    const singleRevId = rev1Id || rev2Id;
+    if (!singleRevId || typeof singleRevId !== "string" || singleRevId.trim().length === 0) {
+      errors.push(`[${opaqueId || filename}] Missing mandatory reviewerId`);
+    }
   }
 
   if (doc.dualReviewVerified !== undefined && doc.dualReviewVerified !== true) {
@@ -359,22 +367,35 @@ export function validateRoleDocument(
           );
         }
       }
-      if (!Array.isArray(f.rev1FactIds) || f.rev1FactIds.length === 0) {
-        errors.push(
-          `[${opaqueId} / ${factId}] Reconciled fact must contain non-empty rev1FactIds array mapping back to REV1.`
-        );
-      } else {
+      if (f.resolution === "AGREED") {
+        if (!Array.isArray(f.rev1FactIds) || f.rev1FactIds.length === 0) {
+          errors.push(
+            `[${opaqueId} / ${factId}] Agreed fact must contain non-empty rev1FactIds array mapping back to REV1.`
+          );
+        }
+        if (!Array.isArray(f.rev2FactIds) || f.rev2FactIds.length === 0) {
+          errors.push(
+            `[${opaqueId} / ${factId}] Agreed fact must contain non-empty rev2FactIds array mapping back to REV2.`
+          );
+        }
+      } else if (f.resolution === "ADJUDICATED") {
+        const hasR1 = Array.isArray(f.rev1FactIds) && f.rev1FactIds.length > 0;
+        const hasR2 = Array.isArray(f.rev2FactIds) && f.rev2FactIds.length > 0;
+        if (!hasR1 && !hasR2) {
+          errors.push(
+            `[${opaqueId} / ${factId}] Adjudicated fact must trace back to at least one reviewer (non-empty rev1FactIds or rev2FactIds).`
+          );
+        }
+      }
+
+      if (Array.isArray(f.rev1FactIds)) {
         for (const r1Id of f.rev1FactIds) {
           if (typeof r1Id !== "string" || r1Id.trim().length === 0) {
             errors.push(`[${opaqueId} / ${factId}] rev1FactIds contains invalid or empty id.`);
           }
         }
       }
-      if (!Array.isArray(f.rev2FactIds) || f.rev2FactIds.length === 0) {
-        errors.push(
-          `[${opaqueId} / ${factId}] Reconciled fact must contain non-empty rev2FactIds array mapping back to REV2.`
-        );
-      } else {
+      if (Array.isArray(f.rev2FactIds)) {
         for (const r2Id of f.rev2FactIds) {
           if (typeof r2Id !== "string" || r2Id.trim().length === 0) {
             errors.push(`[${opaqueId} / ${factId}] rev2FactIds contains invalid or empty id.`);
@@ -498,17 +519,25 @@ export function validateCandidateDocument(
     }
   }
 
-  // Dual-review requirement: Reviewer 1 and Reviewer 2 / Adjudicator
+  // Reviewer requirements: dual-review for reconciliation artifacts, single reviewer for REV1/REV2
+  const isSingleReview = /_(REV1|REV2)\.json$/i.test(filename);
   const rev1Id = doc.reviewer1Id || doc.reviewerId;
   const rev2Id = doc.reviewer2Id;
-  if (!rev1Id || typeof rev1Id !== "string" || rev1Id.trim().length === 0) {
-    errors.push(`[${opaqueId || filename}] Missing mandatory reviewerId / reviewer1Id (Reviewer 1)`);
-  }
-  if (!rev2Id || typeof rev2Id !== "string" || rev2Id.trim().length === 0) {
-    errors.push(`[${opaqueId || filename}] Missing mandatory reviewer2Id (Reviewer 2 / Adjudicator)`);
-  }
-  if (rev1Id && rev2Id && rev1Id.trim() === rev2Id.trim()) {
-    errors.push(`[${opaqueId || filename}] reviewerId and reviewer2Id must be distinct independent reviewers`);
+  if (!isSingleReview) {
+    if (!rev1Id || typeof rev1Id !== "string" || rev1Id.trim().length === 0) {
+      errors.push(`[${opaqueId || filename}] Missing mandatory reviewerId / reviewer1Id (Reviewer 1)`);
+    }
+    if (!rev2Id || typeof rev2Id !== "string" || rev2Id.trim().length === 0) {
+      errors.push(`[${opaqueId || filename}] Missing mandatory reviewer2Id (Reviewer 2 / Adjudicator)`);
+    }
+    if (rev1Id && rev2Id && rev1Id.trim() === rev2Id.trim()) {
+      errors.push(`[${opaqueId || filename}] reviewerId and reviewer2Id must be distinct independent reviewers`);
+    }
+  } else {
+    const singleRevId = rev1Id || rev2Id;
+    if (!singleRevId || typeof singleRevId !== "string" || singleRevId.trim().length === 0) {
+      errors.push(`[${opaqueId || filename}] Missing mandatory reviewerId`);
+    }
   }
 
   if (doc.dualReviewVerified !== undefined && doc.dualReviewVerified !== true) {
@@ -632,22 +661,35 @@ export function validateCandidateDocument(
           );
         }
       }
-      if (!Array.isArray(cf.rev1FactIds) || cf.rev1FactIds.length === 0) {
-        errors.push(
-          `[${opaqueId} / ${factId}] Reconciled candidate fact must contain non-empty rev1FactIds array mapping back to REV1.`
-        );
-      } else {
+      if (cf.resolution === "AGREED") {
+        if (!Array.isArray(cf.rev1FactIds) || cf.rev1FactIds.length === 0) {
+          errors.push(
+            `[${opaqueId} / ${factId}] Agreed candidate fact must contain non-empty rev1FactIds array mapping back to REV1.`
+          );
+        }
+        if (!Array.isArray(cf.rev2FactIds) || cf.rev2FactIds.length === 0) {
+          errors.push(
+            `[${opaqueId} / ${factId}] Agreed candidate fact must contain non-empty rev2FactIds array mapping back to REV2.`
+          );
+        }
+      } else if (cf.resolution === "ADJUDICATED") {
+        const hasR1 = Array.isArray(cf.rev1FactIds) && cf.rev1FactIds.length > 0;
+        const hasR2 = Array.isArray(cf.rev2FactIds) && cf.rev2FactIds.length > 0;
+        if (!hasR1 && !hasR2) {
+          errors.push(
+            `[${opaqueId} / ${factId}] Adjudicated candidate fact must trace back to at least one reviewer (non-empty rev1FactIds or rev2FactIds).`
+          );
+        }
+      }
+
+      if (Array.isArray(cf.rev1FactIds)) {
         for (const r1Id of cf.rev1FactIds) {
           if (typeof r1Id !== "string" || r1Id.trim().length === 0) {
             errors.push(`[${opaqueId} / ${factId}] rev1FactIds contains invalid or empty id.`);
           }
         }
       }
-      if (!Array.isArray(cf.rev2FactIds) || cf.rev2FactIds.length === 0) {
-        errors.push(
-          `[${opaqueId} / ${factId}] Reconciled candidate fact must contain non-empty rev2FactIds array mapping back to REV2.`
-        );
-      } else {
+      if (Array.isArray(cf.rev2FactIds)) {
         for (const r2Id of cf.rev2FactIds) {
           if (typeof r2Id !== "string" || r2Id.trim().length === 0) {
             errors.push(`[${opaqueId} / ${factId}] rev2FactIds contains invalid or empty id.`);
@@ -658,16 +700,18 @@ export function validateCandidateDocument(
       errors.push(`[${opaqueId} / ${factId}] Candidate fact invalid resolution "${cf.resolution}". Must be AGREED or ADJUDICATED.`);
     }
 
-    // Dual-review verification on candidate fact
-    const hasDualReview =
-      cf.resolution === "AGREED" ||
-      cf.resolution === "ADJUDICATED" ||
-      cf.dualReviewStatus === "CONFIRMED" ||
-      cf.dualReviewStatus === "ADJUDICATED" ||
-      cf.secondReviewerConfirmed === true ||
-      (doc.dualReviewVerified === true && (cf.rev1FactIds !== undefined || cf.rev2FactIds !== undefined));
-    if (!hasDualReview) {
-      errors.push(`[${opaqueId} / ${factId}] Candidate fact lacks auditable dual-review confirmation (resolution: "AGREED" | "ADJUDICATED")`);
+    // Dual-review verification on candidate fact (reconciliation documents only)
+    if (isReconciliationDoc) {
+      const hasDualReview =
+        cf.resolution === "AGREED" ||
+        cf.resolution === "ADJUDICATED" ||
+        cf.dualReviewStatus === "CONFIRMED" ||
+        cf.dualReviewStatus === "ADJUDICATED" ||
+        cf.secondReviewerConfirmed === true ||
+        (doc.dualReviewVerified === true && (cf.rev1FactIds !== undefined || cf.rev2FactIds !== undefined));
+      if (!hasDualReview) {
+        errors.push(`[${opaqueId} / ${factId}] Candidate fact lacks auditable dual-review confirmation (resolution: "AGREED" | "ADJUDICATED")`);
+      }
     }
 
     validatedFacts.push(cf);

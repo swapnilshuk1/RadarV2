@@ -573,18 +573,46 @@
 
     function handleTextSelection() {
       const selection = window.getSelection();
-      const text = selection.toString().trim();
-      if (text.length > 0) {
-        selectedQuoteText = text;
-        const fullText = currentDocData.sourceText;
+      const rawText = selection.toString();
+      if (!rawText || rawText.trim().length === 0) return;
+
+      const text = rawText.trim();
+      selectedQuoteText = text;
+
+      const container = document.getElementById("source-text-view");
+      let calculatedStart = null;
+      let calculatedEnd = null;
+
+      if (container && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        if (container.contains(range.startContainer)) {
+          const preRange = range.cloneRange();
+          preRange.selectNodeContents(container);
+          preRange.setEnd(range.startContainer, range.startOffset);
+          const rawStart = preRange.toString().length;
+          const leadingWs = rawText.length - rawText.trimStart().length;
+          calculatedStart = rawStart + leadingWs;
+          calculatedEnd = calculatedStart + text.length;
+        }
+      }
+
+      const fullText = (currentDocData && currentDocData.sourceText) ? currentDocData.sourceText : "";
+      if (calculatedStart !== null && calculatedEnd !== null && fullText.slice(calculatedStart, calculatedEnd) === text) {
+        selectedStartOffset = calculatedStart;
+        selectedEndOffset = calculatedEnd;
+      } else {
         const idx = fullText.indexOf(text);
         if (idx !== -1) {
           selectedStartOffset = idx;
           selectedEndOffset = idx + text.length;
+        } else {
+          selectedStartOffset = null;
+          selectedEndOffset = null;
         }
-        const quoteInput = document.getElementById("quote-input");
-        if (quoteInput) quoteInput.value = text;
       }
+
+      const quoteInput = document.getElementById("quote-input");
+      if (quoteInput) quoteInput.value = text;
     }
 
     function copyHighlight() {
@@ -772,10 +800,38 @@
         const materiality = document.querySelector('input[name="materiality"]:checked').value;
 
         const factId = `fact_${Date.now()}_${localFacts.length + 1}`;
+        const fullText = (currentDocData && currentDocData.sourceText) ? currentDocData.sourceText : "";
+        let startOff = selectedStartOffset;
+        let endOff = selectedEndOffset;
+
+        // Verify if quote in textarea matches selection offsets
+        if (startOff === null || endOff === null || fullText.slice(startOff, endOff) !== quote) {
+          const idx = fullText.indexOf(quote);
+          if (idx !== -1) {
+            startOff = idx;
+            endOff = idx + quote.length;
+          }
+        }
+
+        // Count occurrences in raw text
+        let count = 0;
+        let pos = 0;
+        while ((pos = fullText.indexOf(quote, pos)) !== -1) {
+          count++;
+          pos += quote.length;
+        }
+
+        // For duplicate quotes (or whenever offsets are verified), store explicit exact offsets object
+        const evidenceItem = (count > 1 && startOff !== null && endOff !== null) ? {
+          exactText: quote,
+          startOffset: startOff,
+          endOffset: endOff
+        } : quote;
+
         localFacts.push({
           id: factId,
           propositionText: prop,
-          sourceEvidence: [quote],
+          sourceEvidence: [evidenceItem],
           canonicalTypes: [cat],
           appliesTo: "ROLE",
           polarity: polarity,
@@ -959,7 +1015,7 @@
             ...f1,
             id: `rec_${f1.id}`,
             rev1FactIds: [f1.id],
-            rev2FactIds: [rev2.facts[0] ? rev2.facts[0].id : f1.id],
+            rev2FactIds: [],
             resolution: "ADJUDICATED",
             adjudicatorId: adjudicatorId
           });
@@ -971,7 +1027,6 @@
 
     function acceptRev1Fact(idx) {
       const rev1 = currentDocData.rev1;
-      const rev2 = currentDocData.rev2;
       const f1 = rev1.facts[idx];
       const adjudicatorId = document.getElementById("reviewer-id-input").value.trim() || "ADJ_LEAD";
 
@@ -979,7 +1034,7 @@
         ...f1,
         id: `rec_${f1.id}_${Date.now()}`,
         rev1FactIds: [f1.id],
-        rev2FactIds: [rev2 && rev2.facts[0] ? rev2.facts[0].id : f1.id],
+        rev2FactIds: [],
         resolution: "ADJUDICATED",
         adjudicatorId: adjudicatorId
       });
@@ -987,7 +1042,6 @@
     }
 
     function acceptRev2Fact(idx) {
-      const rev1 = currentDocData.rev1;
       const rev2 = currentDocData.rev2;
       const f2 = rev2.facts[idx];
       const adjudicatorId = document.getElementById("reviewer-id-input").value.trim() || "ADJ_LEAD";
@@ -995,7 +1049,7 @@
       localFacts.push({
         ...f2,
         id: `rec_${f2.id}_${Date.now()}`,
-        rev1FactIds: [rev1 && rev1.facts[0] ? rev1.facts[0].id : f2.id],
+        rev1FactIds: [],
         rev2FactIds: [f2.id],
         resolution: "ADJUDICATED",
         adjudicatorId: adjudicatorId
