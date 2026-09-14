@@ -525,4 +525,73 @@ describe("Layers 1-5: AsymmetricHybridRoleExtractor Orchestration", () => {
     expect(types).toContain("PNL_OWNERSHIP");
     expect(types).toContain("HARD_REQUIREMENT");
   });
+
+  it("distinguishes negated boundary, conditional, and silent UNKNOWN dimensions correctly", async () => {
+    const rawJD = `
+Acme Corporation is hiring a VP of Product.
+In this role, you will report directly to the Chief Executive Officer.
+The position has no direct P&L ownership; budget remains centralized with finance.
+Expenditure authority over $100k is subject to Board of Directors approval.
+Must have 10+ years of product leadership experience.
+`;
+
+    const mockProvider: RichPropositionProvider = {
+      extractPropositions: async (units: SourceUnit[]) => {
+        return [
+          {
+            proposition: "Reports directly to the Chief Executive Officer",
+            appliesTo: "ROLE",
+            polarity: "AFFIRMED",
+            sourceEvidence: ["S002"],
+            canonicalTypes: ["REPORTING_LINE", "FOUNDER_CEO_PROXIMITY"],
+            ontologyDisposition: "MAPPED",
+            confidence: 0.95
+          },
+          {
+            proposition: "No direct P&L ownership",
+            appliesTo: "ROLE",
+            polarity: "NEGATED",
+            sourceEvidence: ["S003"],
+            canonicalTypes: ["PNL_OWNERSHIP"],
+            ontologyDisposition: "MAPPED",
+            confidence: 0.95
+          },
+          {
+            proposition: "Expenditure authority over $100k is subject to Board approval",
+            appliesTo: "ROLE",
+            polarity: "CONDITIONAL",
+            conditionDescription: "Subject to Board of Directors approval",
+            sourceEvidence: ["S004"],
+            canonicalTypes: ["DECISION_AUTHORITY"],
+            ontologyDisposition: "MAPPED",
+            confidence: 0.90
+          }
+        ];
+      }
+    };
+
+    const extractor = new AsymmetricHybridRoleExtractor();
+    const result = await extractor.extract(rawJD, mockProvider, {
+      title: "VP of Product",
+      companyName: "Acme Corporation"
+    });
+
+    // 1. Reporting line is affirmed -> NOT in unknownHighRiskDimensions
+    expect(result.unknownHighRiskDimensions).not.toContain("REPORTING_LINE");
+    expect(result.unknownHighRiskDimensions).not.toContain("FOUNDER_CEO_PROXIMITY");
+
+    // 2. Negated P&L is admitted as boundary -> NOT in unknownHighRiskDimensions
+    expect(result.metrics.admittedBoundariesCount).toBeGreaterThanOrEqual(1);
+    expect(result.negativeBoundaries).toContain("No direct P&L ownership");
+    expect(result.unknownHighRiskDimensions).not.toContain("PNL_OWNERSHIP");
+
+    // 3. Conditional decision authority is admitted conditional -> NOT in unknownHighRiskDimensions
+    expect(result.unknownHighRiskDimensions).not.toContain("DECISION_AUTHORITY");
+
+    // 4. Truly silent dimensions (e.g. BOARD_EXPOSURE, PEOPLE_SCALE, REVENUE_ACCOUNTABILITY) are in unknownHighRiskDimensions
+    expect(result.unknownHighRiskDimensions).toContain("BOARD_EXPOSURE");
+    expect(result.unknownHighRiskDimensions).toContain("PEOPLE_SCALE");
+    expect(result.unknownHighRiskDimensions).toContain("REVENUE_ACCOUNTABILITY");
+    expect(result.unknownHighRiskDimensions).toContain("PROFITABILITY_ACCOUNTABILITY");
+  });
 });

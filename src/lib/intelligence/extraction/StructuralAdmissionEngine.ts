@@ -30,7 +30,8 @@ import type { RoleSemanticType } from "./RoleIntelligenceExtractorV1";
 import {
   HIGH_RISK_SEMANTIC_FAMILIES,
   type HighRiskSemanticFamily,
-  type SemanticVerificationResult
+  type SemanticVerificationResult,
+  identifyHighRiskFamilies
 } from "./HighRiskSemanticVerifier";
 
 export type StructuralAdmissionStatus =
@@ -308,24 +309,53 @@ export class StructuralAdmissionEngine {
       }
     }
 
-    // Collect all high-risk families covered by admitted affirmative or boundary decisions
-    const coveredFamilies = new Set<string>();
+    // Collect all high-risk families covered by admitted decisions:
+    // AFFIRMED: known affirmative fact
+    // NEGATED_BOUNDARY: known negative boundary constraint (NEGATED !== UNKNOWN)
+    // CONDITIONAL: known conditional fact (CONDITIONAL !== UNKNOWN)
+    // UNKNOWN / INSUFFICIENT: high-risk family with zero admitted affirmative, boundary, or conditional assertions
+    const coveredFamilies = new Set<HighRiskSemanticFamily>();
+
     for (const d of admittedAffirmative) {
       for (const t of d.admittedTypes) {
         if (HIGH_RISK_SEMANTIC_FAMILIES.includes(t as HighRiskSemanticFamily)) {
-          coveredFamilies.add(t);
-        }
-      }
-    }
-    for (const d of admittedBoundaries) {
-      for (const t of d.admittedTypes) {
-        if (HIGH_RISK_SEMANTIC_FAMILIES.includes(t as HighRiskSemanticFamily)) {
-          coveredFamilies.add(t);
+          coveredFamilies.add(t as HighRiskSemanticFamily);
         }
       }
     }
 
-    // Explicit post-admission UNKNOWN set: any high-risk family with zero admitted affirmative or boundary assertions
+    for (const d of admittedBoundaries) {
+      const p = propositions[d.propositionIndex];
+      const v = verificationResults ? verificationResults[d.propositionIndex] : undefined;
+      if (v?.isHighRisk && v.highRiskFamily && HIGH_RISK_SEMANTIC_FAMILIES.includes(v.highRiskFamily)) {
+        coveredFamilies.add(v.highRiskFamily);
+      }
+      if (p) {
+        for (const f of identifyHighRiskFamilies(p)) {
+          coveredFamilies.add(f);
+        }
+      }
+    }
+
+    for (const d of admittedConditional) {
+      for (const t of d.admittedTypes) {
+        if (HIGH_RISK_SEMANTIC_FAMILIES.includes(t as HighRiskSemanticFamily)) {
+          coveredFamilies.add(t as HighRiskSemanticFamily);
+        }
+      }
+      const p = propositions[d.propositionIndex];
+      const v = verificationResults ? verificationResults[d.propositionIndex] : undefined;
+      if (v?.isHighRisk && v.highRiskFamily && HIGH_RISK_SEMANTIC_FAMILIES.includes(v.highRiskFamily)) {
+        coveredFamilies.add(v.highRiskFamily);
+      }
+      if (p) {
+        for (const f of identifyHighRiskFamilies(p)) {
+          coveredFamilies.add(f);
+        }
+      }
+    }
+
+    // Explicit post-admission UNKNOWN set: high-risk families with zero admitted affirmative, boundary, or conditional assertions
     const unknownHighRiskDimensions = HIGH_RISK_SEMANTIC_FAMILIES.filter(
       f => !coveredFamilies.has(f)
     );

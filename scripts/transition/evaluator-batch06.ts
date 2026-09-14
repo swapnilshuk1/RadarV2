@@ -648,6 +648,11 @@ export function evaluateRoleDocument(
 // 5. Candidate Evaluation Engine
 // ============================================================================
 
+function normalizeString(val: string | null | undefined): string {
+  if (!val) return "";
+  return val.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 export function evaluateCandidateDocument(
   docId: string,
   architecture: string,
@@ -675,15 +680,33 @@ export function evaluateCandidateDocument(
     if (rf.employer) totalEmployersInReference++;
     if (rf.evidenceClass === "WORK_HISTORY" && (rf.employer || rf.title)) totalWorkHistoryInReference++;
 
-    // Find claim covering this reference fact
+    // Find claim covering this reference fact via source range / span containment
     const matchingClaim = claims.find(c => {
-      if (rf.exactText && c.exactText && (c.exactText.includes(rf.exactText) || rf.exactText.includes(c.exactText))) {
-        return true;
+      // 1. Grounded source ranges / span containment (preferred)
+      if (
+        typeof c.startOffset === "number" &&
+        typeof c.endOffset === "number" &&
+        typeof rf.startOffset === "number" &&
+        typeof rf.endOffset === "number"
+      ) {
+        const cInsideRf = c.startOffset >= rf.startOffset && c.endOffset <= rf.endOffset;
+        const rfInsideC = rf.startOffset >= c.startOffset && rf.endOffset <= c.endOffset;
+        if (cInsideRf || rfInsideC) {
+          return true;
+        }
+        const overlap = Math.max(0, Math.min(c.endOffset, rf.endOffset) - Math.max(c.startOffset, rf.startOffset));
+        const minLen = Math.min(c.endOffset - c.startOffset, rf.endOffset - rf.startOffset);
+        if (minLen > 0 && overlap / minLen >= 0.8) {
+          return true;
+        }
+        return false;
       }
-      if (rf.exactText && c.parentBulletExactText && c.parentBulletExactText.includes(rf.exactText)) {
-        return true;
-      }
+      // 2. Exact span ID match
       if (rf.spanId && c.spanId && c.spanId === rf.spanId) {
+        return true;
+      }
+      // 3. Exact normalized string equality (only if offsets unavailable)
+      if (rf.exactText && c.exactText && normalizeString(rf.exactText) === normalizeString(c.exactText)) {
         return true;
       }
       return false;
@@ -692,18 +715,18 @@ export function evaluateCandidateDocument(
     if (matchingClaim) {
       refRecallCount++;
 
-      // Typed recall (plural array match with fallback to singular)
-      const cTypes: string[] = matchingClaim.proofTypes
+      // Typed recall (canonical proofTypes array match - exact equality)
+      const cTypes: string[] = Array.isArray(matchingClaim.proofTypes)
         ? matchingClaim.proofTypes.map(t => String(t).toUpperCase())
         : matchingClaim.proofType
-          ? [matchingClaim.proofType.toUpperCase()]
+          ? [String(matchingClaim.proofType).toUpperCase()]
           : [];
-      const rfTypes: string[] = rf.proofTypes && rf.proofTypes.length > 0
+      const rfTypes: string[] = Array.isArray(rf.proofTypes) && rf.proofTypes.length > 0
         ? rf.proofTypes.map(t => String(t).toUpperCase())
         : rf.proofType
-          ? [rf.proofType.toUpperCase()]
+          ? [String(rf.proofType).toUpperCase()]
           : [];
-      if (rfTypes.some(rt => cTypes.some(ct => ct === rt || rt.includes(ct) || ct.includes(rt)))) {
+      if (rfTypes.some(rt => cTypes.some(ct => ct === rt))) {
         typedRecallCount++;
       }
 
@@ -714,35 +737,23 @@ export function evaluateCandidateDocument(
         selfSummaryPromotionCount++;
       }
 
-      // Metric retention
+      // Metric retention: Require canonical StructuredMetric schema matching
       if (rf.metrics && rf.metrics.length > 0) {
         for (const rm of rf.metrics) {
           const claimMetrics = Array.isArray(matchingClaim.metrics) ? matchingClaim.metrics : [];
           let metricMatched = false;
           for (const cm of claimMetrics) {
             if (typeof cm === "object" && cm !== null) {
-              const typeMatch = !rm.metricType || cm.metricType === rm.metricType;
+              const typeMatch = cm.metricType === rm.metricType;
               const valMatch = typeof cm.normalizedValue === "number" &&
                 Math.abs(cm.normalizedValue - rm.normalizedValue) < 1e-6;
-              const unitMatch = !rm.unit || (cm.unit && cm.unit.toLowerCase() === rm.unit.toLowerCase());
-              const currMatch = !rm.currency || cm.currency === rm.currency;
-              const compMatch = !rm.comparator || cm.comparator === rm.comparator;
+              const unitMatch = (!rm.unit && !cm.unit) || (Boolean(rm.unit) && Boolean(cm.unit) && cm.unit!.trim().toLowerCase() === rm.unit!.trim().toLowerCase());
+              const currMatch = (!rm.currency && !cm.currency) || (Boolean(rm.currency) && Boolean(cm.currency) && cm.currency === rm.currency);
+              const compMatch = (!rm.comparator && !cm.comparator) || (Boolean(rm.comparator) && Boolean(cm.comparator) && cm.comparator === rm.comparator);
               if (typeMatch && valMatch && unitMatch && currMatch && compMatch) {
                 metricMatched = true;
                 break;
               }
-            } else if (typeof cm === "string") {
-              const rmNumStr = String(rm.normalizedValue);
-              if (cm.includes(rmNumStr)) {
-                metricMatched = true;
-                break;
-              }
-            }
-          }
-          if (!metricMatched && matchingClaim.exactText) {
-            const rmNumStr = String(rm.normalizedValue);
-            if (matchingClaim.exactText.includes(rmNumStr)) {
-              metricMatched = true;
             }
           }
           if (metricMatched) {
@@ -750,61 +761,61 @@ export function evaluateCandidateDocument(
           }
         }
       } else if (rf.metric) {
-        const hasDeclaredMetric = Array.isArray(matchingClaim.metrics) && matchingClaim.metrics.length > 0;
-        const textHasNumber = /\d+/.test(matchingClaim.exactText ?? "");
-        const containsRefNumber = rf.metric.replace(/[^0-9]/g, "");
-        const claimNumbers = (matchingClaim.exactText ?? "").replace(/[^0-9]/g, "");
-        if (hasDeclaredMetric || (textHasNumber && containsRefNumber.length > 0 && claimNumbers.includes(containsRefNumber))) {
+        const claimMetrics = Array.isArray(matchingClaim.metrics) ? matchingClaim.metrics : [];
+        const hasMetric = claimMetrics.some(cm => {
+          if (typeof cm === "string") return cm.trim() === rf.metric!.trim();
+          if (typeof cm === "object" && cm !== null) return cm.exactText === rf.metric || cm.rawValue === rf.metric;
+          return false;
+        });
+        if (hasMetric) {
           metricRetentionCount++;
         }
       }
 
-      // Chronology & Position Binding for WORK_HISTORY
+      // Chronology & Position Binding for WORK_HISTORY (Gate 9)
+      // Comparison requires normalized exact equality: trim, lowercase, collapse whitespace. NO substring includes!
       if (rf.evidenceClass === "WORK_HISTORY" && (rf.employer || rf.title)) {
         let employerMatch = false;
         if (rf.employer && matchingClaim.employer) {
-          const mEmp = matchingClaim.employer.toLowerCase().trim();
-          const rEmp = rf.employer.toLowerCase().trim();
-          employerMatch = mEmp === rEmp || mEmp.includes(rEmp) || rEmp.includes(mEmp);
+          employerMatch = normalizeString(matchingClaim.employer) === normalizeString(rf.employer);
         } else if (!rf.employer) {
           employerMatch = true;
         }
 
         let titleMatch = false;
         if (rf.title && matchingClaim.title) {
-          const mTitle = matchingClaim.title.toLowerCase().trim();
-          const rTitle = rf.title.toLowerCase().trim();
-          titleMatch = mTitle === rTitle || mTitle.includes(rTitle) || rTitle.includes(mTitle);
+          titleMatch = normalizeString(matchingClaim.title) === normalizeString(rf.title);
         } else if (!rf.title) {
           titleMatch = true;
         }
 
-        let tenureMatch = true;
-        if (typeof rf.isCurrent === "boolean" && typeof matchingClaim.isCurrent === "boolean") {
-          tenureMatch = matchingClaim.isCurrent === rf.isCurrent;
-        }
-        if (tenureMatch && (rf.dates || rf.startDate)) {
-          const rDates = (rf.dates || rf.startDate || "").toLowerCase().trim();
-          const mDates = (matchingClaim.dates || matchingClaim.startDate || "").toLowerCase().trim();
-          if (rDates && mDates) {
-            tenureMatch = rDates === mDates || mDates.includes(rDates) || rDates.includes(mDates);
-          }
+        let isCurrentMatch = true;
+        if (typeof rf.isCurrent === "boolean") {
+          isCurrentMatch = matchingClaim.isCurrent === rf.isCurrent;
         }
 
-        if (employerMatch && titleMatch && tenureMatch) {
+        let startDateMatch = true;
+        if (rf.startDate) {
+          startDateMatch = normalizeString(matchingClaim.startDate) === normalizeString(rf.startDate);
+        } else if (rf.dates) {
+          startDateMatch = normalizeString(matchingClaim.dates || matchingClaim.startDate) === normalizeString(rf.dates);
+        }
+
+        let endDateMatch = true;
+        if (rf.endDate !== undefined) {
+          endDateMatch = normalizeString(matchingClaim.endDate) === normalizeString(rf.endDate);
+        }
+
+        if (employerMatch && titleMatch && isCurrentMatch && startDateMatch && endDateMatch) {
           chronologyBindingMatches++;
         }
       }
 
       // Employer binding (secondary diagnostic)
       if (rf.employer) {
-        if (
-          matchingClaim.employer &&
-          (matchingClaim.employer.toLowerCase().includes(rf.employer.toLowerCase()) ||
-            rf.employer.toLowerCase().includes(matchingClaim.employer.toLowerCase()))
-        ) {
+        if (matchingClaim.employer && normalizeString(matchingClaim.employer) === normalizeString(rf.employer)) {
           employerBindingMatches++;
-        } else if (matchingClaim.employer && matchingClaim.employer !== rf.employer) {
+        } else if (matchingClaim.employer && normalizeString(matchingClaim.employer) !== normalizeString(rf.employer)) {
           crossPositionContaminationCount++;
         }
       }
@@ -885,8 +896,6 @@ export function scoreBatch06CertificationRun(
   candidateResults: CandidateEvaluationResult[],
   options?: {
     customGates?: Partial<PreRegisteredGates>;
-    totalSilentHighRiskDimensions?: number;
-    silentDimensionsEmittedAsUnknownOrBlocked?: number;
   }
 ): Batch06CertificationSummary {
   const gates: PreRegisteredGates = {
@@ -948,13 +957,9 @@ export function scoreBatch06CertificationRun(
   const p95LatencyMs = latencies.length > 0 ? latencies[p95Index] : 0;
   const averageCostPerDocUsd = costCount > 0 ? totalCost / costCount : 0;
 
-  // Insufficient-Evidence Capture Rate
-  const silentTotal = options?.totalSilentHighRiskDimensions !== undefined
-    ? options.totalSilentHighRiskDimensions
-    : docSilentTotal;
-  const silentCaptured = options?.silentDimensionsEmittedAsUnknownOrBlocked !== undefined
-    ? options.silentDimensionsEmittedAsUnknownOrBlocked
-    : docSilentCaptured;
+  // Insufficient-Evidence Capture Rate (Gate 7 strictly derived from document-level aggregations)
+  const silentTotal = docSilentTotal;
+  const silentCaptured = docSilentCaptured;
   const insufficientEvidenceCaptureRate = silentTotal > 0 ? silentCaptured / silentTotal : 1.0;
 
   // 2. Compute Aggregate Candidate Metrics

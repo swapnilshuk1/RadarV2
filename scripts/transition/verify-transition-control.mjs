@@ -267,6 +267,9 @@ for (const ack of acknowledgements) {
 const currentBatchCommits = new Set(
   lines(git(["rev-list", "--reverse", `${batch.batchStartCommit}..HEAD`], { allowFailure: true })),
 );
+const currentScopeCommits = batch.scopeRevisionStartCommit
+  ? new Set(lines(git(["rev-list", "--reverse", `${batch.scopeRevisionStartCommit}..HEAD`], { allowFailure: true })))
+  : currentBatchCommits;
 const commitShas = lines(
   git(["rev-list", "--reverse", `${ledger.enforcementStartCommit}..HEAD`], { allowFailure: true }),
 );
@@ -283,17 +286,29 @@ for (const commitSha of commitShas) {
     unacknowledged.push({ commitSha, governedFiles });
     continue;
   }
-  if (
-    currentBatchCommits.has(commitSha) &&
-    (ack.gate !== state.activeGate ||
-      ack.batchId !== state.activeBatchId ||
-      ack.scopeRevision !== state.currentBatchScopeRevision)
-  ) {
-    die(
-      `Acknowledgement ${commitSha} does not match active-batch authorization: ` +
-        `recorded ${ack.gate}/${ack.batchId}/scope-${ack.scopeRevision}, ` +
-        `current ${state.activeGate}/${state.activeBatchId}/scope-${state.currentBatchScopeRevision}`,
-    );
+  if (currentBatchCommits.has(commitSha)) {
+    if (ack.gate !== state.activeGate || ack.batchId !== state.activeBatchId) {
+      die(
+        `Acknowledgement ${commitSha} does not match active-batch authorization: ` +
+          `recorded ${ack.gate}/${ack.batchId}, ` +
+          `current ${state.activeGate}/${state.activeBatchId}`,
+      );
+    }
+    if (currentScopeCommits.has(commitSha)) {
+      if (ack.scopeRevision !== state.currentBatchScopeRevision) {
+        die(
+          `Acknowledgement ${commitSha} does not match current scope revision: ` +
+            `recorded ${ack.gate}/${ack.batchId}/scope-${ack.scopeRevision}, ` +
+            `current ${state.activeGate}/${state.activeBatchId}/scope-${state.currentBatchScopeRevision}`,
+        );
+      }
+    } else {
+      if (ack.scopeRevision > state.currentBatchScopeRevision) {
+        die(
+          `Acknowledgement ${commitSha} recorded scope-${ack.scopeRevision} exceeding current scope-${state.currentBatchScopeRevision}`,
+        );
+      }
+    }
   }
 }
 if (unacknowledged.length > 0) {

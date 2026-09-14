@@ -123,6 +123,22 @@ If an annotator identifies a contextual or secondary statement worthy of capture
 }
 ```
 
+#### Quote Disambiguation & Explicit Offsets:
+In `sourceEvidence`:
+- If the quote occurs **exactly once** in the JD text, annotators may supply a plain string:
+  `"sourceEvidence": ["frequent communication via Slack and Teams"]`
+- If the quote text occurs **more than once** in the JD text, annotators **MUST** provide explicit offsets to disambiguate which occurrence grounds the fact:
+  ```json
+  "sourceEvidence": [
+    {
+      "exactText": "Reports to the Chief Operating Officer",
+      "startOffset": 1422,
+      "endOffset": 1460
+    }
+  ]
+  ```
+  Ingestion enforces `rawSourceText.slice(startOffset, endOffset) === exactText`. Ambiguous duplicate quotes without offsets fail validation.
+
 ### High-Risk Silent Dimensions (Gate 7)
 At the document root level, reviewers must specify `highRiskSilentDimensions: HighRiskFamily[]` listing any of the 9 high-risk families that are completely absent or silent in the job description:
 ```json

@@ -34,7 +34,8 @@ import type { RoleSemanticType } from "./RoleIntelligenceExtractorV1";
 import {
   HighRiskSemanticVerifier,
   type SemanticVerificationResult,
-  type SemanticVerifier
+  type SemanticVerifier,
+  type HighRiskSemanticFamily
 } from "./HighRiskSemanticVerifier";
 import {
   StructuralAdmissionEngine,
@@ -79,6 +80,7 @@ export interface HybridRoleExtractionResult {
   readonly canonicalFacts: readonly ProjectedCanonicalAtom[];
   readonly negativeBoundaries: readonly string[];
   readonly unmappedConcepts: readonly string[];
+  readonly unknownHighRiskDimensions: readonly HighRiskSemanticFamily[];
   readonly metrics: HybridRoleExtractionMetrics;
 }
 
@@ -228,6 +230,7 @@ export class AsymmetricHybridRoleExtractor {
       canonicalFacts,
       negativeBoundaries,
       unmappedConcepts,
+      unknownHighRiskDimensions: admissionBatch.unknownHighRiskDimensions,
       metrics
     };
   }

@@ -2,12 +2,12 @@
   "schemaVersion": "radar-transition-integrity-manifest/v1",
   "batchId": "GATE_1B_BATCH_06",
   "scopeRevision": 3,
-  "verifiedAt": "2026-09-14T08:25:00Z",
+  "verifiedAt": "2026-09-14T09:30:00Z",
   "evaluatorFreeze": {
     "evaluatorPath": "scripts/transition/evaluator-batch06.ts",
-    "sha256": "f8c4c695503998d138a078140e21e41e6d385c5f883b237698d267fa3ccb24e9",
+    "sha256": "01d11fa6056b5f5f6bdc44a00a1f4aaaa3d6b6de40aa93dd54ad864609374b66",
     "testSuitePath": "scripts/transition/evaluator-batch06.test.ts",
-    "testVerdict": "15/15 PASSING (26/26 aggregate evaluator suite PASSING)",
+    "testVerdict": "19/19 PASSING (31/31 aggregate evaluator suite PASSING)",
     "historicalEvaluatorsSealed": [
       "scripts/transition/evaluator-v2.ts",
       "scripts/transition/evaluator-r2.ts"
@@ -76,11 +76,11 @@
     "validationGroupingsCount": 8,
     "note": "Taxonomy frozen to exact 9 canonical high-risk families per Scope Revision 3. Non-canonical commercial alias eliminated.",
     "reviewerInstructionsPath": "audit-reports/gate1b-batch06/annotation/REVIEWER_INSTRUCTIONS.md",
-    "reviewerInstructionsSha256": "785ad6a14b15dc254f55ad6dde613987b671635a83d736dfc89dba7c45689da0",
+    "reviewerInstructionsSha256": "5ff332f8ca9dbe6e2b0a6a1fa723fb07298ef5682f4c2e76ba8ee3d213be9b1a",
     "roleMaterialityRubricPath": "audit-reports/gate1b-batch06/annotation/ROLE_MATERIALITY_RUBRIC.md",
-    "roleMaterialityRubricSha256": "57fe751651bfa256683728db1d4172c295936d6a553bb21be608b9cd44f27104",
+    "roleMaterialityRubricSha256": "0afd9edecaa3e9d5f4f92142c654fbd0698cc363d09563d3675595c96442d8a4",
     "candidateReferenceTruthContractPath": "audit-reports/gate1b-batch06/annotation/CANDIDATE_REFERENCE_TRUTH_CONTRACT.md",
-    "candidateReferenceTruthContractSha256": "8688cc87e5850c7106acdc3fde3ab2f013645bdae3736f01d7a4248c1f29ec2c"
+    "candidateReferenceTruthContractSha256": "d851c50caa308d0a2cd5bde27c042f96ee1d7f511a4a2bfac5b3799f61d66211"
   },
   "repositoryHygiene": {
     "gitignoreAllowlist": "!audit-reports/gate1b-batch06/",

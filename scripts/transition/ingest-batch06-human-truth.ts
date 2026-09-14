@@ -136,35 +136,100 @@ export interface IngestionResult {
   referenceTruthHash?: string;
 }
 
+export type QuoteEvidenceInput =
+  | string
+  | {
+      exactText: string;
+      startOffset?: number;
+      endOffset?: number;
+    };
+
 /**
- * Resolves literal human quotes to exact MechanicalSourceSegmenter span IDs.
+ * Resolves human quotes to exact MechanicalSourceSegmenter span IDs.
+ * Unambiguous unique quotes resolve automatically.
+ * Duplicate quotes (occurring more than once in rawSourceText) MANDATE explicit startOffset and endOffset.
  */
 export function resolveEvidenceQuotesToSpanIds(
-  quotes: string[],
+  quotes: QuoteEvidenceInput[],
   rawSourceText: string,
   segmentedUnits?: SourceUnit[]
 ): { quotes: string[]; spanIds: string[]; errors: string[] } {
   const errors: string[] = [];
   const resolvedSpanIds = new Set<string>();
+  const extractedQuotes: string[] = [];
   const units = segmentedUnits ?? segmentSourceText(rawSourceText);
 
-  for (const quote of quotes) {
-    if (!quote || typeof quote !== "string" || quote.trim().length === 0) {
+  for (const quoteInput of quotes) {
+    const isObj = typeof quoteInput === "object" && quoteInput !== null;
+    const exactText = isObj ? quoteInput.exactText : quoteInput;
+
+    if (!exactText || typeof exactText !== "string" || exactText.trim().length === 0) {
       errors.push("Empty or invalid quote string in sourceEvidence");
       continue;
     }
+    extractedQuotes.push(exactText);
 
-    const startOffset = rawSourceText.indexOf(quote);
-    if (startOffset === -1) {
-      errors.push(`Quote not found verbatim in raw source text: "${quote.slice(0, 60)}..."`);
+    // Find all verbatim occurrences in rawSourceText
+    const occurrences: number[] = [];
+    let pos = 0;
+    while (pos < rawSourceText.length) {
+      const idx = rawSourceText.indexOf(exactText, pos);
+      if (idx === -1) break;
+      occurrences.push(idx);
+      pos = idx + 1;
+    }
+
+    if (occurrences.length === 0) {
+      errors.push(`Quote not found verbatim in raw source text: "${exactText.slice(0, 60)}..."`);
       continue;
     }
-    const endOffset = startOffset + quote.length;
+
+    let startOffset: number;
+    let endOffset: number;
+
+    if (occurrences.length === 1) {
+      // Unambiguous unique quote
+      startOffset = occurrences[0];
+      endOffset = startOffset + exactText.length;
+      if (isObj && (quoteInput.startOffset !== undefined || quoteInput.endOffset !== undefined)) {
+        if (quoteInput.startOffset !== startOffset || quoteInput.endOffset !== endOffset) {
+          errors.push(
+            `Explicit offsets [${quoteInput.startOffset}..${quoteInput.endOffset}] do not match verbatim quote location [${startOffset}..${endOffset}] for unique quote: "${exactText.slice(0, 60)}..."`
+          );
+          continue;
+        }
+      }
+    } else {
+      // Duplicate quote occurring > 1 times: explicit offsets are MANDATORY
+      if (!isObj || typeof quoteInput.startOffset !== "number" || typeof quoteInput.endOffset !== "number") {
+        errors.push(
+          `Ambiguous duplicate quote occurs ${occurrences.length} times in raw source text: "${exactText.slice(0, 60)}...". For duplicate quotes, explicit exact offsets { exactText, startOffset, endOffset } are mandatory, or supply a longer unique quote.`
+        );
+        continue;
+      }
+      const pStart = quoteInput.startOffset;
+      const pEnd = quoteInput.endOffset;
+      if (pStart < 0 || pEnd > rawSourceText.length || pStart >= pEnd) {
+        errors.push(
+          `Out of bounds offsets [${pStart}..${pEnd}] for doc length ${rawSourceText.length} on duplicate quote: "${exactText.slice(0, 60)}..."`
+        );
+        continue;
+      }
+      const slice = rawSourceText.slice(pStart, pEnd);
+      if (slice !== exactText) {
+        errors.push(
+          `Literal offset mismatch for duplicate quote: rawSourceText.slice(${pStart}, ${pEnd}) === "${slice.slice(0, 60)}...", expected "${exactText.slice(0, 60)}..."`
+        );
+        continue;
+      }
+      startOffset = pStart;
+      endOffset = pEnd;
+    }
 
     // Find all segmenter units that overlap this quote span
     const overlapping = units.filter(u => u.startOffset < endOffset && u.endOffset > startOffset);
     if (overlapping.length === 0) {
-      errors.push(`No mechanical source units overlap quote: "${quote.slice(0, 60)}..." [${startOffset}..${endOffset}]`);
+      errors.push(`No mechanical source units overlap quote: "${exactText.slice(0, 60)}..." [${startOffset}..${endOffset}]`);
     } else {
       for (const u of overlapping) {
         resolvedSpanIds.add(u.spanId);
@@ -173,7 +238,7 @@ export function resolveEvidenceQuotesToSpanIds(
   }
 
   return {
-    quotes,
+    quotes: extractedQuotes,
     spanIds: Array.from(resolvedSpanIds).sort(),
     errors
   };
@@ -195,14 +260,20 @@ export function validateRoleDocument(
   }
 
   // Dual-review requirement: Reviewer 1 and Reviewer 2 / Adjudicator
-  if (!doc.reviewerId || typeof doc.reviewerId !== "string" || doc.reviewerId.trim().length === 0) {
-    errors.push(`[${opaqueId || filename}] Missing mandatory reviewerId (Reviewer 1)`);
+  const rev1Id = doc.reviewer1Id || doc.reviewerId;
+  const rev2Id = doc.reviewer2Id;
+  if (!rev1Id || typeof rev1Id !== "string" || rev1Id.trim().length === 0) {
+    errors.push(`[${opaqueId || filename}] Missing mandatory reviewerId / reviewer1Id (Reviewer 1)`);
   }
-  if (!doc.reviewer2Id || typeof doc.reviewer2Id !== "string" || doc.reviewer2Id.trim().length === 0) {
+  if (!rev2Id || typeof rev2Id !== "string" || rev2Id.trim().length === 0) {
     errors.push(`[${opaqueId || filename}] Missing mandatory reviewer2Id (Reviewer 2 / Adjudicator)`);
   }
-  if (doc.reviewerId && doc.reviewer2Id && doc.reviewerId.trim() === doc.reviewer2Id.trim()) {
+  if (rev1Id && rev2Id && rev1Id.trim() === rev2Id.trim()) {
     errors.push(`[${opaqueId || filename}] reviewerId and reviewer2Id must be distinct independent reviewers`);
+  }
+
+  if (doc.dualReviewVerified !== undefined && doc.dualReviewVerified !== true) {
+    errors.push(`[${opaqueId || filename}] dualReviewVerified must be strictly boolean true`);
   }
 
   // Pre-segment source text once
@@ -265,6 +336,18 @@ export function validateRoleDocument(
       errors.push(`[${opaqueId} / ${factId}] Invalid polarity: "${f.polarity}"`);
     }
 
+    // Reconciliation resolution check
+    const isReconciliationDoc = filename.includes("_RECONCILIATION") || doc.dualReviewVerified === true;
+    if (isReconciliationDoc) {
+      if (!f.resolution || (f.resolution !== "AGREED" && f.resolution !== "ADJUDICATED")) {
+        errors.push(
+          `[${opaqueId} / ${factId}] Missing or invalid reconciliation resolution "${f.resolution}". Must be strictly "AGREED" or "ADJUDICATED".`
+        );
+      }
+    } else if (f.resolution !== undefined && f.resolution !== "AGREED" && f.resolution !== "ADJUDICATED") {
+      errors.push(`[${opaqueId} / ${factId}] Invalid resolution "${f.resolution}". Must be AGREED or ADJUDICATED.`);
+    }
+
     // High-risk family: must be null or one of the 9 canonical families
     if (f.highRiskFamily !== null && f.highRiskFamily !== undefined) {
       if (!HIGH_RISK_FAMILIES_SET.has(f.highRiskFamily)) {
@@ -275,13 +358,15 @@ export function validateRoleDocument(
         highRiskCount++;
         // Dual-review requirement on high-risk facts
         const hasDualConfirmation =
+          f.resolution === "AGREED" ||
+          f.resolution === "ADJUDICATED" ||
           f.dualReviewStatus === "CONFIRMED" ||
           f.dualReviewStatus === "ADJUDICATED" ||
           f.secondReviewerConfirmed === true ||
-          doc.dualReviewVerified === true;
+          (doc.dualReviewVerified === true && (f.rev1FactIds !== undefined || f.rev2FactIds !== undefined));
         if (!hasDualConfirmation) {
           errors.push(
-            `[${opaqueId} / ${factId}] High-risk fact (${f.highRiskFamily}) lacks auditable dual-review confirmation (dualReviewStatus: "CONFIRMED" | "ADJUDICATED")`
+            `[${opaqueId} / ${factId}] High-risk fact (${f.highRiskFamily}) lacks auditable dual-review confirmation (resolution: "AGREED" | "ADJUDICATED")`
           );
         }
       }
@@ -305,8 +390,12 @@ export function validateRoleDocument(
         }
       }
       if (validatedNegatives.length > 0) {
-        const dualConfirmed = doc.highRiskNegativesDualReviewed === true || doc.dualReviewVerified === true;
-        if (!dualConfirmed && !doc.reviewer2Id) {
+        const dualConfirmed =
+          doc.highRiskNegativesDualReviewed === true ||
+          doc.highRiskNegativesResolution === "AGREED" ||
+          doc.highRiskNegativesResolution === "ADJUDICATED" ||
+          (doc.dualReviewVerified === true && doc.reviewer1Id !== doc.reviewer2Id && (doc.rev1ArtifactHash !== undefined || doc.rev2ArtifactHash !== undefined));
+        if (!dualConfirmed) {
           errors.push(`[${opaqueId}] highRiskNegatives requires auditable dual-review verification`);
         }
       }
@@ -339,9 +428,11 @@ export function validateRoleDocument(
     errors: [],
     validatedDoc: {
       documentId: opaqueId,
-      reviewerId: doc.reviewerId,
-      reviewer2Id: doc.reviewer2Id,
-      dualReviewVerified: doc.dualReviewVerified ?? true,
+      reviewerId: rev1Id,
+      reviewer1Id: rev1Id,
+      reviewer2Id: rev2Id,
+      reconciledBy: doc.reconciledBy || doc.adjudicatorId || rev2Id,
+      dualReviewVerified: doc.dualReviewVerified === true,
       facts: validatedFacts,
       highRiskNegatives: validatedNegatives,
       highRiskSilentDimensions: validatedSilent
@@ -365,14 +456,20 @@ export function validateCandidateDocument(
   }
 
   // Dual-review requirement: Reviewer 1 and Reviewer 2 / Adjudicator
-  if (!doc.reviewerId || typeof doc.reviewerId !== "string" || doc.reviewerId.trim().length === 0) {
-    errors.push(`[${opaqueId || filename}] Missing mandatory reviewerId (Reviewer 1)`);
+  const rev1Id = doc.reviewer1Id || doc.reviewerId;
+  const rev2Id = doc.reviewer2Id;
+  if (!rev1Id || typeof rev1Id !== "string" || rev1Id.trim().length === 0) {
+    errors.push(`[${opaqueId || filename}] Missing mandatory reviewerId / reviewer1Id (Reviewer 1)`);
   }
-  if (!doc.reviewer2Id || typeof doc.reviewer2Id !== "string" || doc.reviewer2Id.trim().length === 0) {
+  if (!rev2Id || typeof rev2Id !== "string" || rev2Id.trim().length === 0) {
     errors.push(`[${opaqueId || filename}] Missing mandatory reviewer2Id (Reviewer 2 / Adjudicator)`);
   }
-  if (doc.reviewerId && doc.reviewer2Id && doc.reviewerId.trim() === doc.reviewer2Id.trim()) {
+  if (rev1Id && rev2Id && rev1Id.trim() === rev2Id.trim()) {
     errors.push(`[${opaqueId || filename}] reviewerId and reviewer2Id must be distinct independent reviewers`);
+  }
+
+  if (doc.dualReviewVerified !== undefined && doc.dualReviewVerified !== true) {
+    errors.push(`[${opaqueId || filename}] dualReviewVerified must be strictly boolean true`);
   }
 
   if (!Array.isArray(doc.facts) || doc.facts.length === 0) {
@@ -476,14 +573,28 @@ export function validateCandidateDocument(
       }
     }
 
+    // Resolution check
+    const isReconciliationDoc = filename.includes("_RECONCILIATION") || doc.dualReviewVerified === true;
+    if (isReconciliationDoc) {
+      if (!cf.resolution || (cf.resolution !== "AGREED" && cf.resolution !== "ADJUDICATED")) {
+        errors.push(
+          `[${opaqueId} / ${factId}] Missing or invalid reconciliation resolution "${cf.resolution}". Must be strictly "AGREED" or "ADJUDICATED".`
+        );
+      }
+    } else if (cf.resolution !== undefined && cf.resolution !== "AGREED" && cf.resolution !== "ADJUDICATED") {
+      errors.push(`[${opaqueId} / ${factId}] Candidate fact invalid resolution "${cf.resolution}". Must be AGREED or ADJUDICATED.`);
+    }
+
     // Dual-review verification on candidate fact
     const hasDualReview =
+      cf.resolution === "AGREED" ||
+      cf.resolution === "ADJUDICATED" ||
       cf.dualReviewStatus === "CONFIRMED" ||
       cf.dualReviewStatus === "ADJUDICATED" ||
       cf.secondReviewerConfirmed === true ||
-      doc.dualReviewVerified === true;
+      (doc.dualReviewVerified === true && (cf.rev1FactIds !== undefined || cf.rev2FactIds !== undefined));
     if (!hasDualReview) {
-      errors.push(`[${opaqueId} / ${factId}] Candidate fact lacks auditable dual-review confirmation`);
+      errors.push(`[${opaqueId} / ${factId}] Candidate fact lacks auditable dual-review confirmation (resolution: "AGREED" | "ADJUDICATED")`);
     }
 
     validatedFacts.push(cf);
@@ -498,9 +609,11 @@ export function validateCandidateDocument(
     errors: [],
     validatedDoc: {
       documentId: opaqueId,
-      reviewerId: doc.reviewerId,
-      reviewer2Id: doc.reviewer2Id,
-      dualReviewVerified: doc.dualReviewVerified ?? true,
+      reviewerId: rev1Id,
+      reviewer1Id: rev1Id,
+      reviewer2Id: rev2Id,
+      reconciledBy: doc.reconciledBy || doc.adjudicatorId || rev2Id,
+      dualReviewVerified: doc.dualReviewVerified === true,
       facts: validatedFacts
     }
   };
@@ -508,6 +621,9 @@ export function validateCandidateDocument(
 
 /**
  * Ingests, validates, and compiles human ground truth for a given holdout.
+ * STRICT TRI-ARTIFACT WORKFLOW:
+ * Ingests ONLY *_RECONCILIATION.json artifacts.
+ * Mechanically verifies *_REV1.json and *_REV2.json exist, distinct reviewers, and matching SHA-256 hashes.
  */
 export function ingestHoldoutTruth(holdout: "primary" | "secondary"): IngestionResult {
   const annDir = path.join(batch06Dir, "annotation", holdout);
@@ -539,8 +655,9 @@ export function ingestHoldoutTruth(holdout: "primary" | "secondary"): IngestionR
     };
   }
 
-  const roleFiles = fs.readdirSync(rolesAnnDir).filter(f => f.endsWith(".json") && !f.includes("_BLANK.json"));
-  if (roleFiles.length === 0) {
+  const allRoleFiles = fs.readdirSync(rolesAnnDir).filter(f => f.endsWith(".json"));
+  const roleReconciliationFiles = allRoleFiles.filter(f => f.endsWith("_RECONCILIATION.json"));
+  if (roleReconciliationFiles.length === 0) {
     return {
       valid: false,
       holdout,
@@ -548,22 +665,82 @@ export function ingestHoldoutTruth(holdout: "primary" | "secondary"): IngestionR
       totalCandidatesProcessed: 0,
       totalFactsIngested: 0,
       totalHighRiskBoundariesIngested: 0,
-      errors: [`No completed human annotation files found in ${rolesAnnDir} (only _BLANK templates found)`]
+      errors: [`No completed human reconciliation files found in ${rolesAnnDir} (expecting *_RECONCILIATION.json)`]
     };
   }
 
-  for (const file of roleFiles) {
-    const rawContent = fs.readFileSync(path.join(rolesAnnDir, file), "utf8");
-    let doc: any;
-    try {
-      doc = JSON.parse(rawContent);
-    } catch (e: any) {
-      errors.push(`JSON parse failure in ${file}: ${e.message}`);
+  // Ensure no unexpected non-triplet json files exist
+  for (const f of allRoleFiles) {
+    if (f.endsWith("_BLANK.json")) continue;
+    if (f.endsWith("_RECONCILIATION.json") || f.endsWith("_REV1.json") || f.endsWith("_REV2.json")) continue;
+    errors.push(`[${f}] Unexpected unclassified JSON file in ${rolesAnnDir}. Files must strictly follow *_REV1.json, *_REV2.json, *_RECONCILIATION.json or *_BLANK.json`);
+  }
+
+  for (const recFile of roleReconciliationFiles) {
+    const opaqueId = recFile.replace("_RECONCILIATION.json", "");
+    const rev1Name = `${opaqueId}_REV1.json`;
+    const rev2Name = `${opaqueId}_REV2.json`;
+    const rev1Path = path.join(rolesAnnDir, rev1Name);
+    const rev2Path = path.join(rolesAnnDir, rev2Name);
+
+    if (!fs.existsSync(rev1Path)) {
+      errors.push(`[${recFile}] Missing Reviewer 1 file: ${rev1Name}`);
+      continue;
+    }
+    if (!fs.existsSync(rev2Path)) {
+      errors.push(`[${recFile}] Missing Reviewer 2 file: ${rev2Name}`);
       continue;
     }
 
+    const rev1Content = fs.readFileSync(rev1Path, "utf8");
+    const rev2Content = fs.readFileSync(rev2Path, "utf8");
+    const recContent = fs.readFileSync(path.join(rolesAnnDir, recFile), "utf8");
+
+    const rev1Sha = sha256(rev1Content);
+    const rev2Sha = sha256(rev2Content);
+
+    let rev1Doc: any;
+    let rev2Doc: any;
+    let recDoc: any;
+
+    try {
+      rev1Doc = JSON.parse(rev1Content);
+      rev2Doc = JSON.parse(rev2Content);
+      recDoc = JSON.parse(recContent);
+    } catch (e: any) {
+      errors.push(`JSON parse error in ${opaqueId} triplet: ${e.message}`);
+      continue;
+    }
+
+    const rev1Id = recDoc.reviewer1Id || recDoc.reviewerId;
+    const rev2Id = recDoc.reviewer2Id;
+
+    if (!rev1Id || !rev2Id || rev1Id.trim() === rev2Id.trim()) {
+      errors.push(`[${recFile}] reviewer1Id and reviewer2Id must be distinct independent reviewers`);
+    }
+
+    if (rev1Doc.reviewerId && rev1Doc.reviewerId.trim() !== rev1Id.trim()) {
+      errors.push(`[${recFile}] Reviewer 1 identity mismatch: REV1 file has "${rev1Doc.reviewerId}", reconciliation has "${rev1Id}"`);
+    }
+    if (rev2Doc.reviewerId && rev2Doc.reviewerId.trim() !== rev2Id.trim()) {
+      errors.push(`[${recFile}] Reviewer 2 identity mismatch: REV2 file has "${rev2Doc.reviewerId}", reconciliation has "${rev2Id}"`);
+    }
+
+    const recordedRev1Hash = recDoc.rev1ArtifactHash || recDoc.rev1Hash || recDoc.rev1Sha256;
+    const recordedRev2Hash = recDoc.rev2ArtifactHash || recDoc.rev2Hash || recDoc.rev2Sha256;
+
+    if (!recordedRev1Hash || recordedRev1Hash !== rev1Sha) {
+      errors.push(`[${recFile}] REV1 hash mismatch: expected ${rev1Sha}, recorded ${recordedRev1Hash}`);
+    }
+    if (!recordedRev2Hash || recordedRev2Hash !== rev2Sha) {
+      errors.push(`[${recFile}] REV2 hash mismatch: expected ${rev2Sha}, recorded ${recordedRev2Hash}`);
+    }
+
+    if (recDoc.dualReviewVerified !== true) {
+      errors.push(`[${recFile}] dualReviewVerified must be strictly boolean true`);
+    }
+
     totalRoles++;
-    const opaqueId = doc.opaqueId || doc.documentId;
     const rawTextPath = path.join(rolesMatDir, `${opaqueId}.txt`);
     if (!fs.existsSync(rawTextPath)) {
       errors.push(`Raw source file missing for ${opaqueId} at ${rawTextPath}`);
@@ -571,7 +748,8 @@ export function ingestHoldoutTruth(holdout: "primary" | "secondary"): IngestionR
     }
     const rawSourceText = fs.readFileSync(rawTextPath, "utf8");
 
-    const result = validateRoleDocument(doc, rawSourceText, file);
+    // The reconciliation document is the sole compiled authoritative document
+    const result = validateRoleDocument(recDoc, rawSourceText, recFile);
     if (!result.valid) {
       errors.push(...result.errors);
     } else if (result.validatedDoc) {
@@ -579,26 +757,89 @@ export function ingestHoldoutTruth(holdout: "primary" | "secondary"): IngestionR
       totalHighRisk += (result.validatedDoc.highRiskNegatives || []).length;
       roleReferenceDocuments.push({
         ...result.validatedDoc,
-        holdout
+        holdout,
+        rev1ArtifactHash: rev1Sha,
+        rev2ArtifactHash: rev2Sha
       });
     }
   }
 
   // 2. Process Candidates
   if (fs.existsSync(candAnnDir)) {
-    const candFiles = fs.readdirSync(candAnnDir).filter(f => f.endsWith(".json") && !f.includes("_BLANK.json"));
-    for (const file of candFiles) {
-      const rawContent = fs.readFileSync(path.join(candAnnDir, file), "utf8");
-      let doc: any;
-      try {
-        doc = JSON.parse(rawContent);
-      } catch (e: any) {
-        errors.push(`JSON parse failure in candidate file ${file}: ${e.message}`);
+    const allCandFiles = fs.readdirSync(candAnnDir).filter(f => f.endsWith(".json"));
+    const candReconciliationFiles = allCandFiles.filter(f => f.endsWith("_RECONCILIATION.json"));
+
+    for (const f of allCandFiles) {
+      if (f.endsWith("_BLANK.json")) continue;
+      if (f.endsWith("_RECONCILIATION.json") || f.endsWith("_REV1.json") || f.endsWith("_REV2.json")) continue;
+      errors.push(`[${f}] Unexpected unclassified JSON file in ${candAnnDir}. Files must strictly follow *_REV1.json, *_REV2.json, *_RECONCILIATION.json or *_BLANK.json`);
+    }
+
+    for (const recFile of candReconciliationFiles) {
+      const opaqueId = recFile.replace("_RECONCILIATION.json", "");
+      const rev1Name = `${opaqueId}_REV1.json`;
+      const rev2Name = `${opaqueId}_REV2.json`;
+      const rev1Path = path.join(candAnnDir, rev1Name);
+      const rev2Path = path.join(candAnnDir, rev2Name);
+
+      if (!fs.existsSync(rev1Path)) {
+        errors.push(`[${recFile}] Missing candidate Reviewer 1 file: ${rev1Name}`);
+        continue;
+      }
+      if (!fs.existsSync(rev2Path)) {
+        errors.push(`[${recFile}] Missing candidate Reviewer 2 file: ${rev2Name}`);
         continue;
       }
 
+      const rev1Content = fs.readFileSync(rev1Path, "utf8");
+      const rev2Content = fs.readFileSync(rev2Path, "utf8");
+      const recContent = fs.readFileSync(path.join(candAnnDir, recFile), "utf8");
+
+      const rev1Sha = sha256(rev1Content);
+      const rev2Sha = sha256(rev2Content);
+
+      let rev1Doc: any;
+      let rev2Doc: any;
+      let recDoc: any;
+
+      try {
+        rev1Doc = JSON.parse(rev1Content);
+        rev2Doc = JSON.parse(rev2Content);
+        recDoc = JSON.parse(recContent);
+      } catch (e: any) {
+        errors.push(`JSON parse error in candidate ${opaqueId} triplet: ${e.message}`);
+        continue;
+      }
+
+      const rev1Id = recDoc.reviewer1Id || recDoc.reviewerId;
+      const rev2Id = recDoc.reviewer2Id;
+
+      if (!rev1Id || !rev2Id || rev1Id.trim() === rev2Id.trim()) {
+        errors.push(`[${recFile}] reviewer1Id and reviewer2Id must be distinct independent reviewers`);
+      }
+
+      if (rev1Doc.reviewerId && rev1Doc.reviewerId.trim() !== rev1Id.trim()) {
+        errors.push(`[${recFile}] Candidate Reviewer 1 identity mismatch: REV1 file has "${rev1Doc.reviewerId}", reconciliation has "${rev1Id}"`);
+      }
+      if (rev2Doc.reviewerId && rev2Doc.reviewerId.trim() !== rev2Id.trim()) {
+        errors.push(`[${recFile}] Candidate Reviewer 2 identity mismatch: REV2 file has "${rev2Doc.reviewerId}", reconciliation has "${rev2Id}"`);
+      }
+
+      const recordedRev1Hash = recDoc.rev1ArtifactHash || recDoc.rev1Hash || recDoc.rev1Sha256;
+      const recordedRev2Hash = recDoc.rev2ArtifactHash || recDoc.rev2Hash || recDoc.rev2Sha256;
+
+      if (!recordedRev1Hash || recordedRev1Hash !== rev1Sha) {
+        errors.push(`[${recFile}] Candidate REV1 hash mismatch: expected ${rev1Sha}, recorded ${recordedRev1Hash}`);
+      }
+      if (!recordedRev2Hash || recordedRev2Hash !== rev2Sha) {
+        errors.push(`[${recFile}] Candidate REV2 hash mismatch: expected ${rev2Sha}, recorded ${recordedRev2Hash}`);
+      }
+
+      if (recDoc.dualReviewVerified !== true) {
+        errors.push(`[${recFile}] Candidate dualReviewVerified must be strictly boolean true`);
+      }
+
       totalCandidates++;
-      const opaqueId = doc.opaqueId || doc.documentId;
       const rawTextPath = path.join(candMatDir, `${opaqueId}.md`);
       if (!fs.existsSync(rawTextPath)) {
         errors.push(`Raw source resume missing for ${opaqueId} at ${rawTextPath}`);
@@ -606,14 +847,16 @@ export function ingestHoldoutTruth(holdout: "primary" | "secondary"): IngestionR
       }
       const rawSourceText = fs.readFileSync(rawTextPath, "utf8");
 
-      const result = validateCandidateDocument(doc, rawSourceText, file);
+      const result = validateCandidateDocument(recDoc, rawSourceText, recFile);
       if (!result.valid) {
         errors.push(...result.errors);
       } else if (result.validatedDoc) {
         totalFacts += result.validatedDoc.facts.length;
         candidateReferenceDocuments.push({
           ...result.validatedDoc,
-          holdout
+          holdout,
+          rev1ArtifactHash: rev1Sha,
+          rev2ArtifactHash: rev2Sha
         });
       }
     }

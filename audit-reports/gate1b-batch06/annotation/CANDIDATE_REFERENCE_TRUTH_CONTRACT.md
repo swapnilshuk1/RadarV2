@@ -98,6 +98,8 @@ Reviewers and the evaluator must adhere strictly to these 10 binding rules:
 - Every proof claim must bind strictly to the verified employer, executive title, and tenure dates/current status:
   $$\text{candidateChronologyBinding} = \frac{\text{work-history reference claims with correct employer AND title AND tenure/current-status}}{\text{all applicable work-history reference claims}}$$
 - Evaluator enforces **`candidateChronologyBindingMin: 0.90`** (>= 90% accuracy). Employer-only binding is evaluated as a secondary diagnostic.
+- **Strict Normalized Equality**: Evaluator compares `employer`, `title`, `startDate`, `endDate` using normalized exact string equality (trim, lowercase, whitespace collapse). No substring containment (`.includes()`) is permitted as a certification pass criterion.
+- **Grounded Source Range Matching**: Candidate claims are matched to reference facts via grounded source ranges / span containment (`c.startOffset >= rf.startOffset && c.endOffset <= rf.endOffset` or reciprocal containment/overlap), disambiguating duplicate identical text by character offsets.
 
 ### 3. Position / Title Binding Invariant
 - Every proof claim must bind to the specific executive title held during that tenure (e.g. "Chief Technology Officer", "VP Engineering").
@@ -110,6 +112,7 @@ Reviewers and the evaluator must adhere strictly to these 10 binding rules:
 ### 5. Metric, Value, Unit & Currency Fidelity (Gate 8)
 - For quantitative claims, numerical values, currency symbols (`$`, `₹`, `EUR`, `GBP`), scale words (`M`, `Cr`, `B`, `K`), and units (`engineers`, `transactions`, `bps`, `%`) must be faithfully preserved in `StructuredMetric` entries.
 - Evaluator enforces **`candidateMetricFidelityMin: 0.90`** (>= 90% token retention).
+- Matching requires exact canonical `StructuredMetric` schema equality across `metricType`, `normalizedValue` ($\Delta < 1e-6$), `unit`, `currency`, and `comparator`. Text-contains-number fallback is eliminated.
 
 ### 6. Current-Role Status
 - Correctly classify whether the tenure is active (`isCurrent: true`) or completed (`isCurrent: false`).
@@ -136,11 +139,15 @@ Reviewers and the evaluator must adhere strictly to these 10 binding rules:
 1. **Independent Dual Review Artifacts**:
    - Reviewer 1 annotates `*_REV1.json`.
    - Reviewer 2 annotates `*_REV2.json` independently.
-2. **Reconciliation Record (`*_RECONCILIATION.json`)**:
-   - Employer bindings, positions, and tenure dates require concordance.
-   - Proof types must match canonical definitions. Disagreements are reconciled by an Adjudication Reviewer in `*_RECONCILIATION.json` with an explicit adjudicator ID.
-3. **Mechanical Ingestion**:
-   - `scripts/transition/ingest-batch06-human-truth.ts` enforces dual reviews, validates schemas, and generates the compiled reference truth.
+   - Both reviewers must have distinct reviewer IDs (`reviewer1Id !== reviewer2Id`).
+2. **Authoritative Reconciliation Record (`*_RECONCILIATION.json`)**:
+   - `*_RECONCILIATION.json` is the complete final authoritative annotation for the resume.
+   - Ingestion compiles ONLY the complete reconciliation document.
+   - Every reconciled claim includes provenance mapping back to REV1 and REV2 (`rev1ClaimIds`, `rev2ClaimIds`) and resolution status (`"AGREED"` or `"ADJUDICATED"`).
+   - Document header includes `reviewer1Id`, `reviewer2Id`, `adjudicatorId`, `rev1ArtifactHash`, `rev2ArtifactHash`, and `dualReviewVerified: true`.
+3. **Mechanical Ingestion & Anti-Triple-Counting**:
+   - `scripts/transition/ingest-batch06-human-truth.ts` enforces dual reviews, validates artifact hashes, and compiles only `*_RECONCILIATION.json`.
+   - Any unclassified `.json` files in the directory trigger validation failure.
 4. **Sealing Semantics**:
    - **Primary Population**: Annotated, dual-reviewed, and cryptographically frozen before model extraction runs.
    - **Secondary Holdout**: SEALED FROM implementation agent inspection of completed truth, model/extractor execution, tuning, and scoring until the permitted remediation condition occurs.

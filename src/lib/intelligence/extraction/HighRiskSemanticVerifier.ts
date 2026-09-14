@@ -187,7 +187,7 @@ const ENTAILMENT_PATTERNS: Record<HighRiskSemanticFamily, RegExp[]> = {
     /\bbottom-line\s+accountability\b/i
   ],
   DECISION_AUTHORITY: [
-    /\b(final\s+sign-off|autonomous\s+decision|sole\s+authority|budget\s+approval\s+authority|executive\s+mandate|decision-making\s+authority)\b/i,
+    /\b(final\s+sign-off|autonomous\s+decision|sole\s+authority|budget\s+approval\s+authority|executive\s+mandate|decision-making\s+authority|expenditure\s+authority|spending\s+authority)\b/i,
     /\bultimate\s+accountability\s+for\b/i
   ],
   PEOPLE_LEADERSHIP: [

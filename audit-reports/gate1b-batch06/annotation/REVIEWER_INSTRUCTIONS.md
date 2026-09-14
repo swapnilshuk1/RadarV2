@@ -50,6 +50,20 @@ For each discrete factual statement affirmed or negated in the text:
 }
 ```
 
+#### Quote Disambiguation & Explicit Offsets:
+- **Unique Quotes**: Plain string in `sourceEvidence` (e.g. `["manage an annual marketing program budget of $6,500,000"]`). Ingestion tooling resolves it automatically.
+- **Duplicate Quotes**: If the identical quote text appears more than once in the raw job description, reviewers MUST supply explicit character offsets to disambiguate the target occurrence:
+  ```json
+  "sourceEvidence": [
+    {
+      "exactText": "Reports to the Chief Operating Officer",
+      "startOffset": 1422,
+      "endOffset": 1460
+    }
+  ]
+  ```
+- **Integrity Rule**: `rawSourceText.slice(startOffset, endOffset) === exactText`. Ambiguous quotes without offsets or invalid offsets cause ingestion validation to fail.
+
 ### B. Controlled Vocabularies
 1. **Materiality Class** (Governed by [`ROLE_MATERIALITY_RUBRIC.md`](./ROLE_MATERIALITY_RUBRIC.md)):
    - `MATERIAL_SELECTED`: Facts that materially characterize any of the 9 executive dimensions:
@@ -147,10 +161,36 @@ Reviewers must extract candidate career milestones and executive proof points st
 1. **Independent Review Artifacts**:
    - Reviewer 1 annotates `*_REV1.json`.
    - Reviewer 2 annotates `*_REV2.json` independently.
-2. **Reconciliation Record (`*_RECONCILIATION.json`)**:
-   - For all high-risk role facts, negative boundaries, and candidate work-history chronology bindings, both reviews are compared.
-   - In case of divergence, an Adjudication Reviewer documents the resolution in `*_RECONCILIATION.json` with an explicit adjudicator ID.
-3. **Mechanical Ingestion**:
-   - `scripts/transition/ingest-batch06-human-truth.ts` verifies independent dual-review proofs (`reviewerId !== reviewer2Id`), resolves verbatim quotes to frozen span IDs, validates canonical schemas, and generates the compiled authoritative reference truth files.
+   - Both reviewers must have distinct reviewer IDs (`reviewer1Id !== reviewer2Id`).
+2. **Authoritative Reconciliation Document (`*_RECONCILIATION.json`)**:
+   - `*_RECONCILIATION.json` is the complete final authoritative annotation for the document (not merely a diff or confirmation stub).
+   - Ingestion compiles ONLY the complete reconciliation document into reference truth.
+   - Every reconciled fact includes provenance mapping back to REV1 and REV2 and explicit resolution status:
+     ```json
+     {
+       "id": "rec_fact_01",
+       "rev1FactIds": ["r1_fact_01"],
+       "rev2FactIds": ["r2_fact_01"],
+       "resolution": "AGREED",
+       "propositionText": "Owns the $6.5M marketing department operational budget.",
+       "sourceEvidence": ["manage an annual marketing program budget of $6,500,000"],
+       "canonicalTypes": ["BUDGET_SCOPE"],
+       "appliesTo": "ROLE",
+       "polarity": "AFFIRMED",
+       "materiality": "MATERIAL_SELECTED",
+       "highRiskFamily": null
+     }
+     ```
+     or `"resolution": "ADJUDICATED"` when the reviewers diverged and the adjudicator decided the authoritative value.
+   - The document header records:
+     - `reviewer1Id`: identity of Reviewer 1 (must match `*_REV1.json`).
+     - `reviewer2Id`: identity of Reviewer 2 (must match `*_REV2.json`).
+     - `adjudicatorId`: identity of the reconciliation adjudicator.
+     - `rev1ArtifactHash`: SHA-256 hash of `*_REV1.json`.
+     - `rev2ArtifactHash`: SHA-256 hash of `*_REV2.json`.
+     - `dualReviewVerified`: boolean `true`.
+3. **Mechanical Ingestion & Anti-Triple-Counting**:
+   - `scripts/transition/ingest-batch06-human-truth.ts` verifies independent dual-review proofs (`reviewer1Id !== reviewer2Id`), verifies artifact SHA-256 hashes against `_REV1` and `_REV2`, resolves verbatim quotes to frozen span IDs, and compiles only `_RECONCILIATION.json`.
+   - Any unclassified `.json` files in the annotation directory fail validation, strictly preventing document triple-counting.
 4. **Cryptographic Sealing**:
    - Both Primary and Secondary reference files are finalized and cryptographically hashed before Step 4 model extraction runs.
