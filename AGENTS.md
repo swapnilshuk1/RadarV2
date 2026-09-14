@@ -1,410 +1,304 @@
-# AGENTS.md — RADAR v2 Architectural Blueprint & Agent Guidelines
+# AGENTS.md — RADAR Intelligence Rebuild
 
-This document provides context, domain model guidelines, architectural invariants, maturity classifications, and key operational procedures for all AI coding agents working on RADAR v2.
+## READ THIS FIRST
 
-## 0. Mandatory Transition Handoff — Read Before Any Transition Work
-
-When working on the active RADAR architecture transition, **do not begin from a prior chat summary, the latest recon document, or your own inferred next step**.
-
-Before inspecting or modifying implementation code, read:
+This file governs work on branch:
 
 ```text
-docs/transition/NEXT_AGENT_HANDOFF.md
+rebuild/intelligence-ground-up
 ```
 
-and follow its complete mandatory read order and execution protocol.
-
-Then run:
-
-```bash
-npm run transition:check
-```
-
-The governing authorization lives in:
+Before changing intelligence, dossier, evaluation, enrichment, narrative, candidate matching, company context, or related UI code, read:
 
 ```text
-docs/RADAR_TRANSITION_CONTROL.md
-docs/transition/RADAR_TRANSITION_STATE.json
-docs/transition/CURRENT_BATCH.json
+docs/rebuild/RADAR_REBUILD_MISSION.md
 ```
 
-Every governed implementation commit must subsequently be acknowledged according to:
+That document is the detailed product contract. This file is the short operational contract.
+
+Legacy transition/gate documents are historical reference only on this branch unless the product owner explicitly revives them.
+
+---
+
+## 1. THE MISSION
+
+**Build RADAR backwards from the two approved executive dossier benchmarks: the DaMENSCH-style dossier and the Schnell-style dossier.**
+
+The product is not the parser, ontology, score, evidence graph, evaluator, governance framework, or test harness.
+
+The product is a **rich, impressive, decision-useful executive dossier** that can populate the substantive content of both benchmark templates.
+
+A thin audit report with six or seven perfectly defensible facts is still a failure.
+
+The dossier must be able to express, when relevant:
+
+- PURSUE / CONSIDER / PASS and a strong executive thesis;
+- why the opportunity deserves attention;
+- what the role really is and what success requires;
+- expected mandate and outcomes;
+- direct / adjacent / transferable candidate fit;
+- identity alignment, capability coverage and career capital;
+- candidate precedents that actually support the recommendation;
+- reporting line, authority, team, geography, P&L and scope analysis;
+- material gaps, risks and unresolved questions;
+- what would strengthen, weaken or reverse the decision;
+- recruiter / screening / interview strategy;
+- resume / LinkedIn positioning where useful;
+- evidence and claim lineage.
+
+The canonical intelligence must support both benchmark dossier layouts from the same underlying model.
+
+---
+
+## 2. THREE EVIDENCE PLANES
+
+Build the dossier from:
 
 ```text
-docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md
-docs/transition/IMPLEMENTATION_LEDGER.json
+ROLE INTELLIGENCE
+    JD / job-post / role evidence
+
+CANDIDATE EVIDENCE
+    CV / resume / approved candidate sources
+
+CONTEXT INTELLIGENCE
+    company / market / funding / workforce / leadership /
+    organization / growth / public-context evidence
 ```
 
-An agent must not report transition work complete while `npm run transition:check` is failing or while a governed commit remains unacknowledged.
+Then reason across all three.
+
+Candidate achievements must never be invented from a JD.
 
 ---
 
-## 1. System Purpose & Domain Scope
-**RADAR v2** is an Executive Job Intelligence Radar and Qualification Engine.
-- **Target Persona**: High-tier executives (VP, Director, CXO).
-- **Core Value**: Scrapes, normalizes, evaluates, and ranks executive job opportunities across multiple portals (LinkedIn, Naukri, Workday, SmartRecruiters, Greenhouse, Lever).
-- **Key Modules**:
-  1. Multi-portal Scraping Pipeline (Playwright + Stealth Plugin).
-  2. Evidence & Fact Extraction Engine.
-  3. Deterministic Scorer & Reasoning Chain.
-  4. Executive Headspace / Decision Interface (Pursue, Consider, Pass).
+## 3. MISSING INFORMATION IS AN ACQUISITION PROBLEM
+
+If a required dossier field is not explicit in the JD, **do not drop the section**.
+
+The system should attempt to:
+
+```text
+extract
+retrieve
+search
+correlate
+calculate
+derive
+infer
+validate
+ask
+```
+
+Examples:
+
+- company size → company/workforce context;
+- funding → official/company/investor/reputable external context;
+- growth trajectory → public financial, workforce, expansion, hiring and product/geography signals;
+- reporting line → title hierarchy, executive distance, organizational apex, geography, function and leadership roster;
+- team scope → build/hire/mentor language, remit, company scale, related hiring and organization signals;
+- reason for hiring → funding, expansion, leadership change, acquisition, transformation, product launch or related hiring.
+
+If acquisition cannot settle the point, use a grounded inference or turn it into a useful question / decision hinge.
 
 ---
 
-## 2. Core Tech Stack
-- **Framework**: TanStack Start / TanStack Router (SSR + Hydration), Vite, Nitro engine.
-- **Database**: Cloud LibSQL via `@libsql/client` (Turso Cloud) — sole source of truth for opportunities, profiles, and decisions. In-memory SQLite (`:memory:`) reserved strictly for fast unit tests.
-- **Database Abstraction**: `DatabaseAdapter` interface (`one`, `many`, `execute`, `transaction`).
-- **Web Scraping**: Playwright Extra with `puppeteer-extra-plugin-stealth`.
-- **Styling**: Vanilla CSS tokens, modern dark mode glassmorphism, responsive components.
+## 4. GROUNDED INFERENCE IS ALLOWED AND REQUIRED
+
+Do not impose a literal-only standard that destroys product usefulness.
+
+The final visible distinction is intentionally simple:
+
+- **EXPLICIT** — directly supported by source or reliable acquired evidence.
+- **INFERRED** — grounded in evidence plus defensible reasoning.
+
+Examples:
+
+- “build, hire and mentor the function” supports meaningful people-leadership responsibility even without an exact headcount;
+- a VP / Head of GCC or GSS India with enterprise scope should be reasoned about using organizational hierarchy and executive distance, not treated as though every reporting relationship is equally plausible;
+- company expansion plus a build mandate can support a scale-up thesis.
+
+Do not fabricate precise numbers or named relationships without evidence. Prefer ranges, topology, probability and clearly labelled inference.
 
 ---
 
-## 3. Dependency Direction & Layering Rules
+## 5. REPORTING LINE, TEAM SCOPE AND CONTEXT MUST BE RESOLVED RESOURCEFULLY
 
-```
-UI Routes & Views (src/routes/)
-        │
-        ▼
-Server Functions (@tanstack/react-start createServerFn)
-        │
-        ▼
-Domain Services (OpportunityService, Scorer, etc.)
-        │
-        ▼
-Repositories (src/data/sqlite/repositories/ via StorageProvider)
-        │
-        ▼
-DatabaseAdapter (src/data/database/ via getDatabaseAdapter())
-        │
-        ▼
-Turso Cloud Engine (@libsql/client) [In-Memory SQLite solely for unit tests]
+Use **Executive Distance** where useful:
+
+```text
+0 = CEO / company head
+1 = direct CEO / President / global CxO proximity
+2 = EVP / SVP / major BU head
+3 = VP / regional or functional leader
+4 = director-level management
+5 = operational management
 ```
 
-### Invariants:
-1. **Strict Downward Dependencies**: Dependencies MUST always point downward. Higher-level layers may call lower-level layers, never the reverse.
-2. **UI Isolation**: Repositories, domain entities, and server services MUST NOT import UI components or client state hooks.
-3. **No Raw SQL in UI/Services**: UI routes and domain services MUST NOT execute raw SQL queries; all data access must pass through repository methods on `StorageProvider`.
-4. **Pure DatabaseAdapter**: `DatabaseAdapter` implementations must strictly handle query execution and parameter binding—never embed domain business logic.
-5. **Canonical Database Invariant**: Turso Cloud is the ONLY production/development database (containing 2,231 screened opportunities, user career profiles, and decisions). Local `radar.sqlite` is permanently disabled and eliminated. All scripts and queries MUST call `getDatabaseAdapter()`.
+Distance is contextual, not title-deterministic.
+
+For team scope, prefer honest ranges/topology rather than fake precision:
+
+```text
+Leadership: DIRECT / MATRIX / HYBRID
+Scale: 1–5 / 5–15 / 15–30 / 30–75 / 75–150 / 150+
+State: ESTABLISHED / SCALE-UP / GREENFIELD / RESTRUCTURE
+```
+
+Context Intelligence should actively seek company size, employee band, funding, growth trajectory, workforce trend where appropriately available, leadership changes, expansion, acquisitions, launches, hiring activity and organizational structure clues.
 
 ---
 
-## 4. Subsystem Maturity Matrix (Stable vs. In Evolution)
+## 6. NARRATIVE VARIATION IS MANDATORY
 
-To balance system stability with rapid iteration, agents must distinguish between stable core infrastructure and evolving domain features:
+Two similar jobs must not produce the same dossier with company/title nouns swapped.
 
-| Subsystem / Layer | Maturity | Guidance for AI Agents |
-| :--- | :--- | :--- |
-| **`DatabaseAdapter` & Persistence** | 🟢 **STABLE** | Sole source of state (Turso Cloud). Never alter interface without explicit instruction. Never introduce parallel storage files (`.json`, `.txt`, `.sqlite`). |
-| **Migrations & Core Schema** | 🟢 **STABLE** | Always use incremental migrations (`001_`, `002_`, etc.). Never rewrite historical SQL migrations. |
-| **Repository Contracts (`StorageProvider`)** | 🟢 **STABLE** | Extend existing repositories in `src/data/sqlite/repositories/`. Do not bypass repositories with raw inline queries in UI routes. |
-| **Executive Decision Persistence** | 🟢 **STABLE** | Server functions (`decisions-server.ts`) + client hook (`decisions-store.ts`) sync directly with Turso Cloud. Keep fast optimistic UI updates intact. |
-| **SSR / Routing Framework** | 🟢 **STABLE** | TanStack Start & Router file routes in `src/routes/`. Preserve route contracts and SSR server function conventions. |
-| **Scraper Portals & Stealth Manager** | 🟡 **IN EVOLUTION** | Portal selectors, HTTP fallbacks, and anti-bot stealth logic adapt continuously to target portal layout changes. |
-| **Qualification & Policy Engine** | 🟡 **IN EVOLUTION** | Scoring weights, evidence matchers, and policy calibration routines (`scripts/run-policy-calibration.ts`) iterate based on benchmark tests. |
-| **Executive UI & Headspace Views** | 🟡 **IN EVOLUTION** | UI dashboards, card layouts, and filtering controls refine user experience. Keep components focused, responsive, and visually clean. |
+Before prose generation, derive an editorial layer such as:
+
+```text
+Role archetype
+Mandate shape
+Career move
+Authority shape
+Fit shape
+Evidence shape
+Decision tension
+```
+
+The existing “14 contexts” may be reused if they materially help. They are not sacred. A different layer is acceptable, but **some deliberate narrative-variation layer is mandatory**.
+
+Variation means a different thesis, emphasis, ordering and argument structure — not synonym shuffling.
+
+Final prose should feel like a high-quality executive adviser, not an ATS engine or audit report.
 
 ---
 
-## 5. Engineering Principles & Anti-Overengineering Rules
+## 7. BUILD VERTICALLY
 
-To maintain a lean, high-performing codebase without unnecessary complexity:
+Prefer a working end-to-end slice over months of upstream perfection:
 
-0. **ABSOLUTE FIRST COMMANDMENT (NO BANDAID WORKAROUNDS & SYMPTOM SILENCING)**: NEVER offer temporary workarounds, defensive null/empty fallbacks, or bypasses when an underlying system failure or formatting/character constraint warning occurs. A warning or limit is a diagnostic signal of an upstream ontology mismatch. You MUST trace the data lineage upstream and resolve the issue directly at its source (the EKB/Knowledge layer) via semantic normalization, never via local string-cleanup or truncation filters in the editorial/presentation layers.
-1. **Extend Existing Abstractions First**: Before creating a new service, helper, or class, search the codebase. Extend existing repositories (`StorageProvider`) and services rather than writing duplicate or parallel infrastructure.
-2. **Single Source of Persistence**: All persistent domain state (opportunities, companies, documents, user decisions) MUST use `DatabaseAdapter` (Turso Cloud). NEVER introduce parallel file-based storage (`.json`, `.txt`, or `.sqlite`) for persistent user state.
-3. **Ephemeral Cloud Safe**: Assume production runs on ephemeral cloud containers (e.g. Render, Vercel). NEVER write mutable application data to local container filesystems.
-4. **Minimal Viable Abstraction**: Write straightforward, explicit TypeScript functions and SQL queries. Avoid speculative abstractions, unnecessary wrapper classes, or deep inheritance hierarchies.
-5. **Preserve Compatibility & Comments**: Do not remove existing docstrings, TypeScript types, or architecture comments unless explicitly instructed.
-6. **Continuous Build Verification**: Every architectural or domain change must be validated with `npx tsc --noEmit` and `npm run build` before declaring completion.
+```text
+ONE REAL JD
+    +
+ONE REAL CANDIDATE
+    +
+ACQUIRED CONTEXT
+    ↓
+complete intelligence
+    ↓
+complete DossierModel
+    ↓
+Template A + Template B
+```
+
+Improve that vertical slice against the benchmark dossiers, then broaden.
+
+Do not let extraction work become the product.
 
 ---
 
-## 6. Directory Layout
+## 8. SCRAPER PRESERVATION BOUNDARY
 
-```
-radar-local-v2/
-├── AGENTS.md                          # Mandatory agent guidelines and system architecture
-├── DEPLOYMENT.md                      # Oracle Cloud server & Git push deployment protocol
-├── src/
-│   ├── data/                          # Data layer: SQLite providers, schemas, migrations
-│   │   ├── database/                  # DatabaseAdapter interface & LibSQL/Turso implementation
-│   │   └── sqlite/                    # Migration SQL files and repository stores
-│   │       ├── migrations/            # Auto-applied SQL migration scripts (001-005+)
-│   │       └── repositories/          # Concrete Sqlite repository implementations
-│   ├── domain/                        # Domain entities & repository interfaces
-│   │   ├── entities.ts                # Primary TypeScript entity definitions
-│   │   └── repositories.ts            # Repository contracts (StorageProvider)
-│   ├── lib/                           # Domain services, state hooks, and server functions
-│   │   ├── decisions-store.ts         # React decision state hook (optimistic UI + server sync)
-│   │   ├── intelligence/              # Server-side functions (@tanstack/react-start)
-│   │   │   ├── decisions-server.ts    # Decision persistence server functions
-│   │   │   └── scrape-server.ts       # Scraper control server functions
-│   │   └── recommendation/            # Scoring & Qualification engine
-│   └── routes/                        # TanStack Router page views & endpoints
-├── scripts/                           # CLI tools, scrapers, and qualification harness
-│   ├── scrape.ts                      # Live multi-portal scraper runner
-│   └── scraper/                       # Scraper architecture (portals, manager, stealth)
-└── docs/                              # Architecture Decision Records (ADRs)
-```
+The current scraper/acquisition capability is preserved.
+
+Do not casually delete or rewrite scraper behavior, portal acquisition, durable scrape orchestration, payload preservation, source identity, or scraper-required persistence.
+
+If an old scraper dependency lives in an intelligence-named folder, move/refactor it into the proper acquisition layer rather than amputating scraper functionality.
 
 ---
 
-## 7. Database Schema & Adapter Architecture
+## 9. WORK SMART AND FAST — NO GOVERNANCE THEATRE
 
-The application abstracts database access using `DatabaseAdapter`:
+The previous transition accumulated excessive gates, acknowledgements, ledgers, review loops and procedural overhead. **Do not reproduce that on this branch.**
 
-```ts
-export type QueryParams = readonly unknown[];
+Normal implementation work does **not** require product-owner permission.
 
-export interface DatabaseAdapter {
-  one<T>(sql: string, params?: QueryParams): Promise<T | null>;
-  many<T>(sql: string, params?: QueryParams): Promise<T[]>;
-  execute(sql: string, params?: QueryParams): Promise<{ rowsAffected: number; lastInsertRowid?: number | bigint | string }>;
-  transaction<T>(fn: (tx: DatabaseAdapter) => Promise<T>): Promise<T>;
-}
+Agents are expected to code, test, iterate and make ordinary engineering decisions without stopping for trivial approvals.
+
+Do not create:
+
+- 10-stage gate structures for ordinary feature work;
+- commit-acknowledgement bureaucracy;
+- new governance ledgers for routine changes;
+- approval checkpoints for harmless refactors;
+- long audit documents instead of working code;
+- certification programs whose cost exceeds the feature being built.
+
+Use the lightest process that protects the product.
+
+A practical default loop is:
+
+```text
+understand the dossier outcome
+→ inspect existing code
+→ implement the smallest coherent vertical improvement
+→ run relevant tests/typecheck/build
+→ inspect the actual rendered/product result
+→ iterate
 ```
 
-### Core Schema Tables
-- `opportunities`: Core job opportunities (`id`, `canonical_title`, `location`, `company_id`, `created_at`).
-- `companies`: Target companies (`id`, `name`, `domain`, `industry`).
-- `documents`: Raw JD text and scraped payloads (`id`, `opportunity_id`, `content`, `payload_type`).
-- `decisions`: User executive choices (`id`, `person_id`, `opportunity_id`, `action`, `reason`, `updated_at`).
-  - **Constraint**: `UNIQUE(person_id, opportunity_id)` enabling clean `UPSERT` operations.
-- `people` & `candidate_profiles`: User identity, career profiles, and resume versions.
+Tests exist to accelerate confidence, not to become the project.
 
 ---
 
-## 8. Repository Responsibilities (`StorageProvider`)
+## 10. WHEN YOU MUST STOP AND ASK
 
-All storage access is accessed via `getRepositories()` in `src/data/sqlite/provider.ts`:
+There is one important exception to the “move fast” rule.
 
-- `sources`: Tracks data sources (portals, search terms).
-- `companies`: Registers and queries target companies.
-- `opportunities`: Ingests, updates, and queries active job postings.
-- `acquisition`: Stores raw document payloads and search discovery logs.
-- `knowledge`: Manages extracted evidence and fact nodes.
-- `reasoning`: Manages claims, match scores, and reasoning chains.
-- `people`: Manages user career memory and candidate profiles.
-- `decisions`: Manages user decision choices (`recordUserDecision`, `getUserDecisions`, `deleteUserDecision`, `clearUserDecisions`).
+The following are product-owner-locked:
 
----
+- the two benchmark dossiers as the product target;
+- dossier-first architecture;
+- richness must not be sacrificed merely to maximize literal certainty;
+- grounded inference is allowed and required;
+- visible EXPLICIT vs INFERRED cues;
+- missing information triggers acquisition/inference/decision-hinge logic rather than automatic section deletion;
+- narrative variation is mandatory;
+- scraper capability is preserved during the rebuild.
 
-## 9. Scraper Pipeline Architecture
+An agent may not silently dilute or replace these principles.
 
-The scraping pipeline uses a stealth Playwright engine managed by `RunController` (`scripts/scraper/run/manager.ts`).
+If an agent believes one of these locked principles **must** change, it must stop and request explicit permission before implementing that change.
 
-### Portal Scraper Rules (`scripts/scraper/portals/*`)
-- **Stealth Initialization**: `getPortalContext()` in `base.ts` handles stealth plugin injection and automatic cloud/Render environment detection.
-- **State Machine Transitions**:
-  `initializing` ➔ `running` ➔ `enriching` ➔ `completed` (or `failed`).
-- **Cloud Flags**: When running in cloud containers, scrapers inject `--no-sandbox`, `--disable-gpu`, `--disable-setuid-sandbox` and set `headless: true`.
-- **Session Management**: Public job search pages are prioritized to prevent login locks. For authenticated portals, session cookies are restored from local state.
+The request must begin with this warning in bold red text where the interface supports HTML:
 
-### Distributed Scraper & Enrichment Architecture (ADR-003 Active)
-- **Distributed Multi-Instance Execution**: Scraper and enrichment worker instances can run across decoupled host environments.
-- **Durable Multi-Tenant Scrape Runs**: Run state, event logs, and cancel/abort lifecycle reside durably in Turso Cloud (`scrape_runs`, `scrape_run_events`) with database-enforced mutex per scope.
-- **Decoupled BlobStore Payloads**: Card payloads and snapshots are stored via `BlobStore` (`payload_key` in `enrichment_jobs`), enabling remote worker nodes to retrieve payloads without shared container disks.
-- **Distributed Leasing Protocol**: Workers safely lease batches concurrently with database-enforced mutual exclusion, lease expirations, and automatic crash failover.
+<span style="color:red"><strong>THIS DECISION WILL COMPROMISE THE PROJECT AS CURRENTLY DEFINED. I AM REQUESTING YOUR EXPLICIT PERMISSION BEFORE MAKING THIS CHANGE.</strong></span>
 
----
+If red font is not supported, use:
 
-## 10. Evaluation & Qualification Pipeline
+🔴 **THIS DECISION WILL COMPROMISE THE PROJECT AS CURRENTLY DEFINED. I AM REQUESTING YOUR EXPLICIT PERMISSION BEFORE MAKING THIS CHANGE.**
 
-The recommendation engine (`DeterministicScorer.ts` & `OpportunityService.ts`) calculates fit based on multi-dimensional executive dimensions:
-1. **Scope & Scale**: Seniority level, P&L responsibility, team size.
-2. **Domain Fit**: Marketing, Growth, Digital Transformation, Commercial leadership.
-3. **Strategic Alignment**: Company trajectory, market position, location preferences.
+Then explain only:
 
-Qualification scores are saved in the `assessments` and `recommendations` tables in SQLite/Turso.
+1. which locked principle would change;
+2. why it appears unavoidable;
+3. what product capability would be lost/diluted;
+4. what alternative was tried first;
+5. the smallest change requested.
+
+**Do not use this escalation for normal coding decisions.** It is specifically for compromising the product mission.
+
+Silence is not permission. Only an explicit affirmative response from the product owner authorizes such a compromise.
 
 ---
 
-## 11. Executive Decision Lifecycle
+## 11. BASIC ENGINEERING DISCIPLINE
 
-When a user swipes or makes a decision on an opportunity:
-1. **UI Layer (`decisions-store.ts`)**: `useDecisions()` performs an immediate optimistic UI update and writes to `localStorage` cache.
-2. **Server Sync (`decisions-server.ts`)**: Invokes `saveDecisionFn()` via TanStack `createServerFn`.
-3. **Database Layer (`SqliteDecisionSupportStore.ts`)**: Executes `INSERT INTO decisions (...) ON CONFLICT(person_id, opportunity_id) DO UPDATE SET action=EXCLUDED.action, updated_at=CURRENT_TIMESTAMP`.
-4. **Hydration & Migration**: On fresh device login or Render deployment, `useDecisions()` fetches canonical decisions directly from Turso/SQLite and merges any un-synced local decisions.
+Keep this simple:
 
----
+- inspect before changing;
+- reuse stable infrastructure where it helps;
+- avoid duplicate persistence/state systems;
+- do not bypass source/provenance integrity;
+- keep UI, domain and persistence dependencies sensible;
+- run focused tests for changed behavior;
+- run TypeScript/build checks before claiming completion when feasible;
+- do not claim a test or build passed unless it actually ran successfully.
 
-## 12. Continuous Certification Gate & Development Commands
-
-RADAR v2 enforces a single, authoritative continuous certification workflow:
-```
-Code Change ──► Affected Contracts ──► npm run certify ──► Deploy ──► npm run smoke
-```
-
-### Invariant-First Contributor Protocol (Mandatory for all AI Agents):
-Whenever touching, modifying, or writing tests:
-1. **Identify the Invariant**: State what system behavior, data relationship, security boundary, or UI contract is being verified.
-2. **Check for Authoritative Home**: Inspect `tests/TEST_INVENTORY.md` to locate the canonical domain suite.
-3. **If Unique and Valid**: Keep and modernize the test in its proper canonical domain.
-4. **If Duplicate**: Consolidate into the authoritative suite rather than proliferating milestone-numbered files (`mXX`, `pXX`, `phaseXX`).
-5. **If Obsolete**: Archive to `tests/archive/` with explicit written justification.
-6. **Continuous Certification Gate**: Ensure `npm run certify` and `npm run smoke` pass cleanly before declaring completion.
-
-```bash
-# 1. Authoritative Continuous Certification Gate (TypeScript + 7 Deterministic Stages)
-npm run certify
-
-# 2. Production Post-Deployment Smoke Check (Live Turso Health & Feed Parity)
-npm run smoke
-
-# 3. Unified System Diagnostic Inspection
-npm run diagnose
-
-# 4. Type check TypeScript code
-npx tsc --noEmit
-
-# 5. Build production bundle (SSR + Nitro)
-npm run build
-```
-
-### Windows/Codex Certification Runner Limitation
-
-On this laptop, the aggregate Vitest command used by certification can terminate
-silently when launched from the Codex command runner: it may print only `RUN
-v...`, or may report several passing files before ending with queued files still
-unexecuted. If no `FAIL <file> > <test>` assertion is printed, the last `✓` test
-line is not the failure; it merely marks the last completed test before the
-aggregate process ended. This is an execution-host limitation, not evidence
-that the changed code passed or failed certification.
-
-When that signature occurs, agents must not repeatedly rerun the wrapper from
-Codex, alter the manifest, reduce workers, or interpret the partial output as
-a test failure. Ask the user to run the authoritative wrapper externally from
-this repository directory:
-
-```powershell
-Set-Location "C:\Users\swapn\Downloads\Radar V2"
-npm run certify
-```
-
-The external wrapper has completed successfully on this laptop; a final
-`CERTIFICATION PASS` covers all seven stages. If the external wrapper is also
-unavailable, the diagnostic fallback is to execute its three verification
-operations directly:
-
-```powershell
-npx tsc -p tsconfig.verify.json --noEmit
-npm run build
-npx vitest run --config vitest.certification.config.ts
-```
-
-The Vitest command is the unified Stage-3 manifest: a zero exit with its full
-48-file/366-test result verifies the logical contracts reported as Stages 3–7.
-The user should share the TypeScript result, build result, Vitest file/test
-counts, duration, and exit codes. Record an external `CERTIFICATION PASS` as
-the release-gate result; otherwise record only the direct-manifest result and
-do not deploy based on a silent Codex-runner exit.
+No additional governance layer is implied by these rules.
 
 ---
 
-## 13. Executive Advisory Design Constitution & Component Invariants
+## 12. FINAL INVARIANT
 
-All AI coding agents MUST strictly follow these UI & component architectural invariants:
-
-### A. Golden Rule of Component Restraint & Constitutional Dependency
-> **NEVER invent a new UI component if an existing editorial component can express the information.**
->
-> **Constitutional Dependency**: All executive prose MUST originate from the Editorial Repository (`src/lib/intelligence/editorial/`). Components may NEVER author ad-hoc executive language outside registered editorial patterns.
-
-### B. Component Hierarchy Architecture
-Every view in RADAR v2 MUST adhere to the 5-tier structural hierarchy:
-```
-Page (e.g. Executive Dossier, Shortlist Queue)
-  └── Chapter (e.g. Executive Brief, Proof Chain)
-        └── Section (e.g. Mandate Overlap, Watch For)
-              └── Component (e.g. Recommendation Panel, Proceed Block)
-                    └── Primitive (e.g. Label, Badge, Divider)
-```
-
-### C. Editorial Invariants (Version 2.1 Standard)
-1. **Evidence-Grounded Truth**: Never claim evidence, reporting lines, P&L scale, or founder proximity that is not explicitly verified by the evidence graph or job projections.
-2. **Certainty Matched to Confidence**: Editorial confidence tracks assessment confidence exactly. Superlatives require benchmark data.
-3. **Advice Over Description**: Frame insights as a trusted executive partner would ("Proceed this week; validate reporting line on initial call").
-4. **Document-Level Coherence**: Every pattern tells a unified story across headline, opening, bridge, and closing.
-5. **Frozen Navigation Landmarks**: Structural section headers (`EXECUTIVE BRIEF`, `STRATEGIC CAREER VALUE`, `THE CASE`, `THE ROLE`, `YOUR ADVANTAGE`, `OPEN QUESTIONS`, `DECISION BOUNDARIES`, `SUPPORTING EVIDENCE`, `DOSSIER LEDGER`) are permanent UI landmarks and must **never** be altered.
-6. **Name the Consequence**: Every brief states what changes if the reader acts, and what is forfeited if they do not.
-7. **One Concrete Anchor Per Brief**: At least one number, named function, counterparty, or dated event must appear in the composed narrative.
-8. **Risk in the First Clause**: State material risk before qualifying it in pause-if lines.
-9. **No Two Patterns Share a Skeleton**: Sentence architecture is part of the voice. Registered patterns must declare one of 4 Headline Skeletons (`fact-first`, `comparison-first`, `consequence-first`, `observation-first`), with a maximum 40% distribution cap across any single session.
-
-### D. Visual System & Color Jobs
-1. **One Idea Per Screen**: Each viewport section conveys a single advisory statement or proof point.
-2. **Evidence Before Recommendation**: Claims and score cards must precede executive verdict controls.
-3. **Whitespace Communicates Confidence**: Spacing is calibrated using semantic tokens (`space-1` to `space-7`).
-4. **Typography Carries Hierarchy, Not Decoration**: `font-serif` (Instrument Serif) for editorial headlines, `font-sans` (Manrope) for body copy, and `font-mono` (JetBrains Mono) for quantitative metadata.
-5. **Every Component Answers an Executive Question**: Components must state purpose (*Proceed If*, *Pause If*, *Watch For*).
-6. **Color Indicates Judgement—Not Branding**:
-   - 🟢 **Green (`--signal`)**: *Confidence* (High match alignment)
-   - 🟡 **Amber (`--caution`)**: *Unknown* (Friction / Verification required)
-   - 🔴 **Red / Neutral (`--pass`)**: *Contradiction* (Strategic divergence)
-   - ⚪ **Grey (`--muted`)**: *Evidence* (Fact provenance & metadata)
-   - ⚫ **Black (`--foreground`)**: *Action* (Primary user decision triggers)
-
-### D. Paper Surface & Elevation Philosophy
-- Components exist as sheets of paper. Separation is achieved strictly through rhythm, spacing (`space-1` to `space-7`), typography hierarchy, and subtle ruled hairlines—NEVER heavy drop shadows or floating SaaS cards.
-
-### E. Motion Restraint Protocol
-- *Motion never entertains. Motion only explains. Motion is always interruptible. Motion never blocks reading.*
-- Standard transitions: `fade-in` (150ms), `expand-drawer` (200ms ease-out). No spring bounces, flips, or sliding animations.
-
-### F. Data Formatting Standards
-- **Currency**: `₹2.4 Cr` or `$250K` (Never raw unformatted integers like `24000000`).
-- **Dates**: `06 Aug 2026` (DD MMM YYYY).
-- **Percentages**: `94% fit overlap`.
-- **Confidence**: `High (Verified provenance)`.
-- **Locations**: `Bengaluru (Hybrid)` or `San Francisco, CA`.
-
-### G. Strict Design System & Token Discipline Invariant
-> **ABSOLUTE PROHIBITION OF AD-HOC INLINE TAILWIND MAGIC VALUES**
-1. **No Magic Pixel Dimensions or Arbitrary Offsets**: NEVER write ad-hoc arbitrary Tailwind values in JSX such as `text-[11px]`, `text-[10px]`, `max-w-[1180px]`, or `p-[3px]`.
-2. **No Arbitrary Opacity Hacks**: NEVER write ad-hoc opacity modifiers like `border-border/60`, `border-border/40`, `border-primary/30`, `bg-surface-raised/40`, or `text-foreground/90`. Always use established semantic CSS tokens (`var(--border)`, `var(--border-strong)`, `var(--surface-raised)`).
-3. **Mandatory Use of Registered Design System Classes**: All UI views MUST use centralized design utility classes defined in `src/styles.css`:
-   - `.memo-container` (Centralized 1180px container with responsive `space-y-12`)
-   - `.memo-card` (`border border-border bg-surface-raised p-5 rounded-md`)
-   - `.memo-callout` (`border-l-2 border-primary bg-surface-raised p-4`)
-   - `.memo-opinion-box` (`border-2 border-primary/30 bg-surface-raised p-6 my-6 rounded-lg`)
-   - `.label-mono` / `.memo-badge` (`font-mono uppercase tracking-[0.18em] text-[0.65rem]`)
-4. **Audit First Rule**: Before writing or modifying any UI route/component, agents MUST inspect `src/styles.css` to verify available design system classes and enforce 100% token reuse.
-
----
-
-## 14. Canonical Git Push & Oracle Server Deployment Protocol
-
-Whenever deploying or pushing RADAR v2 to the live Oracle Cloud Server, AI agents MUST follow this exact, deterministic procedure without searching or guessing credentials:
-
-### Target Infrastructure & Credentials:
-- **Server IP**: `161.118.175.246` (or hostname `161.118.175.246.sslip.io`)
-- **SSH User**: `ubuntu`
-- **SSH Private Key Location**: `C:\Users\swapn\.ssh\oracle_official.key` (or `~/.ssh/oracle_official.key`)
-- **SSH Config Alias**: `oracle-radar` (defined in `~/.ssh/config`)
-- **Remote Directory**: `/home/ubuntu/radar-local-v2`
-- **Process Manager**: `pm2` (Process Name: `radar-v2`)
-- **Git Remote**: `origin` -> `https://github.com/swapnilshuk1/RadarV2.git` (Branch: `main`)
-- **Live URL**: `http://161.118.175.246.sslip.io/`
-
-### Automated 1-Command Deployment:
-```bash
-# Run automated full deployment (Typecheck -> Build -> Git Push -> Remote Pull & PM2 Restart)
-npm run deploy
-```
-*Or directly via script:*
-```bash
-# Windows PowerShell:
-.\scripts\deploy.ps1 "Your commit message"
-
-# Node / TypeScript:
-npx tsx scripts/deploy.ts "Your commit message"
-
-# Direct SSH command:
-ssh -o StrictHostKeyChecking=no -i "C:\Users\swapn\.ssh\oracle_official.key" ubuntu@161.118.175.246 "cd /home/ubuntu/radar-local-v2 && git fetch origin main && git reset --hard origin/main && npm install && npm run build && pm2 restart radar-v2 && pm2 status"
-```
-
-
-
+> **The job is to get to the two benchmark dossiers — richly, intelligently, resourcefully, with the strongest evidence available and transparent inference where needed. Everything else is implementation detail.**
