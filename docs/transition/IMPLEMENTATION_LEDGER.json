@@ -638,6 +638,23 @@
         "npx tsc -p tsconfig.verify.json --noEmit — PASS"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "40543bd65c06d777db480b902fff9ae9153d6954",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 3,
+      "summary": "Added reviewer guidance card and 4-6 fact guardrails directly into scripts/transition/adjudication-ui.html. The UI now displays a 5-question executive focus checklist (Core Mandate, Reporting Line, Fiscal Scope, Team Size, Crucial Must-Haves), an explicit list of non-material items to ignore (daily duties, soft skills, office tools, company PR, benefits), and a visual counter badge alerting reviewers if they exceed 6 facts.",
+      "invariantsChecked": [
+        "Historical evaluators evaluator-v2.ts and evaluator-r2.ts remain sealed and untouched.",
+        "Zero blind documents executed through extraction pipeline; strict human-truth boundary maintained.",
+        "Guidance aligns 1:1 with frozen ROLE_MATERIALITY_RUBRIC.md and CANDIDATE_REFERENCE_TRUTH_CONTRACT.md.",
+        "Type verification passes cleanly via npx tsc -p tsconfig.verify.json --noEmit."
+      ],
+      "verification": [
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
