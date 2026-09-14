@@ -17,6 +17,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
+import { fileURLToPath } from "url";
 import type { RoleSemanticType } from "../../src/lib/intelligence/extraction/RoleIntelligenceExtractorV1";
 
 export const CANONICAL_ROLE_SEMANTIC_TYPES: readonly RoleSemanticType[] = [
@@ -1152,7 +1153,13 @@ export function ingestHoldoutTruth(holdout: "primary" | "secondary"): IngestionR
   };
 }
 
-if (require.main === module) {
+const isMain = Boolean(process.argv[1] && (
+  process.argv[1] === fileURLToPath(import.meta.url) ||
+  process.argv[1].endsWith("ingest-batch06-human-truth.ts") ||
+  process.argv[1].endsWith("ingest-batch06-human-truth.js")
+));
+
+if (isMain) {
   const targetHoldout = (process.argv[2] || "primary").toLowerCase() as "primary" | "secondary";
   console.log(`Ingesting human ground truth for holdout: ${targetHoldout}...`);
   const res = ingestHoldoutTruth(targetHoldout);
