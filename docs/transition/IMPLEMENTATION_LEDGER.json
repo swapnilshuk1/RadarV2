@@ -496,6 +496,31 @@
         "Get-FileHash SHA-256 recomputed across all modified reviewer and evaluator artifacts — PASS"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "95e1f2a808dfc862ac25a807ff273ff026a22995",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 2,
+      "summary": "Applied pre-adjudication annotation contract corrections for Batch 06: distinguished MATERIAL_SELECTED vs SUPPORTING_NON_MATERIAL with model-blind selection rubric and frozen certification recall denominator (>=50% on MATERIAL_SELECTED facts; full recall diagnostic), documented canonical 18 proof types and 3 evidence classes in CANDIDATE_REFERENCE_TRUTH_CONTRACT.md aligning 1:1 with CandidateProofExtractorV1, added explicit Secondary Holdout sealing clarification across reviewer instructions, runbook, and rubric (sealed from autonomous agent/extractor execution but dual-annotated/frozen with Primary before Primary run), recorded authoritative aggregate table erratum in EVALUATOR_COMPATIBILITY_REPORT.md (ARCH_C_65K typed recall = 52.7%, ARCH_D typed recall = 51.4%), synchronized embedded templates in assemble-gate1b-batch06-blind-materials.ts, and recomputed all pre-adjudication integrity manifest SHA-256 hashes.",
+      "invariantsChecked": [
+        "Historical evaluators evaluator-v2.ts and evaluator-r2.ts remain completely sealed and unmodified.",
+        "Role reference-truth materiality contract frozen: >=50% typed recall certification threshold derives from MATERIAL_SELECTED facts.",
+        "Model-blind selection invariant enforced: facts selected without knowledge of what extractor emits or misses.",
+        "Secondary holdout explicitly sealed from implementation agent inspection, model execution, tuning, and scoring until remediation condition occurs, but annotated concurrently with Primary.",
+        "Controlled candidate reference truth vocabulary frozen aligning strictly with canonical CandidateProof contract.",
+        "Authoritative compatibility report erratum recorded: ARCH_C_65K = 52.7%, ARCH_D = 51.4%; historical fixtures unchanged.",
+        "All 19 transition evaluator unit tests pass cleanly (19/19 passing).",
+        "Type verification pass cleanly via npx tsc -p tsconfig.verify.json --noEmit.",
+        "Zero blind documents executed through extraction pipeline; strict human-truth boundary maintained."
+      ],
+      "verification": [
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "npx vitest run --config scripts/transition/vitest.evaluator.config.ts — PASS (2 files, 19/19 tests passing)",
+        "npx tsx scripts/transition/compare-evaluators-on-historical.ts — PASS (100% bit-perfect parity on historical fixtures)",
+        "SHA-256 hashes recomputed across all modified reviewer and evaluator artifacts in GATE_1B_BATCH_06_PRE_ADJUDICATION_INTEGRITY_MANIFEST.json — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
