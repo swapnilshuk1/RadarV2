@@ -603,6 +603,24 @@
         "SHA-256 hashes recomputed in GATE_1B_BATCH_06_PRE_ADJUDICATION_INTEGRITY_MANIFEST.json — PASS"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "d68af59d7caae78e4e12420e3981f05c0a1c21db",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 3,
+      "summary": "Implemented standalone zero-dependency adjudication web portal (scripts/transition/adjudication-server.ts and scripts/transition/adjudication-ui.html) providing distinct interactive portals for Reviewer 1 (/reviewer1), Reviewer 2 (/reviewer2), and Adjudication/Reconciliation (/reconcile). The app provides mouse-selection automatic quote/offset capture, category dropdowns matching canonical Gate 1B schemas, instant live validation against validateRoleDocument/validateCandidateDocument, and side-by-side reconciliation with auto-pairing and artifact SHA-256 calculation. Added npm run adjudication:app and ADJUDICATION_APP_GUIDE.md.",
+      "invariantsChecked": [
+        "Historical evaluators evaluator-v2.ts and evaluator-r2.ts remain sealed and untouched.",
+        "Zero blind documents executed through extraction pipeline; strict human-truth boundary maintained.",
+        "Human adjudication portal serves only authentic raw source material without model outputs or candidate extractions.",
+        "Web server executes strictly standalone on user-controlled port with zero runtime side-effects on production databases.",
+        "Type verification passes cleanly via npx tsc -p tsconfig.verify.json --noEmit."
+      ],
+      "verification": [
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
