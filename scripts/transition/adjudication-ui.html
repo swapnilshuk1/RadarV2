@@ -608,6 +608,53 @@
     function renderReviewerView(container) {
       const isRole = currentType === "roles";
 
+      // Guidance & Guardrail Card
+      const guideCard = document.createElement("div");
+      guideCard.className = "card";
+      const count = localFacts.length;
+      let counterBadge = `<span class="badge-role role-rev1" style="font-size: 0.72rem;">Current: ${count} / 4-6 target</span>`;
+      if (count >= 7) {
+        counterBadge = `<span class="badge-role" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; font-size: 0.72rem;">⚠️ ${count} Facts (Too many! Keep only top 4-6)</span>`;
+      }
+
+      guideCard.innerHTML = `
+        <div class="card-title">
+          <span>🎯 Rule of Thumb: Aim for strictly 4 to 6 facts</span>
+          ${counterBadge}
+        </div>
+        <div style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
+          <strong>DO NOT extract every sentence or daily duty!</strong> Only answer the 5 Executive Questions:
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.78rem; margin-bottom: 10px;">
+          <div style="background: #0b0f17; padding: 8px; border-radius: 4px; border-left: 2px solid #38bdf8;">
+            <strong style="color: #38bdf8;">✅ DO EXTRACT (Pick 1 sentence each):</strong>
+            <ul style="padding-left: 14px; margin-top: 4px; color: #94a3b8;">
+              <li><strong>Core Purpose</strong> (Why role exists)</li>
+              <li><strong>Reporting Line</strong> (Reports to CEO/VP)</li>
+              <li><strong>Money / Fiscal</strong> (Budget, Revenue, P&L)</li>
+              <li><strong>Team Size</strong> (Headcount, org scale)</li>
+              <li><strong>1-2 Must-Haves</strong> (Years, domain)</li>
+            </ul>
+          </div>
+          <div style="background: #0b0f17; padding: 8px; border-radius: 4px; border-left: 2px solid #ef4444;">
+            <strong style="color: #f87171;">❌ IGNORE COMPLETELY (Zero facts):</strong>
+            <ul style="padding-left: 14px; margin-top: 4px; color: #94a3b8;">
+              <li>Routine tasks (daily meetings, SLAs)</li>
+              <li>Soft skills ("good communication")</li>
+              <li>Generic tools (Excel, Slack, Jira)</li>
+              <li>Company PR / Generic culture statements</li>
+              <li>Benefits, 401(k), paid time off</li>
+            </ul>
+          </div>
+        </div>
+        ${count >= 7 ? `
+          <div style="font-size: 0.78rem; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); color: #fbbf24; padding: 6px 10px; border-radius: 4px;">
+            ⚠️ You have recorded ${count} facts for this document. If you have extracted routine duties or generic bullet points, please delete them. We only need the 4 to 6 core executive differentiators!
+          </div>
+        ` : ''}
+      `;
+      container.appendChild(guideCard);
+
       // Card 1: Add Fact Form
       const formCard = document.createElement("div");
       formCard.className = "card";
