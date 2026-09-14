@@ -655,6 +655,28 @@
         "npx tsc -p tsconfig.verify.json --noEmit — PASS"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "2111efb52f23924bd7aa3ac0236e76330dc3a010",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 3,
+      "summary": "Enhanced adjudication validation and UI to resolve single-reviewer validation (allowing _REV1/_REV2 files to pass with single reviewerId without false reviewer2Id warnings), added DOM character offset calculation and duplicate quote disambiguation ({ exactText, startOffset, endOffset }), updated reconciliation validation to properly support both AGREED (dual-provenance) and ADJUDICATED (single or dual provenance) facts without synthetic fallbacks, and created scripts/transition/dry-run-adjudication-pipeline.ts which executes a complete 7-stage automated dry-run test across role and candidate pipelines with 100% clean-slate teardown.",
+      "invariantsChecked": [
+        "Historical evaluators evaluator-v2.ts and evaluator-r2.ts remain sealed and untouched.",
+        "Zero blind documents executed through extraction pipeline; strict human-truth boundary maintained.",
+        "All single review artifacts (_REV1, _REV2) require single reviewerId while reconciliation artifacts strictly require dual review confirmation.",
+        "Reconciled facts enforce true provenance: AGREED facts map to both REV1 and REV2, while ADJUDICATED facts map to at least one reviewer without synthetic dummy IDs.",
+        "Exact offset provenance enforced mechanically with slice equality for duplicate quotes.",
+        "Dry-run execution verified 100% pass and cleanly deleted all temporary test artifacts, preserving 100% pristine slate for human adjudicators."
+      ],
+      "verification": [
+        "npx tsx scripts/transition/dry-run-adjudication-pipeline.ts — PASS (100% complete across all 7 stages)",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "npx vitest run --config scripts/transition/vitest.evaluator.config.ts — PASS (2 files, 35/35 tests passing)",
+        "node scripts/transition/verify-transition-control.mjs — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
