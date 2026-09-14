@@ -5,9 +5,9 @@
   "verifiedAt": "2026-09-14T09:30:00Z",
   "evaluatorFreeze": {
     "evaluatorPath": "scripts/transition/evaluator-batch06.ts",
-    "sha256": "01d11fa6056b5f5f6bdc44a00a1f4aaaa3d6b6de40aa93dd54ad864609374b66",
+    "sha256": "9e3e251cf8d9f4d02eaa17a1c335dc3de029950209b3d8ef05477530850de542",
     "testSuitePath": "scripts/transition/evaluator-batch06.test.ts",
-    "testVerdict": "19/19 PASSING (31/31 aggregate evaluator suite PASSING)",
+    "testVerdict": "23/23 PASSING (35/35 aggregate evaluator suite PASSING)",
     "historicalEvaluatorsSealed": [
       "scripts/transition/evaluator-v2.ts",
       "scripts/transition/evaluator-r2.ts"

@@ -24,7 +24,8 @@ import {
 import {
   resolveEvidenceQuotesToSpanIds,
   validateRoleDocument,
-  validateCandidateDocument
+  validateCandidateDocument,
+  ingestHoldoutTruth
 } from "./ingest-batch06-human-truth";
 import type { StructuredMetric } from "../../src/lib/intelligence/extraction/CandidateProofExtractorV1";
 
@@ -240,7 +241,15 @@ describe("Batch 06 Evaluator — Candidate Evaluation", () => {
         exactText: text1,
         startOffset: start1,
         endOffset: end1Ref,
-        metric: "$50M",
+        metrics: [
+          {
+            rawText: "$50M",
+            metricType: "CURRENCY",
+            normalizedValue: 50000000,
+            unit: "USD",
+            comparator: "EXACT"
+          }
+        ],
         employer: "Acme Corp",
         proofTypes: ["REVENUE_GROWTH"],
         evidenceClass: "WORK_HISTORY"
@@ -252,7 +261,14 @@ describe("Batch 06 Evaluator — Candidate Evaluation", () => {
         startOffset: start2,
         endOffset: end2,
         spanId: "span_adv",
-        metric: "12",
+        metrics: [
+          {
+            rawText: "12",
+            metricType: "COUNT",
+            normalizedValue: 12,
+            comparator: "EXACT"
+          }
+        ],
         employer: "Beta Inc",
         proofTypes: ["MANDATE"],
         evidenceClass: "WORK_HISTORY"
@@ -266,7 +282,15 @@ describe("Batch 06 Evaluator — Candidate Evaluation", () => {
       startOffset: start1,
       endOffset: end1Claim,
       employer: "Acme Corp",
-      metrics: ["$50M"],
+      metrics: [
+        {
+          rawText: "$50M",
+          metricType: "CURRENCY",
+          normalizedValue: 50000000,
+          unit: "USD",
+          comparator: "EXACT"
+        }
+      ],
       proofTypes: ["REVENUE_GROWTH"],
       evidenceClass: "WORK_HISTORY"
     };
@@ -314,11 +338,17 @@ describe("Batch 06 Evaluator — Candidate Evaluation", () => {
       unit: "engineers"
     };
 
+    const bulletText = "Led commercial growth generating $50M in ARR with a team of 45 engineers.";
+    const bStart = rawResumeText.indexOf(bulletText);
+    const bEnd = bStart + bulletText.length;
+
     const refFacts: CandidateReferenceFact[] = [
       {
         id: "rf_plural_01",
         documentId: syntheticDocId,
-        exactText: "Led commercial growth generating $50M in ARR with a team of 45 engineers.",
+        exactText: bulletText,
+        startOffset: bStart,
+        endOffset: bEnd,
         employer: "Acme Corp",
         proofTypes: ["PEOPLE_SCOPE", "ORGANIZATION_BUILD"],
         evidenceClass: "WORK_HISTORY",
@@ -329,7 +359,9 @@ describe("Batch 06 Evaluator — Candidate Evaluation", () => {
     // Claim matches one of the plural proofTypes and has exact matching StructuredMetric
     const claimMatch: CandidateExtractedClaim = {
       sourceDocumentId: syntheticDocId,
-      exactText: "Led commercial growth generating $50M in ARR with a team of 45 engineers.",
+      exactText: bulletText,
+      startOffset: bStart,
+      endOffset: bEnd,
       employer: "Acme Corp",
       proofTypes: ["PEOPLE_SCOPE"],
       evidenceClass: "WORK_HISTORY",
@@ -756,6 +788,114 @@ describe("Batch 06 Evaluator — Human Truth Ingestion & Span Resolution", () =>
     };
     const resValid = validateRoleDocument(validResDoc, jdText, "ROLE_REC_01_RECONCILIATION.json");
     expect(resValid.valid).toBe(true);
+  });
+
+  it("enforces adjudicatorId when resolution is ADJUDICATED in role and candidate documents", () => {
+    const jdText = "Role overview text here for testing.";
+    const noAdjDoc = {
+      opaqueId: "ROLE_REC_01",
+      reviewer1Id: "REV1",
+      reviewer2Id: "REV2",
+      facts: [
+        {
+          id: "f1",
+          rev1FactIds: ["r1_f1"],
+          rev2FactIds: ["r2_f1"],
+          resolution: "ADJUDICATED",
+          propositionText: "Some fact",
+          sourceEvidence: ["Role overview"],
+          canonicalTypes: ["ROLE_PURPOSE"],
+          appliesTo: "ROLE",
+          polarity: "AFFIRMED",
+          materiality: "MATERIAL_SELECTED"
+        }
+      ]
+    };
+    const res = validateRoleDocument(noAdjDoc, jdText, "ROLE_REC_01_RECONCILIATION.json");
+    expect(res.valid).toBe(false);
+    expect(res.errors.some(e => e.includes("lacks mandatory adjudicatorId"))).toBe(true);
+
+    const resumeText = "Acme Corp (2020-2024)\nJohn Doe worked here.";
+    const noAdjCandDoc = {
+      opaqueId: "CAND_REC_01",
+      reviewer1Id: "REV1",
+      reviewer2Id: "REV2",
+      facts: [
+        {
+          id: "cf1",
+          rev1FactIds: ["r1_cf1"],
+          rev2FactIds: ["r2_cf1"],
+          resolution: "ADJUDICATED",
+          employer: "Acme Corp",
+          proofTypes: ["OUTCOME"],
+          evidenceClass: "WORK_HISTORY",
+          exactText: "John Doe worked here.",
+          startOffset: resumeText.indexOf("John Doe worked here."),
+          endOffset: resumeText.indexOf("John Doe worked here.") + "John Doe worked here.".length
+        }
+      ]
+    };
+    const candRes = validateCandidateDocument(noAdjCandDoc, resumeText, "CAND_REC_01_RECONCILIATION.json");
+    expect(candRes.valid).toBe(false);
+    expect(candRes.errors.some(e => e.includes("lacks mandatory adjudicatorId"))).toBe(true);
+  });
+
+  it("enforces non-empty rev1FactIds and rev2FactIds in reconciliation facts", () => {
+    const jdText = "Role overview text here for testing.";
+    const missingRevIdsDoc = {
+      opaqueId: "ROLE_REC_01",
+      reviewer1Id: "REV1",
+      reviewer2Id: "REV2",
+      facts: [
+        {
+          id: "f1",
+          resolution: "AGREED",
+          propositionText: "Some fact",
+          sourceEvidence: ["Role overview"],
+          canonicalTypes: ["ROLE_PURPOSE"],
+          appliesTo: "ROLE",
+          polarity: "AFFIRMED",
+          materiality: "MATERIAL_SELECTED"
+        }
+      ]
+    };
+    const res = validateRoleDocument(missingRevIdsDoc, jdText, "ROLE_REC_01_RECONCILIATION.json");
+    expect(res.valid).toBe(false);
+    expect(res.errors.some(e => e.includes("rev1FactIds"))).toBe(true);
+    expect(res.errors.some(e => e.includes("rev2FactIds"))).toBe(true);
+  });
+
+  it("enforces document opaqueId matches filename opaqueId for reconciliation artifacts", () => {
+    const jdText = "Role overview text here for testing.";
+    const mismatchedDoc = {
+      opaqueId: "ROLE_DIFF_99",
+      reviewer1Id: "REV1",
+      reviewer2Id: "REV2",
+      facts: [
+        {
+          id: "f1",
+          rev1FactIds: ["r1_f1"],
+          rev2FactIds: ["r2_f1"],
+          resolution: "AGREED",
+          propositionText: "Some fact",
+          sourceEvidence: ["Role overview"],
+          canonicalTypes: ["ROLE_PURPOSE"],
+          appliesTo: "ROLE",
+          polarity: "AFFIRMED",
+          materiality: "MATERIAL_SELECTED"
+        }
+      ]
+    };
+    const res = validateRoleDocument(mismatchedDoc, jdText, "ROLE_REC_01_RECONCILIATION.json");
+    expect(res.valid).toBe(false);
+    expect(res.errors.some(e => e.includes("does not match filename opaqueId"))).toBe(true);
+  });
+
+  it("rejects incomplete holdout truth when triplets are missing from population manifest", () => {
+    const res = ingestHoldoutTruth("primary");
+    expect(res.valid).toBe(false);
+    expect(res.errors.length).toBeGreaterThan(0);
+    expect(res.errors.some(e => e.includes("Missing role reconciliation for population member"))).toBe(true);
   });
 
   it("rejects candidate documents with non-canonical proof types or invalid offsets", () => {

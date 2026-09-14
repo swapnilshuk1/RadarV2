@@ -5,7 +5,7 @@
 **Scope Revision**: 3  
 **Status**: ACTIVE  
 **Date**: September 14, 2026  
-**Remote Head**: `71844f02327207f838aeedaacb0285c0b2807c01` (parent `447ec440f4447b7f60b56638efc5a689633a0a75`)  
+**Remote Head**: `70f3009f2412201ae956ca6539e1e56d190bc1e2`  
 
 ---
 

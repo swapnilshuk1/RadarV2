@@ -181,10 +181,8 @@ export interface CandidateReferenceFact {
   documentId: string;
   exactText: string;
   spanId?: string;
-  proofType?: CandidateProofType | string;
   proofTypes: (CandidateProofType | string)[];
   evidenceClass: CandidateEvidenceClass | string;
-  metric?: string;
   metrics?: StructuredMetric[];
   employer?: string;
   title?: string;
@@ -204,11 +202,9 @@ export interface CandidateExtractedClaim {
   exactText?: string;
   parentBulletExactText?: string;
   spanId?: string;
-  proofType?: string;
   proofTypes?: (CandidateProofType | string)[];
   evidenceClass?: string;
-  metric?: string;
-  metrics?: (StructuredMetric | string)[];
+  metrics?: StructuredMetric[];
   employer?: string;
   title?: string;
   dates?: string;
@@ -675,14 +671,12 @@ export function evaluateCandidateDocument(
 
   // 1. Reference Matching & Fidelity
   for (const rf of refFacts) {
-    if (rf.metrics && rf.metrics.length > 0) totalMetricsInReference += rf.metrics.length;
-    else if (rf.metric) totalMetricsInReference++;
+    if (Array.isArray(rf.metrics) && rf.metrics.length > 0) totalMetricsInReference += rf.metrics.length;
     if (rf.employer) totalEmployersInReference++;
     if (rf.evidenceClass === "WORK_HISTORY" && (rf.employer || rf.title)) totalWorkHistoryInReference++;
 
-    // Find claim covering this reference fact via source range / span containment
+    // Find claim covering this reference fact via source range / span containment ONLY
     const matchingClaim = claims.find(c => {
-      // 1. Grounded source ranges / span containment (preferred)
       if (
         typeof c.startOffset === "number" &&
         typeof c.endOffset === "number" &&
@@ -691,23 +685,7 @@ export function evaluateCandidateDocument(
       ) {
         const cInsideRf = c.startOffset >= rf.startOffset && c.endOffset <= rf.endOffset;
         const rfInsideC = rf.startOffset >= c.startOffset && rf.endOffset <= c.endOffset;
-        if (cInsideRf || rfInsideC) {
-          return true;
-        }
-        const overlap = Math.max(0, Math.min(c.endOffset, rf.endOffset) - Math.max(c.startOffset, rf.startOffset));
-        const minLen = Math.min(c.endOffset - c.startOffset, rf.endOffset - rf.startOffset);
-        if (minLen > 0 && overlap / minLen >= 0.8) {
-          return true;
-        }
-        return false;
-      }
-      // 2. Exact span ID match
-      if (rf.spanId && c.spanId && c.spanId === rf.spanId) {
-        return true;
-      }
-      // 3. Exact normalized string equality (only if offsets unavailable)
-      if (rf.exactText && c.exactText && normalizeString(rf.exactText) === normalizeString(c.exactText)) {
-        return true;
+        return cInsideRf || rfInsideC;
       }
       return false;
     });
@@ -718,14 +696,10 @@ export function evaluateCandidateDocument(
       // Typed recall (canonical proofTypes array match - exact equality)
       const cTypes: string[] = Array.isArray(matchingClaim.proofTypes)
         ? matchingClaim.proofTypes.map(t => String(t).toUpperCase())
-        : matchingClaim.proofType
-          ? [String(matchingClaim.proofType).toUpperCase()]
-          : [];
-      const rfTypes: string[] = Array.isArray(rf.proofTypes) && rf.proofTypes.length > 0
+        : [];
+      const rfTypes: string[] = Array.isArray(rf.proofTypes)
         ? rf.proofTypes.map(t => String(t).toUpperCase())
-        : rf.proofType
-          ? [String(rf.proofType).toUpperCase()]
-          : [];
+        : [];
       if (rfTypes.some(rt => cTypes.some(ct => ct === rt))) {
         typedRecallCount++;
       }
@@ -738,7 +712,7 @@ export function evaluateCandidateDocument(
       }
 
       // Metric retention: Require canonical StructuredMetric schema matching
-      if (rf.metrics && rf.metrics.length > 0) {
+      if (Array.isArray(rf.metrics) && rf.metrics.length > 0) {
         for (const rm of rf.metrics) {
           const claimMetrics = Array.isArray(matchingClaim.metrics) ? matchingClaim.metrics : [];
           let metricMatched = false;
@@ -759,16 +733,6 @@ export function evaluateCandidateDocument(
           if (metricMatched) {
             metricRetentionCount++;
           }
-        }
-      } else if (rf.metric) {
-        const claimMetrics = Array.isArray(matchingClaim.metrics) ? matchingClaim.metrics : [];
-        const hasMetric = claimMetrics.some(cm => {
-          if (typeof cm === "string") return cm.trim() === rf.metric!.trim();
-          if (typeof cm === "object" && cm !== null) return cm.exactText === rf.metric || cm.rawValue === rf.metric;
-          return false;
-        });
-        if (hasMetric) {
-          metricRetentionCount++;
         }
       }
 

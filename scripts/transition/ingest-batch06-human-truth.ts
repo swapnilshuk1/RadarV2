@@ -257,6 +257,12 @@ export function validateRoleDocument(
 
   if (!opaqueId || typeof opaqueId !== "string") {
     errors.push(`[${filename}] Missing or invalid document opaqueId`);
+  } else {
+    const filenameOpaqueId = filename.replace(/_(RECONCILIATION|REV1|REV2|BLANK)\.json$/i, "").replace(/\.json$/i, "");
+    const isStructuredArtifact = /_(RECONCILIATION|REV1|REV2|BLANK)\.json$/i.test(filename);
+    if (isStructuredArtifact && opaqueId !== filenameOpaqueId) {
+      errors.push(`[${filename}] Document opaqueId "${opaqueId}" does not match filename opaqueId "${filenameOpaqueId}"`);
+    }
   }
 
   // Dual-review requirement: Reviewer 1 and Reviewer 2 / Adjudicator
@@ -343,6 +349,36 @@ export function validateRoleDocument(
         errors.push(
           `[${opaqueId} / ${factId}] Missing or invalid reconciliation resolution "${f.resolution}". Must be strictly "AGREED" or "ADJUDICATED".`
         );
+      }
+      if (f.resolution === "ADJUDICATED") {
+        const adjId = f.adjudicatorId || doc.adjudicatorId;
+        if (!adjId || typeof adjId !== "string" || adjId.trim().length === 0) {
+          errors.push(
+            `[${opaqueId} / ${factId}] Fact resolution is "ADJUDICATED" but lacks mandatory adjudicatorId.`
+          );
+        }
+      }
+      if (!Array.isArray(f.rev1FactIds) || f.rev1FactIds.length === 0) {
+        errors.push(
+          `[${opaqueId} / ${factId}] Reconciled fact must contain non-empty rev1FactIds array mapping back to REV1.`
+        );
+      } else {
+        for (const r1Id of f.rev1FactIds) {
+          if (typeof r1Id !== "string" || r1Id.trim().length === 0) {
+            errors.push(`[${opaqueId} / ${factId}] rev1FactIds contains invalid or empty id.`);
+          }
+        }
+      }
+      if (!Array.isArray(f.rev2FactIds) || f.rev2FactIds.length === 0) {
+        errors.push(
+          `[${opaqueId} / ${factId}] Reconciled fact must contain non-empty rev2FactIds array mapping back to REV2.`
+        );
+      } else {
+        for (const r2Id of f.rev2FactIds) {
+          if (typeof r2Id !== "string" || r2Id.trim().length === 0) {
+            errors.push(`[${opaqueId} / ${factId}] rev2FactIds contains invalid or empty id.`);
+          }
+        }
       }
     } else if (f.resolution !== undefined && f.resolution !== "AGREED" && f.resolution !== "ADJUDICATED") {
       errors.push(`[${opaqueId} / ${factId}] Invalid resolution "${f.resolution}". Must be AGREED or ADJUDICATED.`);
@@ -453,6 +489,12 @@ export function validateCandidateDocument(
 
   if (!opaqueId || typeof opaqueId !== "string") {
     errors.push(`[${filename}] Missing or invalid candidate document opaqueId`);
+  } else {
+    const filenameOpaqueId = filename.replace(/_(RECONCILIATION|REV1|REV2|BLANK)\.json$/i, "").replace(/\.json$/i, "");
+    const isStructuredArtifact = /_(RECONCILIATION|REV1|REV2|BLANK)\.json$/i.test(filename);
+    if (isStructuredArtifact && opaqueId !== filenameOpaqueId) {
+      errors.push(`[${filename}] Candidate document opaqueId "${opaqueId}" does not match filename opaqueId "${filenameOpaqueId}"`);
+    }
   }
 
   // Dual-review requirement: Reviewer 1 and Reviewer 2 / Adjudicator
@@ -581,6 +623,36 @@ export function validateCandidateDocument(
           `[${opaqueId} / ${factId}] Missing or invalid reconciliation resolution "${cf.resolution}". Must be strictly "AGREED" or "ADJUDICATED".`
         );
       }
+      if (cf.resolution === "ADJUDICATED") {
+        const adjId = cf.adjudicatorId || doc.adjudicatorId;
+        if (!adjId || typeof adjId !== "string" || adjId.trim().length === 0) {
+          errors.push(
+            `[${opaqueId} / ${factId}] Candidate fact resolution is "ADJUDICATED" but lacks mandatory adjudicatorId.`
+          );
+        }
+      }
+      if (!Array.isArray(cf.rev1FactIds) || cf.rev1FactIds.length === 0) {
+        errors.push(
+          `[${opaqueId} / ${factId}] Reconciled candidate fact must contain non-empty rev1FactIds array mapping back to REV1.`
+        );
+      } else {
+        for (const r1Id of cf.rev1FactIds) {
+          if (typeof r1Id !== "string" || r1Id.trim().length === 0) {
+            errors.push(`[${opaqueId} / ${factId}] rev1FactIds contains invalid or empty id.`);
+          }
+        }
+      }
+      if (!Array.isArray(cf.rev2FactIds) || cf.rev2FactIds.length === 0) {
+        errors.push(
+          `[${opaqueId} / ${factId}] Reconciled candidate fact must contain non-empty rev2FactIds array mapping back to REV2.`
+        );
+      } else {
+        for (const r2Id of cf.rev2FactIds) {
+          if (typeof r2Id !== "string" || r2Id.trim().length === 0) {
+            errors.push(`[${opaqueId} / ${factId}] rev2FactIds contains invalid or empty id.`);
+          }
+        }
+      }
     } else if (cf.resolution !== undefined && cf.resolution !== "AGREED" && cf.resolution !== "ADJUDICATED") {
       errors.push(`[${opaqueId} / ${factId}] Candidate fact invalid resolution "${cf.resolution}". Must be AGREED or ADJUDICATED.`);
     }
@@ -642,137 +714,273 @@ export function ingestHoldoutTruth(holdout: "primary" | "secondary"): IngestionR
   const roleReferenceDocuments: any[] = [];
   const candidateReferenceDocuments: any[] = [];
 
+  // Population manifest validation
+  const manifestPath = path.join(matDir, `${holdout.toUpperCase()}_POPULATION_MANIFEST.json`);
+  if (!fs.existsSync(manifestPath)) {
+    return {
+      valid: false,
+      holdout,
+      totalRolesProcessed: 0,
+      totalCandidatesProcessed: 0,
+      totalFactsIngested: 0,
+      totalHighRiskBoundariesIngested: 0,
+      errors: [`Population manifest not found: ${manifestPath}`]
+    };
+  }
+
+  let manifest: any;
+  try {
+    manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  } catch (e: any) {
+    return {
+      valid: false,
+      holdout,
+      totalRolesProcessed: 0,
+      totalCandidatesProcessed: 0,
+      totalFactsIngested: 0,
+      totalHighRiskBoundariesIngested: 0,
+      errors: [`Failed to parse population manifest at ${manifestPath}: ${e.message}`]
+    };
+  }
+
+  const expectedRoles: string[] = (manifest.roles || []).map((r: any) => r.opaqueId);
+  const expectedCandidates: string[] = (manifest.candidates || []).map((c: any) => c.opaqueId);
+
+  const expectedRoleCount = holdout === "primary" ? 50 : 25;
+  const expectedCandidateCount = holdout === "primary" ? 16 : 8;
+
+  if (expectedRoles.length !== expectedRoleCount) {
+    errors.push(`Manifest role count mismatch: expected ${expectedRoleCount}, found ${expectedRoles.length}`);
+  }
+  if (expectedCandidates.length !== expectedCandidateCount) {
+    errors.push(`Manifest candidate count mismatch: expected ${expectedCandidateCount}, found ${expectedCandidates.length}`);
+  }
+
   // 1. Process Roles
   if (!fs.existsSync(rolesAnnDir)) {
-    return {
-      valid: false,
-      holdout,
-      totalRolesProcessed: 0,
-      totalCandidatesProcessed: 0,
-      totalFactsIngested: 0,
-      totalHighRiskBoundariesIngested: 0,
-      errors: [`Directory not found: ${rolesAnnDir}`]
-    };
-  }
+    errors.push(`Roles annotation directory not found: ${rolesAnnDir}`);
+  } else {
+    const allRoleFiles = fs.readdirSync(rolesAnnDir).filter(f => f.endsWith(".json"));
+    const roleRev1Files = allRoleFiles.filter(f => f.endsWith("_REV1.json"));
+    const roleRev2Files = allRoleFiles.filter(f => f.endsWith("_REV2.json"));
+    const roleReconciliationFiles = allRoleFiles.filter(f => f.endsWith("_RECONCILIATION.json"));
 
-  const allRoleFiles = fs.readdirSync(rolesAnnDir).filter(f => f.endsWith(".json"));
-  const roleReconciliationFiles = allRoleFiles.filter(f => f.endsWith("_RECONCILIATION.json"));
-  if (roleReconciliationFiles.length === 0) {
-    return {
-      valid: false,
-      holdout,
-      totalRolesProcessed: 0,
-      totalCandidatesProcessed: 0,
-      totalFactsIngested: 0,
-      totalHighRiskBoundariesIngested: 0,
-      errors: [`No completed human reconciliation files found in ${rolesAnnDir} (expecting *_RECONCILIATION.json)`]
-    };
-  }
-
-  // Ensure no unexpected non-triplet json files exist
-  for (const f of allRoleFiles) {
-    if (f.endsWith("_BLANK.json")) continue;
-    if (f.endsWith("_RECONCILIATION.json") || f.endsWith("_REV1.json") || f.endsWith("_REV2.json")) continue;
-    errors.push(`[${f}] Unexpected unclassified JSON file in ${rolesAnnDir}. Files must strictly follow *_REV1.json, *_REV2.json, *_RECONCILIATION.json or *_BLANK.json`);
-  }
-
-  for (const recFile of roleReconciliationFiles) {
-    const opaqueId = recFile.replace("_RECONCILIATION.json", "");
-    const rev1Name = `${opaqueId}_REV1.json`;
-    const rev2Name = `${opaqueId}_REV2.json`;
-    const rev1Path = path.join(rolesAnnDir, rev1Name);
-    const rev2Path = path.join(rolesAnnDir, rev2Name);
-
-    if (!fs.existsSync(rev1Path)) {
-      errors.push(`[${recFile}] Missing Reviewer 1 file: ${rev1Name}`);
-      continue;
-    }
-    if (!fs.existsSync(rev2Path)) {
-      errors.push(`[${recFile}] Missing Reviewer 2 file: ${rev2Name}`);
-      continue;
+    // Ensure no unexpected non-triplet json files exist
+    for (const f of allRoleFiles) {
+      if (f.endsWith("_BLANK.json")) continue;
+      if (f.endsWith("_RECONCILIATION.json") || f.endsWith("_REV1.json") || f.endsWith("_REV2.json")) continue;
+      errors.push(`[${f}] Unexpected unclassified JSON file in ${rolesAnnDir}. Files must strictly follow *_REV1.json, *_REV2.json, *_RECONCILIATION.json or *_BLANK.json`);
     }
 
-    const rev1Content = fs.readFileSync(rev1Path, "utf8");
-    const rev2Content = fs.readFileSync(rev2Path, "utf8");
-    const recContent = fs.readFileSync(path.join(rolesAnnDir, recFile), "utf8");
+    const recRoleIds = new Set(roleReconciliationFiles.map(f => f.replace("_RECONCILIATION.json", "")));
+    const rev1RoleIds = new Set(roleRev1Files.map(f => f.replace("_REV1.json", "")));
+    const rev2RoleIds = new Set(roleRev2Files.map(f => f.replace("_REV2.json", "")));
 
-    const rev1Sha = sha256(rev1Content);
-    const rev2Sha = sha256(rev2Content);
-
-    let rev1Doc: any;
-    let rev2Doc: any;
-    let recDoc: any;
-
-    try {
-      rev1Doc = JSON.parse(rev1Content);
-      rev2Doc = JSON.parse(rev2Content);
-      recDoc = JSON.parse(recContent);
-    } catch (e: any) {
-      errors.push(`JSON parse error in ${opaqueId} triplet: ${e.message}`);
-      continue;
+    // Orphan detection (REV1 or REV2 without RECONCILIATION)
+    for (const id of rev1RoleIds) {
+      if (!recRoleIds.has(id)) {
+        errors.push(`Orphan role Reviewer 1 file without reconciliation: ${id}_REV1.json`);
+      }
+    }
+    for (const id of rev2RoleIds) {
+      if (!recRoleIds.has(id)) {
+        errors.push(`Orphan role Reviewer 2 file without reconciliation: ${id}_REV2.json`);
+      }
     }
 
-    const rev1Id = recDoc.reviewer1Id || recDoc.reviewerId;
-    const rev2Id = recDoc.reviewer2Id;
-
-    if (!rev1Id || !rev2Id || rev1Id.trim() === rev2Id.trim()) {
-      errors.push(`[${recFile}] reviewer1Id and reviewer2Id must be distinct independent reviewers`);
+    // Population completeness checks: every expected role must have complete triplet
+    for (const roleId of expectedRoles) {
+      if (!recRoleIds.has(roleId)) {
+        errors.push(`Missing role reconciliation for population member: ${roleId} (expected ${roleId}_RECONCILIATION.json)`);
+      }
+      if (!rev1RoleIds.has(roleId)) {
+        errors.push(`Missing role Reviewer 1 file for population member: ${roleId} (expected ${roleId}_REV1.json)`);
+      }
+      if (!rev2RoleIds.has(roleId)) {
+        errors.push(`Missing role Reviewer 2 file for population member: ${roleId} (expected ${roleId}_REV2.json)`);
+      }
     }
 
-    if (rev1Doc.reviewerId && rev1Doc.reviewerId.trim() !== rev1Id.trim()) {
-      errors.push(`[${recFile}] Reviewer 1 identity mismatch: REV1 file has "${rev1Doc.reviewerId}", reconciliation has "${rev1Id}"`);
-    }
-    if (rev2Doc.reviewerId && rev2Doc.reviewerId.trim() !== rev2Id.trim()) {
-      errors.push(`[${recFile}] Reviewer 2 identity mismatch: REV2 file has "${rev2Doc.reviewerId}", reconciliation has "${rev2Id}"`);
-    }
-
-    const recordedRev1Hash = recDoc.rev1ArtifactHash || recDoc.rev1Hash || recDoc.rev1Sha256;
-    const recordedRev2Hash = recDoc.rev2ArtifactHash || recDoc.rev2Hash || recDoc.rev2Sha256;
-
-    if (!recordedRev1Hash || recordedRev1Hash !== rev1Sha) {
-      errors.push(`[${recFile}] REV1 hash mismatch: expected ${rev1Sha}, recorded ${recordedRev1Hash}`);
-    }
-    if (!recordedRev2Hash || recordedRev2Hash !== rev2Sha) {
-      errors.push(`[${recFile}] REV2 hash mismatch: expected ${rev2Sha}, recorded ${recordedRev2Hash}`);
+    // Reject unexpected reconciliation files not in manifest
+    for (const id of recRoleIds) {
+      if (!expectedRoles.includes(id)) {
+        errors.push(`Unexpected role reconciliation file not in ${holdout} population manifest: ${id}_RECONCILIATION.json`);
+      }
     }
 
-    if (recDoc.dualReviewVerified !== true) {
-      errors.push(`[${recFile}] dualReviewVerified must be strictly boolean true`);
-    }
+    for (const recFile of roleReconciliationFiles) {
+      const opaqueId = recFile.replace("_RECONCILIATION.json", "");
+      const rev1Name = `${opaqueId}_REV1.json`;
+      const rev2Name = `${opaqueId}_REV2.json`;
+      const rev1Path = path.join(rolesAnnDir, rev1Name);
+      const rev2Path = path.join(rolesAnnDir, rev2Name);
 
-    totalRoles++;
-    const rawTextPath = path.join(rolesMatDir, `${opaqueId}.txt`);
-    if (!fs.existsSync(rawTextPath)) {
-      errors.push(`Raw source file missing for ${opaqueId} at ${rawTextPath}`);
-      continue;
-    }
-    const rawSourceText = fs.readFileSync(rawTextPath, "utf8");
+      if (!fs.existsSync(rev1Path)) {
+        errors.push(`[${recFile}] Missing Reviewer 1 file: ${rev1Name}`);
+        continue;
+      }
+      if (!fs.existsSync(rev2Path)) {
+        errors.push(`[${recFile}] Missing Reviewer 2 file: ${rev2Name}`);
+        continue;
+      }
 
-    // The reconciliation document is the sole compiled authoritative document
-    const result = validateRoleDocument(recDoc, rawSourceText, recFile);
-    if (!result.valid) {
-      errors.push(...result.errors);
-    } else if (result.validatedDoc) {
-      totalFacts += result.validatedDoc.facts.length;
-      totalHighRisk += (result.validatedDoc.highRiskNegatives || []).length;
-      roleReferenceDocuments.push({
-        ...result.validatedDoc,
-        holdout,
-        rev1ArtifactHash: rev1Sha,
-        rev2ArtifactHash: rev2Sha
-      });
+      const rev1Content = fs.readFileSync(rev1Path, "utf8");
+      const rev2Content = fs.readFileSync(rev2Path, "utf8");
+      const recContent = fs.readFileSync(path.join(rolesAnnDir, recFile), "utf8");
+
+      const rev1Sha = sha256(rev1Content);
+      const rev2Sha = sha256(rev2Content);
+
+      let rev1Doc: any;
+      let rev2Doc: any;
+      let recDoc: any;
+
+      try {
+        rev1Doc = JSON.parse(rev1Content);
+        rev2Doc = JSON.parse(rev2Content);
+        recDoc = JSON.parse(recContent);
+      } catch (e: any) {
+        errors.push(`JSON parse error in ${opaqueId} triplet: ${e.message}`);
+        continue;
+      }
+
+      // OpaqueId check
+      const recOpaqueId = recDoc.opaqueId || recDoc.documentId;
+      if (recOpaqueId !== opaqueId) {
+        errors.push(`[${recFile}] Document opaqueId "${recOpaqueId}" does not match filename opaqueId "${opaqueId}"`);
+      }
+      const rev1OpaqueId = rev1Doc.opaqueId || rev1Doc.documentId;
+      if (rev1OpaqueId && rev1OpaqueId !== opaqueId) {
+        errors.push(`[${rev1Name}] Document opaqueId "${rev1OpaqueId}" does not match expected opaqueId "${opaqueId}"`);
+      }
+      const rev2OpaqueId = rev2Doc.opaqueId || rev2Doc.documentId;
+      if (rev2OpaqueId && rev2OpaqueId !== opaqueId) {
+        errors.push(`[${rev2Name}] Document opaqueId "${rev2OpaqueId}" does not match expected opaqueId "${opaqueId}"`);
+      }
+
+      const rev1Id = recDoc.reviewer1Id || recDoc.reviewerId;
+      const rev2Id = recDoc.reviewer2Id;
+
+      if (!rev1Id || !rev2Id || rev1Id.trim() === rev2Id.trim()) {
+        errors.push(`[${recFile}] reviewer1Id and reviewer2Id must be distinct independent reviewers`);
+      }
+
+      if (rev1Doc.reviewerId && rev1Doc.reviewerId.trim() !== rev1Id.trim()) {
+        errors.push(`[${recFile}] Reviewer 1 identity mismatch: REV1 file has "${rev1Doc.reviewerId}", reconciliation has "${rev1Id}"`);
+      }
+      if (rev2Doc.reviewerId && rev2Doc.reviewerId.trim() !== rev2Id.trim()) {
+        errors.push(`[${recFile}] Reviewer 2 identity mismatch: REV2 file has "${rev2Doc.reviewerId}", reconciliation has "${rev2Id}"`);
+      }
+
+      const recordedRev1Hash = recDoc.rev1ArtifactHash || recDoc.rev1Hash || recDoc.rev1Sha256;
+      const recordedRev2Hash = recDoc.rev2ArtifactHash || recDoc.rev2Hash || recDoc.rev2Sha256;
+
+      if (!recordedRev1Hash || recordedRev1Hash !== rev1Sha) {
+        errors.push(`[${recFile}] REV1 hash mismatch: expected ${rev1Sha}, recorded ${recordedRev1Hash}`);
+      }
+      if (!recordedRev2Hash || recordedRev2Hash !== rev2Sha) {
+        errors.push(`[${recFile}] REV2 hash mismatch: expected ${rev2Sha}, recorded ${recordedRev2Hash}`);
+      }
+
+      if (recDoc.dualReviewVerified !== true) {
+        errors.push(`[${recFile}] dualReviewVerified must be strictly boolean true`);
+      }
+
+      // Reconciliation fact graph verification against REV1 & REV2
+      const rev1FactIdSet = new Set((rev1Doc.facts || []).map((f: any) => f.id));
+      const rev2FactIdSet = new Set((rev2Doc.facts || []).map((f: any) => f.id));
+
+      for (const f of recDoc.facts || []) {
+        const factId = f.id || "unknown";
+        if (Array.isArray(f.rev1FactIds)) {
+          for (const id of f.rev1FactIds) {
+            if (!rev1FactIdSet.has(id)) {
+              errors.push(`[${recFile} / ${factId}] Referenced rev1FactId "${id}" does not exist in REV1 artifact (${rev1Name})`);
+            }
+          }
+        }
+        if (Array.isArray(f.rev2FactIds)) {
+          for (const id of f.rev2FactIds) {
+            if (!rev2FactIdSet.has(id)) {
+              errors.push(`[${recFile} / ${factId}] Referenced rev2FactId "${id}" does not exist in REV2 artifact (${rev2Name})`);
+            }
+          }
+        }
+      }
+
+      totalRoles++;
+      const rawTextPath = path.join(rolesMatDir, `${opaqueId}.txt`);
+      if (!fs.existsSync(rawTextPath)) {
+        errors.push(`Raw source file missing for ${opaqueId} at ${rawTextPath}`);
+        continue;
+      }
+      const rawSourceText = fs.readFileSync(rawTextPath, "utf8");
+
+      // The reconciliation document is the sole compiled authoritative document
+      const result = validateRoleDocument(recDoc, rawSourceText, recFile);
+      if (!result.valid) {
+        errors.push(...result.errors);
+      } else if (result.validatedDoc) {
+        totalFacts += result.validatedDoc.facts.length;
+        totalHighRisk += (result.validatedDoc.highRiskNegatives || []).length;
+        roleReferenceDocuments.push({
+          ...result.validatedDoc,
+          holdout,
+          rev1ArtifactHash: rev1Sha,
+          rev2ArtifactHash: rev2Sha
+        });
+      }
     }
   }
 
   // 2. Process Candidates
-  if (fs.existsSync(candAnnDir)) {
+  if (!fs.existsSync(candAnnDir)) {
+    errors.push(`Candidate annotation directory not found: ${candAnnDir}`);
+  } else {
     const allCandFiles = fs.readdirSync(candAnnDir).filter(f => f.endsWith(".json"));
+    const candRev1Files = allCandFiles.filter(f => f.endsWith("_REV1.json"));
+    const candRev2Files = allCandFiles.filter(f => f.endsWith("_REV2.json"));
     const candReconciliationFiles = allCandFiles.filter(f => f.endsWith("_RECONCILIATION.json"));
 
     for (const f of allCandFiles) {
       if (f.endsWith("_BLANK.json")) continue;
       if (f.endsWith("_RECONCILIATION.json") || f.endsWith("_REV1.json") || f.endsWith("_REV2.json")) continue;
       errors.push(`[${f}] Unexpected unclassified JSON file in ${candAnnDir}. Files must strictly follow *_REV1.json, *_REV2.json, *_RECONCILIATION.json or *_BLANK.json`);
+    }
+
+    const candRecIds = new Set(candReconciliationFiles.map(f => f.replace("_RECONCILIATION.json", "")));
+    const candRev1Ids = new Set(candRev1Files.map(f => f.replace("_REV1.json", "")));
+    const candRev2Ids = new Set(candRev2Files.map(f => f.replace("_REV2.json", "")));
+
+    // Orphan detection (REV1 or REV2 without RECONCILIATION)
+    for (const id of candRev1Ids) {
+      if (!candRecIds.has(id)) {
+        errors.push(`Orphan candidate Reviewer 1 file without reconciliation: ${id}_REV1.json`);
+      }
+    }
+    for (const id of candRev2Ids) {
+      if (!candRecIds.has(id)) {
+        errors.push(`Orphan candidate Reviewer 2 file without reconciliation: ${id}_REV2.json`);
+      }
+    }
+
+    // Population completeness checks
+    for (const candId of expectedCandidates) {
+      if (!candRecIds.has(candId)) {
+        errors.push(`Missing candidate reconciliation for population member: ${candId} (expected ${candId}_RECONCILIATION.json)`);
+      }
+      if (!candRev1Ids.has(candId)) {
+        errors.push(`Missing candidate Reviewer 1 file for population member: ${candId} (expected ${candId}_REV1.json)`);
+      }
+      if (!candRev2Ids.has(candId)) {
+        errors.push(`Missing candidate Reviewer 2 file for population member: ${candId} (expected ${candId}_REV2.json)`);
+      }
+    }
+
+    for (const id of candRecIds) {
+      if (!expectedCandidates.includes(id)) {
+        errors.push(`Unexpected candidate reconciliation file not in ${holdout} population manifest: ${id}_RECONCILIATION.json`);
+      }
     }
 
     for (const recFile of candReconciliationFiles) {
@@ -811,6 +1019,20 @@ export function ingestHoldoutTruth(holdout: "primary" | "secondary"): IngestionR
         continue;
       }
 
+      // OpaqueId check
+      const recOpaqueId = recDoc.opaqueId || recDoc.documentId;
+      if (recOpaqueId !== opaqueId) {
+        errors.push(`[${recFile}] Candidate document opaqueId "${recOpaqueId}" does not match filename opaqueId "${opaqueId}"`);
+      }
+      const rev1OpaqueId = rev1Doc.opaqueId || rev1Doc.documentId;
+      if (rev1OpaqueId && rev1OpaqueId !== opaqueId) {
+        errors.push(`[${rev1Name}] Candidate document opaqueId "${rev1OpaqueId}" does not match expected opaqueId "${opaqueId}"`);
+      }
+      const rev2OpaqueId = rev2Doc.opaqueId || rev2Doc.documentId;
+      if (rev2OpaqueId && rev2OpaqueId !== opaqueId) {
+        errors.push(`[${rev2Name}] Candidate document opaqueId "${rev2OpaqueId}" does not match expected opaqueId "${opaqueId}"`);
+      }
+
       const rev1Id = recDoc.reviewer1Id || recDoc.reviewerId;
       const rev2Id = recDoc.reviewer2Id;
 
@@ -839,6 +1061,28 @@ export function ingestHoldoutTruth(holdout: "primary" | "secondary"): IngestionR
         errors.push(`[${recFile}] Candidate dualReviewVerified must be strictly boolean true`);
       }
 
+      // Reconciliation fact graph verification against REV1 & REV2
+      const candRev1FactIdSet = new Set((rev1Doc.facts || []).map((cf: any) => cf.id));
+      const candRev2FactIdSet = new Set((rev2Doc.facts || []).map((cf: any) => cf.id));
+
+      for (const cf of recDoc.facts || []) {
+        const factId = cf.id || "unknown";
+        if (Array.isArray(cf.rev1FactIds)) {
+          for (const id of cf.rev1FactIds) {
+            if (!candRev1FactIdSet.has(id)) {
+              errors.push(`[${recFile} / ${factId}] Referenced rev1FactId "${id}" does not exist in candidate REV1 artifact (${rev1Name})`);
+            }
+          }
+        }
+        if (Array.isArray(cf.rev2FactIds)) {
+          for (const id of cf.rev2FactIds) {
+            if (!candRev2FactIdSet.has(id)) {
+              errors.push(`[${recFile} / ${factId}] Referenced rev2FactId "${id}" does not exist in candidate REV2 artifact (${rev2Name})`);
+            }
+          }
+        }
+      }
+
       totalCandidates++;
       const rawTextPath = path.join(candMatDir, `${opaqueId}.md`);
       if (!fs.existsSync(rawTextPath)) {
@@ -860,6 +1104,14 @@ export function ingestHoldoutTruth(holdout: "primary" | "secondary"): IngestionR
         });
       }
     }
+  }
+
+  // Completeness check
+  if (totalRoles !== expectedRoleCount) {
+    errors.push(`Population completeness failure: expected ${expectedRoleCount} role reconciliations for ${holdout}, ingested ${totalRoles}`);
+  }
+  if (totalCandidates !== expectedCandidateCount) {
+    errors.push(`Population completeness failure: expected ${expectedCandidateCount} candidate reconciliations for ${holdout}, ingested ${totalCandidates}`);
   }
 
   if (errors.length > 0) {
