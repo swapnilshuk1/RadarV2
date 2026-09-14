@@ -577,6 +577,32 @@
         "SHA-256 hashes recomputed across all reviewer, population, and evaluator artifacts in GATE_1B_BATCH_06_PRE_ADJUDICATION_INTEGRITY_MANIFEST.json — PASS"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "fabf11abb669aa75a401fa2b371969ee57be60c3",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 3,
+      "summary": "Patched pre-adjudication tooling gaps: enforced non-empty rev1FactIds and rev2FactIds on every reconciled fact with cross-file ID existence verification in hashed REV1/REV2 artifacts; enforced mandatory adjudicatorId for ADJUDICATED resolutions; added population manifest completeness gates asserting exact triplet counts (Primary: 50 roles + 16 candidates; Secondary: 25 roles + 8 candidates); eliminated orphan _REV1/_REV2 files; enforced reconciliation document opaqueId equality with filename opaqueId; eliminated candidate evaluation fallbacks (singular proofType, singular/string metric, 80% fuzzy range overlap, and text-only matching without character offsets); and updated remote HEAD reference in audit record to 70f3009f2412201ae956ca6539e1e56d190bc1e2.",
+      "invariantsChecked": [
+        "Historical evaluators evaluator-v2.ts and evaluator-r2.ts remain sealed and untouched.",
+        "100% bit-perfect scoring parity verified against historical fixtures (zero delta across all 5 architectures and 21 documents).",
+        "Reconciliation provenance strictly enforced: every fact maps to non-empty rev1FactIds and rev2FactIds with ID existence in hashed artifacts.",
+        "ADJUDICATED resolutions strictly require non-empty adjudicatorId.",
+        "Population completeness enforced: Primary requires exactly 50 roles + 16 candidates; Secondary requires 25 roles + 8 candidates; orphan REV files rejected.",
+        "Candidate evaluation strictly requires canonical character offset containment, StructuredMetric objects, and proofTypes arrays; all legacy fuzzy and string fallbacks eliminated.",
+        "Synthetic test suite 100% passing across 35 evaluator and hybrid extractor tests (35/35 passing).",
+        "Type verification passes cleanly via npx tsc -p tsconfig.verify.json --noEmit.",
+        "Remote HEAD audit reference corrected to 70f3009f2412201ae956ca6539e1e56d190bc1e2.",
+        "Zero blind documents executed through extraction pipeline; strict human-truth boundary maintained."
+      ],
+      "verification": [
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "npx vitest run --config scripts/transition/vitest.evaluator.config.ts — PASS (2 files, 35/35 tests passing)",
+        "npx tsx scripts/transition/compare-evaluators-on-historical.ts — PASS (100% bit-perfect parity across 21 historical fixtures and 5 architectures)",
+        "SHA-256 hashes recomputed in GATE_1B_BATCH_06_PRE_ADJUDICATION_INTEGRITY_MANIFEST.json — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
