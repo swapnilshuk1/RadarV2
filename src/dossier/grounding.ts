@@ -1,6 +1,6 @@
 import { claimSchema, compositionSchema, contextFields, researchSchema, scopeFields, type Claim, type Composition, type EvidenceSource, type Passage, type Research } from './contracts';
 
-const unsupportedAbsence = /\b(?:candidate\s+)?(?:lacks?|does not have|doesn't have|has no|no verifiable track record|absence of|does not meet|doesn't meet|fails to meet|is ineligible)\b/i;
+const unsupportedAbsence = /(?:\b(?:candidate|candidate's)\b.{0,80}\b(?:does not evidence|lack(?:s| of)?|does not meet|fails to meet|is ineligible)\b)|\b(?:candidate\s+)?(?:lacks?|does not have|doesn't have|has no|no verifiable track record|absence of|does not meet|doesn't meet|fails to meet|is ineligible)\b/i;
 const recruiterPerspective = /\b(?:tell the recruiter|tell the employer|reject the candidate|other candidates|the hiring manager should|the employer should)\b/i;
 
 function assertEvidenceBoundCandidateLanguage(text: string, label: string) {
