@@ -128,6 +128,13 @@ describe('Dossier evidence and field resolution', () => {
     const duplicate=composition(); duplicate.roleInterest[0].text=duplicate.executiveThesis.text;
     expect(()=>validateComposition(duplicate,research())).toThrow('repeats a passage');
   });
+  it('requires actual hard-screen evidence for employer screening terminology', () => {
+    const core=composition(); core.executiveThesis={...core.executiveThesis,text:'This is an employer screening criterion.',sourcePlane:'JD',evidenceRefs:['jd-role']};
+    expect(()=>validateComposition(core,research())).toThrow('actual hard-screen evidence');
+    const hardResearch=research(); Object.assign(hardResearch.evaluation.requirements[0],{decisionRole:'HARD_SCREEN',mandatory:true});
+    const hard=composition(); hard.executiveThesis={...hard.executiveThesis,text:'This is an employer screening criterion.',sourcePlane:'JD',evidenceRefs:['jd-role']};
+    expect(()=>validateComposition(hard,hardResearch)).not.toThrow();
+  });
   it('keeps candidate-side conditions out of employer screening language', () => {
     const value=composition();
     value.decisionHinges.passIf[0].text='The stated compensation is a hard screening criterion.';
