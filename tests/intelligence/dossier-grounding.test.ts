@@ -66,6 +66,29 @@ describe('Dossier evidence and field resolution', () => {
     expect(resolveSourceClaims({claims:[{...claim,citations:[{sourceId:'cv',spanId:'s1'}]}]},[source])[0].citations[0].quote).toBe('Revenue contribution rose from 3% to 32%.');
     expect(()=>resolveSourceClaims({claims:[{...claim,citations:[{sourceId:'cv',spanId:'missing'}]}]},[source])).toThrow('Unknown source passage');
   });
+  it('keeps minified JD qualifications local and permits contiguous multi-span evidence', () => {
+    const minified={...sources[0],id:'jd-minified',text:`Role overview ${'hands-on delivery across complex stakeholder groups '.repeat(12)}; Relevant experience in regulated product operations is required; ${'cross-functional execution across priority programs '.repeat(12)}; This is an individual contributor role leading through craft and judgment rather than headcount; ${'customer outcomes and operating rhythm '.repeat(8)}`};
+    const spans=sourceSpans(minified);
+    expect(spans.every(span => span.text === minified.text.slice(span.start,span.end))).toBe(true);
+    const qualificationSpan=spans.find(span => span.text.includes('Relevant experience in regulated product operations is required'))!;
+    const operatingShapeSpan=spans.find(span => span.text.includes('individual contributor role leading through craft'))!;
+    expect(qualificationSpan.id).not.toBe(operatingShapeSpan.id);
+    const multiSpanClaim={...research().claims[0],id:'JD-1-1',citations:[{sourceId:'jd-minified',spanId:qualificationSpan.id},{sourceId:'jd-minified',spanId:spans[spans.indexOf(qualificationSpan)+1].id}]};
+    const resolved=resolveSourceClaims({claims:[multiSpanClaim]},[minified])[0];
+    expect(resolved.citations.map(citation=>citation.quote)).toEqual([qualificationSpan.text,spans[spans.indexOf(qualificationSpan)+1].text]);
+    const candidate=sources[1];
+    const qualified=research();
+    qualified.claims[0]={...qualified.claims[0],id:'jd-qualification',text:'The role requires regulated product operations experience.',citations:[{sourceId:'jd-minified',quote:qualificationSpan.text}]};
+    qualified.claims[2]={...qualified.claims[2],derivedFrom:['jd-qualification','cv-candidate']};
+    qualified.evaluation.claimIds=['relation']; qualified.narrativePlan.claimIds=['relation'];
+    Object.assign(qualified.evaluation.requirements[0],{requirement:'Relevant experience in regulated product operations',decisionRole:'HARD_SCREEN',mandatory:true,roleClaimIds:['jd-qualification']});
+    expect(()=>validateResearch(qualified,[minified,candidate])).not.toThrow();
+    const operatingShape=structuredClone(qualified);
+    operatingShape.claims[0]={...operatingShape.claims[0],id:'jd-operating-shape',text:'The role is individual contributor.',citations:[{sourceId:'jd-minified',quote:operatingShapeSpan.text}]};
+    operatingShape.claims[2]={...operatingShape.claims[2],derivedFrom:['jd-operating-shape','cv-candidate']};
+    Object.assign(operatingShape.evaluation.requirements[0],{requirement:'Individual contributor role',roleClaimIds:['jd-operating-shape']});
+    expect(()=>validateResearch(operatingShape,[minified,candidate])).toThrow('explicit employer entry qualification');
+  });
   it('assigns source-scoped ordinals when the model repeats a source-claim ID', () => {
     const repeated={claims:[
       {...research().claims[1],id:'CANDIDATE-1-1',citations:[{sourceId:'cv',spanId:'s0'}]},
