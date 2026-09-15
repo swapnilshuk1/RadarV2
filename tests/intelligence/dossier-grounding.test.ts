@@ -153,7 +153,7 @@ describe('Dossier evidence and field resolution', () => {
       sources[1],
     ];
     const qualification=research();
-    qualification.claims[0]={...qualification.claims[0],id:'jd-entry',text:'Relevant experience in supply-chain or logistics operations.',citations:[{sourceId:'jd-entry',quote:'Relevant experience in supply-chain or logistics operations.'}]};
+    qualification.claims[0]={...qualification.claims[0],id:'jd-entry',text:'The role asks for operating-domain background.',citations:[{sourceId:'jd-entry',quote:'Relevant experience in supply-chain or logistics operations.'}]};
     qualification.claims[2]={...qualification.claims[2],derivedFrom:['jd-entry','cv-candidate']};
     qualification.evaluation.claimIds=['relation']; qualification.narrativePlan.claimIds=['relation'];
     Object.assign(qualification.evaluation.requirements[0], { decisionRole:'HARD_SCREEN', mandatory:true, requirement:'Relevant experience in supply-chain or logistics operations', roleClaimIds:['jd-entry'] });
@@ -174,10 +174,10 @@ describe('Dossier evidence and field resolution', () => {
     const preference=research();
     Object.assign(preference.evaluation.requirements[0], { decisionRole:'PREFERENCE', mandatory:true });
     expect(()=>validateResearch(preference,sources)).toThrow('preference cannot be mandatory');
-    const strong=research();
-    Object.assign(strong.evaluation.requirements[0], { decisionRole:'HARD_SCREEN', mandatory:true, status:'NOT_EVIDENCED' });
+    const strong=structuredClone(qualification);
+    Object.assign(strong.evaluation.requirements[0], { status:'NOT_EVIDENCED' });
     strong.evaluation.screeningViability='STRONG';
-    expect(()=>validateResearch(strong,sources)).toThrow('Strong screening viability');
+    expect(()=>validateResearch(strong,qualificationSources)).toThrow('Strong screening viability');
     const blocked=research(); blocked.evaluation.screeningViability='BLOCKED';
     expect(()=>validateResearch(blocked,sources)).toThrow('Blocked screening viability');
   });
