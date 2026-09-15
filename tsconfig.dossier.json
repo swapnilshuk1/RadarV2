@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/dossier/**/*.ts", "src/dossier/**/*.tsx", "src/lib/model/**/*.ts", "scripts/dossier/**/*.ts", "tests/intelligence/dossier-grounding.test.ts"],
+  "exclude": ["node_modules"],
+  "compilerOptions": { "types": ["vite/client", "node"] }
+}

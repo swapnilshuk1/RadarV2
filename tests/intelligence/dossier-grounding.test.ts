@@ -1,0 +1,153 @@
+import { describe, expect, it } from 'vitest';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { buildDossier } from '../../src/dossier/pipeline';
+import { validateComposition, validateResearch } from '../../src/dossier/grounding';
+import { contextFields, scopeFields, type Composition, type EvidenceSource, type Passage, type Research } from '../../src/dossier/contracts';
+import { CompanyWebsiteProvider } from '../../src/dossier/context';
+import { readSliceInput } from '../../scripts/dossier/source-input';
+import { modelSchema } from '../../src/dossier/model-schema';
+import { researchSchema } from '../../src/dossier/contracts';
+import { GeminiJsonModel } from '../../src/lib/model/json-model';
+import { resolveSourceClaims, sourceSpans } from '../../src/dossier/source-spans';
+
+const sources: EvidenceSource[] = [
+  { id:'jd',plane:'JD',title:'Raw job',locator:'job:1',text:'Build a new sales team. Ten years of property sales required.',capturedAt:'2026-09-15T00:00:00.000Z',attribution:'JOB_POST' },
+  { id:'cv',plane:'CANDIDATE',title:'CV',locator:'candidate:1',text:'Built a 40-person marketing team.',capturedAt:'2026-09-15T00:00:00.000Z',attribution:'CANDIDATE_SUPPLIED' },
+];
+function research(): Research {
+  return {
+    claims:[
+      {id:'jd-role',text:'A new sales team is required.',state:'EXPLICIT',confidence:1,plane:'JD',citations:[{sourceId:'jd',quote:'Build a new sales team.'}],derivedFrom:[]},
+      {id:'cv-candidate',text:'The CV reports building a 40-person marketing team.',state:'EXPLICIT',confidence:1,plane:'CANDIDATE',citations:[{sourceId:'cv',quote:'Built a 40-person marketing team.'}],derivedFrom:[]},
+      {id:'relation',text:'Team-building transfers; property-sales experience is not established.',state:'INFERRED',confidence:0.8,plane:'RELATIONAL',citations:[],derivedFrom:['jd-role','cv-candidate'],reasoning:'Both involve team building, but marketing is a different domain.'},
+    ],
+    resolutions:[...contextFields,...scopeFields].map(field => ({field,status:'OPEN',value:null,claimIds:[],methods:['ask'],question:`What is the ${field}?`,consequence:'Determine the actual scope before committing.'})),
+    candidateConflicts:[],
+    evaluation:{verdict:'CONSIDER',rationale:'Verify domain eligibility.',claimIds:['relation'],requirements:[{requirement:'Team building',mandatory:true,status:'TRANSFERABLE',roleClaimIds:['jd-role'],candidateClaimIds:['cv-candidate'],reasoning:'Marketing team-building precedent transfers.'}]},
+    narrativePlan:{roleArchetype:'Builder',mandateShape:'Build',careerMove:'Domain stretch',authorityShape:'Unresolved',fitShape:'Transferability-heavy',evidenceShape:'Domain gap',decisionTension:'Eligibility',companyTrajectory:'Unresolved',argument:'Lead with the domain stretch before team-building proof.',emphasis:['Eligibility'],sectionOrder:['fit','mandate'],claimIds:['relation']},
+  };
+}
+function composition(): Composition {
+  const p: Passage = {text:'Use the team-building precedent to explore the mandate, while verifying domain eligibility.',kind:'ADVICE',state:'INFERRED',confidence:0.8,sourcePlane:'RELATIONAL',evidenceRefs:['relation'],reasoning:'The candidate has adjacent team-building experience.'};
+  const groups = (keys: string[]) => Object.fromEntries(keys.map(k => [k,[{...p}]]));
+  return {executiveThesis:p,roleInterest:[p],strategicValue:[p],recommendation:groups(['identityAlignment','capabilityCoverage','careerCapital']),fit:groups(['direct','adjacent','transferable','gaps']),mandate:groups(['immediate','nearTerm','mediumTerm','outcomes']),successRequirements:[p],candidatePositioning:groups(['precedents','differentiators','evidence']),openQuestions:[p],watchPoints:[p],decisionHinges:groups(['strongerPursueIf','weakerIf','passIf']),conversationStrategy:groups(['approach','opening','questions','positioning','screening','interview','resumeNarrative','linkedinStrategy'])} as Composition;
+}
+
+describe('Dossier evidence and field resolution', () => {
+  it('keeps executive distance inferred and preserves explicit team numbers', () => {
+    const value=research();
+    const distance=value.resolutions.find(r=>r.field==='executiveDistance')!;
+    Object.assign(distance,{status:'RESOLVED',value:0,claimIds:['jd-role']});
+    expect(()=>validateResearch(value,sources)).toThrow('Executive distance is an analytical derivation');
+    Object.assign(distance,{status:'OPEN',value:null,claimIds:[]});
+    const team=value.resolutions.find(r=>r.field==='teamScale')!;
+    Object.assign(team,{status:'RESOLVED',value:'5–15',claimIds:['jd-role']});
+    expect(()=>validateResearch(value,sources)).toThrow('Preserve the exact explicit team target');
+  });
+  it('resolves numbered passages to original text without rewriting CRLF or punctuation', () => {
+    const source={...sources[1],text:'Built a 40-person team.\r\nRevenue contribution rose from 3% to 32%.'};
+    const spans=sourceSpans(source);
+    expect(spans.map(s=>source.text.slice(s.start,s.end))).toEqual(spans.map(s=>s.text));
+    const claim=research().claims[1];
+    expect(resolveSourceClaims({claims:[{...claim,citations:[{sourceId:'cv',spanId:'s1'}]}]},[source])[0].citations[0].quote).toBe('Revenue contribution rose from 3% to 32%.');
+    expect(()=>resolveSourceClaims({claims:[{...claim,citations:[{sourceId:'cv',spanId:'missing'}]}]},[source])).toThrow('Unknown source passage');
+  });
+  it('sends the runtime contract to the model with required decision consequences', () => {
+    const schema=modelSchema(researchSchema) as {properties:{resolutions:{items:{required:string[]}}}};
+    expect(schema.properties.resolutions.items.required).toContain('consequence');
+    expect(schema.properties.resolutions.items.required).toContain('status');
+  });
+  it('preserves existing model transport defaults and supports a bounded dossier response schema',async()=>{
+    const bodies: {generationConfig: Record<string,unknown>}[]=[];
+    const request: typeof fetch=async(_url,options)=>{bodies.push(JSON.parse(options!.body as string));return new Response(JSON.stringify({candidates:[{finishReason:'STOP',content:{parts:[{text:'{}'}]}}]}),{status:200});};
+    await new GeminiJsonModel('test-project',async()=>'test-token',request).generate('instruction',{});
+    await new GeminiJsonModel('test-project',async()=>'test-token',request,{maxOutputTokens:24576,temperature:0.25}).generate('instruction',{},modelSchema(researchSchema));
+    expect(bodies[0].generationConfig.maxOutputTokens).toBe(8192);
+    expect(bodies[0].generationConfig.temperature).toBe(0);
+    expect(bodies[1].generationConfig.responseSchema).toEqual(modelSchema(researchSchema));
+  });
+  it('preserves grounded inference and open fields instead of dropping them', () => {
+    const result = validateResearch(research(),sources);
+    expect(result.claims.find(c => c.id === 'relation')?.state).toBe('INFERRED');
+    expect(result.resolutions).toHaveLength(16);
+  });
+  it('rejects an invented quotation', () => {
+    const value=research(); value.claims[0].citations[0].quote='Reports to the CEO';
+    expect(() => validateResearch(value,sources)).toThrow('Unresolved exact quote');
+  });
+  it('prevents job requirements becoming candidate achievements', () => {
+    const value=research(); value.claims[0].plane='CANDIDATE';
+    expect(() => validateResearch(value,sources)).toThrow('Candidate claim contaminated');
+  });
+  it('permits grounded role/context synthesis without importing candidate achievements', () => {
+    const value=research();
+    value.claims.push({id:'context-inference',text:'The role indicates expansion.',state:'INFERRED',confidence:0.7,plane:'CONTEXT',citations:[],derivedFrom:['jd-role'],reasoning:'The new sales team in the JD indicates an expansion hypothesis.'});
+    expect(validateResearch(value,sources).claims).toHaveLength(4);
+    value.claims[3].derivedFrom.push('cv-candidate');
+    expect(()=>validateResearch(value,sources)).toThrow('Context claim contaminated');
+  });
+  it('requires both evidence planes for relational reasoning', () => {
+    const value=research(); value.claims[2].derivedFrom=['jd-role'];
+    expect(() => validateResearch(value,sources)).toThrow('Relational claim needs');
+  });
+  it('rejects circular derivations', () => {
+    const value=research(); value.claims[2].derivedFrom.push('relation');
+    expect(() => validateResearch(value,sources)).toThrow('Cyclic lineage');
+  });
+  it('does not promote inferred content to an explicit narrative statement', () => {
+    const value=composition(); value.executiveThesis={...value.executiveThesis,state:'EXPLICIT',kind:'CONCLUSION'};
+    expect(() => validateComposition(value,research())).toThrow('cannot become explicit');
+  });
+  it('retains every substantive dossier section', () => {
+    const value=composition(); value.conversationStrategy.interview=[];
+    expect(() => validateComposition(value,research())).toThrow();
+  });
+  it('retains candidate conflicts as unresolved source differences', () => {
+    const value=research(); value.candidateConflicts=[{topic:'Employment dates',sourceIds:['cv','cv2'],question:'Which end date is correct?'}];
+    expect(validateResearch(value,[...sources,{...sources[1],id:'cv2',text:'Employment ended in June.'}]).candidateConflicts).toEqual(value.candidateConflicts);
+  });
+  it('calls acquisition, then research/planning, then prose against the same research', async () => {
+    const requests: unknown[]=[];
+    const stages: string[]=[];
+    const r=research();
+    r.claims=[
+      {...r.claims[0],id:'JD-1-1'},
+      {...r.claims[1],id:'CANDIDATE-1-1'},
+      {...r.claims[2],derivedFrom:['JD-1-1','CANDIDATE-1-1']},
+    ];
+    r.evaluation.requirements[0].roleClaimIds=['JD-1-1']; r.evaluation.requirements[0].candidateClaimIds=['CANDIDATE-1-1'];
+    const output = await buildDossier({opportunity:{id:'1',company:'Example',title:'Sales Head'},candidate:{name:'Candidate'},sources},[{id:'test',async acquire(){stages.push('acquire');return {sources:[],attempts:[]};}}],{id:'test',version:'test',async generate(_instruction,input){
+      requests.push(input);
+      const request=input as {plane?:string; evidence?:unknown};
+      if(request.plane) return {claims:r.claims.filter(c=>c.plane===request.plane).map(c=>({...c,citations:c.citations.map(ref=>({sourceId:ref.sourceId,spanId:'s0'}))}))};
+      if(request.evidence) return {...r, claims:[r.claims[2]]};
+      return composition();
+    }},s=>stages.push(s));
+    expect(requests.length).toBeGreaterThan(4);
+    expect((requests[3] as {research:Research}).research.narrativePlan.argument).toContain('domain stretch');
+    expect(output.conversationStrategy.linkedinStrategy).toHaveLength(1);
+    expect(output.evidence.lineage).toEqual(sources);
+    expect(stages.indexOf('acquire')).toBeLessThan(stages.findIndex(s=>s.includes('Reasoning')));
+  });
+  it('failed context acquisition remains an acquisition attempt, not a negative company fact',async()=>{
+    const provider=new CompanyWebsiteProvider([{url:'https://example.com/',title:'Company'}],async()=>new Response('',{status:503}));
+    const result=await provider.acquire({id:'1',company:'Example',title:'Role'},['funding']);
+    expect(result.sources).toEqual([]); expect(result.attempts[0].status).toBe('UNAVAILABLE');
+  });
+  it('reads raw JD and CV only, excluding historical projections and benchmark prose',async()=>{
+    const dir=await mkdtemp(join(tmpdir(),'radar-source-test-'));
+    try {
+      const file=join(dir,'cases.jsonl'), cv=join(dir,'cv.md');
+      await writeFile(file,JSON.stringify({caseId:'02',company:'Example',role:'Head',identity:{canonicalJobId:'job'},job:{rawText:'Actual JD',storedProjection:{falseClaim:'CEO'}},evaluation:{verdict:'PURSUE'},currentDossier:{text:'DO NOT IMPORT'}}));
+      await writeFile(cv,'Actual CV');
+      const input=await readSliceInput(file,'02',[cv]);
+      expect(input.sources.map(s=>s.text)).toEqual(['Actual JD','Actual CV']);
+      expect(JSON.stringify(input)).not.toContain('DO NOT IMPORT');
+      expect(JSON.stringify(input)).not.toContain('CEO');
+    } finally { await rm(dir,{recursive:true,force:true}); }
+  });
+});
+
+

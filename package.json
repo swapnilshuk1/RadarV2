@@ -9,6 +9,8 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
+    "dev:dossier": "tsx scripts/dossier/dev.ts",
+    "build:dossier": "vite build --config scripts/dossier/vite.config.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "dev": "tsx scripts/dev.ts",
