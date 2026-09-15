@@ -132,6 +132,20 @@ describe('Dossier evidence and field resolution', () => {
     const value=composition(); value.conversationStrategy.interview=[];
     expect(validateComposition(value,research()).conversationStrategy.interview).toEqual([]);
   });
+  it('enforces meaningful requirement roles and screening viability', () => {
+    const hardScreen=research();
+    Object.assign(hardScreen.evaluation.requirements[0], { decisionRole:'HARD_SCREEN', mandatory:false });
+    expect(()=>validateResearch(hardScreen,sources)).toThrow('hard screen must be mandatory');
+    const preference=research();
+    Object.assign(preference.evaluation.requirements[0], { decisionRole:'PREFERENCE', mandatory:true });
+    expect(()=>validateResearch(preference,sources)).toThrow('preference cannot be mandatory');
+    const strong=research();
+    Object.assign(strong.evaluation.requirements[0], { decisionRole:'HARD_SCREEN', mandatory:true, status:'NOT_EVIDENCED' });
+    strong.evaluation.screeningViability='STRONG';
+    expect(()=>validateResearch(strong,sources)).toThrow('Strong screening viability');
+    const blocked=research(); blocked.evaluation.screeningViability='BLOCKED';
+    expect(()=>validateResearch(blocked,sources)).toThrow('Blocked screening viability');
+  });
   it('fails closed on unknown or wrong-plane research references', () => {
     const unknown=research(); unknown.evaluation.claimIds=['missing'];
     expect(()=>validateResearch(unknown,sources)).toThrow('Unknown claim reference');

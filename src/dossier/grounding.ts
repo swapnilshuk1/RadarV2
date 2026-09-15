@@ -112,8 +112,14 @@ export function validateResearch(value: unknown, sources: EvidenceSource[]): Res
     r.candidateClaimIds = projectRequirementRefs(r.candidateClaimIds, 'CANDIDATE', `Requirement '${r.requirement}' candidate evidence`);
     if (r.roleClaimIds.some(id => claims.get(id)!.plane !== 'JD') || r.candidateClaimIds.some(id => claims.get(id)!.plane !== 'CANDIDATE')) throw new Error('Requirement evidence planes crossed');
     if (['DIRECT', 'ADJACENT', 'TRANSFERABLE'].includes(r.status) && !r.candidateClaimIds.length) throw new Error('Fit classification needs candidate proof');
+    if (r.decisionRole === 'HARD_SCREEN' && !r.mandatory) throw new Error('A hard screen must be mandatory');
+    if (r.decisionRole === 'PREFERENCE' && r.mandatory) throw new Error('A preference cannot be mandatory');
     assertEvidenceBoundCandidateLanguage(r.reasoning, `Requirement '${r.requirement}'`);
   });
+  const hardScreens = research.evaluation.requirements.filter(r => r.decisionRole === 'HARD_SCREEN');
+  const hardBarrier = hardScreens.some(r => ['NOT_EVIDENCED', 'CONTRADICTED'].includes(r.status));
+  if (research.evaluation.screeningViability === 'STRONG' && hardBarrier) throw new Error('Strong screening viability cannot contain an unsupported or contradicted hard screen');
+  if (research.evaluation.screeningViability === 'BLOCKED' && !hardBarrier) throw new Error('Blocked screening viability needs a real hard-screen barrier');
   assertEvidenceBoundCandidateLanguage(research.evaluation.rationale, 'Verdict rationale');
   assertEvidenceBoundCandidateLanguage(research.narrativePlan.argument, 'Narrative plan');
   return research;
