@@ -73,3 +73,4 @@ partial*.txt
 audit-reports/*
 !audit-reports/gate1b-batch06
 audit/
+reports/*_dossier_generated.*

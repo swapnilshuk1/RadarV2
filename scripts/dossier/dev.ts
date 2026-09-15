@@ -8,11 +8,16 @@ import { CompanyWebsiteProvider } from '../../src/dossier/context';
 import { GeminiJsonModel } from '../../src/lib/model/json-model';
 import type { Dossier } from '../../src/dossier/contracts';
 import { readSliceInput } from './source-input';
+import { readAuthoritativeSliceInput } from '../../src/dossier/source-authority';
 import { adcTokenProvider } from './credentials';
 
-const { values } = parseArgs({ options: { cases: { type: 'string' }, case: { type: 'string', default: '02' }, candidate: { type: 'string', multiple: true }, context: { type: 'string', multiple: true }, port: { type: 'string', default: '4317' } } });
-if (!values.cases || !values.candidate?.length) throw new Error('Usage: npm run dev:dossier -- --cases <cases.jsonl> --candidate <CV.md> [--candidate <CV.md>] [--context <https URL>]');
-const input = await readSliceInput(values.cases, values.case!, values.candidate);
+const { values } = parseArgs({ options: { cases: { type: 'string' }, case: { type: 'string', default: '02' }, candidate: { type: 'string', multiple: true }, job: { type: 'string' }, person: { type: 'string' }, document: { type: 'string', multiple: true }, name: { type: 'string' }, context: { type: 'string', multiple: true }, port: { type: 'string', default: '4317' } } });
+const useAuthority = Boolean(values.job || values.person || values.document?.length);
+if (useAuthority && (!values.job || !values.person || !values.name)) throw new Error('Canonical mode requires --job <jobHash> --person <personId> --name <candidate name> [--document <candidateDocumentId>]');
+if (!useAuthority && (!values.cases || !values.candidate?.length)) throw new Error('Usage: use canonical --job/--person/--name, or fixture --cases <cases.jsonl> --candidate <CV.md>');
+const input = useAuthority
+  ? await readAuthoritativeSliceInput({ jobHash: values.job!, personId: values.person!, candidateDocumentIds: values.document, candidateName: values.name! })
+  : await readSliceInput(values.cases!, values.case!, values.candidate!);
 const project = process.env.GCP_PROJECT_ID;
 if (!project) throw new Error('GCP_PROJECT_ID is required; load your existing environment');
 const model = new GeminiJsonModel(project, adcTokenProvider(), fetch, { maxOutputTokens: 24576, temperature: 0.25, timeoutMs: 240000 });

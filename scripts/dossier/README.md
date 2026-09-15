@@ -1,8 +1,20 @@
 # Dossier development slice
 
 Run from the repository root. Use the existing GCP project and local Google ADC
-credentials. Supply original source paths; nothing in this folder embeds a CV,
-an old projection, or generated dossier prose.
+credentials. The normal mode reads the original JD and extracted candidate text
+through RADAR's canonical repository contracts, never a projection, evaluation,
+or prior dossier.
+
+```powershell
+node --env-file=.env --import tsx scripts/dossier/dev.ts `
+  --job <canonical-job-hash> --person <person-id> --name "Candidate Name" `
+  --document <candidate-document-id> `
+  --context https://schnellbuilder.com/
+```
+
+Pass `--document` more than once when multiple candidate documents are
+authoritative. The corpus/CV-file command below remains a fixture-only path for
+the Schnell reference case; it is not application source authority.
 
 ```powershell
 node --env-file="../Radar V2/.env" --import tsx scripts/dossier/dev.ts `
@@ -20,11 +32,9 @@ are retained. The page holds the result in process memory; restarting the server
 requires regeneration. This is a development page, not a production serving path.
 
 `--context` URLs are trusted operator configuration. The website provider acquires
-company-published text; it does not certify those assertions or interpret an absent
-fact as negative evidence. Additional search/registry providers implement the
-`ContextProvider` interface. The sample input reader whitelists `job.rawText` and
-identity fields from the export. Blob retrieval and durable dossier persistence
-are not connected in this first slice.
+company-published text and a bounded set of relevant same-origin pages; it does
+not certify those assertions or interpret an absent fact as negative evidence.
+Additional search/registry providers implement the `ContextProvider` interface.
 
 The new `src/dossier` engine does not import previous intelligence engines.
 The vendor transport moved to `src/lib/model`; old callers retain a re-export.

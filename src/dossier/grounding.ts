@@ -1,5 +1,14 @@
 import { claimSchema, compositionSchema, contextFields, researchSchema, scopeFields, type Claim, type Composition, type EvidenceSource, type Passage, type Research } from './contracts';
 
+const unsupportedAbsence = /\b(?:candidate\s+)?(?:lacks?|does not have|doesn't have|has no|no verifiable track record|absence of|does not meet|doesn't meet|fails to meet|is ineligible)\b/i;
+const recruiterPerspective = /\b(?:tell the recruiter|tell the employer|reject the candidate|other candidates|the hiring manager should|the employer should)\b/i;
+
+function assertEvidenceBoundCandidateLanguage(text: string, label: string) {
+  if (unsupportedAbsence.test(text) && !/\bnot (?:directly )?evidenced\b|\bnot established in (?:the )?(?:supplied )?(?:candidate sources|CVs?|resumes?)\b|\bthe (?:supplied )?(?:CVs?|resumes?) do not demonstrate\b|\b(?:lacks?|has no) (?:direct|documented|demonstrable|verifiable|supplied) (?:evidence|proof)\b|\b(?:does not provide|lack of) explicit (?:and )?(?:verifiable )?(?:experience|evidence)\b|\bno verifiable track record\b/i.test(text)) {
+    throw new Error(`${label} turns missing candidate evidence into a claim of absence: ${text}`);
+  }
+}
+
 export function validateClaims(value: unknown, sources: EvidenceSource[]): Claim[] {
   const parsed = claimSchema.array().parse(value);
   const sourceById = new Map(sources.map(s => [s.id, s]));
@@ -57,6 +66,16 @@ export function validateResearch(value: unknown, sources: EvidenceSource[]): Res
       r.status = 'INFERRED';
     }
     if (r.field === 'executiveDistance' && r.status === 'RESOLVED') throw new Error('Executive distance is an analytical derivation; label INFERRED and explain the organizational position');
+    if (r.field === 'executiveDistance' && r.value === 0) {
+      const support = r.claimIds.map(id => claims.get(id)!.text).join(' ');
+      if (!/\b(?:CEO|chief executive|company head|enterprise head|managing director)\b/i.test(support)) throw new Error('Executive distance 0 is reserved for the company or enterprise head');
+    }
+    if (r.field === 'executiveDistance' && r.value === 0 && /\breports? to (?:the )?board\b/i.test(r.claimIds.map(id => claims.get(id)!.text).join(' '))) throw new Error('A vertical leader reporting to the Board is executive-distance 1, not company head');
+    if (['leadershipMode', 'functionState'].includes(r.field) && r.status === 'RESOLVED') {
+      const labels = r.field === 'leadershipMode' ? /\b(?:DIRECT|MATRIX|HYBRID)\b/i : /\b(?:ESTABLISHED|SCALE-UP|GREENFIELD|RESTRUCTURE)\b/i;
+      const quotes = r.claimIds.flatMap(id => claims.get(id)!.citations.map(c => c.quote)).join(' ');
+      if (!labels.test(quotes)) throw new Error(`${r.field} is an analytical classification; label it INFERRED unless the source uses the classification itself`);
+    }
     if (r.field === 'teamScale' && r.status === 'RESOLVED' && r.value !== null) {
       const valueNumbers = String(r.value).match(/\d+/g) ?? [];
       const evidenceNumbers = r.claimIds.flatMap(id => claims.get(id)!.citations.flatMap(c => c.quote.match(/\d+/g) ?? []));
@@ -97,7 +116,10 @@ export function validateResearch(value: unknown, sources: EvidenceSource[]): Res
     refs(r.roleClaimIds); refs(r.candidateClaimIds);
     if (r.roleClaimIds.some(id => claims.get(id)!.plane !== 'JD') || r.candidateClaimIds.some(id => claims.get(id)!.plane !== 'CANDIDATE')) throw new Error('Requirement evidence planes crossed');
     if (['SUPPORTED', 'TRANSFERABLE'].includes(r.status) && !r.candidateClaimIds.length) throw new Error('Fit needs candidate proof');
+    assertEvidenceBoundCandidateLanguage(r.reasoning, `Requirement '${r.requirement}'`);
   });
+  assertEvidenceBoundCandidateLanguage(research.evaluation.rationale, 'Verdict rationale');
+  assertEvidenceBoundCandidateLanguage(research.narrativePlan.argument, 'Narrative plan');
   return research;
 }
 
@@ -124,6 +146,8 @@ export function validatePassages(composition: unknown, research: Research): void
     return id;
   };
   for (const p of allPassages(composition)) {
+    assertEvidenceBoundCandidateLanguage(p.text, 'Dossier passage');
+    if (recruiterPerspective.test(p.text)) throw new Error('Dossier prose must remain the candidate\'s executive adviser');
     p.evidenceRefs = p.evidenceRefs.map(resolveId);
     if (p.evidenceRefs.some(id => !claims.has(id))) throw new Error('Narrative cites unknown claim');
     if (p.state === 'EXPLICIT' && (p.kind !== 'CONCLUSION' || p.evidenceRefs.some(id => claims.get(id)!.state === 'INFERRED'))) throw new Error('Advice, questions and inference cannot become explicit fact');
@@ -137,6 +161,8 @@ export function validatePassages(composition: unknown, research: Research): void
 
     if (hasRelational || (hasJd && hasCandidate)) {
       p.sourcePlane = 'RELATIONAL';
+    } else if (hasContext && hasJd && !hasCandidate) {
+      p.sourcePlane = 'CONTEXT';
     } else if (hasCandidate && !hasJd && !hasContext) {
       p.sourcePlane = 'CANDIDATE';
     } else if (hasJd && !hasCandidate && !hasContext) {
@@ -149,5 +175,14 @@ export function validatePassages(composition: unknown, research: Research): void
     if (p.sourcePlane === 'RELATIONAL') {
       if (!cited.some(c => c.plane === 'RELATIONAL') && !(cited.some(c => c.plane === 'JD') && cited.some(c => c.plane === 'CANDIDATE'))) throw new Error(`Personalized narrative needs both evidence planes. Passage: ${p.text}. Cited IDs: ${p.evidenceRefs.join(', ')}. Cite the actual relevant JD and candidate claims, or use CANDIDATE for a candidate-only observation, JD for a role-only observation, CONTEXT for company-only interpretation.`);
     }
+  }
+  const passages = allPassages(composition);
+  const normalized = new Map<string, number>();
+  for (const passage of passages) {
+    const key = passage.text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (!key) continue;
+    const count = (normalized.get(key) ?? 0) + 1;
+    normalized.set(key, count);
+    if (count > 1) throw new Error('Dossier repeats a passage instead of allocating distinct editorial work to each section');
   }
 }

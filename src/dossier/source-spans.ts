@@ -20,8 +20,10 @@ export function resolveSourceClaims(value: unknown, sources: EvidenceSource[]) {
   const result = sourceClaimsSchema.parse(value);
   return result.claims.map((claim, index) => {
     const prefixMatch = claim.id.match(/^([A-Z]+-\d+-)/);
-    const numMatch = claim.id.match(/(\d+)$/);
-    const cleanId = prefixMatch ? (numMatch ? `${prefixMatch[1]}${numMatch[1]}` : `${prefixMatch[1]}${index + 1}`) : claim.id;
+    // The model selects evidence, not identifiers. Its repeated or malformed
+    // suffixes must not collapse independently grounded claims from one source.
+    // A source-scoped ordinal remains stable for the research and prose stages.
+    const cleanId = prefixMatch ? `${prefixMatch[1]}${index + 1}` : claim.id;
     return {
       ...claim,
       id: cleanId,

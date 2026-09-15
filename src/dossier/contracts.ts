@@ -34,9 +34,12 @@ export const narrativePlanSchema = z.object({
   argument: z.string().min(1), emphasis: z.array(z.string()).min(1),
   sectionOrder: z.array(z.string()).min(1), claimIds: z.array(z.string()).min(1),
 });
+export const candidateConflictSchema = z.object({
+  topic: z.string().min(1), sourceIds: z.array(z.string()).min(2), question: z.string().min(1),
+});
 export const researchSchema = z.object({
   claims: z.array(claimSchema).min(1), resolutions: z.array(resolutionSchema).min(1),
-  candidateConflicts: z.array(z.object({ topic: z.string(), sourceIds: z.array(z.string()).min(2), question: z.string() })),
+  candidateConflicts: z.array(candidateConflictSchema),
   evaluation: z.object({ verdict: z.enum(['PURSUE', 'CONSIDER', 'PASS']), rationale: z.string().min(1), claimIds: z.array(z.string()).min(1),
     requirements: z.array(z.object({ requirement: z.string(), mandatory: z.boolean(), status: z.enum(['SUPPORTED', 'TRANSFERABLE', 'NOT_EVIDENCED', 'CONTRADICTED']), roleClaimIds: z.array(z.string()).min(1), candidateClaimIds: z.array(z.string()), reasoning: z.string() })).min(1),
   }),
@@ -49,7 +52,9 @@ export const passageSchema = z.object({
   text: z.string().min(1), kind: z.enum(['CONCLUSION', 'QUESTION', 'ADVICE']),
   state: z.enum(['EXPLICIT', 'INFERRED']), confidence: z.number().min(0).max(1),
   sourcePlane: planeSchema, evidenceRefs: z.array(z.string()).min(1),
-  reasoning: z.string().optional(), validationQuestion: z.string().optional(),
+  // Composition is advice. Require a concise derivation even for source-reported
+  // observations so every evidence drill-down can explain why it matters.
+  reasoning: z.string().min(1), validationQuestion: z.string().optional(),
 });
 export type Passage = z.infer<typeof passageSchema>;
 const passages = z.array(passageSchema).min(1);

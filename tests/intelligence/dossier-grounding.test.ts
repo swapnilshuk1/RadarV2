@@ -31,8 +31,10 @@ function research(): Research {
 }
 function composition(): Composition {
   const p: Passage = {text:'Use the team-building precedent to explore the mandate, while verifying domain eligibility.',kind:'ADVICE',state:'INFERRED',confidence:0.8,sourcePlane:'RELATIONAL',evidenceRefs:['relation'],reasoning:'The candidate has adjacent team-building experience.'};
-  const groups = (keys: string[]) => Object.fromEntries(keys.map(k => [k,[{...p}]]));
-  return {executiveThesis:p,roleInterest:[p],strategicValue:[p],recommendation:groups(['identityAlignment','capabilityCoverage','careerCapital']),fit:groups(['direct','adjacent','transferable','gaps']),mandate:groups(['immediate','nearTerm','mediumTerm','outcomes']),successRequirements:[p],candidatePositioning:groups(['precedents','differentiators','evidence']),openQuestions:[p],watchPoints:[p],decisionHinges:groups(['strongerPursueIf','weakerIf','passIf']),conversationStrategy:groups(['approach','opening','questions','positioning','screening','interview','resumeNarrative','linkedinStrategy'])} as Composition;
+  let serial = 0;
+  const distinct = () => ({...p,text:`${p.text} Distinct editorial purpose ${++serial}.`});
+  const groups = (keys: string[]) => Object.fromEntries(keys.map(k => [k,[distinct()]]));
+  return {executiveThesis:distinct(),roleInterest:[distinct()],strategicValue:[distinct()],recommendation:groups(['identityAlignment','capabilityCoverage','careerCapital']),fit:groups(['direct','adjacent','transferable','gaps']),mandate:groups(['immediate','nearTerm','mediumTerm','outcomes']),successRequirements:[distinct()],candidatePositioning:groups(['precedents','differentiators','evidence']),openQuestions:[distinct()],watchPoints:[distinct()],decisionHinges:groups(['strongerPursueIf','weakerIf','passIf']),conversationStrategy:groups(['approach','opening','questions','positioning','screening','interview','resumeNarrative','linkedinStrategy'])} as Composition;
 }
 
 describe('Dossier evidence and field resolution', () => {
@@ -46,6 +48,16 @@ describe('Dossier evidence and field resolution', () => {
     Object.assign(team,{status:'RESOLVED',value:'5–15',claimIds:['jd-role']});
     expect(()=>validateResearch(value,sources)).toThrow('Preserve the exact explicit team target');
   });
+  it('rejects an enterprise-head distance for a non-enterprise role and literalizes analytic classifications', () => {
+    const value=research();
+    const distance=value.resolutions.find(r=>r.field==='executiveDistance')!;
+    Object.assign(distance,{status:'INFERRED',value:0,claimIds:['jd-role'],methods:['infer']});
+    expect(()=>validateResearch(value,sources)).toThrow('Executive distance 0');
+    Object.assign(distance,{status:'OPEN',value:null,claimIds:[],methods:['ask']});
+    const topology=value.resolutions.find(r=>r.field==='leadershipMode')!;
+    Object.assign(topology,{status:'RESOLVED',value:'DIRECT',claimIds:['jd-role'],methods:['extract']});
+    expect(()=>validateResearch(value,sources)).toThrow('leadershipMode is an analytical classification');
+  });
   it('resolves numbered passages to original text without rewriting CRLF or punctuation', () => {
     const source={...sources[1],text:'Built a 40-person team.\r\nRevenue contribution rose from 3% to 32%.'};
     const spans=sourceSpans(source);
@@ -53,6 +65,13 @@ describe('Dossier evidence and field resolution', () => {
     const claim=research().claims[1];
     expect(resolveSourceClaims({claims:[{...claim,citations:[{sourceId:'cv',spanId:'s1'}]}]},[source])[0].citations[0].quote).toBe('Revenue contribution rose from 3% to 32%.');
     expect(()=>resolveSourceClaims({claims:[{...claim,citations:[{sourceId:'cv',spanId:'missing'}]}]},[source])).toThrow('Unknown source passage');
+  });
+  it('assigns source-scoped ordinals when the model repeats a source-claim ID', () => {
+    const repeated={claims:[
+      {...research().claims[1],id:'CANDIDATE-1-1',citations:[{sourceId:'cv',spanId:'s0'}]},
+      {...research().claims[1],id:'CANDIDATE-1-1',citations:[{sourceId:'cv',spanId:'s0'}]},
+    ]};
+    expect(resolveSourceClaims(repeated,[sources[1]]).map(claim=>claim.id)).toEqual(['CANDIDATE-1-1','CANDIDATE-1-2']);
   });
   it('sends the runtime contract to the model with required decision consequences', () => {
     const schema=modelSchema(researchSchema) as {properties:{resolutions:{items:{required:string[]}}}};
@@ -100,6 +119,15 @@ describe('Dossier evidence and field resolution', () => {
     const value=composition(); value.executiveThesis={...value.executiveThesis,state:'EXPLICIT',kind:'CONCLUSION'};
     expect(() => validateComposition(value,research())).toThrow('cannot become explicit');
   });
+  it('rejects candidate-absence claims, recruiter perspective, and duplicated editorial work', () => {
+    const value=composition();
+    value.executiveThesis.text='The candidate lacks property-sales experience.';
+    expect(()=>validateComposition(value,research())).toThrow('missing candidate evidence');
+    const employer=composition(); employer.openQuestions[0].text='Tell the recruiter to reject the candidate.';
+    expect(()=>validateComposition(employer,research())).toThrow('candidate\'s executive adviser');
+    const duplicate=composition(); duplicate.roleInterest[0].text=duplicate.executiveThesis.text;
+    expect(()=>validateComposition(duplicate,research())).toThrow('repeats a passage');
+  });
   it('retains every substantive dossier section', () => {
     const value=composition(); value.conversationStrategy.interview=[];
     expect(() => validateComposition(value,research())).toThrow();
@@ -111,6 +139,7 @@ describe('Dossier evidence and field resolution', () => {
   it('calls acquisition, then research/planning, then prose against the same research', async () => {
     const requests: unknown[]=[];
     const stages: string[]=[];
+    let proseCall=0;
     const r=research();
     r.claims=[
       {...r.claims[0],id:'JD-1-1'},
@@ -123,7 +152,7 @@ describe('Dossier evidence and field resolution', () => {
       const request=input as {plane?:string; evidence?:unknown};
       if(request.plane) return {claims:r.claims.filter(c=>c.plane===request.plane).map(c=>({...c,citations:c.citations.map(ref=>({sourceId:ref.sourceId,spanId:'s0'}))}))};
       if(request.evidence) return {...r, claims:[r.claims[2]]};
-      return composition();
+      return JSON.parse(JSON.stringify(composition()).replaceAll('Distinct editorial purpose', `Distinct editorial purpose ${++proseCall}`));
     }},s=>stages.push(s));
     expect(requests.length).toBeGreaterThan(4);
     expect((requests[3] as {research:Research}).research.narrativePlan.argument).toContain('domain stretch');
