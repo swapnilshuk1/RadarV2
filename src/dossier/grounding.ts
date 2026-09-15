@@ -32,6 +32,7 @@ export function validateClaims(value: unknown, sources: EvidenceSource[]): Claim
     }
     if (!planes.size) throw new Error(`Ungrounded claim: ${claim.id}`);
     if (claim.state === 'INFERRED' && !claim.reasoning?.trim()) throw new Error(`Inference needs reasoning: ${claim.id}`);
+    if (claim.state === 'INFERRED' && claim.citations.length) throw new Error(`Inference must derive from validated claims, not carry source quotations: ${claim.id}`);
     if (claim.state === 'EXPLICIT' && !claim.citations.length) throw new Error(`Explicit claim needs source quote: ${claim.id}`);
     if (claim.plane === 'CANDIDATE' && [...planes].some(p => p !== 'CANDIDATE')) throw new Error(`Candidate claim contaminated: ${claim.id}`);
     if (claim.plane === 'JD' && [...planes].some(p => p !== 'JD' && !(claim.state === 'INFERRED' && p === 'CONTEXT'))) throw new Error(`Role claim contaminated: ${claim.id}`);
