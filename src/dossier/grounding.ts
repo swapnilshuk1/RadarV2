@@ -200,6 +200,6 @@ export function validatePassages(composition: unknown, research: Research): void
     if (!key) continue;
     const count = (normalized.get(key) ?? 0) + 1;
     normalized.set(key, count);
-    if (count > 1) throw new Error('Dossier repeats a passage instead of allocating distinct editorial work to each section');
+    if (count > 1) throw new Error(`Dossier repeats a passage instead of allocating distinct editorial work to each section: ${passage.text}`);
   }
 }
