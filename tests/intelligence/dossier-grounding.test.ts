@@ -25,7 +25,7 @@ function research(): Research {
     ],
     resolutions:[...contextFields,...scopeFields].map(field => ({field,status:'OPEN',value:null,claimIds:[],methods:['ask'],question:`What is the ${field}?`,consequence:'Determine the actual scope before committing.'})),
     candidateConflicts:[],
-    evaluation:{verdict:'CONSIDER',rationale:'Verify domain eligibility.',claimIds:['relation'],requirements:[{requirement:'Team building',mandatory:true,status:'TRANSFERABLE',roleClaimIds:['jd-role'],candidateClaimIds:['cv-candidate'],reasoning:'Marketing team-building precedent transfers.'}]},
+    evaluation:{verdict:'CONSIDER',screeningViability:'PLAUSIBLE',rationale:'Verify domain eligibility.',claimIds:['relation'],requirements:[{requirement:'Team building',mandatory:true,decisionRole:'CORE_CAPABILITY',status:'TRANSFERABLE',roleClaimIds:['jd-role'],candidateClaimIds:['cv-candidate'],reasoning:'Marketing team-building precedent transfers.'}]},
     narrativePlan:{roleArchetype:'Builder',mandateShape:'Build',careerMove:'Domain stretch',authorityShape:'Unresolved',fitShape:'Transferability-heavy',evidenceShape:'Domain gap',decisionTension:'Eligibility',companyTrajectory:'Unresolved',argument:'Lead with the domain stretch before team-building proof.',emphasis:['Eligibility'],sectionOrder:['fit','mandate'],claimIds:['relation']},
   };
 }
@@ -162,11 +162,13 @@ describe('Dossier evidence and field resolution', () => {
       const request=input as {plane?:string; evidence?:unknown};
       if(request.plane) return {claims:r.claims.filter(c=>c.plane===request.plane).map(c=>({...c,citations:c.citations.map(ref=>({sourceId:ref.sourceId,spanId:'s0'}))}))};
       if(request.evidence) return {...r, claims:[r.claims[2]]};
-      return JSON.parse(JSON.stringify(composition()).replaceAll('Distinct editorial purpose', `Distinct editorial purpose ${++proseCall}`));
+      return JSON.parse(JSON.stringify(composition()).replaceAll('relation', 'INFERRED-1').replaceAll('Distinct editorial purpose', `Distinct editorial purpose ${++proseCall}`));
     }},s=>stages.push(s));
     expect(requests.length).toBeGreaterThan(4);
     expect((requests[3] as {research:Research}).research.narrativePlan.argument).toContain('domain stretch');
     expect(output.conversationStrategy.linkedinStrategy).toHaveLength(1);
+    expect(output.evidence.relationalClaims[0].id).toBe('INFERRED-1');
+    expect(output.evidence.relationalClaims[0].id).not.toBe('relation');
     expect(output.evidence.lineage).toEqual(sources);
     expect(stages.indexOf('acquire')).toBeLessThan(stages.findIndex(s=>s.includes('Reasoning')));
   });

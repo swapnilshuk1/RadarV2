@@ -111,7 +111,7 @@ export function validateResearch(value: unknown, sources: EvidenceSource[]): Res
     r.roleClaimIds = projectRequirementRefs(r.roleClaimIds, 'JD', `Requirement '${r.requirement}' role evidence`);
     r.candidateClaimIds = projectRequirementRefs(r.candidateClaimIds, 'CANDIDATE', `Requirement '${r.requirement}' candidate evidence`);
     if (r.roleClaimIds.some(id => claims.get(id)!.plane !== 'JD') || r.candidateClaimIds.some(id => claims.get(id)!.plane !== 'CANDIDATE')) throw new Error('Requirement evidence planes crossed');
-    if (['SUPPORTED', 'TRANSFERABLE'].includes(r.status) && !r.candidateClaimIds.length) throw new Error('Fit needs candidate proof');
+    if (['DIRECT', 'ADJACENT', 'TRANSFERABLE'].includes(r.status) && !r.candidateClaimIds.length) throw new Error('Fit classification needs candidate proof');
     assertEvidenceBoundCandidateLanguage(r.reasoning, `Requirement '${r.requirement}'`);
   });
   assertEvidenceBoundCandidateLanguage(research.evaluation.rationale, 'Verdict rationale');

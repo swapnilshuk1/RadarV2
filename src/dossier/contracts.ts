@@ -40,8 +40,8 @@ export const candidateConflictSchema = z.object({
 export const researchSchema = z.object({
   claims: z.array(claimSchema).min(1), resolutions: z.array(resolutionSchema).min(1),
   candidateConflicts: z.array(candidateConflictSchema),
-  evaluation: z.object({ verdict: z.enum(['PURSUE', 'CONSIDER', 'PASS']), rationale: z.string().min(1), claimIds: z.array(z.string()).min(1),
-    requirements: z.array(z.object({ requirement: z.string(), mandatory: z.boolean(), status: z.enum(['SUPPORTED', 'TRANSFERABLE', 'NOT_EVIDENCED', 'CONTRADICTED']), roleClaimIds: z.array(z.string()).min(1), candidateClaimIds: z.array(z.string()), reasoning: z.string() })).min(1),
+  evaluation: z.object({ verdict: z.enum(['PURSUE', 'CONSIDER', 'PASS']), screeningViability: z.enum(['STRONG', 'PLAUSIBLE', 'FRAGILE', 'BLOCKED']), rationale: z.string().min(1), claimIds: z.array(z.string()).min(1),
+    requirements: z.array(z.object({ requirement: z.string(), mandatory: z.boolean(), decisionRole: z.enum(['HARD_SCREEN', 'CORE_CAPABILITY', 'ENABLER', 'PREFERENCE']), status: z.enum(['DIRECT', 'ADJACENT', 'TRANSFERABLE', 'NOT_EVIDENCED', 'CONTRADICTED']), roleClaimIds: z.array(z.string()).min(1), candidateClaimIds: z.array(z.string()), reasoning: z.string() })).min(1),
   }),
   narrativePlan: narrativePlanSchema,
 });

@@ -45,7 +45,7 @@ export function DossierView({ dossier: d }: { dossier: Dossier }) {
     </nav>
     <div className="dossier-body">
       <header className="dossier-hero">
-        <div><div className="dossier-kicker"><span className={`dossier-verdict verdict-${d.verdict.verdict.toLowerCase()}`}>{d.verdict.verdict}</span><span className="label-mono">Executive decision dossier</span></div>
+        <div><div className="dossier-kicker"><span className={`dossier-verdict verdict-${d.verdict.verdict.toLowerCase()}`}>{d.verdict.verdict}</span><span className="label-mono">{d.verdict.screeningViability} screening viability</span><span className="label-mono">Executive decision dossier</span></div>
           <h1>{d.opportunity.title}<em>at {d.opportunity.company}</em></h1>
           <p className="dossier-identity">Prepared for {d.candidate.name} · {new Date(d.generatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
           {template === 'B' && <div className="dossier-thesis"><span className="label-mono">Executive advisory thesis</span>{renderPassage(d.executiveThesis, 0)}</div>}
