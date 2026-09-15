@@ -136,6 +136,9 @@ describe('Dossier evidence and field resolution', () => {
     const hardScreen=research();
     Object.assign(hardScreen.evaluation.requirements[0], { decisionRole:'HARD_SCREEN', mandatory:false });
     expect(()=>validateResearch(hardScreen,sources)).toThrow('hard screen must be mandatory');
+    const condition=research();
+    Object.assign(condition.evaluation.requirements[0], { decisionRole:'HARD_SCREEN', mandatory:true, requirement:'Onsite work model' });
+    expect(()=>validateResearch(condition,sources)).toThrow('Employment conditions');
     const preference=research();
     Object.assign(preference.evaluation.requirements[0], { decisionRole:'PREFERENCE', mandatory:true });
     expect(()=>validateResearch(preference,sources)).toThrow('preference cannot be mandatory');
