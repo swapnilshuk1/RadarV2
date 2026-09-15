@@ -152,6 +152,12 @@ export function validatePassages(composition: unknown, research: Research): void
   const screeningTerms = /\b(?:hard screen|screening blocker|screening criterion|employer[- ]entry|eligibility (?:requirement|criterion|bundle)|(?:employer|role|documented|mandatory)\s+(?:side\s+)?eligibility)\b/i;
   const candidateConditions = /\b(?:compensation|salary|pay|work model|on[- ]?site|remote|hybrid|location|authority level|organizational altitude|scope|willingness)\b/i;
   const hardScreenRoleClaims = new Set(research.evaluation.requirements.filter(r => r.decisionRole === 'HARD_SCREEN').flatMap(r => r.roleClaimIds));
+  const hasHardScreenLineage = (id: string, visited = new Set<string>()): boolean => {
+    if (hardScreenRoleClaims.has(id)) return true;
+    if (visited.has(id)) return false;
+    visited.add(id);
+    return claims.get(id)?.derivedFrom.some(parentId => hasHardScreenLineage(parentId, visited)) ?? false;
+  };
   const resolveId = (id: string) => {
     if (claims.has(id)) return id;
     const alt1 = id.replace(/-(?:claim-)?(\d+)$/, '-$1');
@@ -166,7 +172,7 @@ export function validatePassages(composition: unknown, research: Research): void
     if (recruiterPerspective.test(p.text)) throw new Error('Dossier prose must remain the candidate\'s executive adviser');
     p.evidenceRefs = p.evidenceRefs.map(resolveId);
     if (p.evidenceRefs.some(id => !claims.has(id))) throw new Error('Narrative cites unknown claim');
-    if (screeningTerms.test(p.text) && !p.evidenceRefs.some(id => hardScreenRoleClaims.has(id))) throw new Error('Employer screening terminology needs actual hard-screen evidence');
+    if (screeningTerms.test(p.text) && !p.evidenceRefs.some(id => hasHardScreenLineage(id))) throw new Error(`Employer screening terminology needs actual hard-screen evidence. Passage: ${p.text}`);
     if (p.state === 'EXPLICIT' && (p.kind !== 'CONCLUSION' || p.evidenceRefs.some(id => claims.get(id)!.state === 'INFERRED'))) throw new Error('Advice, questions and inference cannot become explicit fact');
     if (p.state === 'INFERRED' && !p.reasoning?.trim()) throw new Error('Narrative inference needs reasoning');
 

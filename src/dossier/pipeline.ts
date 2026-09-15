@@ -80,21 +80,21 @@ const sectionPurpose: Record<string, string> = {
 
   strategicValue: 'explain why the company trajectory and mandate matter',
 
-  recommendation: 'separate identity, capability, and accessible career-capital consequences without re-listing the hard eligibility criteria already named in the thesis',
+  recommendation: 'separate identity, capability, and accessible career-capital consequences without re-listing decisive requirements already covered in the thesis',
 
-  fit: 'classify precedent precisely, reserving gaps for eligibility evidence and adjacent for comparable mechanisms',
+  fit: 'classify precedent precisely, reserving gaps for materially unsupported requirements and adjacent for comparable mechanisms',
 
   mandate: 'describe the work the successful hire must deliver, without evaluating the candidate again',
 
-  successRequirements: 'make the role screening bar concrete',
+  successRequirements: 'make the role’s decisive requirements concrete',
 
   candidatePositioning: 'identify truthful proof and differentiators that remain useful in the candidate’s wider search',
 
-  openQuestions: 'ask only facts that could change the candidate’s decision; consolidate the primary eligibility bundle into one evidence request rather than repeating each criterion',
+  openQuestions: 'ask only facts that could change the candidate’s decision; consolidate the primary decision-changing evidence request rather than repeating each criterion',
 
   watchPoints: 'name structural or economic risks, not speculative behaviour',
 
-  decisionHinges: 'state the narrow evidence that reopens, weakens, or confirms the call; reference the eligibility bundle concisely instead of re-listing it',
+  decisionHinges: 'state the narrow evidence that reopens, weakens, or confirms the call; reference the decisive requirement or evidence bundle concisely instead of re-listing it',
 
   conversationStrategy: 'tell the candidate what to do next; for PASS, recommend no normal outreach or application unless the candidate can surface decision-changing proof, and do not restate the screening list',
 
@@ -102,9 +102,11 @@ const sectionPurpose: Record<string, string> = {
 
 
 
-const sectionEvidenceRule = (key: string) => {
+const sectionEvidenceRule = (key: string, hasHardScreens: boolean) => {
 
-  if (key === 'conversationStrategy') return "Every passage in conversationStrategy is candidate-facing ADVICE or QUESTION and MUST have state INFERRED. Never use 'absence', 'lacks', or 'does not have'. For PASS, begin the approach by naming the actual documented hard-screen evidence bundle from this dossier in evidence-bounded language.";
+  if (key === 'conversationStrategy') return hasHardScreens
+    ? "Every passage in conversationStrategy is candidate-facing ADVICE or QUESTION and MUST have state INFERRED. Never use 'absence', 'lacks', or 'does not have'. For PASS, begin the approach by naming the actual documented hard-screen evidence bundle from this dossier in evidence-bounded language."
+    : "Every passage in conversationStrategy is candidate-facing ADVICE or QUESTION and MUST have state INFERRED. Never use 'absence', 'lacks', or 'does not have'. For PASS, begin the approach with the actual pursuit or career decision conditions; do not invent screening or eligibility language.";
 
   if (key === 'openQuestions') return 'Every open question is kind QUESTION and MUST have state INFERRED.';
 
@@ -353,6 +355,10 @@ export async function buildDossier(input: SliceInput, providers: ContextProvider
   onStage('Composing the dossier and pursuit strategy');
 
   const sections: Record<string, unknown> = {};
+  const hasHardScreens = research.evaluation.requirements.some(requirement => requirement.decisionRole === 'HARD_SCREEN');
+  const decisionBundleGuidance = hasHardScreens
+    ? 'The central hard-screen issue is fully named in the thesis and fit.gaps. Do not enumerate it anywhere else; in openQuestions, decisionHinges and conversationStrategy refer briefly to the actual documented hard-screen evidence bundle for this dossier and ask for a single, decision-changing body of proof.'
+    : 'Do not invent screening or eligibility language. In openQuestions, decisionHinges and conversationStrategy refer briefly to the decisive requirement or pursuit/career evidence bundle for this dossier and ask for a single, decision-changing body of proof.';
 
   for (const key of Object.keys(compositionSchema.shape) as (keyof typeof compositionSchema.shape)[]) {
 
@@ -360,7 +366,7 @@ export async function buildDossier(input: SliceInput, providers: ContextProvider
 
     const sectionSchema = z.object({ [key]: compositionSchema.shape[key] });
 
-    const section = await propose(model, compositionInstruction + `\nFor this call return ONLY the top-level key ${key}. This section must ${sectionPurpose[key]}. Review alreadyComposed before writing. Do not repeat a proposition already made there; add a new consequence, proof point, or next action. The central screening issue is fully named in the thesis and fit.gaps. Do not enumerate it anywhere else; in openQuestions, decisionHinges and conversationStrategy refer briefly to the actual documented hard-screen evidence bundle for this dossier and ask for a single, decision-changing body of proof. Address the candidate directly in conversationStrategy: do not write a recruiter, employer, or interviewer script. ${sectionEvidenceRule(key)}`,
+    const section = await propose(model, compositionInstruction + `\nFor this call return ONLY the top-level key ${key}. This section must ${sectionPurpose[key]}. Review alreadyComposed before writing. Do not repeat a proposition already made there; add a new consequence, proof point, or next action. ${decisionBundleGuidance} Address the candidate directly in conversationStrategy: do not write a recruiter, employer, or interviewer script. ${sectionEvidenceRule(key, hasHardScreens)}`,
 
       { opportunity: input.opportunity, candidate: input.candidate, research, alreadyComposed: sections }, value => {
 

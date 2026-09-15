@@ -134,6 +134,8 @@ describe('Dossier evidence and field resolution', () => {
     const hardResearch=research(); Object.assign(hardResearch.evaluation.requirements[0],{decisionRole:'HARD_SCREEN',mandatory:true});
     const hard=composition(); hard.executiveThesis={...hard.executiveThesis,text:'This is an employer screening criterion.',sourcePlane:'JD',evidenceRefs:['jd-role']};
     expect(()=>validateComposition(hard,hardResearch)).not.toThrow();
+    const lineage=composition(); lineage.executiveThesis={...lineage.executiveThesis,text:'This is an employer screening criterion.',sourcePlane:'RELATIONAL',evidenceRefs:['relation']};
+    expect(()=>validateComposition(lineage,hardResearch)).not.toThrow();
   });
   it('keeps candidate-side conditions out of employer screening language', () => {
     const value=composition();
