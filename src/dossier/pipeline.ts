@@ -250,6 +250,12 @@ export interface FrozenResearchInput {
   acquisition: import('./contracts').AcquisitionAttempt[]; validEvidenceClaimIds: string[]; fields: string[]; fingerprint: string;
 }
 const researchReminders = 'Carry every supplied candidate conflict forward verbatim; do not choose a winner. Executive distance is always an INFERRED contextual metric: distance 0 means CEO/company head, and a Business/vertical Head reporting to a Board is normally distance 1. Leadership topology and function state are INFERRED classifications unless exact source wording uses the classification. Preserve exact explicit team targets. Resolve company expansion/trajectory from JD and company-site claims when supported. Missing proof of mandatory eligibility must be stated as not evidenced in supplied candidate sources, never as lifetime absence.';
+export function researchModelInput(frozen: FrozenResearchInput) {
+  return { opportunity:frozen.opportunity, candidate:frozen.candidate, candidateSources:frozen.candidateSourceRefs, candidateConflicts:frozen.candidateConflicts, evidence:frozen.evidence, validEvidenceClaimIds:frozen.validEvidenceClaimIds, acquisition:frozen.acquisition, fields:frozen.fields, reminders:researchReminders };
+}
+export function researchInputFingerprint(frozen: FrozenResearchInput) {
+  return createHash('sha256').update(JSON.stringify(researchModelInput(frozen),(_key,value)=>_key==='capturedAt'?undefined:value)).digest('hex');
+}
 export async function prepareFrozenResearchInput(input: SliceInput, providers: ContextProvider[], extractionModel: ReasoningModel, onStage: (stage: string) => void = () => {}): Promise<FrozenResearchInput> {
   input.sources.forEach(source => sourceSchema.parse(source));
   if (!input.sources.some(source => source.plane === 'JD') || !input.sources.some(source => source.plane === 'CANDIDATE')) throw new Error('A real JD and candidate source are required');
@@ -271,11 +277,11 @@ export async function prepareFrozenResearchInput(input: SliceInput, providers: C
   const candidateEvidence=evidence.filter(claim=>claim.plane==='CANDIDATE');
   const candidateConflicts=candidateSourceRefs.length>1 ? await propose(extractionModel,candidateComparisonInstruction,{candidateSources:sources.filter(source=>source.plane==='CANDIDATE'),candidateClaims:candidateEvidence},value=>z.object({candidateConflicts:z.array(candidateConflictSchema)}).parse(value).candidateConflicts,onStage,z.object({candidateConflicts:z.array(candidateConflictSchema)})) : [];
   const frozenBase={opportunity:input.opportunity,candidate:input.candidate,sources,evidence,candidateSourceRefs,candidateConflicts,acquisition,validEvidenceClaimIds:evidence.map(claim=>claim.id),fields:[...contextFields,...scopeFields]};
-  return {...frozenBase,fingerprint:createHash('sha256').update(JSON.stringify(frozenBase,(_key,value)=>_key==='capturedAt'?undefined:value)).digest('hex')};
+  return {...frozenBase,fingerprint:researchInputFingerprint(frozenBase as FrozenResearchInput)};
 }
 export async function runFrozenResearch(frozen: FrozenResearchInput, model: ReasoningModel, onStage: (stage: string) => void = () => {}): Promise<Research> {
   onStage('Reasoning across the evidence; evaluating the decision; planning the narrative');
-  return propose(model,researchInstruction+'\nThe source claims have ALREADY been extracted and validated. Return only NEW inferred claims (4�8), plus resolutions, candidateConflicts, evaluation and narrativePlan. Do NOT repeat supplied evidence claims; reference their IDs in derivedFrom. Prefer plane-local JD or CONTEXT inferences. Return a RELATIONAL claim only when you can name BOTH an existing JD parent and an existing CANDIDATE parent in derivedFrom; otherwise do not return it. Inferred claims need a nonempty reasoning. Every claim ID cited in resolutions or evaluation must exist in supplied evidence or returned claims. Use only the exact identifiers in validEvidenceClaimIds for existing evidence; never infer an ordinal. If a reference names a new inferred claim, that exact ID must appear in claims you return in this same response; never use placeholder IDs such as INFERRED-2. Keep this response under 6500 tokens.',{...frozen,reminders:researchReminders},value=>{
+  return propose(model,researchInstruction+'\nThe source claims have ALREADY been extracted and validated. Return only NEW inferred claims (4�8), plus resolutions, candidateConflicts, evaluation and narrativePlan. Do NOT repeat supplied evidence claims; reference their IDs in derivedFrom. Prefer plane-local JD or CONTEXT inferences. Return a RELATIONAL claim only when you can name BOTH an existing JD parent and an existing CANDIDATE parent in derivedFrom; otherwise do not return it. Inferred claims need a nonempty reasoning. Every claim ID cited in resolutions or evaluation must exist in supplied evidence or returned claims. Use only the exact identifiers in validEvidenceClaimIds for existing evidence; never infer an ordinal. If a reference names a new inferred claim, that exact ID must appear in claims you return in this same response; never use placeholder IDs such as INFERRED-2. Keep this response under 6500 tokens.',researchModelInput(frozen),value=>{
     const proposed=canonicalizeResearchProposal(value,frozen.evidence) as {claims?:Claim[]};
     return validateResearch({...proposed,candidateConflicts:frozen.candidateConflicts,claims:[...frozen.evidence,...(proposed.claims??[])]},frozen.sources);
   },onStage,researchSchema);
@@ -328,7 +334,8 @@ export async function buildDossier(input: SliceInput, providers: ContextProvider
 
       onStage('Replanning with targeted company context');
 
-      frozen = {...frozen, sources, evidence, acquisition, validEvidenceClaimIds:evidence.map(claim => claim.id), fingerprint:createHash('sha256').update(JSON.stringify({opportunity:frozen.opportunity,candidate:frozen.candidate,sources,evidence,candidateSourceRefs:frozen.candidateSourceRefs,candidateConflicts:frozen.candidateConflicts,acquisition,validEvidenceClaimIds:evidence.map(claim=>claim.id),fields:frozen.fields},(_key,value)=>_key==='capturedAt'?undefined:value)).digest('hex')};
+      frozen = {...frozen, sources, evidence, acquisition, validEvidenceClaimIds:evidence.map(claim => claim.id), fingerprint:''};
+      frozen = {...frozen, fingerprint:researchInputFingerprint(frozen)};
       research = await runFrozenResearch(frozen, model, onStage);
 
     }

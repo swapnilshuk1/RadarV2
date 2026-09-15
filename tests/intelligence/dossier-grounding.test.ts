@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildDossier, sourceFingerprint } from '../../src/dossier/pipeline';
+import { buildDossier, researchModelInput, sourceFingerprint, type FrozenResearchInput } from '../../src/dossier/pipeline';
 import { validateComposition, validateResearch } from '../../src/dossier/grounding';
 import { contextFields, scopeFields, type Composition, type EvidenceSource, type Passage, type Research } from '../../src/dossier/contracts';
 import { CompanyWebsiteProvider } from '../../src/dossier/context';
@@ -95,6 +95,12 @@ describe('Dossier evidence and field resolution', () => {
       {...research().claims[1],id:'CANDIDATE-1-1',citations:[{sourceId:'cv',spanId:'s0'}]},
     ]};
     expect(resolveSourceClaims(repeated,[sources[1]]).map(claim=>claim.id)).toEqual(['CANDIDATE-1-1','CANDIDATE-1-2']);
+  });
+  it('projects only the established research contract to the model', () => {
+    const frozen={opportunity:{id:'1',company:'Example',title:'Role'},candidate:{name:'Candidate'},sources,evidence:research().claims,candidateSourceRefs:[{id:'cv',title:'CV'}],candidateConflicts:[],acquisition:[],validEvidenceClaimIds:['jd-role','cv-candidate','relation'],fields:['companySize'],fingerprint:'internal'} as FrozenResearchInput;
+    const payload=researchModelInput(frozen) as Record<string,unknown>;
+    expect(Object.keys(payload).sort()).toEqual(['acquisition','candidate','candidateConflicts','candidateSources','evidence','fields','opportunity','reminders','validEvidenceClaimIds']);
+    expect(payload).not.toHaveProperty('sources'); expect(payload).not.toHaveProperty('fingerprint');
   });
   it('sends the runtime contract to the model with required decision consequences', () => {
     const schema=modelSchema(researchSchema) as {properties:{resolutions:{items:{required:string[]}}}};
