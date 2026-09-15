@@ -1,40 +1,31 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { buildDossier } from '../../src/dossier/pipeline';
+import { prepareFrozenResearchInput, runFrozenResearch } from '../../src/dossier/pipeline';
 import { GeminiJsonModel } from '../../src/lib/model/json-model';
 import type { ContextProvider, ReasoningModel, SliceInput } from '../../src/dossier/contracts';
 import { readSliceInput } from './source-input';
 import { adcTokenProvider } from './credentials';
 
-class ResearchComplete extends Error {}
-class CaptureResearch implements ReasoningModel {
-  readonly id: string; readonly version: string;
-  input?: unknown; proposal?: unknown;
-  constructor(private inner: ReasoningModel) { this.id=inner.id; this.version=inner.version; }
-  async generate(instruction: string, input: unknown, schema?: Record<string, unknown>) {
-    if (input && typeof input === 'object' && 'research' in input) throw new ResearchComplete();
-    const output=await this.inner.generate(instruction,input,schema);
-    if (input && typeof input === 'object' && 'evidence' in input) { this.input=input; this.proposal=output; }
-    return output;
-  }
-}
 const { values }=parseArgs({options:{cases:{type:'string'},case:{type:'string',default:'01'},candidate:{type:'string',multiple:true},evidence:{type:'string'},output:{type:'string',default:'.radar/dossier-runs/2070-research-model-comparison.json'},models:{type:'string',multiple:true}}});
 if (!values.cases || !values.candidate?.length || !values.evidence) throw new Error('Requires --cases, --case, --candidate, and --evidence');
-const frozen=JSON.parse(await readFile(values.evidence,'utf8')) as { evidence:{lineage:SliceInput['sources']}; acquisition:unknown };
+const prior=JSON.parse(await readFile(values.evidence,'utf8')) as { evidence:{lineage:SliceInput['sources']} };
 const base=await readSliceInput(values.cases,values.case,values.candidate);
-const input:SliceInput={...base,sources:[...base.sources,...frozen.evidence.lineage.filter(source=>source.plane==='CONTEXT')]};
+const input:SliceInput={...base,sources:[...base.sources,...prior.evidence.lineage.filter(source=>source.plane==='CONTEXT')]};
 const provider:ContextProvider={id:'frozen-context',async acquire(){return {sources:[],attempts:[]};}};
 const project=process.env.GCP_PROJECT_ID; if (!project) throw new Error('GCP_PROJECT_ID is required');
+const options={maxOutputTokens:24576,temperature:0.25,timeoutMs:240000};
+const extractionModel=new GeminiJsonModel(project,adcTokenProvider(),fetch,{...options,model:'gemini-2.5-flash'});
+const frozen=await prepareFrozenResearchInput(input,[provider],extractionModel);
 const models=values.models?.length ? values.models : ['gemini-2.5-flash','gemini-2.5-pro'];
 const results=[] as unknown[];
 for (const version of models) {
-  const capture=new CaptureResearch(new GeminiJsonModel(project,adcTokenProvider(),fetch,{model:version,maxOutputTokens:24576,temperature:0.25,timeoutMs:240000}));
-  try { await buildDossier(input,[provider],capture); throw new Error('Research comparison unexpectedly composed a dossier'); }
-  catch (error) { if (!(error instanceof ResearchComplete)) throw error; }
-  if (!capture.input || !capture.proposal) throw new Error(`No accepted research proposal captured for ${version}`);
-  results.push({model:`${capture.id}/${capture.version}`,researchInput:capture.input,researchProposal:capture.proposal});
+  const model=new GeminiJsonModel(project,adcTokenProvider(),fetch,{...options,model:version});
+  const research=await runFrozenResearch(frozen,model);
+  if (frozen.fingerprint !== frozen.fingerprint) throw new Error(`Frozen input fingerprint changed for ${version}`);
+  results.push({model:`${model.id}/${model.version}`,frozenInputFingerprint:frozen.fingerprint,research});
 }
+if (!results.every((result:any)=>result.frozenInputFingerprint===frozen.fingerprint)) throw new Error('Research models did not share one frozen input');
 await mkdir(dirname(resolve(values.output)),{recursive:true});
-await writeFile(values.output,JSON.stringify({sourceArtifact:values.evidence,models:results},null,2));
+await writeFile(values.output,JSON.stringify({sourceArtifact:values.evidence,frozenInput:frozen,models:results},null,2));
 console.log(resolve(values.output));

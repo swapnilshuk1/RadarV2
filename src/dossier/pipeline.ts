@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { candidateConflictSchema, claimSchema, compositionSchema, researchSchema, contextFields, scopeFields, sourceSchema, type Claim, type ContextProvider, type Dossier, type EvidenceSource, type ReasoningModel, type SliceInput } from './contracts';
+import { candidateConflictSchema, claimSchema, compositionSchema, researchSchema, contextFields, scopeFields, sourceSchema, type Claim, type ContextProvider, type Dossier, type EvidenceSource, type ReasoningModel, type Research, type SliceInput } from './contracts';
 
 import { validateClaims, validateComposition, validatePassages, validateResearch } from './grounding';
 
@@ -86,11 +86,11 @@ const sectionPurpose: Record<string, string> = {
 
   mandate: 'describe the work the successful hire must deliver, without evaluating the candidate again',
 
-  successRequirements: 'make the role’s decisive requirements concrete',
+  successRequirements: 'make the roleï¿½s decisive requirements concrete',
 
-  candidatePositioning: 'identify truthful proof and differentiators that remain useful in the candidate’s wider search',
+  candidatePositioning: 'identify truthful proof and differentiators that remain useful in the candidateï¿½s wider search',
 
-  openQuestions: 'ask only facts that could change the candidate’s decision; consolidate the primary decision-changing evidence request rather than repeating each criterion',
+  openQuestions: 'ask only facts that could change the candidateï¿½s decision; consolidate the primary decision-changing evidence request rather than repeating each criterion',
 
   watchPoints: 'name structural or economic risks, not speculative behaviour',
 
@@ -244,75 +244,59 @@ export function sourceFingerprint(sources: EvidenceSource[]): string {
 
 
 
-export async function buildDossier(input: SliceInput, providers: ContextProvider[], model: ReasoningModel, onStage: (stage: string) => void = () => {}): Promise<Dossier> {
-
-  input.sources.forEach(s => sourceSchema.parse(s));
-
-  if (!input.sources.some(s => s.plane === 'JD') || !input.sources.some(s => s.plane === 'CANDIDATE')) throw new Error('A real JD and candidate source are required');
-
+export interface FrozenResearchInput {
+  opportunity: SliceInput['opportunity']; candidate: SliceInput['candidate']; sources: EvidenceSource[];
+  evidence: Claim[]; candidateSourceRefs: { id: string; title: string }[]; candidateConflicts: z.infer<typeof candidateConflictSchema>[];
+  acquisition: import('./contracts').AcquisitionAttempt[]; validEvidenceClaimIds: string[]; fields: string[]; fingerprint: string;
+}
+const researchReminders = 'Carry every supplied candidate conflict forward verbatim; do not choose a winner. Executive distance is always an INFERRED contextual metric: distance 0 means CEO/company head, and a Business/vertical Head reporting to a Board is normally distance 1. Leadership topology and function state are INFERRED classifications unless exact source wording uses the classification. Preserve exact explicit team targets. Resolve company expansion/trajectory from JD and company-site claims when supported. Missing proof of mandatory eligibility must be stated as not evidenced in supplied candidate sources, never as lifetime absence.';
+export async function prepareFrozenResearchInput(input: SliceInput, providers: ContextProvider[], extractionModel: ReasoningModel, onStage: (stage: string) => void = () => {}): Promise<FrozenResearchInput> {
+  input.sources.forEach(source => sourceSchema.parse(source));
+  if (!input.sources.some(source => source.plane === 'JD') || !input.sources.some(source => source.plane === 'CANDIDATE')) throw new Error('A real JD and candidate source are required');
   onStage('Acquiring company context');
-
   const initialResults = await Promise.all(providers.map(provider => provider.acquire(input.opportunity, contextFields)));
-
-  let sources = [...input.sources, ...initialResults.flatMap(result => result.sources)];
-
-  sources.forEach(source => sourceSchema.parse(source));
-
-  let acquisition = initialResults.flatMap(result => result.attempts);
-
+  const sources = [...input.sources, ...initialResults.flatMap(result => result.sources)]; sources.forEach(source => sourceSchema.parse(source));
+  const acquisition = initialResults.flatMap(result => result.attempts);
   onStage('Reading role, candidate and company evidence');
-
   const sourceOrdinal = new Map<string, number>();
-
-  const extractEvidence = async (sourceList: EvidenceSource[]) => (await Promise.all(sourceList.map(async source => {
-
-    const plane = source.plane;
-
-    const ordinal = (sourceOrdinal.get(plane) ?? 0) + 1;
-
-    sourceOrdinal.set(plane, ordinal);
-
-    const idPrefix = `${plane}-${ordinal}-`;
-
-    return propose(model, evidenceInstruction, { plane, idPrefix, sources: [{ ...source, spans: sourceSpans(source) }] }, value => {
-
-      const claims = validateClaims(resolveSourceClaims(value, [source]), [source]);
-
-      if (!claims.length || claims.some(claim => claim.plane !== plane || !claim.id.startsWith(idPrefix))) throw new Error(`Expected grounded ${plane} claims with ID prefix ${idPrefix}`);
-
+  const evidence = (await Promise.all(sources.map(async source => {
+    const ordinal=(sourceOrdinal.get(source.plane) ?? 0)+1; sourceOrdinal.set(source.plane,ordinal); const idPrefix=`${source.plane}-${ordinal}-`;
+    return propose(extractionModel,evidenceInstruction,{plane:source.plane,idPrefix,sources:[{...source,spans:sourceSpans(source)}]},value=>{
+      const claims=validateClaims(resolveSourceClaims(value,[source]),[source]);
+      if (!claims.length || claims.some(claim=>claim.plane!==source.plane || !claim.id.startsWith(idPrefix))) throw new Error(`Expected grounded ${source.plane} claims with ID prefix ${idPrefix}`);
       return claims;
-
-    }, onStage, sourceClaimsSchema);
-
+    },onStage,sourceClaimsSchema);
   }))).flat();
-
-  let evidence = await extractEvidence(sources);
-
-  const candidateEvidence = evidence.filter(claim => claim.plane === 'CANDIDATE');
-
-  const candidateSourceRefs = sources.filter(source => source.plane === 'CANDIDATE').map(source => ({ id: source.id, title: source.title }));
-
-  const candidateConflicts = candidateSourceRefs.length > 1
-
-    ? await propose(model, candidateComparisonInstruction, { candidateSources: sources.filter(source => source.plane === 'CANDIDATE'), candidateClaims: candidateEvidence }, value => z.object({ candidateConflicts: z.array(candidateConflictSchema) }).parse(value).candidateConflicts, onStage, z.object({ candidateConflicts: z.array(candidateConflictSchema) }))
-
-    : [];
-
-  const reason = () => propose(model, researchInstruction + `\nThe source claims have ALREADY been extracted and validated. Return only NEW inferred claims (4â€“8), plus resolutions, candidateConflicts, evaluation and narrativePlan. Do NOT repeat supplied evidence claims; reference their IDs in derivedFrom. Prefer plane-local JD or CONTEXT inferences. Return a RELATIONAL claim only when you can name BOTH an existing JD parent and an existing CANDIDATE parent in derivedFrom; otherwise do not return it. Inferred claims need a nonempty reasoning. Every claim ID cited in resolutions or evaluation must exist in supplied evidence or returned claims. Use only the exact identifiers in validEvidenceClaimIds for existing evidence; never infer an ordinal. If a reference names a new inferred claim, that exact ID must appear in claims you return in this same response; never use placeholder IDs such as INFERRED-2. Keep this response under 6500 tokens.`,
-
-    { opportunity: input.opportunity, candidate: input.candidate, candidateSources: candidateSourceRefs, candidateConflicts, evidence, validEvidenceClaimIds: evidence.map(claim => claim.id), acquisition, fields: [...contextFields, ...scopeFields], reminders: 'Carry every supplied candidate conflict forward verbatim; do not choose a winner. Executive distance is always an INFERRED contextual metric: distance 0 means CEO/company head, and a Business/vertical Head reporting to a Board is normally distance 1. Leadership topology and function state are INFERRED classifications unless exact source wording uses the classification. Preserve exact explicit team targets. Resolve company expansion/trajectory from JD and company-site claims when supported. Missing proof of mandatory eligibility must be stated as not evidenced in supplied candidate sources, never as lifetime absence.' }, value => {
-
-      const proposed = canonicalizeResearchProposal(value, evidence) as { claims?: Claim[] };
-
-      return validateResearch({ ...proposed, candidateConflicts, claims: [...evidence, ...(proposed.claims ?? [])] }, sources);
-
-    }, onStage, researchSchema);
-
+  const candidateSourceRefs=sources.filter(source=>source.plane==='CANDIDATE').map(source=>({id:source.id,title:source.title}));
+  const candidateEvidence=evidence.filter(claim=>claim.plane==='CANDIDATE');
+  const candidateConflicts=candidateSourceRefs.length>1 ? await propose(extractionModel,candidateComparisonInstruction,{candidateSources:sources.filter(source=>source.plane==='CANDIDATE'),candidateClaims:candidateEvidence},value=>z.object({candidateConflicts:z.array(candidateConflictSchema)}).parse(value).candidateConflicts,onStage,z.object({candidateConflicts:z.array(candidateConflictSchema)})) : [];
+  const frozenBase={opportunity:input.opportunity,candidate:input.candidate,sources,evidence,candidateSourceRefs,candidateConflicts,acquisition,validEvidenceClaimIds:evidence.map(claim=>claim.id),fields:[...contextFields,...scopeFields]};
+  return {...frozenBase,fingerprint:createHash('sha256').update(JSON.stringify(frozenBase,(_key,value)=>_key==='capturedAt'?undefined:value)).digest('hex')};
+}
+export async function runFrozenResearch(frozen: FrozenResearchInput, model: ReasoningModel, onStage: (stage: string) => void = () => {}): Promise<Research> {
   onStage('Reasoning across the evidence; evaluating the decision; planning the narrative');
+  return propose(model,researchInstruction+'\nThe source claims have ALREADY been extracted and validated. Return only NEW inferred claims (4ï¿½8), plus resolutions, candidateConflicts, evaluation and narrativePlan. Do NOT repeat supplied evidence claims; reference their IDs in derivedFrom. Prefer plane-local JD or CONTEXT inferences. Return a RELATIONAL claim only when you can name BOTH an existing JD parent and an existing CANDIDATE parent in derivedFrom; otherwise do not return it. Inferred claims need a nonempty reasoning. Every claim ID cited in resolutions or evaluation must exist in supplied evidence or returned claims. Use only the exact identifiers in validEvidenceClaimIds for existing evidence; never infer an ordinal. If a reference names a new inferred claim, that exact ID must appear in claims you return in this same response; never use placeholder IDs such as INFERRED-2. Keep this response under 6500 tokens.',{...frozen,reminders:researchReminders},value=>{
+    const proposed=canonicalizeResearchProposal(value,frozen.evidence) as {claims?:Claim[]};
+    return validateResearch({...proposed,candidateConflicts:frozen.candidateConflicts,claims:[...frozen.evidence,...(proposed.claims??[])]},frozen.sources);
+  },onStage,researchSchema);
+}
 
-  let research = await reason();
-
-
+export async function buildDossier(input: SliceInput, providers: ContextProvider[], model: ReasoningModel, onStage: (stage: string) => void = () => {}): Promise<Dossier> {
+  let frozen=await prepareFrozenResearchInput(input,providers,model,onStage);
+  let {sources,evidence,acquisition}=frozen;
+  let research=await runFrozenResearch(frozen,model,onStage);
+  const extractEvidence = async (additionalSources: EvidenceSource[]) => {
+    const sourceOrdinal = new Map<string, number>();
+    for (const source of sources) sourceOrdinal.set(source.plane, (sourceOrdinal.get(source.plane) ?? 0) + 1);
+    return (await Promise.all(additionalSources.map(async source => {
+      const ordinal=(sourceOrdinal.get(source.plane) ?? 0)+1; sourceOrdinal.set(source.plane,ordinal); const idPrefix=`${source.plane}-${ordinal}-`;
+      return propose(model,evidenceInstruction,{plane:source.plane,idPrefix,sources:[{...source,spans:sourceSpans(source)}]},value=>{
+        const claims=validateClaims(resolveSourceClaims(value,[source]),[source]);
+        if (!claims.length || claims.some(claim=>claim.plane!==source.plane || !claim.id.startsWith(idPrefix))) throw new Error(`Expected grounded ${source.plane} claims with ID prefix ${idPrefix}`);
+        return claims;
+      },onStage,sourceClaimsSchema);
+    }))).flat();
+  };
 
   // One bounded second pass: only open company/context fields can trigger it.
 
@@ -344,7 +328,8 @@ export async function buildDossier(input: SliceInput, providers: ContextProvider
 
       onStage('Replanning with targeted company context');
 
-      research = await reason();
+      frozen = {...frozen, sources, evidence, acquisition, validEvidenceClaimIds:evidence.map(claim => claim.id), fingerprint:createHash('sha256').update(JSON.stringify({opportunity:frozen.opportunity,candidate:frozen.candidate,sources,evidence,candidateSourceRefs:frozen.candidateSourceRefs,candidateConflicts:frozen.candidateConflicts,acquisition,validEvidenceClaimIds:evidence.map(claim=>claim.id),fields:frozen.fields},(_key,value)=>_key==='capturedAt'?undefined:value)).digest('hex')};
+      research = await runFrozenResearch(frozen, model, onStage);
 
     }
 
@@ -401,4 +386,5 @@ export async function buildDossier(input: SliceInput, providers: ContextProvider
   return dossier;
 
 }
+
 
