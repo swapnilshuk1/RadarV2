@@ -14,7 +14,8 @@ describe('Bedrock Converse JSON transport', () => {
 
     await expect(model.generate('Instruction', { frozen: true })).resolves.toEqual({ ok: true });
     expect(url).toBe('https://bedrock-runtime.us-east-1.amazonaws.com/model/model-id/converse');
-    expect(init?.headers).toMatchObject({ 'x-api-key': 'secret-value', 'Content-Type': 'application/json' });
+    expect(init?.headers).toMatchObject({ Authorization: 'Bearer secret-value', 'Content-Type': 'application/json' });
+    expect(init?.headers).not.toHaveProperty('x-api-key');
     const body = JSON.parse(String(init?.body));
     expect(body.system).toEqual([{ text: 'Instruction' }]);
     expect(body.messages[0].content[0].text).toBe(JSON.stringify({ frozen: true }));

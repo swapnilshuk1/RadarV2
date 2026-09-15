@@ -30,7 +30,7 @@ export class BedrockConverseJsonModel implements JsonModel {
         const response = await this.request(url, {
           method: 'POST',
           signal: AbortSignal.timeout(this.options.timeoutMs ?? 240000),
-          headers: { 'x-api-key': await this.apiKey(), 'Content-Type': 'application/json' },
+          headers: { Authorization: `Bearer ${await this.apiKey()}`, 'Content-Type': 'application/json' },
           body: requestBody,
         });
         if (response.status === 429 || response.status >= 500) {
