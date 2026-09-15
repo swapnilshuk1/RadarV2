@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { candidateConflictSchema, claimSchema, compositionSchema, researchSchema, contextFields, scopeFields, sourceSchema, type ContextProvider, type Dossier, type ReasoningModel, type SliceInput } from './contracts';
+import { candidateConflictSchema, claimSchema, compositionSchema, researchSchema, contextFields, scopeFields, sourceSchema, type ContextProvider, type Dossier, type EvidenceSource, type ReasoningModel, type SliceInput } from './contracts';
 import { validateClaims, validateComposition, validatePassages, validateResearch } from './grounding';
 import { z } from 'zod';
 import { modelSchema } from './model-schema';
@@ -54,6 +54,7 @@ const sectionEvidenceRule = (key: string) => {
   if (key === 'conversationStrategy') return "Every passage in conversationStrategy is candidate-facing ADVICE or QUESTION and MUST have state INFERRED. Never use 'absence', 'lacks', or 'does not have'. For PASS, begin the approach with: 'The supplied candidate sources do not evidence the documented real-estate eligibility bundle.'";
   if (key === 'openQuestions') return 'Every open question is kind QUESTION and MUST have state INFERRED.';
   if (key === 'decisionHinges') return 'Every decision hinge is conditional advisory reasoning and MUST have state INFERRED.';
+  if (key === 'watchPoints') return "Every watch point MUST have state INFERRED. State the structural or economic risk directly; never use 'lack', 'absence', or candidate-attribute language when source evidence only omits proof.";
   return '';
 };
 
@@ -82,61 +83,87 @@ async function propose<T>(model: ReasoningModel, instruction: string, input: unk
   throw new Error(`Dossier generation needs source/reasoning repair: ${issue}`);
 }
 
+export function sourceFingerprint(sources: EvidenceSource[]): string {
+  // Capture time describes retrieval, not evidence identity. Sort because provider
+  // scheduling must not change a dossier's source identity.
+  const stable = sources.map(({ capturedAt: _capturedAt, ...source }) => source)
+    .sort((left, right) => left.id.localeCompare(right.id));
+  return createHash('sha256').update(JSON.stringify(stable)).digest('hex');
+}
+
 export async function buildDossier(input: SliceInput, providers: ContextProvider[], model: ReasoningModel, onStage: (stage: string) => void = () => {}): Promise<Dossier> {
   input.sources.forEach(s => sourceSchema.parse(s));
   if (!input.sources.some(s => s.plane === 'JD') || !input.sources.some(s => s.plane === 'CANDIDATE')) throw new Error('A real JD and candidate source are required');
   onStage('Acquiring company context');
-  const results = await Promise.all(providers.map(p => p.acquire(input.opportunity, contextFields)));
-  const sources = [...input.sources, ...results.flatMap(r => r.sources)];
-  sources.forEach(s => sourceSchema.parse(s));
-  const acquisition = results.flatMap(r => r.attempts);
+  const initialResults = await Promise.all(providers.map(provider => provider.acquire(input.opportunity, contextFields)));
+  let sources = [...input.sources, ...initialResults.flatMap(result => result.sources)];
+  sources.forEach(source => sourceSchema.parse(source));
+  let acquisition = initialResults.flatMap(result => result.attempts);
   onStage('Reading role, candidate and company evidence');
   const sourceOrdinal = new Map<string, number>();
-  const evidence = (await Promise.all(sources.map(async source => {
+  const extractEvidence = async (sourceList: EvidenceSource[]) => (await Promise.all(sourceList.map(async source => {
     const plane = source.plane;
-    const planeSources = [source];
     const ordinal = (sourceOrdinal.get(plane) ?? 0) + 1;
     sourceOrdinal.set(plane, ordinal);
     const idPrefix = `${plane}-${ordinal}-`;
-    return propose(model, evidenceInstruction, { plane, idPrefix, sources: planeSources.map(({text, ...source}) => ({...source, spans:sourceSpans({...source,text})})) }, value => {
-      const claims = validateClaims(resolveSourceClaims(value, planeSources), planeSources);
-      if (!claims.length || claims.some(c => c.plane !== plane || !c.id.startsWith(idPrefix))) throw new Error(`Expected grounded ${plane} claims with ID prefix ${idPrefix}`);
+    return propose(model, evidenceInstruction, { plane, idPrefix, sources: [{ ...source, spans: sourceSpans(source) }] }, value => {
+      const claims = validateClaims(resolveSourceClaims(value, [source]), [source]);
+      if (!claims.length || claims.some(claim => claim.plane !== plane || !claim.id.startsWith(idPrefix))) throw new Error(`Expected grounded ${plane} claims with ID prefix ${idPrefix}`);
       return claims;
     }, onStage, sourceClaimsSchema);
   }))).flat();
+  let evidence = await extractEvidence(sources);
   const candidateEvidence = evidence.filter(claim => claim.plane === 'CANDIDATE');
-  const candidateSourceRefs = sources.filter(s => s.plane === 'CANDIDATE').map(s => ({ id: s.id, title: s.title }));
+  const candidateSourceRefs = sources.filter(source => source.plane === 'CANDIDATE').map(source => ({ id: source.id, title: source.title }));
   const candidateConflicts = candidateSourceRefs.length > 1
-    ? await propose(model, candidateComparisonInstruction, { candidateSources: sources.filter(s => s.plane === 'CANDIDATE'), candidateClaims: candidateEvidence }, value => z.object({ candidateConflicts: z.array(candidateConflictSchema) }).parse(value).candidateConflicts, onStage, z.object({ candidateConflicts: z.array(candidateConflictSchema) }))
+    ? await propose(model, candidateComparisonInstruction, { candidateSources: sources.filter(source => source.plane === 'CANDIDATE'), candidateClaims: candidateEvidence }, value => z.object({ candidateConflicts: z.array(candidateConflictSchema) }).parse(value).candidateConflicts, onStage, z.object({ candidateConflicts: z.array(candidateConflictSchema) }))
     : [];
-  onStage('Reasoning across the evidence; evaluating the decision; planning the narrative');
-  const research = await propose(model, researchInstruction + `\nThe source claims have ALREADY been extracted and validated. Return only NEW inferred claims (4–8), plus resolutions, candidateConflicts, evaluation and narrativePlan. Do NOT repeat the supplied evidence claims; reference their IDs in derivedFrom. Prefer plane-local JD or CONTEXT inferences. Return a RELATIONAL claim only when you can name BOTH an existing JD parent and an existing CANDIDATE parent in derivedFrom; otherwise do not return it. Inferred claims must use state INFERRED and a nonempty reasoning; citations may be empty because derivedFrom supplies exact source lineage. Resolutions and narrativePlan reference supplied or new claims. In candidateConflicts, sourceIds MUST contain exact candidate source IDs from the candidateSources list (or candidate claim IDs). Every claim ID cited in resolutions or evaluation must exist in evidence or your returned claims. Keep this response under 6500 tokens.`,
-    { opportunity: input.opportunity, candidate: input.candidate, candidateSources: candidateSourceRefs, candidateConflicts, evidence, acquisition, fields: [...contextFields, ...scopeFields], reminders: 'Carry every supplied candidate conflict forward verbatim; do not choose a winner. Executive distance is always an INFERRED contextual metric: distance 0 means CEO/company head, and a Business/vertical Head reporting to a Board is normally distance 1. Leadership topology and function state are INFERRED classifications unless the exact classification appears in source wording. Preserve exact explicit team target (e.g. 6–12 Year 1), not a rounded band. Resolve company expansion/trajectory from both JD and company-site claims when supported. Missing proof of mandatory eligibility must be stated as not evidenced in the supplied candidate sources, never as proven absence.' }, value => {
-      const proposed = value as {claims?: unknown[]};
-      return validateResearch({...proposed, candidateConflicts, claims:[...evidence,...(proposed.claims ?? [])]}, sources);
+  const reason = () => propose(model, researchInstruction + `\nThe source claims have ALREADY been extracted and validated. Return only NEW inferred claims (4�8), plus resolutions, candidateConflicts, evaluation and narrativePlan. Do NOT repeat supplied evidence claims; reference their IDs in derivedFrom. Prefer plane-local JD or CONTEXT inferences. Return a RELATIONAL claim only when you can name BOTH an existing JD parent and an existing CANDIDATE parent in derivedFrom; otherwise do not return it. Inferred claims need a nonempty reasoning. Every claim ID cited in resolutions or evaluation must exist in supplied evidence or returned claims. Use only the exact identifiers in validEvidenceClaimIds for existing evidence; never infer an ordinal. If a reference names a new inferred claim, that exact ID must appear in claims you return in this same response; never use placeholder IDs such as INFERRED-2. Keep this response under 6500 tokens.`,
+    { opportunity: input.opportunity, candidate: input.candidate, candidateSources: candidateSourceRefs, candidateConflicts, evidence, validEvidenceClaimIds: evidence.map(claim => claim.id), acquisition, fields: [...contextFields, ...scopeFields], reminders: 'Carry every supplied candidate conflict forward verbatim; do not choose a winner. Executive distance is always an INFERRED contextual metric: distance 0 means CEO/company head, and a Business/vertical Head reporting to a Board is normally distance 1. Leadership topology and function state are INFERRED classifications unless exact source wording uses the classification. Preserve exact explicit team targets. Resolve company expansion/trajectory from JD and company-site claims when supported. Missing proof of mandatory eligibility must be stated as not evidenced in supplied candidate sources, never as lifetime absence.' }, value => {
+      const proposed = value as { claims?: unknown[] };
+      return validateResearch({ ...proposed, candidateConflicts, claims: [...evidence, ...(proposed.claims ?? [])] }, sources);
     }, onStage, researchSchema);
+  onStage('Reasoning across the evidence; evaluating the decision; planning the narrative');
+  let research = await reason();
+
+  // One bounded second pass: only open company/context fields can trigger it.
+  const unresolvedContextFields = research.resolutions
+    .filter(resolution => resolution.status === 'OPEN' && (contextFields as readonly string[]).includes(resolution.field))
+    .map(resolution => resolution.field);
+  if (unresolvedContextFields.length) {
+    onStage('Targeted context follow-up');
+    const followUp = await Promise.all(providers.map(provider => provider.acquire(input.opportunity, unresolvedContextFields)));
+    acquisition = [...acquisition, ...followUp.flatMap(result => result.attempts)];
+    const additionalSources = followUp.flatMap(result => result.sources).filter(source => !sources.some(existing => existing.id === source.id));
+    if (additionalSources.length) {
+      additionalSources.forEach(source => sourceSchema.parse(source));
+      sources = [...sources, ...additionalSources];
+      onStage('Reading targeted company context');
+      evidence = [...evidence, ...await extractEvidence(additionalSources)];
+      onStage('Replanning with targeted company context');
+      research = await reason();
+    }
+  }
+
   onStage('Composing the dossier and pursuit strategy');
-  // Compose cumulatively: every later section can see the dossier already written.
-  // That gives the model a real editorial memory instead of asking each field to
-  // rediscover the same screening issue from the thesis alone.
   const sections: Record<string, unknown> = {};
   for (const key of Object.keys(compositionSchema.shape) as (keyof typeof compositionSchema.shape)[]) {
     onStage(`Composing ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
     const sectionSchema = z.object({ [key]: compositionSchema.shape[key] });
     const section = await propose(model, compositionInstruction + `\nFor this call return ONLY the top-level key ${key}. This section must ${sectionPurpose[key]}. Review alreadyComposed before writing. Do not repeat a proposition already made there; add a new consequence, proof point, or next action. The central screening issue is fully named in the thesis and fit.gaps. Do not enumerate it anywhere else; in openQuestions, decisionHinges and conversationStrategy refer briefly to 'the documented real-estate eligibility bundle' and ask for a single, decision-changing body of proof. Address the candidate directly in conversationStrategy: do not write a recruiter, employer, or interviewer script. ${sectionEvidenceRule(key)}`,
-      { opportunity: input.opportunity, candidate: input.candidate, research, alreadyComposed: sections }, v => {
-        const parsed = sectionSchema.parse(v); validatePassages(parsed, research); return parsed;
+      { opportunity: input.opportunity, candidate: input.candidate, research, alreadyComposed: sections }, value => {
+        const parsed = sectionSchema.parse(value); validatePassages(parsed, research); return parsed;
       }, onStage, sectionSchema);
     Object.assign(sections, section);
   }
   const composition = validateComposition(sections, research);
-  const claimsFor = (plane: string) => research.claims.filter(c => c.plane === plane);
+  const claimsFor = (plane: string) => research.claims.filter(claim => claim.plane === plane);
   const dossier: Dossier = {
     ...composition, opportunity: input.opportunity, candidate: input.candidate,
     verdict: research.evaluation, narrativePlan: research.narrativePlan,
     resolutions: research.resolutions, candidateConflicts: research.candidateConflicts,
     evidence: { roleClaims: claimsFor('JD'), candidateClaims: claimsFor('CANDIDATE'), contextualClaims: claimsFor('CONTEXT'), relationalClaims: claimsFor('RELATIONAL'), lineage: sources },
-    generatedAt: new Date().toISOString(), generation: { model: `${model.id}/${model.version}`, sourceFingerprint: createHash('sha256').update(JSON.stringify(sources)).digest('hex') }, acquisition,
+    generatedAt: new Date().toISOString(), generation: { model: `${model.id}/${model.version}`, sourceFingerprint: sourceFingerprint(sources) }, acquisition,
   };
   onStage('Ready');
   return dossier;

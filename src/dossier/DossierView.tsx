@@ -5,13 +5,14 @@ import './dossier.css';
 export function DossierView({ dossier: d }: { dossier: Dossier }) {
   const [template, setTemplate] = useState<'A' | 'B'>('A');
   const [selected, setSelected] = useState<Passage | null>(null);
+  const [selectedPlaneLabel, setSelectedPlaneLabel] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<'resumeNarrative' | 'linkedinStrategy' | 'screening' | 'interview'>('resumeNarrative');
   const claims = [...d.evidence.roleClaims, ...d.evidence.candidateClaims, ...d.evidence.contextualClaims, ...d.evidence.relationalClaims];
   const renderPassage = (p: Passage, i: number) => <div className="dossier-passage" key={`${i}-${p.text}`}>
     <p>{p.text} <button className={`dossier-cue ${p.state.toLowerCase()}`} onClick={() => setSelected(p)} aria-label={`Show evidence: ${p.text}`} title={`${p.kind === 'QUESTION' ? 'Open question' : p.state === 'EXPLICIT' ? 'Explicit in source' : 'Grounded inference'} · View provenance`}>{p.state === 'EXPLICIT' ? 'E' : 'I'}</button></p>
   </div>;
   const list = (items: Passage[]) => <>{items.map(renderPassage)}</>;
-  const group = (title: string, items: Passage[]) => <div className="dossier-group"><h3>{title}</h3>{items.length ? list(items) : <p className="dossier-muted">No demonstrated precedent assigned to this category. See the gaps below.</p>}</div>;
+  const group = (title: string, items: Passage[]) => items.length ? <div className="dossier-group"><h3>{title}</h3>{list(items)}</div> : null;
   const chapter = (number: string, label: string, title: string, children: ReactNode) => <section className="dossier-chapter">
     <aside><span className="dossier-roman">{number}</span><span className="label-mono">{label}</span></aside>
     <div><h2>{title}</h2>{children}</div>
@@ -19,7 +20,21 @@ export function DossierView({ dossier: d }: { dossier: Dossier }) {
   const mandate = <>{group('Immediate · establish the foundations', d.mandate.immediate)}{group('Near term · prove the operating model', d.mandate.nearTerm)}{group('Medium term · build repeatability', d.mandate.mediumTerm)}{group('Outcomes that matter', d.mandate.outcomes)}</>;
   const fit = <>{group('Direct precedent', d.fit.direct)}{group('Adjacent experience', d.fit.adjacent)}{group('Transferable strengths', d.fit.transferable)}{group('Gaps and screening barriers', d.fit.gaps)}</>;
   const hinges = <div className="dossier-columns">{group('Stronger pursue if', d.decisionHinges.strongerPursueIf)}{group('Weaker if', d.decisionHinges.weakerIf)}{group('Pass if', d.decisionHinges.passIf)}</div>;
-  const scope = <dl className="dossier-scope">{d.resolutions.filter(r => ['reportingLine','executiveDistance','leadershipMode','teamScale','functionState','geography','commercialScope','compensation'].includes(r.field)).map(r => <div key={r.field}><dt>{fieldLabels[r.field]}</dt><dd>{r.status === 'OPEN' ? r.question : Array.isArray(r.value) ? r.value.join('–') : String(r.value)} <button className="dossier-cue" onClick={() => setSelected({ text: r.consequence, state: r.status === 'RESOLVED' ? 'EXPLICIT' : 'INFERRED', kind: r.status === 'OPEN' ? 'QUESTION' : 'CONCLUSION', confidence: 0, sourcePlane: 'JD', evidenceRefs: r.claimIds, reasoning: r.consequence })}>{r.status === 'OPEN' ? '?' : r.status === 'INFERRED' ? 'I' : 'E'}</button></dd></div>)}</dl>;
+  const resolutionProvenance = (claimIds: string[]) => {
+    const planes = new Set(claimIds.map(id => claims.find(claim => claim.id === id)?.plane).filter(Boolean));
+    if (planes.has('RELATIONAL') || (planes.has('JD') && planes.has('CANDIDATE'))) return { sourcePlane: 'RELATIONAL' as const, label: 'ROLE + CANDIDATE' };
+    if (planes.has('JD') && planes.has('CONTEXT')) return { sourcePlane: 'CONTEXT' as const, label: 'ROLE + CONTEXT' };
+    if (planes.has('CONTEXT')) return { sourcePlane: 'CONTEXT' as const, label: 'CONTEXT' };
+    if (planes.has('CANDIDATE')) return { sourcePlane: 'CANDIDATE' as const, label: 'CANDIDATE' };
+    return { sourcePlane: 'JD' as const, label: 'ROLE' };
+  };
+  const selectResolution = (r: typeof d.resolutions[number]) => {
+    const provenance = resolutionProvenance(r.claimIds);
+    setSelectedPlaneLabel(provenance.label);
+    setSelected({ text: r.consequence, state: r.status === 'RESOLVED' ? 'EXPLICIT' : 'INFERRED', kind: r.status === 'OPEN' ? 'QUESTION' : 'CONCLUSION', confidence: 0, sourcePlane: provenance.sourcePlane, evidenceRefs: r.claimIds, reasoning: r.consequence });
+  };
+  const scope = <dl className="dossier-scope">{d.resolutions.filter(r => ['reportingLine','executiveDistance','leadershipMode','teamScale','functionState','geography','commercialScope','compensation'].includes(r.field)).map(r => <div key={r.field}><dt>{fieldLabels[r.field]}</dt><dd>{r.status === 'OPEN' ? r.question : Array.isArray(r.value) ? r.value.join('-') : String(r.value)} <button className="dossier-cue" onClick={() => selectResolution(r)}>{r.status === 'OPEN' ? '?' : r.status === 'INFERRED' ? 'I' : 'E'}</button></dd></div>)}</dl>;
+
   const strategy = <>{group('Approach', d.conversationStrategy.approach)}{group('Opening the conversation', d.conversationStrategy.opening)}{group('Positioning', d.conversationStrategy.positioning)}{group('Questions worth asking', d.conversationStrategy.questions)}
     <div className="dossier-tabs" role="tablist" aria-label="Positioning workspace">{(['resumeNarrative','linkedinStrategy','screening','interview'] as const).map(key => <button role="tab" aria-selected={workspace === key} aria-controls="positioning-content" id={`tab-${key}`} key={key} onClick={() => setWorkspace(key)}>{workspaceLabels[key]}</button>)}</div>
     <div role="tabpanel" id="positioning-content" aria-labelledby={`tab-${workspace}`} className="dossier-workspace">{list(d.conversationStrategy[workspace])}</div>
@@ -69,8 +84,8 @@ export function DossierView({ dossier: d }: { dossier: Dossier }) {
       </>)}
       <footer className="dossier-footer"><span className="dossier-brand">RADAR</span><span className="label-mono">A considered decision. An evidence-led next step.</span></footer>
     </div>
-    {selected && <div className="dossier-modal-backdrop" onClick={() => setSelected(null)}><section role="dialog" aria-modal="true" aria-labelledby="evidence-title" className="dossier-evidence-dialog" onClick={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') setSelected(null); }}>
-      <button autoFocus className="dossier-close" onClick={() => setSelected(null)}>Close evidence ×</button><h2 id="evidence-title">Behind the conclusion</h2><p>{selected.text}</p><p className="label-mono">{selected.kind === 'QUESTION' ? 'Open question' : selected.state} · {selected.sourcePlane}</p>{selected.reasoning && <p><strong>Reasoning</strong> — {selected.reasoning}</p>}{selected.validationQuestion && <p><strong>Validate</strong> — {selected.validationQuestion}</p>}
+    {selected && <div className="dossier-modal-backdrop" onClick={() => { setSelected(null); setSelectedPlaneLabel(null); }}><section role="dialog" aria-modal="true" aria-labelledby="evidence-title" className="dossier-evidence-dialog" onClick={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') setSelected(null); }}>
+      <button autoFocus className="dossier-close" onClick={() => { setSelected(null); setSelectedPlaneLabel(null); }}>Close evidence ×</button><h2 id="evidence-title">Behind the conclusion</h2><p>{selected.text}</p><p className="label-mono">{selected.kind === 'QUESTION' ? 'Open question' : selected.state} · {selectedPlaneLabel || selected.sourcePlane}</p>{selected.reasoning && <p><strong>Reasoning</strong> — {selected.reasoning}</p>}{selected.validationQuestion && <p><strong>Validate</strong> — {selected.validationQuestion}</p>}
       {selected.evidenceRefs.map(id => { const claim = claims.find(c => c.id === id); return claim && <ClaimEvidence key={id} claim={claim} claims={claims} sources={d.evidence.lineage}/>; })}
     </section></div>}
   </article>;

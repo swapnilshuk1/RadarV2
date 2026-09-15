@@ -4,7 +4,7 @@ const unsupportedAbsence = /\b(?:candidate\s+)?(?:lacks?|does not have|doesn't h
 const recruiterPerspective = /\b(?:tell the recruiter|tell the employer|reject the candidate|other candidates|the hiring manager should|the employer should)\b/i;
 
 function assertEvidenceBoundCandidateLanguage(text: string, label: string) {
-  if (unsupportedAbsence.test(text) && !/\bnot (?:directly )?evidenced\b|\bnot established in (?:the )?(?:supplied )?(?:candidate sources|CVs?|resumes?)\b|\bthe (?:supplied )?(?:CVs?|resumes?) do not demonstrate\b|\b(?:lacks?|has no) (?:direct|documented|demonstrable|verifiable|supplied) (?:evidence|proof)\b|\b(?:does not provide|lack of) explicit (?:and )?(?:verifiable )?(?:experience|evidence)\b|\bno verifiable track record\b/i.test(text)) {
+  if (unsupportedAbsence.test(text) && !/\bnot (?:directly )?evidenced\b|\bnot established in (?:the )?(?:supplied )?(?:candidate sources|CVs?|resumes?)\b|\bthe (?:supplied )?(?:CVs?|resumes?) do not demonstrate\b|\b(?:lacks?|has no) (?:direct|documented|demonstrable|verifiable|supplied) (?:evidence|proof)\b|\b(?:does not provide|lack of) explicit (?:and )?(?:verifiable )?(?:experience|evidence)\b|\bno verifiable track record (?:in|from|within) (?:the )?(?:supplied )?(?:candidate sources|CVs?|resumes?)\b/i.test(text)) {
     throw new Error(`${label} turns missing candidate evidence into a claim of absence: ${text}`);
   }
 }
@@ -45,26 +45,26 @@ export function validateClaims(value: unknown, sources: EvidenceSource[]): Claim
 
 export function validateResearch(value: unknown, sources: EvidenceSource[]): Research {
   const research = researchSchema.parse(value);
-  validateClaims(research.claims, sources);
-  const sourceById = new Map(sources.map(s => [s.id, s]));
   const claims = new Map(research.claims.map(c => [c.id, c]));
+  if (claims.size !== research.claims.length) throw new Error('Duplicate claim identity');
   const resolveId = (id: string) => {
     if (claims.has(id)) return id;
     const alt1 = id.replace(/-(?:claim-)?(\d+)$/, '-$1');
     if (claims.has(alt1)) return alt1;
     const alt2 = id.replace(/-(\d+)$/, '-claim-$1');
     if (claims.has(alt2)) return alt2;
-    return id;
+    throw new Error(`Unknown claim reference: ${id}`);
   };
-  research.claims.forEach(c => { c.derivedFrom = c.derivedFrom.map(resolveId); });
-  const refs = (ids: string[]) => ids.forEach(id => { if (!claims.has(id)) throw new Error(`Unknown claim reference: ${id}`); });
+  const resolveIds = (ids: string[]) => ids.map(resolveId);
+  research.claims.forEach(c => { c.derivedFrom = resolveIds(c.derivedFrom); });
+  validateClaims(research.claims, sources);
+  const sourceById = new Map(sources.map(s => [s.id, s]));
+
   research.resolutions.forEach(r => {
-    r.claimIds = r.claimIds.map(resolveId).filter(id => claims.has(id));
+    r.claimIds = resolveIds(r.claimIds);
     if (r.status === 'OPEN' && (!r.question || r.value !== null)) throw new Error(`Open field must become a question: ${r.field}`);
     if (r.status !== 'OPEN' && (r.value === null || !r.claimIds.length)) throw new Error(`Resolved field needs evidence: ${r.field}`);
-    if (r.status === 'RESOLVED' && r.claimIds.some(id => claims.get(id)!.state === 'INFERRED')) {
-      r.status = 'INFERRED';
-    }
+    if (r.status === 'RESOLVED' && r.claimIds.some(id => claims.get(id)!.state === 'INFERRED')) r.status = 'INFERRED';
     if (r.field === 'executiveDistance' && r.status === 'RESOLVED') throw new Error('Executive distance is an analytical derivation; label INFERRED and explain the organizational position');
     if (r.field === 'executiveDistance' && r.value === 0) {
       const support = r.claimIds.map(id => claims.get(id)!.text).join(' ');
@@ -88,32 +88,28 @@ export function validateResearch(value: unknown, sources: EvidenceSource[]): Res
   for (const conflict of research.candidateConflicts) {
     conflict.sourceIds = conflict.sourceIds.map(id => {
       if (sourceById.get(id)?.plane === 'CANDIDATE') return id;
-      const claim = claims.get(id);
+      const claim = claims.get(resolveId(id));
       if (claim?.plane === 'CANDIDATE' && claim.citations[0]) return claim.citations[0].sourceId;
-      return id;
+      throw new Error(`Candidate conflict references a non-candidate source: ${id}`);
     });
     if (conflict.sourceIds.some(id => sourceById.get(id)?.plane !== 'CANDIDATE')) throw new Error('Conflict must reference candidate sources');
   }
-  research.evaluation.claimIds = research.evaluation.claimIds.map(resolveId).filter(id => claims.has(id));
+  research.evaluation.claimIds = resolveIds(research.evaluation.claimIds);
   if (!research.evaluation.claimIds.length) throw new Error('Evaluation needs at least one valid claim reference');
-  research.narrativePlan.claimIds = research.narrativePlan.claimIds.map(resolveId).filter(id => claims.has(id));
+  research.narrativePlan.claimIds = resolveIds(research.narrativePlan.claimIds);
   if (!research.narrativePlan.claimIds.length) throw new Error('Narrative plan needs at least one valid claim reference');
+  const projectRequirementRefs = (ids: string[], plane: 'JD' | 'CANDIDATE', label: string) => ids.flatMap(rawId => {
+    const id = resolveId(rawId);
+    const claim = claims.get(id)!;
+    if (claim.plane === plane) return [id];
+    if (claim.plane !== 'RELATIONAL') throw new Error(`${label} must reference ${plane} or relational evidence: ${rawId}`);
+    const parents = claim.derivedFrom.filter(parentId => claims.get(parentId)?.plane === plane);
+    if (!parents.length) throw new Error(`${label} relational evidence has no ${plane} lineage: ${rawId}`);
+    return parents;
+  });
   research.evaluation.requirements.forEach(r => {
-    r.roleClaimIds = r.roleClaimIds.map(resolveId).flatMap(id => {
-      const c = claims.get(id);
-      if (!c) return [];
-      if (c.plane === 'JD') return [id];
-      if (c.plane === 'RELATIONAL') return c.derivedFrom.filter(pid => claims.get(pid)?.plane === 'JD');
-      return [];
-    });
-    r.candidateClaimIds = r.candidateClaimIds.map(resolveId).flatMap(id => {
-      const c = claims.get(id);
-      if (!c) return [];
-      if (c.plane === 'CANDIDATE') return [id];
-      if (c.plane === 'RELATIONAL') return c.derivedFrom.filter(pid => claims.get(pid)?.plane === 'CANDIDATE');
-      return [];
-    });
-    refs(r.roleClaimIds); refs(r.candidateClaimIds);
+    r.roleClaimIds = projectRequirementRefs(r.roleClaimIds, 'JD', `Requirement '${r.requirement}' role evidence`);
+    r.candidateClaimIds = projectRequirementRefs(r.candidateClaimIds, 'CANDIDATE', `Requirement '${r.requirement}' candidate evidence`);
     if (r.roleClaimIds.some(id => claims.get(id)!.plane !== 'JD') || r.candidateClaimIds.some(id => claims.get(id)!.plane !== 'CANDIDATE')) throw new Error('Requirement evidence planes crossed');
     if (['SUPPORTED', 'TRANSFERABLE'].includes(r.status) && !r.candidateClaimIds.length) throw new Error('Fit needs candidate proof');
     assertEvidenceBoundCandidateLanguage(r.reasoning, `Requirement '${r.requirement}'`);

@@ -58,17 +58,19 @@ export const passageSchema = z.object({
 });
 export type Passage = z.infer<typeof passageSchema>;
 const passages = z.array(passageSchema).min(1);
+// Child blocks may be empty only when no distinct decision value exists; renderers omit them.
+const childPassages = z.array(passageSchema);
 export const compositionSchema = z.object({
   executiveThesis: passageSchema, roleInterest: passages, strategicValue: passages,
   recommendation: z.object({ identityAlignment: passages, capabilityCoverage: passages, careerCapital: passages }),
   // A fit category may have no demonstrated precedent. The gaps section explains why.
-  fit: z.object({ direct: z.array(passageSchema), adjacent: z.array(passageSchema), transferable: z.array(passageSchema), gaps: passages }),
-  mandate: z.object({ immediate: passages, nearTerm: passages, mediumTerm: passages, outcomes: passages }),
+  fit: z.object({ direct: childPassages, adjacent: childPassages, transferable: childPassages, gaps: passages }),
+  mandate: z.object({ immediate: childPassages, nearTerm: childPassages, mediumTerm: childPassages, outcomes: passages }),
   successRequirements: passages,
-  candidatePositioning: z.object({ precedents: passages, differentiators: passages, evidence: passages }),
+  candidatePositioning: z.object({ precedents: childPassages, differentiators: childPassages, evidence: passages }),
   openQuestions: passages, watchPoints: passages,
-  decisionHinges: z.object({ strongerPursueIf: passages, weakerIf: passages, passIf: passages }),
-  conversationStrategy: z.object({ approach: passages, opening: passages, questions: passages, positioning: passages, screening: passages, interview: passages, resumeNarrative: passages, linkedinStrategy: passages }),
+  decisionHinges: z.object({ strongerPursueIf: childPassages, weakerIf: childPassages, passIf: childPassages }),
+  conversationStrategy: z.object({ approach: passages, opening: childPassages, questions: childPassages, positioning: childPassages, screening: childPassages, interview: childPassages, resumeNarrative: childPassages, linkedinStrategy: childPassages }),
 });
 export type Composition = z.infer<typeof compositionSchema>;
 export interface Dossier extends Composition {

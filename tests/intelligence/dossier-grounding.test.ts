@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildDossier } from '../../src/dossier/pipeline';
+import { buildDossier, sourceFingerprint } from '../../src/dossier/pipeline';
 import { validateComposition, validateResearch } from '../../src/dossier/grounding';
 import { contextFields, scopeFields, type Composition, type EvidenceSource, type Passage, type Research } from '../../src/dossier/contracts';
 import { CompanyWebsiteProvider } from '../../src/dossier/context';
@@ -128,9 +128,19 @@ describe('Dossier evidence and field resolution', () => {
     const duplicate=composition(); duplicate.roleInterest[0].text=duplicate.executiveThesis.text;
     expect(()=>validateComposition(duplicate,research())).toThrow('repeats a passage');
   });
-  it('retains every substantive dossier section', () => {
+  it('allows an empty child block to be omitted without manufacturing editorial filler', () => {
     const value=composition(); value.conversationStrategy.interview=[];
-    expect(() => validateComposition(value,research())).toThrow();
+    expect(validateComposition(value,research()).conversationStrategy.interview).toEqual([]);
+  });
+  it('fails closed on unknown or wrong-plane research references', () => {
+    const unknown=research(); unknown.evaluation.claimIds=['missing'];
+    expect(()=>validateResearch(unknown,sources)).toThrow('Unknown claim reference');
+    const wrongPlane=research(); wrongPlane.evaluation.requirements[0].roleClaimIds=['cv-candidate'];
+    expect(()=>validateResearch(wrongPlane,sources)).toThrow('must reference JD');
+  });
+  it('uses stable source identity when retrieval timestamps differ', () => {
+    const later=sources.map(source=>({...source,capturedAt:'2026-10-15T00:00:00.000Z'}));
+    expect(sourceFingerprint(sources)).toBe(sourceFingerprint(later));
   });
   it('retains candidate conflicts as unresolved source differences', () => {
     const value=research(); value.candidateConflicts=[{topic:'Employment dates',sourceIds:['cv','cv2'],question:'Which end date is correct?'}];

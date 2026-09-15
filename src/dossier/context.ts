@@ -6,6 +6,7 @@ import type { AcquisitionAttempt, ContextProvider, EvidenceSource, SliceInput } 
  * (search, registries, market data) implement the same acquisition boundary. */
 export class CompanyWebsiteProvider implements ContextProvider {
   readonly id = 'company-website';
+  private readonly previouslyDiscovered = new Set<string>();
   constructor(private pages: { url: string; title: string }[], private request: typeof fetch = fetch) {
     for (const page of pages) if (new URL(page.url).protocol !== 'https:') throw new Error('Context pages require HTTPS');
   }
@@ -35,7 +36,10 @@ export class CompanyWebsiteProvider implements ContextProvider {
     const configured = new Set(this.pages.map(page => new URL(page.url).href));
     const discovered = [...new Map(first.flatMap(result => result.related)
       .filter(page => !configured.has(new URL(page.url).href))
-      .map(page => [new URL(page.url).href, page])).values()].slice(0, 2);
+      .map(page => [new URL(page.url).href, page])).values()]
+      .filter(page => !this.previouslyDiscovered.has(new URL(page.url).href))
+      .slice(0, 2);
+    discovered.forEach(page => this.previouslyDiscovered.add(new URL(page.url).href));
     const second = await Promise.all(discovered.map(fetchPage));
     const all = [...first, ...second];
     const sources = [...new Map(all.flatMap(result => result.source ? [result.source] : []).map(source => [source.id, source])).values()];

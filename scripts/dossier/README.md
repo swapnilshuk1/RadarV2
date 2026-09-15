@@ -7,13 +7,12 @@ or prior dossier.
 
 ```powershell
 node --env-file=.env --import tsx scripts/dossier/dev.ts `
-  --job <canonical-job-hash> --person <person-id> --name "Candidate Name" `
+  --job <canonical-job-id> --version <immutable-opportunity-version> --person <person-id> --name "Candidate Name" `
   --document <candidate-document-id> `
   --context https://schnellbuilder.com/
 ```
 
-Pass `--document` more than once when multiple candidate documents are
-authoritative. The corpus/CV-file command below remains a fixture-only path for
+Pass at least one explicit `--document`; pass it more than once when multiple candidate documents are authoritative. The runner refuses mutable `latest` candidate selection and reconstructed opportunity sources. The corpus/CV-file command below remains a fixture-only path for
 the Schnell reference case; it is not application source authority.
 
 ```powershell
