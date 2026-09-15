@@ -74,3 +74,6 @@ audit-reports/*
 !audit-reports/gate1b-batch06
 audit/
 reports/*_dossier_generated.*
+
+AWS-Key.pem
+Mantle-API.Key.txt
