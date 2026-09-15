@@ -7,9 +7,11 @@ export interface JsonModel {
 
 export class GeminiJsonModel implements JsonModel {
   readonly id = 'vertex-gemini';
-  readonly version = 'gemini-2.5-flash';
+  readonly version: string;
   constructor(private projectId: string, private token: () => Promise<string>, private request: typeof fetch = fetch,
-    private options: { maxOutputTokens?: number; temperature?: number; timeoutMs?: number } = {}) {
+    private options: { model?: string; maxOutputTokens?: number; temperature?: number; timeoutMs?: number } = {}) {
+    this.version = options.model ?? 'gemini-2.5-flash';
+    if (!/^[a-z0-9.-]+$/.test(this.version)) throw new Error('Valid Vertex model identifier required');
     if (!/^[a-z][a-z0-9-]+$/.test(projectId)) throw new Error('Explicit Google Cloud project required');
   }
   async generate(instruction: string, input: unknown, responseSchema?: Record<string, unknown>): Promise<unknown> {
