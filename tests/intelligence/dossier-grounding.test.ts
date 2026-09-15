@@ -136,6 +136,26 @@ describe('Dossier evidence and field resolution', () => {
     const hardScreen=research();
     Object.assign(hardScreen.evaluation.requirements[0], { decisionRole:'HARD_SCREEN', mandatory:false });
     expect(()=>validateResearch(hardScreen,sources)).toThrow('hard screen must be mandatory');
+    const qualificationSources: EvidenceSource[] = [
+      { id:'jd-entry', plane:'JD', title:'JD', locator:'job:entry', text:'Relevant experience in supply-chain or logistics operations.', capturedAt:'2026-09-15T00:00:00.000Z', attribution:'JOB_POST' },
+      sources[1],
+    ];
+    const qualification=research();
+    qualification.claims[0]={...qualification.claims[0],id:'jd-entry',text:'Relevant experience in supply-chain or logistics operations.',citations:[{sourceId:'jd-entry',quote:'Relevant experience in supply-chain or logistics operations.'}]};
+    qualification.claims[2]={...qualification.claims[2],derivedFrom:['jd-entry','cv-candidate']};
+    qualification.evaluation.claimIds=['relation']; qualification.narrativePlan.claimIds=['relation'];
+    Object.assign(qualification.evaluation.requirements[0], { decisionRole:'HARD_SCREEN', mandatory:true, requirement:'Relevant experience in supply-chain or logistics operations', roleClaimIds:['jd-entry'] });
+    expect(()=>validateResearch(qualification,qualificationSources)).not.toThrow();
+    const responsibilitySources: EvidenceSource[] = [
+      { id:'jd-responsibility', plane:'JD', title:'JD', locator:'job:responsibility', text:'Lead day-to-day supply-chain operations and improve delivery performance.', capturedAt:'2026-09-15T00:00:00.000Z', attribution:'JOB_POST' },
+      sources[1],
+    ];
+    const responsibility=research();
+    responsibility.claims[0]={...responsibility.claims[0],id:'jd-responsibility',text:'Lead day-to-day supply-chain operations and improve delivery performance.',citations:[{sourceId:'jd-responsibility',quote:'Lead day-to-day supply-chain operations and improve delivery performance.'}]};
+    responsibility.claims[2]={...responsibility.claims[2],derivedFrom:['jd-responsibility','cv-candidate']};
+    responsibility.evaluation.claimIds=['relation']; responsibility.narrativePlan.claimIds=['relation'];
+    Object.assign(responsibility.evaluation.requirements[0], { decisionRole:'HARD_SCREEN', mandatory:true, requirement:'Lead day-to-day supply-chain operations and improve delivery performance', roleClaimIds:['jd-responsibility'] });
+    expect(()=>validateResearch(responsibility,responsibilitySources)).toThrow('explicit employer entry qualification');
     const condition=research();
     Object.assign(condition.evaluation.requirements[0], { decisionRole:'HARD_SCREEN', mandatory:true, requirement:'Onsite work model' });
     expect(()=>validateResearch(condition,sources)).toThrow('Employment conditions');

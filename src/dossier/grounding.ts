@@ -116,7 +116,7 @@ export function validateResearch(value: unknown, sources: EvidenceSource[]): Res
     if (r.decisionRole === 'HARD_SCREEN' && !r.mandatory) throw new Error('A hard screen must be mandatory');
     if (r.decisionRole === 'HARD_SCREEN') {
       const entryText = r.roleClaimIds.map(id => claims.get(id)!.text).join(' ');
-      if (!/\b(?:required|must have|minimum|eligib(?:le|ility)|qualification|prior experience|years? of experience|proven track record|portfolio)\b/i.test(entryText)) throw new Error('A hard screen needs an explicit employer entry qualification');
+      if (!/\b(?:required|must have|minimum|eligib(?:le|ility)|qualification|prior experience|relevant experience|years? of experience|proven track record|portfolio)\b/i.test(entryText)) throw new Error('A hard screen needs an explicit employer entry qualification');
       if (/\b(?:compensation|salary|ctc|pay|on[- ]?site|remote|hybrid|location|relocat)\b/i.test(r.requirement)) throw new Error('Employment conditions are not candidate-evidence hard screens');
     }
     if (r.decisionRole === 'PREFERENCE' && r.mandatory) throw new Error('A preference cannot be mandatory');
