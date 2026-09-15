@@ -18,12 +18,12 @@ const modelListStartedAt = Date.now();
 const modelListResponse = await fetch('https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1/models', { headers: { Authorization: `Bearer ${await key()}` } });
 const modelList = modelListResponse.ok ? await modelListResponse.json() as { data?: Array<{ id?: string }> } : undefined;
 const modelListMetadata = { status: modelListResponse.status, latencyMs: Date.now() - modelListStartedAt };
-if (!modelListResponse.ok) throw new Error(`Bedrock provider HTTP ${modelListResponse.status}`);
+if (!modelListResponse.ok && modelListResponse.status !== 404) throw new Error(`Bedrock provider HTTP ${modelListResponse.status}`);
 const modelIds = modelList?.data?.flatMap(item => item.id ? [item.id] : []) ?? [];
 const claudeCandidates = ['us.anthropic.claude-sonnet-4-6', 'anthropic.claude-sonnet-4-6-v1', 'global.anthropic.claude-sonnet-4-6'];
-const claudeModel = claudeCandidates.find(candidate => modelIds.includes(candidate));
+const claudeModel = modelListResponse.ok ? claudeCandidates.find(candidate => modelIds.includes(candidate)) : 'us.anthropic.claude-sonnet-4-6';
 if (!claudeModel) throw new Error('No supported Claude Sonnet 4.6 Bedrock Runtime identifier is available to this account');
-if (!modelIds.includes('minimax.minimax-m2.5')) throw new Error('MiniMax M2.5 is unavailable on Bedrock Runtime for this account');
+if (modelListResponse.ok && !modelIds.includes('minimax.minimax-m2.5')) throw new Error('MiniMax M2.5 is unavailable on Bedrock Runtime for this account');
 
 const relevantClaims = frozen.evidence.filter(claim => claim.plane === 'JD' && /individual contributor|craft and judgment|10\+ years|portfolio|healthcare|wellness|not mandatory/i.test(claim.text));
 const evidenceInspection = {
