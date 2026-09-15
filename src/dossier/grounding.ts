@@ -145,6 +145,9 @@ export function validateComposition(value: unknown, research: Research): Composi
 
 export function validatePassages(composition: unknown, research: Research): void {
   const claims = new Map(research.claims.map(c => [c.id, c]));
+  const screeningTerms = /\b(?:hard screen|screening blocker|screening criterion|eligibility|employer[- ]entry)\b/i;
+  const candidateConditions = /\b(?:compensation|salary|pay|work model|on[- ]?site|remote|hybrid|location|authority level|organizational altitude|scope|willingness)\b/i;
+  const hardScreenRoleClaims = new Set(research.evaluation.requirements.filter(r => r.decisionRole === 'HARD_SCREEN').flatMap(r => r.roleClaimIds));
   const resolveId = (id: string) => {
     if (claims.has(id)) return id;
     const alt1 = id.replace(/-(?:claim-)?(\d+)$/, '-$1');
@@ -155,6 +158,7 @@ export function validatePassages(composition: unknown, research: Research): void
   };
   for (const p of allPassages(composition)) {
     assertEvidenceBoundCandidateLanguage(p.text, 'Dossier passage');
+    if (screeningTerms.test(p.text) && candidateConditions.test(p.text)) throw new Error('Candidate-side conditions cannot be described as employer screening criteria');
     if (recruiterPerspective.test(p.text)) throw new Error('Dossier prose must remain the candidate\'s executive adviser');
     p.evidenceRefs = p.evidenceRefs.map(resolveId);
     if (p.evidenceRefs.some(id => !claims.has(id))) throw new Error('Narrative cites unknown claim');

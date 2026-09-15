@@ -128,6 +128,11 @@ describe('Dossier evidence and field resolution', () => {
     const duplicate=composition(); duplicate.roleInterest[0].text=duplicate.executiveThesis.text;
     expect(()=>validateComposition(duplicate,research())).toThrow('repeats a passage');
   });
+  it('keeps candidate-side conditions out of employer screening language', () => {
+    const value=composition();
+    value.decisionHinges.passIf[0].text='The stated compensation is a hard screening criterion.';
+    expect(()=>validateComposition(value,research())).toThrow('Candidate-side conditions cannot be described as employer screening criteria');
+  });
   it('allows an empty child block to be omitted without manufacturing editorial filler', () => {
     const value=composition(); value.conversationStrategy.interview=[];
     expect(validateComposition(value,research()).conversationStrategy.interview).toEqual([]);
