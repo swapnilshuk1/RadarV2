@@ -77,3 +77,5 @@ reports/*_dossier_generated.*
 
 AWS-Key.pem
 Mantle-API.Key.txt
+
+bedrock-long-term-api-key.csv
