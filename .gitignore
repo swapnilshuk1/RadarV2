@@ -79,6 +79,7 @@ AWS-Key.pem
 Mantle-API.Key.txt
 
 bedrock-long-term-api-key.csv
+bedrock-long-term-api-key*.csv
 
 # Local databases and WAL files
 auth

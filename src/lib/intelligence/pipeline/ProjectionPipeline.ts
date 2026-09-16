@@ -47,6 +47,8 @@ export interface PipelineExecutionInput {
   fileBuffer?: Buffer;
   /** Serving-policy activation is a separate explicit lifecycle action. */
   activateServingPlan?: boolean;
+  /** Reject heuristic extraction when establishing an authoritative source set. */
+  requireModelBackedExtraction?: boolean;
 }
 
 export function reuseEvidenceGraphForOwner(
@@ -146,6 +148,10 @@ export class ProjectionPipeline {
             documentHash: textHash || documentHash,
             documentText: rawText
           });
+        }
+
+        if (input.requireModelBackedExtraction && evidenceGraph.provenance.model === "heuristic") {
+          throw new Error("AUTHORITATIVE_SOURCE_EXTRACTION_UNAVAILABLE");
         }
 
         await this.repos.documents.saveEvidenceGraph(evidenceGraph);
