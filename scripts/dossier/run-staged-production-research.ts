@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 import { researchInputFingerprint, type FrozenResearchInput } from '../../src/dossier/pipeline';
-import { runStagedFrozenResearchDetailed } from '../../src/dossier/staged-research';
+import { runStagedFrozenDecisionDetailed } from '../../src/dossier/staged-decision';
 import { BedrockConverseJsonModel } from '../../src/lib/model/bedrock-converse-model';
 
 const cases = [
@@ -23,7 +23,7 @@ const cases = [
   },
 ] as const;
 
-const outputPath = '.radar/dossier-runs/staged-production-research-three-case-v2.json';
+const outputPath = '.radar/dossier-runs/staged-production-decision-three-case-v3.json';
 const apiKey = process.env.AWS_BEARER_TOKEN_BEDROCK;
 if (!apiKey) throw new Error('AWS_BEARER_TOKEN_BEDROCK is required');
 
@@ -45,8 +45,8 @@ const persist = async () => {
       ? 'FAILED'
       : 'RUNNING';
   await writeFile(outputPath, JSON.stringify({
-    run: 'staged-production-research-three-case-v2',
-    purpose: 'Verify the staged Research production candidate after removing duplicate lexical re-adjudication of already validated screening semantics, before wiring it into buildDossier.',
+    run: 'staged-production-decision-three-case-v3',
+    purpose: 'Verify the staged production decision boundary before any canonical Research or buildDossier integration. Narrative planning is intentionally excluded.',
     model: { provider: model.id, version: model.version },
     caseOrder: cases.map(item => item.key),
     status,
@@ -65,7 +65,7 @@ for (const spec of cases) {
   const stages: string[] = [];
   const startedAt = Date.now();
   try {
-    const result = await runStagedFrozenResearchDetailed(
+    const result = await runStagedFrozenDecisionDetailed(
       frozen,
       model,
       stage => {
@@ -80,7 +80,7 @@ for (const spec of cases) {
       latencyMs: Date.now() - startedAt,
       stages,
       trace: result.trace,
-      research: result.research,
+      decision: result.decision,
     };
   } catch (error) {
     records[spec.key] = {
@@ -89,7 +89,7 @@ for (const spec of cases) {
       frozenFingerprint: spec.fingerprint,
       latencyMs: Date.now() - startedAt,
       stages,
-      error: error instanceof Error ? error.message : 'Unknown staged Research failure',
+      error: error instanceof Error ? error.message : 'Unknown staged decision failure',
     };
   }
   await persist();
