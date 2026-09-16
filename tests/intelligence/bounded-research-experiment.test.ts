@@ -1,20 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyScreeningAdjudication,
   validateBoundedDecision,
   validateCandidateMapping,
   validateRoleAnalyticalCore,
+  validateScreeningAdjudication,
 } from '../../src/dossier/bounded-research-experiment';
-import type { Claim, EvidenceSource } from '../../src/dossier/contracts';
-
-const source: EvidenceSource = {
-  id: 'jd',
-  plane: 'JD',
-  title: 'Role',
-  locator: 'test',
-  text: 'Candidates need a portfolio. Comfort operating strategically and hands-on. This is an individual contributor role.',
-  capturedAt: '2026-01-01T00:00:00.000Z',
-  attribution: 'JOB_POST',
-};
+import type { Claim } from '../../src/dossier/contracts';
 
 const roleClaim = (id: string, text: string, quote = text): Claim => ({
   id,
@@ -36,268 +28,379 @@ const candidateClaim = (id: string, text = 'Led a 40-person team.'): Claim => ({
   derivedFrom: [],
 });
 
+function buildRole() {
+  const roleClaims = [
+    roleClaim('JD-1', 'Candidates need a strong portfolio.'),
+    roleClaim('JD-2', 'Comfort operating at both strategic and execution levels.'),
+    roleClaim('JD-3', 'This is an individual contributor role.'),
+    roleClaim('JD-4', 'Healthcare experience is a strong plus, but not mandatory.'),
+  ];
+
+  const role = validateRoleAnalyticalCore({
+    requirements: [
+      {
+        id: 'portfolio',
+        requirement: 'Strong portfolio',
+        strength: 'REQUIRED',
+        roleImportance: 'CORE_CAPABILITY',
+        roleClaimIds: ['JD-1'],
+        reasoning: 'Candidate capability/artifact requirement.',
+      },
+      {
+        id: 'strategic-execution',
+        requirement: 'Comfort operating at both strategic and execution levels',
+        strength: 'REQUIRED',
+        roleImportance: 'CORE_CAPABILITY',
+        roleClaimIds: ['JD-2'],
+        reasoning: 'Material capability.',
+      },
+      {
+        id: 'healthcare',
+        requirement: 'Healthcare experience',
+        strength: 'PREFERRED',
+        roleImportance: 'ENABLER',
+        roleClaimIds: ['JD-4'],
+        reasoning: 'Preferred domain context.',
+      },
+    ],
+    operatingConditions: [{
+      id: 'ic',
+      condition: 'Craft-led individual contributor role',
+      kind: 'AUTHORITY_SHAPE',
+      roleClaimIds: ['JD-3'],
+      reasoning: 'Role authority shape.',
+    }],
+    authorityShape: 'Craft-led individual contributor',
+    roleSideConditions: [],
+  }, roleClaims);
+
+  const screening = validateScreeningAdjudication({
+    decisions: [
+      { requirementId: 'portfolio', screeningGate: true, reasoning: 'Explicit qualifying artifact.' },
+      { requirementId: 'strategic-execution', screeningGate: false, reasoning: 'Capability, not doorway.' },
+      { requirementId: 'healthcare', screeningGate: false, reasoning: 'Preferred only.' },
+    ],
+  }, role);
+
+  return { roleClaims, role: applyScreeningAdjudication(role, screening) };
+}
+
 describe('bounded research experiment contracts', () => {
-  it('separates requirement importance, source strength, screening gate, and operating shape', () => {
+  it('keeps screening adjudication out of role interpretation and allows shared JD ancestry', () => {
     const roleClaims = [
-      roleClaim('JD-1', 'Candidates need a strong portfolio.'),
-      roleClaim('JD-2', 'Comfort operating at both strategic and execution levels.'),
-      roleClaim('JD-3', 'This is an individual contributor role.'),
-      roleClaim('JD-4', 'Healthcare experience is a strong plus, but not mandatory.'),
+      roleClaim('JD-1', 'Ability to build accountability and maintain team discipline.'),
+      roleClaim('JD-2', 'Relevant Operations or Project Management experience is required.'),
     ];
 
     expect(() => validateRoleAnalyticalCore({
       requirements: [
         {
-          id: 'portfolio',
-          requirement: 'Strong portfolio',
+          id: 'discipline',
+          requirement: 'Ability to build accountability and maintain team discipline',
           strength: 'REQUIRED',
           roleImportance: 'CORE_CAPABILITY',
-          screeningGate: true,
           roleClaimIds: ['JD-1'],
-          reasoning: 'Explicit candidate doorway requirement.',
+          reasoning: 'Candidate capability.',
         },
         {
-          id: 'strategic-execution',
-          requirement: 'Comfort operating at both strategic and execution levels',
+          id: 'experience',
+          requirement: 'Relevant Operations or Project Management experience',
           strength: 'REQUIRED',
           roleImportance: 'CORE_CAPABILITY',
-          screeningGate: false,
           roleClaimIds: ['JD-2'],
-          reasoning: 'Material capability without explicit shortlisting language.',
+          reasoning: 'Candidate experience requirement.',
+        },
+      ],
+      operatingConditions: [{
+        id: 'people-manager',
+        condition: 'People manager accountable for team discipline',
+        kind: 'AUTHORITY_SHAPE',
+        roleClaimIds: ['JD-1'],
+        reasoning: 'The same source fact also informs role authority shape.',
+      }],
+      authorityShape: 'People manager',
+      roleSideConditions: [],
+    }, roleClaims)).not.toThrow();
+  });
+
+  it('freezes screening separately and never allows a preferred requirement to become a gate', () => {
+    const roleClaims = [
+      roleClaim('JD-1', '10+ years of relevant experience.'),
+      roleClaim('JD-2', 'Healthcare experience is a strong plus, but not mandatory.'),
+    ];
+    const role = validateRoleAnalyticalCore({
+      requirements: [
+        {
+          id: 'experience',
+          requirement: '10+ years of relevant experience',
+          strength: 'REQUIRED',
+          roleImportance: 'CORE_CAPABILITY',
+          roleClaimIds: ['JD-1'],
+          reasoning: 'Required threshold.',
         },
         {
           id: 'healthcare',
           requirement: 'Healthcare experience',
           strength: 'PREFERRED',
           roleImportance: 'ENABLER',
-          screeningGate: false,
-          roleClaimIds: ['JD-4'],
-          reasoning: 'Explicitly preferred, not mandatory.',
+          roleClaimIds: ['JD-2'],
+          reasoning: 'Preferred context.',
         },
       ],
-      operatingConditions: [{
-        id: 'ic',
-        condition: 'Craft-led IC',
-        kind: 'OPERATING_SHAPE',
-        roleClaimIds: ['JD-3'],
-        reasoning: 'Role shape.',
-      }],
-      authorityShape: 'Craft-led',
-      roleSideConditions: [],
-    }, roleClaims, [source])).not.toThrow();
-
-    expect(() => validateRoleAnalyticalCore({
-      requirements: [{
-        id: 'strategic-execution',
-        requirement: 'Comfort operating at both strategic and execution levels',
-        strength: 'REQUIRED',
-        roleImportance: 'CORE_CAPABILITY',
-        screeningGate: true,
-        roleClaimIds: ['JD-2'],
-        reasoning: 'Wrongly promoted to a gate.',
-      }],
-      operatingConditions: [],
-      authorityShape: 'Craft-led',
-      roleSideConditions: [],
-    }, roleClaims, [source])).toThrow('explicit employer entry qualification');
-  });
-
-  it('does not allow a preferred requirement to become a screening gate', () => {
-    const roleClaims = [roleClaim('JD-1', 'Healthcare experience is a strong plus, but not mandatory.')];
-
-    expect(() => validateRoleAnalyticalCore({
-      requirements: [{
-        id: 'healthcare',
-        requirement: 'Healthcare experience',
-        strength: 'PREFERRED',
-        roleImportance: 'ENABLER',
-        screeningGate: true,
-        roleClaimIds: ['JD-1'],
-        reasoning: 'Wrong.',
-      }],
       operatingConditions: [],
       authorityShape: 'Unspecified',
       roleSideConditions: [],
-    }, roleClaims, [source])).toThrow('screening gate must be a required');
+    }, roleClaims);
+
+    const accepted = validateScreeningAdjudication({
+      decisions: [
+        { requirementId: 'experience', screeningGate: true, reasoning: 'Entry threshold.' },
+        { requirementId: 'healthcare', screeningGate: false, reasoning: 'Preferred only.' },
+      ],
+    }, role);
+    expect(applyScreeningAdjudication(role, accepted).requirements[0].screeningGate).toBe(true);
+
+    expect(() => validateScreeningAdjudication({
+      decisions: [
+        { requirementId: 'experience', screeningGate: true, reasoning: 'Entry threshold.' },
+        { requirementId: 'healthcare', screeningGate: true, reasoning: 'Wrong.' },
+      ],
+    }, role)).toThrow('preferred requirement cannot become a screening gate');
   });
 
-  it('maps every immutable requirement exactly once, allows no authority facts, and requires evidence for contradiction', () => {
-    const roleClaims = [roleClaim('JD-1', 'Candidates need a strong portfolio.')];
-    const role = validateRoleAnalyticalCore({
-      requirements: [{
-        id: 'portfolio',
-        requirement: 'Strong portfolio',
-        strength: 'REQUIRED',
-        roleImportance: 'CORE_CAPABILITY',
-        screeningGate: true,
-        roleClaimIds: ['JD-1'],
-        reasoning: 'Explicit requirement.',
-      }],
-      operatingConditions: [],
-      authorityShape: 'Unspecified',
-      roleSideConditions: [],
-    }, roleClaims, [source]);
-
-    expect(() => validateCandidateMapping({
-      mappings: [{
-        requirementId: 'portfolio',
-        status: 'NOT_EVIDENCED',
-        candidateClaimIds: [],
-        reasoning: 'No supplied portfolio.',
-      }],
-      authorityFacts: [],
-    }, role, [candidateClaim('C-1')])).not.toThrow();
-
-    expect(() => validateCandidateMapping({
-      mappings: [{
-        requirementId: 'portfolio',
-        status: 'CONTRADICTED',
-        candidateClaimIds: [],
-        reasoning: 'Missing evidence is not a contradiction.',
-      }],
-      authorityFacts: [],
-    }, role, [candidateClaim('C-1')])).toThrow('affirmative candidate evidence');
-  });
-
-  it('allows screening drivers only from explicit screening gates', () => {
-    const roleClaims = [
-      roleClaim('JD-1', 'Candidates need a strong portfolio.'),
-      roleClaim('JD-2', 'Comfort operating at both strategic and execution levels.'),
-      roleClaim('JD-3', 'This is an individual contributor role.'),
-    ];
+  it('requires screening adjudication to decide every immutable requirement exactly once', () => {
+    const { roleClaims } = buildRole();
     const role = validateRoleAnalyticalCore({
       requirements: [
         {
-          id: 'portfolio',
-          requirement: 'Strong portfolio',
+          id: 'a',
+          requirement: 'A',
           strength: 'REQUIRED',
           roleImportance: 'CORE_CAPABILITY',
-          screeningGate: true,
           roleClaimIds: ['JD-1'],
-          reasoning: 'Gate.',
+          reasoning: 'A.',
         },
         {
-          id: 'strategic-execution',
-          requirement: 'Strategic and execution range',
+          id: 'b',
+          requirement: 'B',
           strength: 'REQUIRED',
-          roleImportance: 'CORE_CAPABILITY',
-          screeningGate: false,
+          roleImportance: 'ENABLER',
           roleClaimIds: ['JD-2'],
-          reasoning: 'Capability, not gate.',
+          reasoning: 'B.',
         },
       ],
-      operatingConditions: [{
-        id: 'ic',
-        condition: 'Individual contributor role',
-        kind: 'OPERATING_SHAPE',
-        roleClaimIds: ['JD-3'],
-        reasoning: 'Role shape.',
-      }],
-      authorityShape: 'Craft-led',
+      operatingConditions: [],
+      authorityShape: 'Unspecified',
       roleSideConditions: [],
-    }, roleClaims, [source]);
+    }, roleClaims);
 
-    const mapping = validateCandidateMapping({
+    expect(() => validateScreeningAdjudication({
+      decisions: [{ requirementId: 'a', screeningGate: true, reasoning: 'A gate.' }],
+    }, role)).toThrow('omitted an immutable role requirement');
+  });
+
+  it('prevents DIRECT when the model itself identifies unsupported requirement aspects', () => {
+    const { role } = buildRole();
+    const candidates = [candidateClaim('C-1', 'Twenty years of brand leadership.')];
+
+    expect(() => validateCandidateMapping({
       mappings: [
         {
           requirementId: 'portfolio',
+          status: 'DIRECT',
+          candidateClaimIds: ['C-1'],
+          unsupportedAspects: ['No UX/product-design portfolio evidence'],
+          reasoning: 'Brand is strong but UX is missing.',
+        },
+        {
+          requirementId: 'strategic-execution',
+          status: 'ADJACENT',
+          candidateClaimIds: ['C-1'],
+          unsupportedAspects: ['Hands-on product execution not established'],
+          reasoning: 'Adjacent.',
+        },
+        {
+          requirementId: 'healthcare',
           status: 'NOT_EVIDENCED',
           candidateClaimIds: [],
-          reasoning: 'No portfolio supplied.',
+          unsupportedAspects: ['No healthcare product experience'],
+          reasoning: 'Not evidenced.',
+        },
+      ],
+      authorityFacts: [],
+    }, role, candidates)).toThrow('Direct fit mapping cannot contain unsupported requirement aspects');
+  });
+
+  it('allows adjacent mappings with unsupported aspects and requires affirmative evidence for contradiction', () => {
+    const { role } = buildRole();
+    const candidates = [
+      candidateClaim('C-1', 'Brand strategy leadership.'),
+      candidateClaim('C-2', 'Explicitly lacks the required licence.'),
+    ];
+
+    expect(() => validateCandidateMapping({
+      mappings: [
+        {
+          requirementId: 'portfolio',
+          status: 'ADJACENT',
+          candidateClaimIds: ['C-1'],
+          unsupportedAspects: ['UX rigor not established'],
+          reasoning: 'Brand evidence only.',
         },
         {
           requirementId: 'strategic-execution',
           status: 'DIRECT',
           candidateClaimIds: ['C-1'],
-          reasoning: 'Candidate evidence supports both levels.',
+          unsupportedAspects: [],
+          reasoning: 'Fully evidenced for fixture purposes.',
+        },
+        {
+          requirementId: 'healthcare',
+          status: 'NOT_EVIDENCED',
+          candidateClaimIds: [],
+          unsupportedAspects: ['No healthcare evidence'],
+          reasoning: 'Absent.',
         },
       ],
-      authorityFacts: [{ claimIds: ['C-2'], observation: 'Leads a 40-person team.' }],
-    }, role, [
-      candidateClaim('C-1', 'Led strategy and hands-on execution.'),
-      candidateClaim('C-2'),
-    ]);
+      authorityFacts: [],
+    }, role, candidates)).not.toThrow();
 
-    expect(() => validateBoundedDecision({
-      screeningViability: 'BLOCKED',
-      screeningRationale: 'Portfolio is the unresolved employer doorway.',
-      screeningDriverRequirementIds: ['portfolio'],
-      verdict: 'PASS',
-      decisionRationale: 'Do not proceed unless the explicit gate can be cleared.',
-      careerCapitalTrade: 'Current people authority would change in the IC role.',
-      decisionHinges: [{ statement: 'Portfolio evidence would change accessibility.', claimIds: ['JD-1'] }],
-    }, role, mapping, [], [
-      candidateClaim('C-1', 'Led strategy and hands-on execution.'),
-      candidateClaim('C-2'),
-    ])).not.toThrow();
-
-    expect(() => validateBoundedDecision({
-      screeningViability: 'FRAGILE',
-      screeningRationale: 'Wrongly uses a non-gate capability as screening.',
-      screeningDriverRequirementIds: ['strategic-execution'],
-      verdict: 'CONSIDER',
-      decisionRationale: 'Wrong.',
-      careerCapitalTrade: 'Authority trade.',
-      decisionHinges: [{ statement: 'Role shape matters to pursuit.', claimIds: ['JD-3'] }],
-    }, role, mapping, [], [
-      candidateClaim('C-1', 'Led strategy and hands-on execution.'),
-      candidateClaim('C-2'),
-    ])).toThrow('is not an explicit screening gate');
+    expect(() => validateCandidateMapping({
+      mappings: [
+        {
+          requirementId: 'portfolio',
+          status: 'CONTRADICTED',
+          candidateClaimIds: [],
+          unsupportedAspects: ['No portfolio'],
+          reasoning: 'Missing evidence is not contradiction.',
+        },
+        {
+          requirementId: 'strategic-execution',
+          status: 'DIRECT',
+          candidateClaimIds: ['C-1'],
+          unsupportedAspects: [],
+          reasoning: 'Direct.',
+        },
+        {
+          requirementId: 'healthcare',
+          status: 'NOT_EVIDENCED',
+          candidateClaimIds: [],
+          unsupportedAspects: ['No healthcare evidence'],
+          reasoning: 'Absent.',
+        },
+      ],
+      authorityFacts: [],
+    }, role, candidates)).toThrow('affirmative candidate evidence');
   });
 
-  it('permits decision hinges to cite role operating conditions without making them screening drivers', () => {
-    const roleClaims = [
-      roleClaim('JD-1', 'Candidates need a strong portfolio.'),
-      roleClaim('JD-2', 'This is an individual contributor role.'),
-    ];
-    const role = validateRoleAnalyticalCore({
-      requirements: [{
-        id: 'portfolio',
-        requirement: 'Strong portfolio',
-        strength: 'REQUIRED',
-        roleImportance: 'CORE_CAPABILITY',
-        screeningGate: true,
-        roleClaimIds: ['JD-1'],
-        reasoning: 'Gate.',
-      }],
-      operatingConditions: [{
-        id: 'ic',
-        condition: 'Individual contributor role',
-        kind: 'OPERATING_SHAPE',
-        roleClaimIds: ['JD-2'],
-        reasoning: 'Role shape.',
-      }],
-      authorityShape: 'Craft-led',
-      roleSideConditions: [],
-    }, roleClaims, [source]);
-
-    const mapping = validateCandidateMapping({
-      mappings: [{
-        requirementId: 'portfolio',
-        status: 'DIRECT',
-        candidateClaimIds: ['C-1'],
-        reasoning: 'Portfolio supplied.',
-      }],
-      authorityFacts: [{ claimIds: ['C-2'], observation: 'Current people leadership.' }],
-    }, role, [
+  it('uses typed decision references and permits operating conditions in career reasoning without making them screening drivers', () => {
+    const { role } = buildRole();
+    const candidates = [
       candidateClaim('C-1', 'Portfolio supplied.'),
-      candidateClaim('C-2'),
-    ]);
+      candidateClaim('C-2', 'Leads a 40-person team.'),
+    ];
+    const mapping = validateCandidateMapping({
+      mappings: [
+        {
+          requirementId: 'portfolio',
+          status: 'DIRECT',
+          candidateClaimIds: ['C-1'],
+          unsupportedAspects: [],
+          reasoning: 'Portfolio supplied.',
+        },
+        {
+          requirementId: 'strategic-execution',
+          status: 'DIRECT',
+          candidateClaimIds: ['C-1'],
+          unsupportedAspects: [],
+          reasoning: 'Direct for fixture purposes.',
+        },
+        {
+          requirementId: 'healthcare',
+          status: 'NOT_EVIDENCED',
+          candidateClaimIds: [],
+          unsupportedAspects: ['No healthcare experience'],
+          reasoning: 'Preferred only.',
+        },
+      ],
+      authorityFacts: [{ claimIds: ['C-2'], observation: 'Current people leadership.' }],
+    }, role, candidates);
 
     expect(() => validateBoundedDecision({
       screeningViability: 'STRONG',
       screeningRationale: 'The explicit gate is evidenced.',
       screeningDriverRequirementIds: ['portfolio'],
       verdict: 'CONSIDER',
-      decisionRationale: 'Accessibility is strong; authority trade still matters.',
+      decisionRationale: 'Accessible, but authority trade matters.',
       careerCapitalTrade: 'Moving from people leadership to craft-led IC changes authority shape.',
       decisionHinges: [{
-        statement: 'The IC authority model is a pursuit question, not an employer screen.',
-        claimIds: ['JD-2', 'C-2'],
+        statement: 'The portfolio gate is met while the IC authority model remains a candidate-side trade.',
+        refs: [
+          { kind: 'ROLE_REQUIREMENT', id: 'portfolio' },
+          { kind: 'OPERATING_CONDITION', id: 'ic' },
+          { kind: 'CANDIDATE_CLAIM', id: 'C-2' },
+        ],
       }],
-    }, role, mapping, [], [
-      candidateClaim('C-1', 'Portfolio supplied.'),
-      candidateClaim('C-2'),
-    ])).not.toThrow();
+    }, role, mapping, [], candidates)).not.toThrow();
+  });
+
+  it('requires PASS when screening viability is BLOCKED', () => {
+    const { role } = buildRole();
+    const candidates = [candidateClaim('C-1', 'Strategic execution experience.')];
+    const mapping = validateCandidateMapping({
+      mappings: [
+        {
+          requirementId: 'portfolio',
+          status: 'NOT_EVIDENCED',
+          candidateClaimIds: [],
+          unsupportedAspects: ['No portfolio supplied'],
+          reasoning: 'Gate unresolved.',
+        },
+        {
+          requirementId: 'strategic-execution',
+          status: 'DIRECT',
+          candidateClaimIds: ['C-1'],
+          unsupportedAspects: [],
+          reasoning: 'Direct.',
+        },
+        {
+          requirementId: 'healthcare',
+          status: 'NOT_EVIDENCED',
+          candidateClaimIds: [],
+          unsupportedAspects: ['No healthcare evidence'],
+          reasoning: 'Preferred only.',
+        },
+      ],
+      authorityFacts: [],
+    }, role, candidates);
+
+    expect(() => validateBoundedDecision({
+      screeningViability: 'BLOCKED',
+      screeningRationale: 'Portfolio gate is not evidenced.',
+      screeningDriverRequirementIds: ['portfolio'],
+      verdict: 'PURSUE',
+      decisionRationale: 'Wrongly relies on a hypothetical waiver.',
+      careerCapitalTrade: 'Neutral.',
+      decisionHinges: [{
+        statement: 'Employer could theoretically waive the gate.',
+        refs: [{ kind: 'ROLE_REQUIREMENT', id: 'portfolio' }],
+      }],
+    }, role, mapping, [], candidates)).toThrow('Blocked screening viability requires a PASS verdict');
+
+    expect(() => validateBoundedDecision({
+      screeningViability: 'BLOCKED',
+      screeningRationale: 'Portfolio gate is not evidenced.',
+      screeningDriverRequirementIds: ['portfolio'],
+      verdict: 'PASS',
+      decisionRationale: 'Current doorway is blocked.',
+      careerCapitalTrade: 'Neutral.',
+      decisionHinges: [{
+        statement: 'Supplying the missing portfolio would reopen accessibility.',
+        refs: [
+          { kind: 'ROLE_REQUIREMENT', id: 'portfolio' },
+          { kind: 'ROLE_CLAIM', id: 'JD-1' },
+        ],
+      }],
+    }, role, mapping, [], candidates)).not.toThrow();
   });
 });

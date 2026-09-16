@@ -3,14 +3,17 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { bedrockJsonSchema } from '../../src/dossier/bedrock-schema';
 import { BedrockConverseJsonModel } from '../../src/lib/model/bedrock-converse-model';
 import {
+  applyScreeningAdjudication,
   assembleBoundedAnalyticalResult,
   boundedDecisionSchema,
   candidateMappingSchema,
   roleAnalyticalCoreSchema,
+  screeningAdjudicationSchema,
   stageFingerprint,
   validateBoundedDecision,
   validateCandidateMapping,
   validateRoleAnalyticalCore,
+  validateScreeningAdjudication,
 } from '../../src/dossier/bounded-research-experiment';
 import { researchInputFingerprint, type FrozenResearchInput } from '../../src/dossier/pipeline';
 
@@ -32,7 +35,7 @@ const cases = [
   },
 ] as const;
 
-const artifactPath = '.radar/dossier-runs/three-case-bounded-research-architecture-experiment-v2.json';
+const artifactPath = '.radar/dossier-runs/three-case-bounded-research-architecture-experiment-v3.json';
 const modelId = 'zai.glm-5';
 
 const apiKey = process.env.AWS_BEARER_TOKEN_BEDROCK;
@@ -42,6 +45,7 @@ if (!apiKey) {
 
 const schemas = {
   role: bedrockJsonSchema(roleAnalyticalCoreSchema),
+  screening: bedrockJsonSchema(screeningAdjudicationSchema),
   mapping: bedrockJsonSchema(candidateMappingSchema),
   decision: bedrockJsonSchema(boundedDecisionSchema),
 };
@@ -59,34 +63,49 @@ const model = new BedrockConverseJsonModel(
   { maxOutputTokens: 8192, timeoutMs: 600000 },
 );
 
-const roleInstruction = `You are Stage 1 of a bounded executive-opportunity analysis. Analyze only validated JD claims. Return a RoleAnalyticalCore.
+const roleInstruction = `You are Stage 1A of a bounded executive-opportunity analysis. Analyze only validated JD claims and return a RoleAnalyticalCore.
 
-Separate candidate requirements from role operating conditions.
+Separate candidate requirements from role operating conditions and role-side/process conditions.
 
-A candidate requirement is something the employer expects the candidate to bring before entry or demonstrate as relevant capability. A role operating condition describes how the job itself operates; it is not a candidate requirement merely because it matters.
-
-For each candidate requirement classify three independent properties:
-- strength: REQUIRED or PREFERRED.
+A candidate requirement is a trait, experience, capability, credential, or qualifying artifact the employer expects the candidate to bring or demonstrate. Classify each candidate requirement only on:
+- strength: REQUIRED or PREFERRED;
 - roleImportance: CORE_CAPABILITY or ENABLER.
-- screeningGate: true only when the JD explicitly establishes an employer-side pre-entry qualification or shortlisting condition.
 
-These properties are independent. REQUIRED does not automatically mean screeningGate=true. A core capability can be required yet not be an explicit employer doorway gate. PREFERRED can never be a screening gate.
+Do NOT decide whether any requirement is an employer screening gate. A separate adjudication stage owns that judgment.
 
-Put individual-contributor versus people-manager structure, hands-on execution, authority topology, reporting shape, and employment conditions in operatingConditions or roleSideConditions unless the JD explicitly requires prior experience as a candidate qualification.
+A role operating condition describes how the job itself operates: authority topology, individual-contributor versus people-manager structure, hands-on execution expectations, reporting shape, operating cadence, role scope, work arrangement, and employment conditions.
+
+Application mechanics such as a required covering note, submission format, interview step, or other application-process instruction belong in roleSideConditions, not candidate requirements. They may affect pursuit process, but they are not candidate-evidence attributes.
+
+A JD claim may legitimately support more than one derived semantic conclusion when it carries multiple meanings. Do not force evidence ancestry to be mutually exclusive.
 
 Do not infer anything about a candidate. Cite only supplied JD claim IDs. Do not create claims.`;
 
-const mappingInstruction = `You are Stage 2 of a bounded executive-opportunity analysis. The RoleAnalyticalCore is already validated and immutable.
+const screeningInstruction = `You are Stage 1B of a bounded executive-opportunity analysis. The role interpretation is immutable. Decide only whether each candidate requirement is an explicit employer-side pre-entry screening gate.
+
+Return exactly one decision for every supplied requirement and no others.
+
+Use the exact JD citation quotes as the authoritative source for screening force. The extracted claim text is contextual help only; if the paraphrased claim strengthens the source wording, follow the exact quote instead.
+
+screeningGate=true only when the exact source establishes a genuine candidate-entry or shortlisting condition. Examples of general categories that can qualify include quantified minimum experience thresholds, explicit required credentials or licences, explicit candidate eligibility conditions, and qualifying artifacts such as a required portfolio when the source presents them as candidate qualifications.
+
+A responsibility, success capability, operating expectation, or placement under a heading such as 'What We're Looking For' does not by itself establish a screening gate. REQUIRED capability is not synonymous with screening gate. PREFERRED requirements can never be screening gates.
+
+Do not reason about the candidate. Do not change requirement text, strength, roleImportance, or evidence. Return only requirementId, screeningGate, and concise reasoning.`;
+
+const mappingInstruction = `You are Stage 2 of a bounded executive-opportunity analysis. The screened role contract is already validated and immutable.
 
 Map every and only its candidate requirements to supplied candidate evidence using exactly DIRECT, ADJACENT, TRANSFERABLE, NOT_EVIDENCED, or CONTRADICTED.
 
+For every mapping, return unsupportedAspects: a list of material parts of the requirement that the supplied candidate evidence does not establish. DIRECT is allowed only when the requirement is fully evidenced and unsupportedAspects is empty. If a composite requirement has a material sub-part that is not directly evidenced, do not label the whole requirement DIRECT; use ADJACENT, TRANSFERABLE, or NOT_EVIDENCED as appropriate.
+
 Positive statuses require actual supplied candidate claim IDs. CONTRADICTED requires affirmative candidate evidence that conflicts with the requirement; missing evidence is NOT_EVIDENCED, never CONTRADICTED.
 
-Do not add or modify requirements, strength, roleImportance, screeningGate, or operating conditions. Separately return factual authority/commercial observations when the supplied candidate evidence supports them; this array may be empty.
+Do not add or modify requirements, strength, roleImportance, screeningGate, or operating conditions. Separately return factual authority/commercial observations when supplied candidate evidence supports them; this array may be empty.
 
 Never infer desire, willingness, flight risk, retention risk, or candidate preference from missing evidence. Do not create claims.`;
 
-const decisionInstruction = `You are Stage 3 of a bounded executive-opportunity analysis. Use the immutable role core and requirement mapping.
+const decisionInstruction = `You are Stage 3 of a bounded executive-opportunity analysis. Use the immutable screened role contract and requirement mapping.
 
 Return only:
 - screening viability;
@@ -95,15 +114,21 @@ Return only:
 - pursuit verdict;
 - concise decision rationale;
 - career-capital/authority trade;
-- decision hinges.
+- decision hinges with typed references.
 
-Every screeningDriverRequirementId must point to an immutable role requirement whose screeningGate is true.
+Every screeningDriverRequirementId must point to an immutable requirement whose screeningGate is true. Employer screening viability may be driven only by screeningGate=true requirements.
 
-Employer screening viability may be driven only by requirements with screeningGate=true. Role operating shape, authority change, employment conditions, compensation, location, or candidate willingness cannot become employer screening drivers.
+Role operating shape, authority change, employment conditions, compensation, location, application-process mechanics, or candidate willingness cannot become employer screening drivers.
+
+BLOCKED means the current employer doorway is not realistically passable on the evidence now available and requires verdict PASS. Do not return PURSUE merely because the employer might hypothetically waive explicit gates. A possible waiver can be a decision hinge, not the current recommendation.
+
+Distinguish a substantive eligibility gap from a missing but plausibly obtainable artifact or verification. Where an explicit gate is unresolved because a specific artifact or proof may still be supplied, consider FRAGILE rather than automatically treating it as BLOCKED. Base the judgment on the actual mapping and source meaning.
 
 Treat authority/headcount/commercial-scope differences as candidate-side career-capital reasoning. Do not invent personal preference, desire, willingness, flight risk, retention risk, or employer concern.
 
-Do not create requirements, mappings, claims, narrative plans, resolutions, or acquisition requests. Cite only supplied evidence IDs in decision hinges.`;
+Decision hinge refs must use the typed namespaces supplied by the contract: ROLE_REQUIREMENT, ROLE_CLAIM, CANDIDATE_CLAIM, CONTEXT_CLAIM, or OPERATING_CONDITION. Do not put requirement IDs into evidence-claim namespaces.
+
+Do not create requirements, mappings, claims, narrative plans, resolutions, or acquisition requests.`;
 
 type ExperimentCaseRecord = {
   sourceFrozenArtifact: string;
@@ -125,7 +150,7 @@ const caseRecords: Record<string, ExperimentCaseRecord> = {};
 
 const persist = async (status: 'RUNNING' | 'ACCEPTED' | 'FAILED') => {
   await writeFile(artifactPath, JSON.stringify({
-    experiment: 'bounded-research-v2-three-case',
+    experiment: 'bounded-research-v3-isolated-screening',
     model: {
       provider: model.id,
       version: model.version,
@@ -211,7 +236,10 @@ for (const experimentCase of cases) {
     const roleClaims = frozen.evidence.filter(claim => claim.plane === 'JD');
     const candidateClaims = frozen.evidence.filter(claim => claim.plane === 'CANDIDATE');
     const contextClaims = frozen.evidence.filter(claim => claim.plane === 'CONTEXT');
-    const roleSources = frozen.sources.filter(source => source.plane === 'JD');
+    const jdSourceIds = new Set(
+      frozen.sources.filter(source => source.plane === 'JD').map(source => source.id),
+    );
+    const roleClaimById = new Map(roleClaims.map(claim => [claim.id, claim]));
 
     caseRecord.opportunity = frozen.opportunity;
     caseRecord.evidenceVolumes = {
@@ -230,11 +258,45 @@ for (const experimentCase of cases) {
       roleInstruction,
       roleInput,
       schemas.role,
-      raw => validateRoleAnalyticalCore(raw, roleClaims, roleSources),
+      raw => validateRoleAnalyticalCore(raw, roleClaims),
     );
 
+    const screeningInput = {
+      opportunity: frozen.opportunity,
+      requirements: role.requirements.map(requirement => ({
+        id: requirement.id,
+        requirement: requirement.requirement,
+        strength: requirement.strength,
+        roleImportance: requirement.roleImportance,
+        evidence: requirement.roleClaimIds.map(claimId => {
+          const claim = roleClaimById.get(claimId)!;
+          return {
+            claimId,
+            extractedClaimText: claim.text,
+            exactJdQuotes: (claim.citations ?? [])
+              .filter(citation => jdSourceIds.has(citation.sourceId))
+              .map(citation => citation.quote),
+          };
+        }),
+      })),
+    };
+    const screening = await runStage(
+      caseRecord,
+      'screeningAdjudication',
+      screeningInstruction,
+      screeningInput,
+      schemas.screening,
+      raw => validateScreeningAdjudication(raw, role),
+    );
+    const screenedRole = applyScreeningAdjudication(role, screening);
+    caseRecord.stages.roleContract = {
+      assembledFrom: ['roleAnalysis', 'screeningAdjudication'],
+      validated: screenedRole,
+    };
+    await persist('RUNNING');
+
     const mappingInput = {
-      role,
+      role: screenedRole,
       candidateClaims,
       candidateConflicts: frozen.candidateConflicts,
     };
@@ -244,7 +306,7 @@ for (const experimentCase of cases) {
       mappingInstruction,
       mappingInput,
       schemas.mapping,
-      raw => validateCandidateMapping(raw, role, candidateClaims),
+      raw => validateCandidateMapping(raw, screenedRole, candidateClaims),
     );
 
     const authorityClaimIds = [
@@ -256,10 +318,17 @@ for (const experimentCase of cases) {
 
     const decisionInput = {
       opportunity: frozen.opportunity,
-      role,
+      role: screenedRole,
       mapping,
       contextClaims,
       authorityEvidence,
+      referenceNamespaces: {
+        roleRequirementIds: screenedRole.requirements.map(item => item.id),
+        operatingConditionIds: screenedRole.operatingConditions.map(item => item.id),
+        roleClaimIds: roleClaims.map(item => item.id),
+        candidateClaimIds: candidateClaims.map(item => item.id),
+        contextClaimIds: contextClaims.map(item => item.id),
+      },
     };
     const decision = await runStage(
       caseRecord,
@@ -267,10 +336,10 @@ for (const experimentCase of cases) {
       decisionInstruction,
       decisionInput,
       schemas.decision,
-      raw => validateBoundedDecision(raw, role, mapping, contextClaims, candidateClaims),
+      raw => validateBoundedDecision(raw, screenedRole, mapping, contextClaims, candidateClaims),
     );
 
-    caseRecord.assembled = assembleBoundedAnalyticalResult(role, mapping, decision);
+    caseRecord.assembled = assembleBoundedAnalyticalResult(screenedRole, mapping, decision);
     caseRecord.status = 'ACCEPTED';
     await persist('RUNNING');
     console.log(`${experimentCase.key}: accepted`);

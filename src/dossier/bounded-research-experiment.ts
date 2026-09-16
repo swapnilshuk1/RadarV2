@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import type { Claim, EvidenceSource } from './contracts';
+import type { Claim } from './contracts';
 
 export const roleImportanceSchema = z.enum(['CORE_CAPABILITY', 'ENABLER']);
 export const requirementStrengthSchema = z.enum(['REQUIRED', 'PREFERRED']);
@@ -11,7 +11,6 @@ const roleRequirementSchema = z.object({
   requirement: z.string().min(1),
   strength: requirementStrengthSchema,
   roleImportance: roleImportanceSchema,
-  screeningGate: z.boolean(),
   roleClaimIds: z.array(z.string()).min(1),
   reasoning: z.string().min(1),
 });
@@ -35,11 +34,30 @@ export const roleAnalyticalCoreSchema = z.object({
 });
 export type RoleAnalyticalCore = z.infer<typeof roleAnalyticalCoreSchema>;
 
+export const screeningAdjudicationSchema = z.object({
+  decisions: z.array(z.object({
+    requirementId: z.string().min(1),
+    screeningGate: z.boolean(),
+    reasoning: z.string().min(1),
+  })).min(1),
+});
+export type ScreeningAdjudication = z.infer<typeof screeningAdjudicationSchema>;
+
+const screenedRoleRequirementSchema = roleRequirementSchema.extend({
+  screeningGate: z.boolean(),
+});
+
+export const screenedRoleAnalyticalCoreSchema = roleAnalyticalCoreSchema.extend({
+  requirements: z.array(screenedRoleRequirementSchema).min(1),
+});
+export type ScreenedRoleAnalyticalCore = z.infer<typeof screenedRoleAnalyticalCoreSchema>;
+
 export const candidateMappingSchema = z.object({
   mappings: z.array(z.object({
     requirementId: z.string().min(1),
     status: fitStatusSchema,
     candidateClaimIds: z.array(z.string()),
+    unsupportedAspects: z.array(z.string()),
     reasoning: z.string().min(1),
   })).min(1),
   authorityFacts: z.array(z.object({
@@ -48,6 +66,17 @@ export const candidateMappingSchema = z.object({
   })),
 });
 export type CandidateMapping = z.infer<typeof candidateMappingSchema>;
+
+const decisionReferenceSchema = z.object({
+  kind: z.enum([
+    'ROLE_REQUIREMENT',
+    'ROLE_CLAIM',
+    'CANDIDATE_CLAIM',
+    'CONTEXT_CLAIM',
+    'OPERATING_CONDITION',
+  ]),
+  id: z.string().min(1),
+});
 
 export const boundedDecisionSchema = z.object({
   screeningViability: z.enum(['STRONG', 'PLAUSIBLE', 'FRAGILE', 'BLOCKED']),
@@ -58,19 +87,14 @@ export const boundedDecisionSchema = z.object({
   careerCapitalTrade: z.string().min(1),
   decisionHinges: z.array(z.object({
     statement: z.string().min(1),
-    claimIds: z.array(z.string()).min(1),
+    refs: z.array(decisionReferenceSchema).min(1),
   })).min(1),
 });
 export type BoundedDecision = z.infer<typeof boundedDecisionSchema>;
 
-// Temporary fail-closed safety rail for this shadow experiment. This is not a
-// production Role Requirement Compiler and must not grow into a phrase ontology.
-const entryQualification = /\b(?:required|must(?:\s+have)?|minimum|eligib(?:le|ility)|qualification|prior experience|relevant experience|years? of experience|proven track record|portfolio)\b/i;
-const employmentCondition = /\b(?:compensation|salary|ctc|pay|on[- ]?site|remote|hybrid|location|relocat)\b/i;
-
 function exactIds(ids: readonly string[], known: Set<string>, label: string) {
-  if (new Set(ids).size !== ids.length) throw new Error(`Duplicate ${label} claim reference`);
-  if (ids.some(id => !known.has(id))) throw new Error(`Unknown ${label} claim reference`);
+  if (new Set(ids).size !== ids.length) throw new Error(`Duplicate ${label} reference`);
+  if (ids.some(id => !known.has(id))) throw new Error(`Unknown ${label} reference`);
 }
 
 export function stageFingerprint(input: unknown): string {
@@ -82,67 +106,79 @@ export function stageFingerprint(input: unknown): string {
 export function validateRoleAnalyticalCore(
   value: unknown,
   roleClaims: Claim[],
-  sources: EvidenceSource[],
 ): RoleAnalyticalCore {
   const core = roleAnalyticalCoreSchema.parse(value);
   const known = new Set(roleClaims.map(claim => claim.id));
-  const byId = new Map(roleClaims.map(claim => [claim.id, claim]));
-  const sourceById = new Map(sources.map(source => [source.id, source]));
-  const ids = new Set<string>();
+  const requirementIds = new Set<string>();
 
   for (const requirement of core.requirements) {
-    if (!ids.add(requirement.id)) throw new Error(`Duplicate role requirement: ${requirement.id}`);
-    exactIds(requirement.roleClaimIds, known, 'role requirement');
-
-    if (requirement.screeningGate && requirement.strength !== 'REQUIRED') {
-      throw new Error('A screening gate must be a required candidate requirement');
-    }
-
-    if (requirement.screeningGate) {
-      if (employmentCondition.test(requirement.requirement)) {
-        throw new Error('Employment conditions are not candidate-evidence screening gates');
-      }
-
-      const evidence = requirement.roleClaimIds
-        .flatMap(id => {
-          const claim = byId.get(id);
-          if (!claim) return [];
-          const jdQuotes = (claim.citations ?? [])
-            .filter(citation => sourceById.get(citation.sourceId)?.plane === 'JD')
-            .map(citation => citation.quote);
-          return [claim.text, ...jdQuotes];
-        })
-        .join(' ');
-
-      if (!entryQualification.test(evidence)) {
-        throw new Error(`Screening gate '${requirement.requirement}' needs an explicit employer entry qualification in its cited JD evidence`);
-      }
-    }
+    if (!requirementIds.add(requirement.id)) throw new Error(`Duplicate role requirement: ${requirement.id}`);
+    exactIds(requirement.roleClaimIds, known, 'role requirement claim');
   }
 
   const operatingIds = new Set<string>();
   for (const condition of core.operatingConditions) {
     if (!operatingIds.add(condition.id)) throw new Error(`Duplicate role operating condition: ${condition.id}`);
-    exactIds(condition.roleClaimIds, known, 'role operating condition');
-  }
-  for (const condition of core.roleSideConditions) {
-    exactIds(condition.roleClaimIds, known, 'role-side condition');
+    exactIds(condition.roleClaimIds, known, 'role operating condition claim');
   }
 
-  const requirementClaimIds = new Set(core.requirements.flatMap(item => item.roleClaimIds));
-  const operatingClaimIds = new Set(core.operatingConditions.flatMap(item => item.roleClaimIds));
-  for (const id of operatingClaimIds) {
-    if (requirementClaimIds.has(id)) {
-      throw new Error('A role operating condition cannot also be a candidate requirement');
+  for (const condition of core.roleSideConditions) {
+    exactIds(condition.roleClaimIds, known, 'role-side condition claim');
+  }
+
+  // A single JD claim may legitimately support more than one derived semantic
+  // conclusion (for example both a candidate capability and an authority-shape
+  // inference). Evidence ancestry is therefore not mutually exclusive.
+  return core;
+}
+
+export function validateScreeningAdjudication(
+  value: unknown,
+  role: RoleAnalyticalCore,
+): ScreeningAdjudication {
+  const adjudication = screeningAdjudicationSchema.parse(value);
+  const requirementIds = new Set(role.requirements.map(requirement => requirement.id));
+  const requirementsById = new Map(role.requirements.map(requirement => [requirement.id, requirement]));
+  const seen = new Set<string>();
+
+  for (const decision of adjudication.decisions) {
+    if (!requirementIds.has(decision.requirementId) || !seen.add(decision.requirementId)) {
+      throw new Error(`Screening adjudication must decide each immutable role requirement once: ${decision.requirementId}`);
+    }
+
+    const requirement = requirementsById.get(decision.requirementId)!;
+    if (decision.screeningGate && requirement.strength !== 'REQUIRED') {
+      throw new Error('A preferred requirement cannot become a screening gate');
     }
   }
 
-  return core;
+  if (seen.size !== requirementIds.size) {
+    throw new Error('Screening adjudication omitted an immutable role requirement');
+  }
+
+  return adjudication;
+}
+
+export function applyScreeningAdjudication(
+  role: RoleAnalyticalCore,
+  adjudication: ScreeningAdjudication,
+): ScreenedRoleAnalyticalCore {
+  const byRequirement = new Map(
+    adjudication.decisions.map(decision => [decision.requirementId, decision]),
+  );
+
+  return screenedRoleAnalyticalCoreSchema.parse({
+    ...role,
+    requirements: role.requirements.map(requirement => ({
+      ...requirement,
+      screeningGate: byRequirement.get(requirement.id)!.screeningGate,
+    })),
+  });
 }
 
 export function validateCandidateMapping(
   value: unknown,
-  role: RoleAnalyticalCore,
+  role: ScreenedRoleAnalyticalCore,
   candidateClaims: Claim[],
 ): CandidateMapping {
   const mapping = candidateMappingSchema.parse(value);
@@ -155,7 +191,7 @@ export function validateCandidateMapping(
       throw new Error(`Candidate mapping must map each immutable role requirement once: ${item.requirementId}`);
     }
 
-    exactIds(item.candidateClaimIds, candidateIds, 'candidate mapping');
+    exactIds(item.candidateClaimIds, candidateIds, 'candidate mapping claim');
 
     if (['DIRECT', 'ADJACENT', 'TRANSFERABLE'].includes(item.status) && !item.candidateClaimIds.length) {
       throw new Error('Positive fit mapping needs candidate proof');
@@ -164,6 +200,10 @@ export function validateCandidateMapping(
     if (item.status === 'CONTRADICTED' && !item.candidateClaimIds.length) {
       throw new Error('Contradicted fit mapping needs affirmative candidate evidence');
     }
+
+    if (item.status === 'DIRECT' && item.unsupportedAspects.length) {
+      throw new Error('Direct fit mapping cannot contain unsupported requirement aspects');
+    }
   }
 
   if (seen.size !== requiredIds.size) {
@@ -171,7 +211,7 @@ export function validateCandidateMapping(
   }
 
   for (const fact of mapping.authorityFacts) {
-    exactIds(fact.claimIds, candidateIds, 'candidate authority fact');
+    exactIds(fact.claimIds, candidateIds, 'candidate authority fact claim');
   }
 
   return mapping;
@@ -179,7 +219,7 @@ export function validateCandidateMapping(
 
 export function validateBoundedDecision(
   value: unknown,
-  role: RoleAnalyticalCore,
+  role: ScreenedRoleAnalyticalCore,
   mapping: CandidateMapping,
   contextClaims: Claim[],
   candidateClaims: Claim[],
@@ -187,26 +227,39 @@ export function validateBoundedDecision(
   const decision = boundedDecisionSchema.parse(value);
 
   const requirementIds = new Set(role.requirements.map(item => item.id));
-  exactIds(decision.screeningDriverRequirementIds, requirementIds, 'screening driver');
+  exactIds(decision.screeningDriverRequirementIds, requirementIds, 'screening driver requirement');
 
   const requirementsById = new Map(role.requirements.map(item => [item.id, item]));
   for (const id of decision.screeningDriverRequirementIds) {
     if (!requirementsById.get(id)?.screeningGate) {
-      throw new Error(`Screening driver '${id}' is not an explicit screening gate`);
+      throw new Error(`Screening driver '${id}' is not an adjudicated screening gate`);
     }
   }
 
-  const validIds = new Set([
+  const roleClaimIds = new Set([
     ...role.requirements.flatMap(item => item.roleClaimIds),
     ...role.operatingConditions.flatMap(item => item.roleClaimIds),
     ...role.roleSideConditions.flatMap(item => item.roleClaimIds),
-    ...mapping.mappings.flatMap(item => item.candidateClaimIds),
-    ...mapping.authorityFacts.flatMap(item => item.claimIds),
-    ...contextClaims.map(item => item.id),
-    ...candidateClaims.map(item => item.id),
   ]);
+  const candidateClaimIds = new Set(candidateClaims.map(item => item.id));
+  const contextClaimIds = new Set(contextClaims.map(item => item.id));
+  const operatingConditionIds = new Set(role.operatingConditions.map(item => item.id));
+
   for (const hinge of decision.decisionHinges) {
-    exactIds(hinge.claimIds, validIds, 'decision hinge');
+    for (const ref of hinge.refs) {
+      const known = ref.kind === 'ROLE_REQUIREMENT'
+        ? requirementIds
+        : ref.kind === 'ROLE_CLAIM'
+          ? roleClaimIds
+          : ref.kind === 'CANDIDATE_CLAIM'
+            ? candidateClaimIds
+            : ref.kind === 'CONTEXT_CLAIM'
+              ? contextClaimIds
+              : operatingConditionIds;
+      if (!known.has(ref.id)) {
+        throw new Error(`Unknown ${ref.kind} decision hinge reference: ${ref.id}`);
+      }
+    }
   }
 
   const byRequirement = new Map(mapping.mappings.map(item => [item.requirementId, item]));
@@ -228,13 +281,16 @@ export function validateBoundedDecision(
     if (!decision.screeningDriverRequirementIds.some(id => negativeGateIds.has(id))) {
       throw new Error('Blocked screening viability must name the screening-gate barrier as a screening driver');
     }
+    if (decision.verdict !== 'PASS') {
+      throw new Error('Blocked screening viability requires a PASS verdict');
+    }
   }
 
   return decision;
 }
 
 export function assembleBoundedAnalyticalResult(
-  role: RoleAnalyticalCore,
+  role: ScreenedRoleAnalyticalCore,
   mapping: CandidateMapping,
   decision: BoundedDecision,
 ) {
