@@ -169,6 +169,8 @@ Authority/headcount/commercial-scope differences belong in candidate-side career
 
 Use evidence-bounded language for missing proof: say a criterion is not evidenced in the supplied candidate sources, never that the candidate lacks it or is inherently unable to meet it.
 
+Use only the supplied validated evidence, mappings, operating conditions, and resolutions for factual claims. Do not import or invent external salary benchmarks, candidate market value, candidate-pool behavior, employer behavior, exact percentage gaps, or other numeric comparisons that are not already present in the supplied material. If compensation, authority, or scope is materially misaligned, describe that trade qualitatively from the supplied values rather than manufacturing a market benchmark or calculated percentage.
+
 The narrative plan must derive a distinctive executive argument from the role's operating mechanics, context, candidate precedents, accessibility, and career-capital trade. Do not return claim IDs; the application owns canonical evidence anchoring.`;
 
 const verifiedStageResults = new Map<string, unknown>();
@@ -393,7 +395,10 @@ export function assembleStagedResearch(
     },
   };
 
-  return validateResearch(research, frozen.sources);
+  // Screening semantics have already been adjudicated requirement-by-requirement
+  // against exact JD quotations. Preserve the legacy lexical safety rail for the
+  // monolithic path, but do not make it re-adjudicate the staged semantic result.
+  return validateResearch(research, frozen.sources, { hardScreenAuthority: 'PREVALIDATED' });
 }
 
 async function mapConcurrent<T, R>(items: T[], concurrency: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
