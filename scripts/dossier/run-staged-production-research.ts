@@ -23,7 +23,7 @@ const cases = [
   },
 ] as const;
 
-const outputPath = '.radar/dossier-runs/staged-production-research-three-case-v1.json';
+const outputPath = '.radar/dossier-runs/staged-production-research-three-case-v2.json';
 const apiKey = process.env.AWS_BEARER_TOKEN_BEDROCK;
 if (!apiKey) throw new Error('AWS_BEARER_TOKEN_BEDROCK is required');
 
@@ -45,8 +45,8 @@ const persist = async () => {
       ? 'FAILED'
       : 'RUNNING';
   await writeFile(outputPath, JSON.stringify({
-    run: 'staged-production-research-three-case-v1',
-    purpose: 'Verify the production-candidate staged Research engine against the three immutable frozen evidence inputs before wiring it as the default buildDossier path.',
+    run: 'staged-production-research-three-case-v2',
+    purpose: 'Verify the staged Research production candidate after removing duplicate lexical re-adjudication of already validated screening semantics, before wiring it into buildDossier.',
     model: { provider: model.id, version: model.version },
     caseOrder: cases.map(item => item.key),
     status,
