@@ -23,7 +23,7 @@ const cases = [
   },
 ] as const;
 
-const outputPath = '.radar/dossier-runs/staged-production-decision-three-case-v4.json';
+const outputPath = '.radar/dossier-runs/staged-production-decision-three-case-v5.json';
 const apiKey = process.env.AWS_BEARER_TOKEN_BEDROCK;
 if (!apiKey) throw new Error('AWS_BEARER_TOKEN_BEDROCK is required');
 
@@ -45,7 +45,7 @@ const persist = async () => {
       ? 'FAILED'
       : 'RUNNING';
   await writeFile(outputPath, JSON.stringify({
-    run: 'staged-production-decision-three-case-v4',
+    run: 'staged-production-decision-three-case-v5',
     purpose: 'Verify the staged production decision boundary before any canonical Research or buildDossier integration. Narrative planning is intentionally excluded.',
     model: { provider: model.id, version: model.version },
     caseOrder: cases.map(item => item.key),

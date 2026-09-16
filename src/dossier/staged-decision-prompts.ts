@@ -50,12 +50,21 @@ Classify why this non-direct gate is unresolved:
 
 Use unsupportedAspects and mappingReasoning as authoritative summaries. Do not reopen candidate fit, infer undisclosed evidence, or reason about willingness. Return only gapNature and concise reasoning.`;
 
+export const stagedDecisionCareerCapitalInstruction = `You are RADAR's career-capital adjudicator. Evaluate only the candidate-side career change represented by moving from supplied candidate precedent into the role's supplied operating conditions and scope/context resolutions.
+
+Return all four axes exactly once: authority, scope, functionalAltitude, compensation. Each axis contains only material plus candidateClaimIds, operatingConditionIds, and resolutionFields.
+
+Mark an axis material=true only when the supplied immutable evidence establishes a meaningful change along that axis. Material axes need at least one supporting reference. Mark an axis material=false only when the supplied evidence does not establish a meaningful change; false axes must return empty reference arrays.
+
+Authority may compare people leadership, decision rights, executive proximity, or leadership topology. Scope may compare remit, team breadth, geography, ownership, or functional span. Functional altitude may compare organizational level, mandate altitude, or type of role. Compensation may compare only supplied compensation evidence with supplied candidate scope/precedent; do not introduce market rates, benchmarks, or calculated percentages.
+
+Do not evaluate employer screening, requirements, gaps, screening viability, or pursuit verdict. Do not infer desire, willingness, reluctance, identity, mission alignment, retention risk, flight risk, personal preference, or probability of accepting a trade. Do not author prose.`;
+
 export const stagedDecisionInstruction = `You are RADAR's executive decision reasoner. All upstream judgments in the input are validated and immutable. Consume them; do not re-evaluate them.
 
 Return only a compact decision model:
 - screeningViability;
 - verdict;
-- one typed careerCapitalTrade;
 - decisionHinges;
 - reopeningConditions.
 
@@ -68,10 +77,8 @@ screeningConstraint is binding:
 - MAX_FRAGILE means screeningViability may be FRAGILE or BLOCKED, never STRONG or PLAUSIBLE.
 - NONE means there is no unresolved screening gate; do not invent one, and screeningViability must be STRONG or PLAUSIBLE.
 
-The application owns the complete screening-driver list. Do not return screening-driver IDs. Authority/headcount/commercial-scope differences are candidate-side career-capital facts, never employer screening defects. For careerCapitalTrade, return only material, dimension, and supporting candidate claim IDs, operating-condition IDs, and resolution fields; do not author an explanatory statement. For decisionHinges and reopeningConditions, return only their typed references; do not author explanatory statements. Do not infer identity, desire, willingness, reluctance, flight risk, retention risk, or employer concern.
+The application owns the complete screening-driver list and the immutable career-capital axes. Do not return screening-driver IDs or career-capital fields, and do not alter the supplied career-capital judgments. Authority/headcount/commercial-scope differences are candidate-side career-capital facts, never employer screening defects. For decisionHinges and reopeningConditions, return only their typed references; do not author explanatory statements. Do not infer identity, desire, willingness, reluctance, flight risk, retention risk, or employer concern.
 
 Use evidence-bounded language. Do not convert 'not evidenced' into 'the candidate lacks'. Do not speculate about undisclosed artifacts or their probability of existing.
-
-The input field careerCapitalEvidence contains candidate claims solely for the career-capital trade and decision hinges. It must not be used to reopen capability mapping or screening classification.
 
 Decision hinges may reference only unresolved/non-DIRECT requirements or context/scope resolutions. Reopening conditions may reference only unresolved/non-DIRECT requirements. Every returned identifier must come from the supplied immutable state.`;

@@ -4,7 +4,9 @@ import { contextFields, scopeFields, type Claim, type EvidenceSource, type Reaso
 import { runStagedFrozenDecisionDetailed } from '../../src/dossier/staged-decision';
 import {
   screeningConstraintForDrivers,
-  stagedDecisionModelSchema,
+  stagedCareerCapitalSchema,
+  stagedDecisionProposalSchema,
+  validateStagedCareerCapital,
   validateStagedDecisionModel,
   type StagedScreeningDriver,
 } from '../../src/dossier/staged-decision-contract';
@@ -70,6 +72,13 @@ const openResolutions = [...contextFields, ...scopeFields].map(field => ({
   question: `What is ${field}?`,
 }));
 
+const noCareerCapital = {
+  authority: { material: false, candidateClaimIds: [], operatingConditionIds: [], resolutionFields: [] },
+  scope: { material: false, candidateClaimIds: [], operatingConditionIds: [], resolutionFields: [] },
+  functionalAltitude: { material: false, candidateClaimIds: [], operatingConditionIds: [], resolutionFields: [] },
+  compensation: { material: false, candidateClaimIds: [], operatingConditionIds: [], resolutionFields: [] },
+};
+
 class ScriptedModel implements ReasoningModel {
   readonly id = 'test-model';
   readonly version = '1';
@@ -101,17 +110,11 @@ class ScriptedModel implements ReasoningModel {
     if (instruction.includes('screening-gap classifier')) {
       return { gapNature: 'MISSING_EXPERIENCE', reasoning: 'The unresolved gate is substantive prior experience, not a missing proof artifact.' };
     }
+    if (instruction.includes('career-capital adjudicator')) return noCareerCapital;
     if (instruction.includes('executive decision reasoner')) {
       return {
         screeningViability: 'BLOCKED',
         verdict: 'PASS',
-        careerCapitalTrade: {
-          material: false,
-          dimension: 'NONE',
-          candidateClaimIds: [],
-          operatingConditionIds: [],
-          resolutionFields: [],
-        },
         decisionHinges: [{
           requirementIds: ['REQ-001'],
           resolutionFields: [],
@@ -237,28 +240,46 @@ describe('staged production decision boundary', () => {
 
     const decision = validateStagedDecisionModel({
       screeningViability: 'BLOCKED', verdict: 'PASS',
-      careerCapitalTrade: {
-        material: false, dimension: 'NONE', candidateClaimIds: [], operatingConditionIds: [], resolutionFields: [],
-      },
       decisionHinges: [{ requirementIds: ['REQ-001'], resolutionFields: [] }],
       reopeningConditions: [{ requirementIds: ['REQ-001'] }],
-    }, [first, second], drivers, role, [], claims.filter(claim => claim.plane === 'CANDIDATE'));
+    }, [first, second], drivers, role, [], noCareerCapital);
 
     expect(decision.screeningDriverRequirementIds).toEqual(['REQ-001', 'REQ-002']);
   });
 
+  it('requires every career-capital axis to be either supported or empty', () => {
+    const role = materializeStagedRoleAnalysis({
+      requirements: [{
+        requirement: 'Relevant experience in Operations', strength: 'REQUIRED', roleImportance: 'CORE_CAPABILITY',
+        roleClaimIds: ['JD-1'], reasoning: 'Required experience.',
+      }],
+      operatingConditions: [{
+        condition: 'Hands-on role', kind: 'AUTHORITY_SHAPE', roleClaimIds: ['JD-1'], reasoning: 'Role shape.',
+      }],
+      authorityShape: 'Hands-on operating leader', roleSideConditions: [],
+    }, claims.filter(claim => claim.plane === 'JD'));
+    const candidateClaims = claims.filter(claim => claim.plane === 'CANDIDATE');
+
+    expect(() => validateStagedCareerCapital({
+      ...noCareerCapital,
+      authority: { ...noCareerCapital.authority, candidateClaimIds: ['CANDIDATE-1'] },
+    }, role, [], candidateClaims)).toThrow('Non-material authority career-capital axis cannot carry supporting references');
+
+    expect(() => validateStagedCareerCapital({
+      ...noCareerCapital,
+      authority: { material: true, candidateClaimIds: [], operatingConditionIds: [], resolutionFields: [] },
+    }, role, [], candidateClaims)).toThrow('Material authority career-capital axis needs immutable supporting references');
+
+    expect(stagedCareerCapitalSchema.parse({
+      ...noCareerCapital,
+      authority: { material: true, candidateClaimIds: ['CANDIDATE-1'], operatingConditionIds: ['OP-001'], resolutionFields: [] },
+    }).authority.material).toBe(true);
+  });
+
   it('excludes narrative-plan and prose fields from the strict decision proposal', () => {
-    expect(() => stagedDecisionModelSchema.parse({
+    expect(() => stagedDecisionProposalSchema.parse({
       screeningViability: 'BLOCKED',
       verdict: 'PASS',
-      screeningDriverRequirementIds: ['REQ-001'],
-      careerCapitalTrade: {
-        material: false,
-        dimension: 'NONE',
-        candidateClaimIds: [],
-        operatingConditionIds: [],
-        resolutionFields: [],
-      },
       decisionHinges: [{ requirementIds: ['REQ-001'], resolutionFields: [] }],
       reopeningConditions: [],
       narrativePlan: { argument: 'Editorial material does not belong in the decision model.' },
@@ -277,7 +298,7 @@ describe('staged production decision boundary', () => {
     expect(result.trace.eligibleScreeningDrivers[0].gapNature).toBe('MISSING_EXPERIENCE');
     expect(result).not.toHaveProperty('research');
     expect(result.decision).not.toHaveProperty('narrativePlan');
-    expect(result.decision.careerCapitalTrade).not.toHaveProperty('statement');
+    expect(result.decision.careerCapital).toEqual(noCareerCapital);
     expect(result.decision.decisionHinges[0]).not.toHaveProperty('statement');
   });
 

@@ -26,24 +26,31 @@ const decisionHingeSchema = z.object({
 const reopeningConditionSchema = z.object({
   requirementIds: z.array(z.string()).min(1),
 }).strict();
-const careerCapitalTradeSchema = z.object({
+const careerCapitalAxisSchema = z.object({
   material: z.boolean(),
-  dimension: z.enum(['AUTHORITY', 'SCOPE', 'FUNCTIONAL_ALTITUDE', 'COMPENSATION', 'NONE']),
   candidateClaimIds: z.array(z.string()),
   operatingConditionIds: z.array(z.string()),
   resolutionFields: z.array(z.string()),
 }).strict();
 
+export const stagedCareerCapitalSchema = z.object({
+  authority: careerCapitalAxisSchema,
+  scope: careerCapitalAxisSchema,
+  functionalAltitude: careerCapitalAxisSchema,
+  compensation: careerCapitalAxisSchema,
+}).strict();
+export type StagedCareerCapital = z.infer<typeof stagedCareerCapitalSchema>;
+
 export const stagedDecisionProposalSchema = z.object({
   screeningViability: z.enum(['STRONG', 'PLAUSIBLE', 'FRAGILE', 'BLOCKED']),
   verdict: z.enum(['PURSUE', 'CONSIDER', 'PASS']),
-  careerCapitalTrade: careerCapitalTradeSchema,
   decisionHinges: z.array(decisionHingeSchema).min(1),
   reopeningConditions: z.array(reopeningConditionSchema),
 }).strict();
 
 export const stagedDecisionModelSchema = stagedDecisionProposalSchema.extend({
   screeningDriverRequirementIds: z.array(z.string()),
+  careerCapital: stagedCareerCapitalSchema,
 }).strict();
 
 export type StagedDecisionModel = z.infer<typeof stagedDecisionModelSchema>;
@@ -71,6 +78,34 @@ export function materializeStagedDecisionResolutions(
     ...draft,
     consequence: `${draft.field} remains a decision-relevant role and opportunity field.`,
   }));
+}
+
+export function validateStagedCareerCapital(
+  value: unknown,
+  role: StagedRoleAnalysis,
+  resolutions: z.infer<typeof resolutionSchema>[],
+  candidateClaims: Claim[],
+): StagedCareerCapital {
+  const parsed = stagedCareerCapitalSchema.parse(value);
+  const operatingIds = new Set(role.operatingConditions.map(item => item.id));
+  const resolutionFields = new Set(resolutions.map(item => item.field));
+  const candidateIds = new Set(candidateClaims.map(item => item.id));
+
+  for (const [axis, judgment] of Object.entries(parsed)) {
+    exactIds(judgment.candidateClaimIds, candidateIds, `${axis} career-capital candidate claim`);
+    exactIds(judgment.operatingConditionIds, operatingIds, `${axis} career-capital operating condition`);
+    exactIds(judgment.resolutionFields, resolutionFields, `${axis} career-capital resolution field`);
+    const supportCount = judgment.candidateClaimIds.length
+      + judgment.operatingConditionIds.length
+      + judgment.resolutionFields.length;
+    if (judgment.material && !supportCount) {
+      throw new Error(`Material ${axis} career-capital axis needs immutable supporting references`);
+    }
+    if (!judgment.material && supportCount) {
+      throw new Error(`Non-material ${axis} career-capital axis cannot carry supporting references`);
+    }
+  }
+  return parsed;
 }
 
 export type StagedScreeningDriver = StagedMappedRequirement & {
@@ -128,12 +163,11 @@ export function validateStagedDecisionModel(
   drivers: StagedScreeningDriver[],
   role: StagedRoleAnalysis,
   resolutions: z.infer<typeof resolutionSchema>[],
-  candidateClaims: Claim[],
+  careerCapital: StagedCareerCapital,
 ): StagedDecisionModel {
   const parsed = stagedDecisionProposalSchema.parse(value);
   const operatingIds = new Set(role.operatingConditions.map(item => item.id));
   const resolutionFields = new Set(resolutions.map(item => item.field));
-  const candidateIds = new Set(candidateClaims.map(item => item.id));
 
   const screeningDriverRequirementIds = drivers.map(driver => driver.id);
   const constraint = screeningConstraintForDrivers(drivers);
@@ -162,21 +196,6 @@ export function validateStagedDecisionModel(
     throw new Error('BLOCKED screening viability requires an eligible screening driver');
   }
 
-  exactIds(parsed.careerCapitalTrade.candidateClaimIds, candidateIds, 'career-capital candidate claim');
-  exactIds(parsed.careerCapitalTrade.operatingConditionIds, operatingIds, 'career-capital operating condition');
-  exactIds(parsed.careerCapitalTrade.resolutionFields, resolutionFields, 'career-capital resolution field');
-  if (parsed.careerCapitalTrade.material) {
-    if (parsed.careerCapitalTrade.dimension === 'NONE') {
-      throw new Error('A material career-capital trade needs a concrete trade dimension');
-    }
-    const supportCount = parsed.careerCapitalTrade.candidateClaimIds.length
-      + parsed.careerCapitalTrade.operatingConditionIds.length
-      + parsed.careerCapitalTrade.resolutionFields.length;
-    if (!supportCount) throw new Error('A material career-capital trade needs immutable supporting references');
-  } else if (parsed.careerCapitalTrade.dimension !== 'NONE') {
-    throw new Error('A non-material career-capital trade must use dimension NONE');
-  }
-
   const nonDirectRequirementIds = new Set(
     requirements.filter(item => item.status !== 'DIRECT').map(item => item.id),
   );
@@ -191,5 +210,5 @@ export function validateStagedDecisionModel(
     exactIds(condition.requirementIds, nonDirectRequirementIds, 'reopening-condition unresolved requirement');
   }
 
-  return stagedDecisionModelSchema.parse({ ...parsed, screeningDriverRequirementIds });
+  return stagedDecisionModelSchema.parse({ ...parsed, screeningDriverRequirementIds, careerCapital });
 }

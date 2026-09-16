@@ -17,16 +17,19 @@ import {
 import {
   screeningConstraintForDrivers,
   materializeStagedDecisionResolutions,
+  stagedCareerCapitalSchema,
   stagedDecisionProposalSchema,
   stagedDecisionResolutionResponseSchema,
   stagedGapResponseSchema,
   validateStagedDecisionModel,
+  validateStagedCareerCapital,
   validateStagedGap,
   type StagedDecisionResult,
   type StagedScreeningDriver,
 } from './staged-decision-contract';
 import {
   stagedDecisionGapInstruction,
+  stagedDecisionCareerCapitalInstruction,
   stagedDecisionInstruction,
   stagedDecisionMappingInstruction,
   stagedDecisionResolutionInstruction,
@@ -213,7 +216,6 @@ export async function runStagedFrozenDecisionDetailed(
 ): Promise<StagedDecisionResult> {
   const roleClaims = frozen.evidence.filter(claim => claim.plane === 'JD');
   const candidateClaims = frozen.evidence.filter(claim => claim.plane === 'CANDIDATE');
-  const contextClaims = frozen.evidence.filter(claim => claim.plane === 'CONTEXT');
   if (!roleClaims.length || !candidateClaims.length) {
     throw new Error('Staged decision research requires validated JD and candidate evidence');
   }
@@ -339,6 +341,21 @@ export async function runStagedFrozenDecisionDetailed(
   }));
   const screeningConstraint = screeningConstraintForDrivers(drivers);
 
+  const careerCapital = await proposeStage(
+    'Adjudicating career capital',
+    model,
+    stagedDecisionCareerCapitalInstruction,
+    {
+      candidateClaims,
+      operatingConditions: role.operatingConditions,
+      authorityShape: role.authorityShape,
+      resolutions,
+    },
+    stagedCareerCapitalSchema,
+    value => validateStagedCareerCapital(value, role, resolutions, candidateClaims),
+    onStage,
+  );
+
   const immutableRequirements = requirements.map(requirement => ({
     id: requirement.id,
     requirement: requirement.requirement,
@@ -371,12 +388,10 @@ export async function runStagedFrozenDecisionDetailed(
       authorityShape: role.authorityShape,
       roleSideConditions: role.roleSideConditions,
       resolutions,
-      careerCapitalEvidence: candidateClaims,
-      contextClaims,
-      candidateConflicts: frozen.candidateConflicts,
+      careerCapital,
     },
     stagedDecisionProposalSchema,
-    value => validateStagedDecisionModel(value, requirements, drivers, role, resolutions, candidateClaims),
+    value => validateStagedDecisionModel(value, requirements, drivers, role, resolutions, careerCapital),
     onStage,
   );
 
