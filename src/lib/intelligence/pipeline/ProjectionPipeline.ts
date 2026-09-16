@@ -45,6 +45,8 @@ export interface PipelineExecutionInput {
   documentHash: string;
   documentText?: string;
   fileBuffer?: Buffer;
+  /** Serving-policy activation is a separate explicit lifecycle action. */
+  activateServingPlan?: boolean;
 }
 
 export function reuseEvidenceGraphForOwner(
@@ -197,9 +199,15 @@ export class ProjectionPipeline {
            ON CONFLICT(person_id, profile_version, document_id) DO NOTHING`,
           [personId, finalProjection.profileVersion, documentId, evidenceGraph.id, textHash || documentHash],
         );
-        // A saved CV projection is a new immutable input. If a real intent
-        // exists, establish a new context and canonical refresh lineage now;
-        // cache invalidation alone is never presented as reevaluation.
+        // A saved CV projection is a new immutable input. It must never switch
+        // the serving evaluation policy implicitly; activation is an explicit
+        // action after the caller has selected the policy/context lineage.
+        if (!input.activateServingPlan) {
+          await this.repos.documents.updateDocumentStage(documentId, "PROFILE_READY", "COMPLETED");
+          return { success: true, stage: "PROFILE_READY", deduplicated: isDeduplicated };
+        }
+        // Explicit legacy-serving activation remains available to the caller
+        // that intentionally requests it.
         const intent = await this.repos.documents.getLatestCareerIntent(personId);
         if (!intent) {
           // A projection is usable profile processing, not a recommendation
