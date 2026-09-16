@@ -21,7 +21,7 @@ function subdivideVerbatim(text: string, start: number): Array<{ text: string; s
       break;
     }
     const window = text.slice(offset, offset + MAX_LOCAL_SPAN + 1);
-    const separators = [...window.matchAll(/[;|•]|\.(?=\s)|,(?=\s)/gu)].map(match => (match.index ?? 0) + match[0].length);
+    const separators = [...window.matchAll(/[;|â€¢]|\.(?=\s)|,(?=\s)/gu)].map(match => (match.index ?? 0) + match[0].length);
     const preferred = separators.filter(index => index >= MIN_PREFERRED_SPAN).at(-1);
     const whitespace = [...window.matchAll(/\s+/gu)].map(match => (match.index ?? 0) + match[0].length).filter(index => index >= MIN_PREFERRED_SPAN).at(-1);
     const cut = preferred ?? whitespace ?? MAX_LOCAL_SPAN;
