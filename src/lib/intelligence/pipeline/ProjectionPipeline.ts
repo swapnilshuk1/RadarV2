@@ -7,6 +7,8 @@
  */
 
 import { getRepositories } from "../../../data/sqlite/provider";
+import { getDatabaseAdapter } from "../../../data/database";
+import { versionCandidateProjection } from "../../../data/sqlite/repositories/profile-projection-version";
 import type { CandidateDocumentRecord } from "../../../data/sqlite/repositories/SqliteDocumentStore";
 import { EvidenceExtractionService } from "../extraction/EvidenceExtractionService";
 import { EvidenceNormalizer } from "../extraction/EvidenceNormalizer";
@@ -186,8 +188,15 @@ export class ProjectionPipeline {
       let finalProjection = baseProjection;
       if (currentStage === "INFERENCE_COMPLETE") {
         await this.repos.documents.updateDocumentStage(documentId, "INFERENCE_COMPLETE", "PROCESSING");
-        finalProjection = OperatingLevelEngine.evaluate(baseProjection, rawText);
+        finalProjection = versionCandidateProjection(OperatingLevelEngine.evaluate(baseProjection, rawText));
         await this.repos.people.saveProjection(personId, finalProjection);
+        // A staged evaluation requires this exact profile-to-source binding; there is no latest-document fallback.
+        await getDatabaseAdapter().execute(
+          `INSERT INTO profile_projection_source_bindings (person_id, profile_version, document_id, evidence_graph_id, document_text_hash)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(person_id, profile_version, document_id) DO NOTHING`,
+          [personId, finalProjection.profileVersion, documentId, evidenceGraph.id, textHash || documentHash],
+        );
         // A saved CV projection is a new immutable input. If a real intent
         // exists, establish a new context and canonical refresh lineage now;
         // cache invalidation alone is never presented as reevaluation.
@@ -238,3 +247,4 @@ export class ProjectionPipeline {
     }
   }
 }
+

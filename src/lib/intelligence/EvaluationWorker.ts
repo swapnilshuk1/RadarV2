@@ -15,6 +15,10 @@ import type { EvaluationContext } from "@/lib/domain/evaluation_context";
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
 import { resolveExactCandidateProjectionForScope } from "@/data/sqlite/repositories/profile-projection-version";
 import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
+import { createBedrockGlmResearchModel } from "@/lib/model/bedrock-glm-research-model";
+import { ProductionStagedEvaluationService } from "./staged/ProductionStagedEvaluationService";
+import { DeterministicStagedInputUnavailableError } from "./staged/ProductionStagedInputAdapter";
+import { STAGED_POLICY_VERSION, SqliteStagedEvaluationStore, stagedUnavailableEvaluation } from "@/data/sqlite/repositories/SqliteStagedEvaluationStore";
 
 export interface WorkerOptions {
   adapter?: DatabaseAdapter;
@@ -207,6 +211,28 @@ export class EvaluationWorker {
         createdAt: ctxRow.created_at || new Date().toISOString(),
       };
 
+      // Policy dispatch keeps the durable worker spine shared while preserving
+      // the legacy intrinsic path for existing immutable contexts.
+      if (context.policyVersion === STAGED_POLICY_VERSION) {
+        const stagedStore = new SqliteStagedEvaluationStore(this.db);
+        const identity = { tenantId: job.tenantId, personId: job.personId, canonicalJobId: job.canonicalJobId, opportunityVersion: job.opportunityVersion, evaluationContextFingerprint: job.evaluationContextFingerprint, profileVersion: context.profileVersion, policyVersion: context.policyVersion, ontologyVersion: context.ontologyVersion, ontologyFingerprint: context.ontologyFingerprint };
+        if (!isAcquired || !isLifecycleActive) {
+          const unavailable = stagedUnavailableEvaluation(identity, !isAcquired ? 'CANONICAL_JD_UNAVAILABLE' : 'OPPORTUNITY_NOT_ACTIVE');
+          await stagedStore.save(unavailable);
+          return this.commitDeterministicStagedFailure(job, unavailable.blockedReason!);
+        }
+        try {
+          const evaluated = await new ProductionStagedEvaluationService(this.db, createBedrockGlmResearchModel()).evaluate({ ...identity, context });
+          return this.commitStagedCompletion(job, evaluated.decision);
+        } catch (error) {
+          if (error instanceof DeterministicStagedInputUnavailableError) {
+            const unavailable = stagedUnavailableEvaluation(identity, error.reason);
+            await stagedStore.save(unavailable);
+            return this.commitDeterministicStagedFailure(job, error.reason);
+          }
+          throw error;
+        }
+      }
       // Dual Guard: Acquisition Trustworthiness + Active Lifecycle
       if (!isAcquired || !isLifecycleActive) {
         const evalState = (versionRow.lifecycle_state === "EXPIRED" || versionRow.lifecycle_state === "REMOVED_404")
@@ -526,6 +552,23 @@ export class EvaluationWorker {
     }
   }
 
+  private async commitStagedCompletion(job: ClaimedJob, decision?: string): Promise<WorkerProcessingResult> {
+    return this.completeStagedJob(job, 'SATISFIED', decision);
+  }
+
+  private async commitDeterministicStagedFailure(job: ClaimedJob, reason: string): Promise<WorkerProcessingResult> {
+    return this.completeStagedJob(job, 'FAILED', undefined, `STAGED_INPUT_UNAVAILABLE:${reason}`);
+  }
+
+  private async completeStagedJob(job: ClaimedJob, requirementStatus: 'SATISFIED'|'FAILED', decision?: string, error?: string): Promise<WorkerProcessingResult> {
+    return this.db.transaction(async tx => {
+      const lease = await tx.one<{id:string}>(`SELECT id FROM evaluation_jobs WHERE id=? AND locked_by=? AND lease_token=? AND status='processing'`, [job.id,this.workerId,job.leaseToken]);
+      if (!lease) return {status:'stale_lease_lost' as const,jobId:job.id,error:'Lease token was lost before staged completion'};
+      await tx.execute(`UPDATE evaluation_jobs SET status=?, completed_at=CURRENT_TIMESTAMP,last_error=?,locked_by=NULL,lease_token=NULL,locked_at=NULL WHERE id=? AND locked_by=? AND lease_token=?`, [requirementStatus==='SATISFIED'?'completed':'dead_letter',error??null,job.id,this.workerId,job.leaseToken]);
+      await tx.execute(`UPDATE evaluation_requirements SET status=?, satisfied_at=CASE WHEN ?='SATISFIED' THEN CURRENT_TIMESTAMP ELSE satisfied_at END, blocked_reason=CASE WHEN ?='FAILED' THEN ? ELSE blocked_reason END WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=?`, [requirementStatus,requirementStatus,requirementStatus,error??null,job.tenantId,job.personId,job.searchPlanId,job.canonicalJobId,job.opportunityVersion,job.evaluationContextFingerprint]);
+      return {status: requirementStatus==='SATISFIED'?'completed' as const:'dead_letter' as const,jobId:job.id,decision,error};
+    });
+  }
   private async commitEvaluationMaterialization(
     job: ClaimedJob,
     materialized: any,
@@ -690,3 +733,4 @@ export class EvaluationWorker {
     return { processed, completed, failed };
   }
 }
+
