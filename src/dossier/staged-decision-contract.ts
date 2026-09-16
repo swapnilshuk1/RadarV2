@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { resolutionSchema, type Claim } from './contracts';
+import { operations, resolutionSchema, type Claim } from './contracts';
 import type {
   StagedMappedRequirement,
   StagedRoleAnalysis,
@@ -20,34 +20,58 @@ export const stagedGapResponseSchema = z.object({
 });
 
 const decisionHingeSchema = z.object({
-  statement: z.string().min(1),
   requirementIds: z.array(z.string()),
   resolutionFields: z.array(z.string()),
-});
+}).strict();
 const reopeningConditionSchema = z.object({
-  statement: z.string().min(1),
   requirementIds: z.array(z.string()).min(1),
-});
+}).strict();
 const careerCapitalTradeSchema = z.object({
   material: z.boolean(),
   dimension: z.enum(['AUTHORITY', 'SCOPE', 'FUNCTIONAL_ALTITUDE', 'COMPENSATION', 'NONE']),
-  statement: z.string().min(1),
   candidateClaimIds: z.array(z.string()),
   operatingConditionIds: z.array(z.string()),
   resolutionFields: z.array(z.string()),
-});
+}).strict();
 
-export const stagedDecisionModelSchema = z.object({
+export const stagedDecisionProposalSchema = z.object({
   screeningViability: z.enum(['STRONG', 'PLAUSIBLE', 'FRAGILE', 'BLOCKED']),
   verdict: z.enum(['PURSUE', 'CONSIDER', 'PASS']),
-  screeningDriverRequirementIds: z.array(z.string()),
   careerCapitalTrade: careerCapitalTradeSchema,
   decisionHinges: z.array(decisionHingeSchema).min(1),
   reopeningConditions: z.array(reopeningConditionSchema),
 }).strict();
 
+export const stagedDecisionModelSchema = stagedDecisionProposalSchema.extend({
+  screeningDriverRequirementIds: z.array(z.string()),
+}).strict();
+
 export type StagedDecisionModel = z.infer<typeof stagedDecisionModelSchema>;
 export type ScreeningConstraint = 'NONE' | 'MAX_FRAGILE' | 'BLOCKED_REQUIRED';
+
+const stagedDecisionResolutionDraftSchema = z.object({
+  field: z.string().min(1),
+  status: z.enum(['RESOLVED', 'INFERRED', 'OPEN']),
+  value: z.union([z.string(), z.number(), z.array(z.string()), z.array(z.number())]).nullable(),
+  claimIds: z.array(z.string()),
+  methods: z.array(z.enum(operations)).min(1),
+  question: z.string().min(1).optional(),
+}).strict();
+
+export const stagedDecisionResolutionResponseSchema = z.object({
+  resolutions: z.array(stagedDecisionResolutionDraftSchema).min(1),
+}).strict();
+
+export type StagedDecisionResolutionDraft = z.infer<typeof stagedDecisionResolutionDraftSchema>;
+
+export function materializeStagedDecisionResolutions(
+  drafts: StagedDecisionResolutionDraft[],
+): z.infer<typeof resolutionSchema>[] {
+  return drafts.map(draft => resolutionSchema.parse({
+    ...draft,
+    consequence: `${draft.field} remains a decision-relevant role and opportunity field.`,
+  }));
+}
 
 export type StagedScreeningDriver = StagedMappedRequirement & {
   gapNature: StagedGapNature;
@@ -106,13 +130,12 @@ export function validateStagedDecisionModel(
   resolutions: z.infer<typeof resolutionSchema>[],
   candidateClaims: Claim[],
 ): StagedDecisionModel {
-  const parsed = stagedDecisionModelSchema.parse(value);
-  const driverIds = new Set(drivers.map(item => item.id));
+  const parsed = stagedDecisionProposalSchema.parse(value);
   const operatingIds = new Set(role.operatingConditions.map(item => item.id));
   const resolutionFields = new Set(resolutions.map(item => item.field));
   const candidateIds = new Set(candidateClaims.map(item => item.id));
 
-  exactIds(parsed.screeningDriverRequirementIds, driverIds, 'screening-driver requirement');
+  const screeningDriverRequirementIds = drivers.map(driver => driver.id);
   const constraint = screeningConstraintForDrivers(drivers);
 
   if (constraint === 'BLOCKED_REQUIRED' && parsed.screeningViability !== 'BLOCKED') {
@@ -121,16 +144,12 @@ export function validateStagedDecisionModel(
   if (constraint === 'MAX_FRAGILE' && ['STRONG', 'PLAUSIBLE'].includes(parsed.screeningViability)) {
     throw new Error('An unresolved screening gate cannot produce STRONG or PLAUSIBLE screening viability');
   }
-  if (constraint === 'NONE' && parsed.screeningDriverRequirementIds.length) {
-    throw new Error('No screening driver may be invented when all screening gates are directly satisfied');
-  }
   if (constraint === 'NONE' && ['FRAGILE', 'BLOCKED'].includes(parsed.screeningViability)) {
     throw new Error('FRAGILE or BLOCKED screening viability requires an unresolved screening gate');
   }
   if (constraint === 'BLOCKED_REQUIRED') {
-    const selected = new Set(parsed.screeningDriverRequirementIds);
     const substantiveSelected = drivers.some(driver =>
-      selected.has(driver.id) && ['MISSING_EXPERIENCE', 'AFFIRMATIVE_CONFLICT'].includes(driver.gapNature)
+      ['MISSING_EXPERIENCE', 'AFFIRMATIVE_CONFLICT'].includes(driver.gapNature)
     );
     if (!substantiveSelected) {
       throw new Error('BLOCKED screening viability must identify a substantive unresolved screening driver');
@@ -139,7 +158,7 @@ export function validateStagedDecisionModel(
   if (parsed.screeningViability === 'BLOCKED' && parsed.verdict !== 'PASS') {
     throw new Error('BLOCKED screening viability requires verdict PASS');
   }
-  if (parsed.screeningViability === 'BLOCKED' && !parsed.screeningDriverRequirementIds.length) {
+  if (parsed.screeningViability === 'BLOCKED' && !screeningDriverRequirementIds.length) {
     throw new Error('BLOCKED screening viability requires an eligible screening driver');
   }
 
@@ -172,5 +191,5 @@ export function validateStagedDecisionModel(
     exactIds(condition.requirementIds, nonDirectRequirementIds, 'reopening-condition unresolved requirement');
   }
 
-  return parsed;
+  return stagedDecisionModelSchema.parse({ ...parsed, screeningDriverRequirementIds });
 }

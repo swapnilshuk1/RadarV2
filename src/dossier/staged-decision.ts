@@ -8,7 +8,6 @@ import {
   eligibleScreeningDrivers,
   materializeStagedRoleAnalysis,
   stagedMappingResponseSchema,
-  stagedResolutionResponseSchema,
   stagedRoleAnalysisSchema,
   stagedScreeningResponseSchema,
   type StagedMappedRequirement,
@@ -17,7 +16,9 @@ import {
 } from './staged-research';
 import {
   screeningConstraintForDrivers,
-  stagedDecisionModelSchema,
+  materializeStagedDecisionResolutions,
+  stagedDecisionProposalSchema,
+  stagedDecisionResolutionResponseSchema,
   stagedGapResponseSchema,
   validateStagedDecisionModel,
   validateStagedGap,
@@ -125,7 +126,8 @@ function validateMapping(value: unknown, candidateClaims: Claim[]) {
 }
 
 function validateResolutions(value: unknown, frozen: StagedResearchInput) {
-  const parsed = stagedResolutionResponseSchema.parse(value).resolutions;
+  const drafts = stagedDecisionResolutionResponseSchema.parse(value).resolutions;
+  const parsed = materializeStagedDecisionResolutions(drafts);
   const claims = new Map(frozen.evidence.map(claim => [claim.id, claim]));
   const expected = new Set(frozen.fields);
   const knownClaimIds = new Set(claims.keys());
@@ -141,6 +143,9 @@ function validateResolutions(value: unknown, frozen: StagedResearchInput) {
     }
     if (resolution.status !== 'OPEN' && (resolution.value === null || !resolution.claimIds.length)) {
       throw new Error(`Resolved field needs evidence: ${resolution.field}`);
+    }
+    if (resolution.status !== 'OPEN' && resolution.question !== undefined) {
+      throw new Error(`Resolved field cannot carry a question: ${resolution.field}`);
     }
     if (resolution.field === 'executiveDistance' && resolution.status === 'RESOLVED') {
       throw new Error('Executive distance is an analytical derivation; label INFERRED');
@@ -287,7 +292,7 @@ export async function runStagedFrozenDecisionDetailed(
       acquisition: frozen.acquisition,
       fields: frozen.fields,
     },
-    stagedResolutionResponseSchema,
+    stagedDecisionResolutionResponseSchema,
     value => validateResolutions(value, frozen),
     onStage,
   );
@@ -370,7 +375,7 @@ export async function runStagedFrozenDecisionDetailed(
       contextClaims,
       candidateConflicts: frozen.candidateConflicts,
     },
-    stagedDecisionModelSchema,
+    stagedDecisionProposalSchema,
     value => validateStagedDecisionModel(value, requirements, drivers, role, resolutions, candidateClaims),
     onStage,
   );

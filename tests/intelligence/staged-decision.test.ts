@@ -5,6 +5,7 @@ import { runStagedFrozenDecisionDetailed } from '../../src/dossier/staged-decisi
 import {
   screeningConstraintForDrivers,
   stagedDecisionModelSchema,
+  validateStagedDecisionModel,
   type StagedScreeningDriver,
 } from '../../src/dossier/staged-decision-contract';
 import {
@@ -67,7 +68,6 @@ const openResolutions = [...contextFields, ...scopeFields].map(field => ({
   claimIds: [],
   methods: ['ask' as const],
   question: `What is ${field}?`,
-  consequence: `${field} can change the decision context.`,
 }));
 
 class ScriptedModel implements ReasoningModel {
@@ -105,27 +105,62 @@ class ScriptedModel implements ReasoningModel {
       return {
         screeningViability: 'BLOCKED',
         verdict: 'PASS',
-        screeningDriverRequirementIds: ['REQ-001'],
         careerCapitalTrade: {
           material: false,
           dimension: 'NONE',
-          statement: 'No distinct career-capital trade is established by this fixture.',
           candidateClaimIds: [],
           operatingConditionIds: [],
           resolutionFields: [],
         },
         decisionHinges: [{
-          statement: 'New verified Operations experience would change employer accessibility.',
           requirementIds: ['REQ-001'],
           resolutionFields: [],
         }],
         reopeningConditions: [{
-          statement: 'Reopen only if verifiable relevant Operations experience is supplied.',
           requirementIds: ['REQ-001'],
         }],
       };
     }
     throw new Error('Unexpected staged decision instruction');
+  }
+}
+
+class ResolvedQuestionModel extends ScriptedModel {
+  override readonly id = 'resolved-question-model';
+  override async generate(instruction: string, input: any): Promise<unknown> {
+    const result = await super.generate(instruction, input);
+    if (instruction.startsWith('Resolve only RADAR')) {
+      return {
+        resolutions: [
+          {
+            field: contextFields[0], status: 'RESOLVED', value: 'Known value',
+            claimIds: ['JD-1'], methods: ['extract'],
+            question: 'A resolved field must not retain a question.',
+          },
+          ...openResolutions.slice(1),
+        ],
+      };
+    }
+    return result;
+  }
+}
+
+class ResolvedLeadershipModeModel extends ScriptedModel {
+  override readonly id = 'resolved-leadership-mode-model';
+  override async generate(instruction: string, input: any): Promise<unknown> {
+    const result = await super.generate(instruction, input);
+    if (instruction.startsWith('Resolve only RADAR')) {
+      return {
+        resolutions: [
+          ...openResolutions.filter(resolution => resolution.field !== 'leadershipMode'),
+          {
+            field: 'leadershipMode', status: 'RESOLVED', value: 'INDIVIDUAL_CONTRIBUTOR_HANDS_ON_LEAD',
+            claimIds: ['JD-1'], methods: ['infer'],
+          },
+        ],
+      };
+    }
+    return result;
   }
 }
 
@@ -183,7 +218,36 @@ describe('staged production decision boundary', () => {
     expect(screeningConstraintForDrivers([])).toBe('NONE');
   });
 
-  it('excludes narrative-plan/editorial fields from the strict decision contract', () => {
+  it('materializes every unresolved screening gate as an application-owned driver', () => {
+    const role = materializeStagedRoleAnalysis({
+      requirements: [{
+        requirement: 'Relevant experience in Operations', strength: 'REQUIRED', roleImportance: 'CORE_CAPABILITY',
+        roleClaimIds: ['JD-1'], reasoning: 'Required experience.',
+      }],
+      operatingConditions: [], authorityShape: 'Operating leader', roleSideConditions: [],
+    }, claims.filter(claim => claim.plane === 'JD'));
+    const first = baseMapped();
+    const second: StagedMappedRequirement = {
+      ...baseMapped(), id: 'REQ-002', status: 'ADJACENT', candidateClaimIds: ['CANDIDATE-1'],
+    };
+    const drivers: StagedScreeningDriver[] = [
+      { ...first, gapNature: 'MISSING_EXPERIENCE', gapReasoning: 'Substantive prior experience is missing.' },
+      { ...second, gapNature: 'PARTIAL_EVIDENCE', gapReasoning: 'Adjacent proof remains partial.' },
+    ];
+
+    const decision = validateStagedDecisionModel({
+      screeningViability: 'BLOCKED', verdict: 'PASS',
+      careerCapitalTrade: {
+        material: false, dimension: 'NONE', candidateClaimIds: [], operatingConditionIds: [], resolutionFields: [],
+      },
+      decisionHinges: [{ requirementIds: ['REQ-001'], resolutionFields: [] }],
+      reopeningConditions: [{ requirementIds: ['REQ-001'] }],
+    }, [first, second], drivers, role, [], claims.filter(claim => claim.plane === 'CANDIDATE'));
+
+    expect(decision.screeningDriverRequirementIds).toEqual(['REQ-001', 'REQ-002']);
+  });
+
+  it('excludes narrative-plan and prose fields from the strict decision proposal', () => {
     expect(() => stagedDecisionModelSchema.parse({
       screeningViability: 'BLOCKED',
       verdict: 'PASS',
@@ -191,12 +255,11 @@ describe('staged production decision boundary', () => {
       careerCapitalTrade: {
         material: false,
         dimension: 'NONE',
-        statement: 'No material trade.',
         candidateClaimIds: [],
         operatingConditionIds: [],
         resolutionFields: [],
       },
-      decisionHinges: [{ statement: 'Evidence changes access.', requirementIds: ['REQ-001'], resolutionFields: [] }],
+      decisionHinges: [{ requirementIds: ['REQ-001'], resolutionFields: [] }],
       reopeningConditions: [],
       narrativePlan: { argument: 'Editorial material does not belong in the decision model.' },
     })).toThrow();
@@ -214,5 +277,17 @@ describe('staged production decision boundary', () => {
     expect(result.trace.eligibleScreeningDrivers[0].gapNature).toBe('MISSING_EXPERIENCE');
     expect(result).not.toHaveProperty('research');
     expect(result.decision).not.toHaveProperty('narrativePlan');
+    expect(result.decision.careerCapitalTrade).not.toHaveProperty('statement');
+    expect(result.decision.decisionHinges[0]).not.toHaveProperty('statement');
+  });
+
+  it('rejects a question on a resolved field before decision reasoning', async () => {
+    await expect(runStagedFrozenDecisionDetailed(frozen, new ResolvedQuestionModel()))
+      .rejects.toThrow(`Resolved field cannot carry a question: ${contextFields[0]}`);
+  });
+
+  it('requires analytical leadership mode classifications to be inferred', async () => {
+    await expect(runStagedFrozenDecisionDetailed(frozen, new ResolvedLeadershipModeModel()))
+      .rejects.toThrow('leadershipMode is an analytical classification; label it INFERRED unless the source uses the classification itself');
   });
 });
