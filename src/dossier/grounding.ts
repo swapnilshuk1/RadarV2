@@ -9,6 +9,16 @@ function assertEvidenceBoundCandidateLanguage(text: string, label: string) {
   }
 }
 
+export interface ResearchValidationOptions {
+  /**
+   * LEGACY_LEXICAL preserves the monolithic Research safety rail that re-checks
+   * hard screens from local JD wording. PREVALIDATED is reserved for the staged
+   * application-owned assembly after each immutable requirement has already
+   * received exact-source semantic screening adjudication.
+   */
+  hardScreenAuthority?: 'LEGACY_LEXICAL' | 'PREVALIDATED';
+}
+
 export function validateClaims(value: unknown, sources: EvidenceSource[]): Claim[] {
   const parsed = claimSchema.array().parse(value);
   const sourceById = new Map(sources.map(s => [s.id, s]));
@@ -44,7 +54,8 @@ export function validateClaims(value: unknown, sources: EvidenceSource[]): Claim
   return parsed;
 }
 
-export function validateResearch(value: unknown, sources: EvidenceSource[]): Research {
+export function validateResearch(value: unknown, sources: EvidenceSource[], options: ResearchValidationOptions = {}): Research {
+  const hardScreenAuthority = options.hardScreenAuthority ?? 'LEGACY_LEXICAL';
   const research = researchSchema.parse(value);
   const claims = new Map(research.claims.map(c => [c.id, c]));
   if (claims.size !== research.claims.length) throw new Error('Duplicate claim identity');
@@ -116,12 +127,14 @@ export function validateResearch(value: unknown, sources: EvidenceSource[]): Res
     if (r.decisionRole === 'HARD_SCREEN' && !r.mandatory) throw new Error('A hard screen must be mandatory');
     if (r.decisionRole === 'HARD_SCREEN') {
       if (/\b(?:compensation|salary|ctc|pay|on[- ]?site|remote|hybrid|location|relocat)\b/i.test(r.requirement)) throw new Error('Employment conditions are not candidate-evidence hard screens');
-      const entryEvidence = r.roleClaimIds.flatMap(id => {
-        const claim = claims.get(id)!;
-        if (claim.state !== 'EXPLICIT') return [];
-        return claim.citations.flatMap(citation => sourceById.get(citation.sourceId)?.plane === 'JD' ? [citation.quote] : []);
-      }).join(' ');
-      if (!/\b(?:required|must have|minimum|eligib(?:le|ility)|qualification|prior experience|relevant experience|years? of experience|proven track record|portfolio)\b/i.test(entryEvidence)) throw new Error(`Hard screen '${r.requirement}' needs an explicit employer entry qualification in its cited JD evidence`);
+      if (hardScreenAuthority === 'LEGACY_LEXICAL') {
+        const entryEvidence = r.roleClaimIds.flatMap(id => {
+          const claim = claims.get(id)!;
+          if (claim.state !== 'EXPLICIT') return [];
+          return claim.citations.flatMap(citation => sourceById.get(citation.sourceId)?.plane === 'JD' ? [citation.quote] : []);
+        }).join(' ');
+        if (!/\b(?:required|must have|minimum|eligib(?:le|ility)|qualification|prior experience|relevant experience|years? of experience|proven track record|portfolio)\b/i.test(entryEvidence)) throw new Error(`Hard screen '${r.requirement}' needs an explicit employer entry qualification in its cited JD evidence`);
+      }
     }
     if (r.decisionRole === 'PREFERENCE' && r.mandatory) throw new Error('A preference cannot be mandatory');
     assertEvidenceBoundCandidateLanguage(r.reasoning, `Requirement '${r.requirement}'`);
