@@ -7,6 +7,8 @@ import fs from "fs";
 import path from "path";
 import { DatabaseAdapter, QueryParams } from "@/data/database/DatabaseAdapter";
 import { enqueueEvaluationJobsForPlan } from "@/lib/intelligence/enqueueEvaluationJobs";
+import { EvaluationWorkScheduler } from "@/lib/intelligence/EvaluationWorkScheduler";
+import { EvaluationWorker } from "@/lib/intelligence/EvaluationWorker";
 import type { AuthContext } from "@/lib/security/auth";
 
 class TestSqliteAdapter implements DatabaseAdapter {
@@ -240,4 +242,32 @@ describe("Sub-Phase M5.2: Work Enqueuer & Idempotent Projection Sync", () => {
     expect(req).not.toBeNull();
     expect(req.status).toBe("WAITING_ENRICHMENT");
   });
+
+  test("10. Staged jobs are invisible to the legacy pending/processing claim surface", async () => {
+    sqliteDb.exec(`INSERT INTO search_plan_snapshots (id, search_plan_id, tenant_id, person_id, snapshot_hash, payload_json)
+      VALUES ('snap_staged', 'plan_A', 'tenant_A', 'person_A', 'hash_staged', '{}')`);
+    sqliteDb.exec(`INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version)
+      VALUES ('ctx_staged', 'tenant_A', 'person_A', 'snap_staged', 'v3', 'ont_hash', 'staged-v1', 'prof_1')`);
+
+    const scheduler = new EvaluationWorkScheduler(adapter);
+    await scheduler.ensureWork({ tenantId: 'tenant_A', personId: 'person_A', searchPlanId: 'plan_A', canonicalJobId: 'job_1', opportunityVersion: 'ver_1a', evaluationContextFingerprint: 'ctx_staged' });
+
+    expect((await adapter.one<any>("SELECT status FROM evaluation_jobs WHERE evaluation_context_fingerprint='ctx_staged'"))?.status).toBe('staged_pending');
+    const legacyVisible = await adapter.one<{ count: number }>("SELECT COUNT(*) AS count FROM evaluation_jobs WHERE evaluation_context_fingerprint='ctx_staged' AND status IN ('pending','processing')");
+    expect(legacyVisible?.count).toBe(0);
+
+    const worker = new EvaluationWorker(adapter, 'staged-aware');
+    const claimed = await worker.claimNextJob();
+    expect(claimed?.queueKind).toBe('staged');
+    expect((await adapter.one<any>("SELECT status FROM evaluation_jobs WHERE evaluation_context_fingerprint='ctx_staged'"))?.status).toBe('staged_processing');
+
+    // The current worker recognizes the fenced job as staged. It fails the
+    // intentionally absent source binding without invoking legacy evaluation.
+    const result = await worker.processJob(claimed!);
+    expect(result.status).toBe('dead_letter');
+    expect((await adapter.one<any>("SELECT status FROM evaluation_jobs WHERE evaluation_context_fingerprint='ctx_staged'"))?.status).toBe('staged_dead_letter');
+    expect((await adapter.one<{ count: number }>("SELECT COUNT(*) AS count FROM materialized_evaluations WHERE evaluation_context_fingerprint='ctx_staged'"))?.count).toBe(0);
+    expect((await adapter.one<any>("SELECT evaluation_state FROM staged_evaluations WHERE evaluation_context_fingerprint='ctx_staged'"))?.evaluation_state).toBe('INPUT_UNAVAILABLE');
+  });
 });
+

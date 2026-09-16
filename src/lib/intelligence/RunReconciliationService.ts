@@ -256,9 +256,9 @@ export class RunReconciliationService {
           `INSERT INTO evaluation_jobs (
              id, tenant_id, person_id, search_plan_id, canonical_job_id,
              opportunity_version, evaluation_context_fingerprint, status, attempts, created_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN EXISTS (SELECT 1 FROM evaluation_contexts ec WHERE ec.context_fingerprint = ? AND ec.policy_version = 'staged-v1') THEN 'staged_pending' ELSE 'pending' END, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
            ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
-           DO UPDATE SET status = CASE WHEN evaluation_jobs.status = 'waiting_enrichment' THEN 'pending' ELSE evaluation_jobs.status END, updated_at = CURRENT_TIMESTAMP`,
+           DO UPDATE SET status = CASE WHEN evaluation_jobs.status = 'waiting_enrichment' THEN 'pending' WHEN evaluation_jobs.status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE evaluation_jobs.status END, updated_at = CURRENT_TIMESTAMP`,
           [
             evalJobId,
             req.tenant_id,
@@ -266,13 +266,13 @@ export class RunReconciliationService {
             req.search_plan_id,
             req.canonical_job_id,
             req.opportunity_version,
-            req.evaluation_context_fingerprint,
+            req.evaluation_context_fingerprint, req.evaluation_context_fingerprint,
           ]
         );
         jobsCreated++;
-      } else if (job.status === "waiting_enrichment") {
+      } else if (job.status === "waiting_enrichment" || job.status === "staged_waiting_enrichment") {
         await this.db.execute(
-          `UPDATE evaluation_jobs SET status = 'pending', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          `UPDATE evaluation_jobs SET status = CASE WHEN status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE 'pending' END, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
           [job.id]
         );
       } else if (job.status === "dead_letter") {

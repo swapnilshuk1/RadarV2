@@ -35,6 +35,7 @@ export interface ClaimedJob {
   leaseToken: string;
   attempts: number;
   maxAttempts: number;
+  queueKind: "legacy" | "staged";
 }
 
 export interface WorkerProcessingResult {
@@ -73,8 +74,9 @@ export class EvaluationWorker {
       evaluation_context_fingerprint: string;
       attempts: number;
       max_attempts: number;
+      queue_status: string;
     }>(
-      `SELECT ej.id, ej.tenant_id, ej.person_id, ej.search_plan_id, ej.canonical_job_id, ej.opportunity_version, ej.evaluation_context_fingerprint, ej.attempts, ej.max_attempts
+      `SELECT ej.id, ej.tenant_id, ej.person_id, ej.search_plan_id, ej.canonical_job_id, ej.opportunity_version, ej.evaluation_context_fingerprint, ej.attempts, ej.max_attempts, ej.status AS queue_status
        FROM evaluation_jobs ej
        JOIN evaluation_requirements er 
          ON er.tenant_id = ej.tenant_id 
@@ -84,10 +86,10 @@ export class EvaluationWorker {
         AND er.opportunity_version = ej.opportunity_version 
         AND er.evaluation_context_fingerprint = ej.evaluation_context_fingerprint
        WHERE er.status = 'READY'
-         AND ((ej.status = 'pending' AND ej.next_attempt_at <= CURRENT_TIMESTAMP)
-          OR (ej.status = 'processing' AND ej.locked_at < datetime('now', '-300 seconds')))
+         AND ((ej.status IN ('pending', 'staged_pending') AND ej.next_attempt_at <= CURRENT_TIMESTAMP)
+          OR (ej.status IN ('processing', 'staged_processing') AND ej.locked_at < datetime('now', '-300 seconds')))
        ORDER BY 
-         CASE WHEN ej.status = 'processing' THEN 0 ELSE 1 END ASC,
+         CASE WHEN ej.status IN ('processing', 'staged_processing') THEN 0 ELSE 1 END ASC,
          ej.next_attempt_at ASC, 
          ej.created_at ASC
        LIMIT 1`
@@ -101,13 +103,13 @@ export class EvaluationWorker {
 
     const claimRes = await this.db.execute(
       `UPDATE evaluation_jobs
-       SET status = 'processing',
+       SET status = CASE WHEN status LIKE 'staged_%' THEN 'staged_processing' ELSE 'processing' END,
            locked_by = ?,
            lease_token = ?,
            locked_at = CURRENT_TIMESTAMP
        WHERE id = ? AND (
-         (status = 'pending' AND next_attempt_at <= CURRENT_TIMESTAMP) OR 
-         (status = 'processing' AND locked_at < datetime('now', '-300 seconds'))
+         (status IN ('pending', 'staged_pending') AND next_attempt_at <= CURRENT_TIMESTAMP) OR 
+         (status IN ('processing', 'staged_processing') AND locked_at < datetime('now', '-300 seconds'))
        )`,
       [this.workerId, leaseToken, job.id]
     );
@@ -127,6 +129,7 @@ export class EvaluationWorker {
       leaseToken,
       attempts: job.attempts,
       maxAttempts: job.max_attempts,
+      queueKind: job.queue_status.startsWith('staged_') ? 'staged' : 'legacy',
     };
   }
 
@@ -210,6 +213,13 @@ export class EvaluationWorker {
         profileVersion: ctxRow.profile_version,
         createdAt: ctxRow.created_at || new Date().toISOString(),
       };
+
+      if (context.policyVersion === STAGED_POLICY_VERSION && job.queueKind !== "staged") {
+        throw new Error("STAGED_CONTEXT_REQUIRES_STAGED_QUEUE");
+      }
+      if (context.policyVersion !== STAGED_POLICY_VERSION && job.queueKind === "staged") {
+        throw new Error("LEGACY_CONTEXT_CANNOT_USE_STAGED_QUEUE");
+      }
 
       // Policy dispatch keeps the durable worker spine shared while preserving
       // the legacy intrinsic path for existing immutable contexts.
@@ -451,20 +461,23 @@ export class EvaluationWorker {
     } catch (err: any) {
       const errorMsg = err?.message || String(err);
       const nextAttemptNumber = job.attempts + 1;
+      const processingStatus = job.queueKind === "staged" ? "staged_processing" : "processing";
+      const pendingStatus = job.queueKind === "staged" ? "staged_pending" : "pending";
+      const deadLetterStatus = job.queueKind === "staged" ? "staged_dead_letter" : "dead_letter";
 
       if (nextAttemptNumber < job.maxAttempts) {
         const backoffSeconds = 5 * Math.pow(2, job.attempts);
         const retryRes = await this.db.execute(
           `UPDATE evaluation_jobs
-           SET status = 'pending',
+           SET status = ?,
                attempts = ?,
                last_error = ?,
                next_attempt_at = datetime('now', '+' || ? || ' seconds'),
                locked_by = NULL,
                lease_token = NULL,
                locked_at = NULL
-           WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
-          [nextAttemptNumber, errorMsg, backoffSeconds, job.id, this.workerId, job.leaseToken]
+           WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = ?`,
+          [pendingStatus, nextAttemptNumber, errorMsg, backoffSeconds, job.id, this.workerId, job.leaseToken, processingStatus]
         );
 
         if (retryRes.rowsAffected === 0) {
@@ -484,14 +497,14 @@ export class EvaluationWorker {
       } else {
         const deadRes = await this.db.execute(
           `UPDATE evaluation_jobs
-           SET status = 'dead_letter',
+           SET status = ?,
                attempts = ?,
                last_error = ?,
                locked_by = NULL,
                lease_token = NULL,
                locked_at = NULL
-           WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
-          [nextAttemptNumber, errorMsg, job.id, this.workerId, job.leaseToken]
+           WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = ?`,
+          [deadLetterStatus, nextAttemptNumber, errorMsg, job.id, this.workerId, job.leaseToken, processingStatus]
         );
 
         if (deadRes.rowsAffected === 0) {
@@ -562,9 +575,9 @@ export class EvaluationWorker {
 
   private async completeStagedJob(job: ClaimedJob, requirementStatus: 'SATISFIED'|'FAILED', decision?: string, error?: string): Promise<WorkerProcessingResult> {
     return this.db.transaction(async tx => {
-      const lease = await tx.one<{id:string}>(`SELECT id FROM evaluation_jobs WHERE id=? AND locked_by=? AND lease_token=? AND status='processing'`, [job.id,this.workerId,job.leaseToken]);
+      const lease = await tx.one<{id:string}>(`SELECT id FROM evaluation_jobs WHERE id=? AND locked_by=? AND lease_token=? AND status='staged_processing'`, [job.id,this.workerId,job.leaseToken]);
       if (!lease) return {status:'stale_lease_lost' as const,jobId:job.id,error:'Lease token was lost before staged completion'};
-      await tx.execute(`UPDATE evaluation_jobs SET status=?, completed_at=CURRENT_TIMESTAMP,last_error=?,locked_by=NULL,lease_token=NULL,locked_at=NULL WHERE id=? AND locked_by=? AND lease_token=?`, [requirementStatus==='SATISFIED'?'completed':'dead_letter',error??null,job.id,this.workerId,job.leaseToken]);
+      await tx.execute(`UPDATE evaluation_jobs SET status=?, completed_at=CURRENT_TIMESTAMP,last_error=?,locked_by=NULL,lease_token=NULL,locked_at=NULL WHERE id=? AND locked_by=? AND lease_token=? AND status='staged_processing'`, [requirementStatus==='SATISFIED'?'staged_completed':'staged_dead_letter',error??null,job.id,this.workerId,job.leaseToken]);
       await tx.execute(`UPDATE evaluation_requirements SET status=?, satisfied_at=CASE WHEN ?='SATISFIED' THEN CURRENT_TIMESTAMP ELSE satisfied_at END, blocked_reason=CASE WHEN ?='FAILED' THEN ? ELSE blocked_reason END WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=?`, [requirementStatus,requirementStatus,requirementStatus,error??null,job.tenantId,job.personId,job.searchPlanId,job.canonicalJobId,job.opportunityVersion,job.evaluationContextFingerprint]);
       return {status: requirementStatus==='SATISFIED'?'completed' as const:'dead_letter' as const,jobId:job.id,decision,error};
     });
