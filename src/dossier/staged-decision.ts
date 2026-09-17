@@ -20,7 +20,6 @@ import {
   stagedCareerCapitalSchema,
   stagedDecisionProposalSchema,
   stagedDecisionResolutionResponseSchema,
-  stagedScreeningAdjudicationSchema,
   stagedGapResponseSchema,
   validateStagedDecisionModel,
   validateStagedCareerCapital,
@@ -29,13 +28,18 @@ import {
   type StagedScreeningDriver,
 } from './staged-decision-contract';
 import {
+  materializeStagedScreeningAdjudication as materializeSourceIdScreeningAdjudication,
+  stagedDecisionScreeningInstruction as stagedDecisionScreeningInstructionV6,
+  stagedScreeningAdjudicationSchema as stagedScreeningAdjudicationSchemaV6,
+  type StagedScreeningQuote,
+} from './staged-screening';
+import {
   stagedDecisionGapInstruction,
   stagedDecisionCareerCapitalInstruction,
   stagedDecisionInstruction,
   stagedDecisionMappingInstruction,
   stagedDecisionResolutionInstruction,
   stagedDecisionRoleInstruction,
-  stagedDecisionScreeningInstruction,
 } from './staged-decision-prompts';
 
 const verifiedStageResults = new Map<string, unknown>();
@@ -105,12 +109,29 @@ function exactIds(ids: readonly string[], known: Set<string>, label: string) {
   if (unknown) throw new Error(`Unknown ${label} reference: ${unknown}`);
 }
 
+/** Historical v5 validator retained for direct regression tests only. */
 export function validateScreening(
   value: unknown,
   requirement: StagedRoleRequirement,
   exactJdEvidence: readonly string[] = [],
 ) {
   return materializeStagedScreeningAdjudication(value, requirement, exactJdEvidence);
+}
+
+function buildScreeningQuoteCatalog(
+  requirement: StagedRoleRequirement,
+  roleClaimById: ReadonlyMap<string, Claim>,
+  jdSourceIds: ReadonlySet<string>,
+): StagedScreeningQuote[] {
+  return requirement.roleClaimIds.flatMap(claimId => {
+    const claim = roleClaimById.get(claimId);
+    if (!claim) throw new Error(`Unknown role claim reference: ${claimId}`);
+    return claim.citations.flatMap((citation, citationIndex) =>
+      jdSourceIds.has(citation.sourceId)
+        ? [{ id: `${claimId}:Q${citationIndex + 1}`, text: citation.quote }]
+        : []
+    );
+  });
 }
 
 function validateMapping(value: unknown, candidateClaims: Claim[]) {
@@ -235,37 +256,25 @@ export async function runStagedFrozenDecisionDetailed(
   const jdSourceIds = new Set(frozen.sources.filter(source => source.plane === 'JD').map(source => source.id));
 
   const [screeningResults, mappingResults] = await Promise.all([
-    mapConcurrent(role.requirements, 3, requirement => proposeStage(
-      `Adjudicating screening: ${requirement.id}`,
-      model,
-      stagedDecisionScreeningInstruction,
-      {
-        opportunity: frozen.opportunity,
-        requirement,
-        evidence: requirement.roleClaimIds.map(claimId => {
-          const claim = roleClaimById.get(claimId)!;
-          return {
-            claimId,
-            extractedClaimText: claim.text,
-            exactJdQuotes: claim.citations
-              .filter(citation => jdSourceIds.has(citation.sourceId))
-              .map(citation => citation.quote),
-          };
-        }),
-      },
-      stagedScreeningAdjudicationSchema,
-      value => validateScreening(
-        value,
-        requirement,
-        requirement.roleClaimIds.flatMap(claimId => {
-          const claim = roleClaimById.get(claimId)!;
-          return claim.citations
-            .filter(citation => jdSourceIds.has(citation.sourceId))
-            .map(citation => citation.quote);
-        }),
-      ),
-      onStage,
-    )),
+    mapConcurrent(role.requirements, 3, requirement => {
+      const quoteCatalog = buildScreeningQuoteCatalog(requirement, roleClaimById, jdSourceIds);
+      return proposeStage(
+        `Adjudicating screening: ${requirement.id}`,
+        model,
+        stagedDecisionScreeningInstructionV6,
+        {
+          requirement: {
+            requirement: requirement.requirement,
+            strength: requirement.strength,
+            roleImportance: requirement.roleImportance,
+          },
+          quoteCatalog,
+        },
+        stagedScreeningAdjudicationSchemaV6,
+        value => materializeSourceIdScreeningAdjudication(value, requirement, quoteCatalog),
+        onStage,
+      );
+    }),
     mapConcurrent(role.requirements, 3, requirement => proposeStage(
       `Mapping candidate evidence: ${requirement.id}`,
       model,
@@ -287,6 +296,7 @@ export async function runStagedFrozenDecisionDetailed(
     screeningGate: screeningResults[index].screeningGate,
     screeningFunction: screeningResults[index].screeningFunction,
     screeningGateBasis: screeningResults[index].gateBasis,
+    screeningSupportQuoteIds: screeningResults[index].supportQuoteIds,
     screeningReasoning: screeningResults[index].reasoning,
     status: mappingResults[index].status,
     candidateClaimIds: mappingResults[index].candidateClaimIds,
