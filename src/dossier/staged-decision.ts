@@ -105,8 +105,12 @@ function exactIds(ids: readonly string[], known: Set<string>, label: string) {
   if (unknown) throw new Error(`Unknown ${label} reference: ${unknown}`);
 }
 
-export function validateScreening(value: unknown, requirement: StagedRoleRequirement) {
-  return materializeStagedScreeningAdjudication(value, requirement);
+export function validateScreening(
+  value: unknown,
+  requirement: StagedRoleRequirement,
+  exactJdEvidence: readonly string[] = [],
+) {
+  return materializeStagedScreeningAdjudication(value, requirement, exactJdEvidence);
 }
 
 function validateMapping(value: unknown, candidateClaims: Claim[]) {
@@ -250,7 +254,16 @@ export async function runStagedFrozenDecisionDetailed(
         }),
       },
       stagedScreeningAdjudicationSchema,
-      value => validateScreening(value, requirement),
+      value => validateScreening(
+        value,
+        requirement,
+        requirement.roleClaimIds.flatMap(claimId => {
+          const claim = roleClaimById.get(claimId)!;
+          return claim.citations
+            .filter(citation => jdSourceIds.has(citation.sourceId))
+            .map(citation => citation.quote);
+        }),
+      ),
       onStage,
     )),
     mapConcurrent(role.requirements, 3, requirement => proposeStage(

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { contextFields, scopeFields, type Claim, type EvidenceSource, type ReasoningModel } from '../../src/dossier/contracts';
 import { runStagedFrozenDecisionDetailed } from '../../src/dossier/staged-decision';
+import { validateScreening } from '../../src/dossier/staged-decision';
 import {
   materializeStagedScreeningAdjudication,
   screeningConstraintForDrivers,
@@ -213,6 +214,19 @@ describe('staged production decision boundary', () => {
     expect(() => materializeStagedScreeningAdjudication({
       screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'Inconsistent preference.',
     }, { ...required, strength: 'PREFERRED' })).toThrow('preferred requirement cannot become an entry qualification');
+  });
+  it('requires an entry basis to be supported by local exact JD qualification wording', () => {
+    const required = {
+      id: 'REQ-001', requirement: 'Data-driven growth tools', strength: 'REQUIRED' as const,
+      roleImportance: 'ENABLER' as const, roleClaimIds: ['JD-1'], reasoning: 'Useful for delivery.',
+    };
+    expect(() => validateScreening({
+      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'The tool proficiency is required.',
+    }, required, ['Proficiency in data-driven growth tools including Google Sheets and Tableau.']))
+      .toThrow('not supported by the cited JD evidence');
+    expect(validateScreening({
+      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'The employer requires relevant prior experience.',
+    }, required, ['Candidates must have relevant experience in operations.']).screeningGate).toBe(true);
   });
   it('keeps application-owned identities and screening-driver admissibility', () => {
     const role = materializeStagedRoleAnalysis({
