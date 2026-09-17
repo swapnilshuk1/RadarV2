@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { getDatabaseAdapter } from '../../src/data/database';
 import { runMigrations } from '../../src/data/sqlite/migrations/runner';
 import { SqliteStagedEvaluationStore, STAGED_POLICY_VERSION, stagedUnavailableEvaluation } from '../../src/data/sqlite/repositories/SqliteStagedEvaluationStore';
+import { assertCanonicalJdContentHash, DeterministicStagedInputUnavailableError } from '../../src/lib/intelligence/staged/ProductionStagedInputAdapter';
+import { computeContentHash } from '../../src/lib/domain/canonical_identity';
 
 describe('staged production persistence boundary', () => {
   it('persists a versioned staged result without fabricating an intrinsic score and is idempotent', async () => {
@@ -22,5 +24,11 @@ describe('staged production persistence boundary', () => {
   it('records input-unavailable state without pretending to produce a decision', () => {
     const row=stagedUnavailableEvaluation({tenantId:'t',personId:'p',canonicalJobId:'j',opportunityVersion:'v',evaluationContextFingerprint:'c',profileVersion:'pv',policyVersion:STAGED_POLICY_VERSION,ontologyVersion:'o',ontologyFingerprint:'oh'},'PROFILE_SOURCE_PROVENANCE_MISSING');
     expect(row.evaluationState).toBe('INPUT_UNAVAILABLE'); expect(row.decision).toBeUndefined(); expect(row.blockedReason).toBe('PROFILE_SOURCE_PROVENANCE_MISSING');
+  });
+  it('fails closed when stored JD content no longer matches its canonical hash', () => {
+    const version={raw_content:'Immutable role text',job_title:'Head of Growth',company_name:'Example Co',location:'Delhi',employment_type:'Full-time',content_hash:computeContentHash({title:'Head of Growth',companyName:'Example Co',location:'Delhi',employmentType:'Full-time',rawContent:'Immutable role text'})};
+    expect(()=>assertCanonicalJdContentHash(version)).not.toThrow();
+    expect(()=>assertCanonicalJdContentHash({...version,raw_content:'Altered role text'})).toThrow(DeterministicStagedInputUnavailableError);
+    expect(()=>assertCanonicalJdContentHash({...version,raw_content:'Altered role text'})).toThrow('CANONICAL_JD_HASH_MISMATCH');
   });
 });

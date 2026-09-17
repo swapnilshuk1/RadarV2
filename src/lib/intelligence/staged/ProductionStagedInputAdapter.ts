@@ -9,6 +9,7 @@ import { EvidenceNormalizer } from '@/lib/intelligence/extraction/EvidenceNormal
 import { OntologyResolver } from '@/lib/intelligence/extraction/OntologyResolver';
 import { CandidateProjectionBuilderImpl } from '@/lib/intelligence/builders/CandidateProjectionBuilder';
 import { OperatingLevelEngine } from '@/lib/intelligence/engines/OperatingLevelEngine';
+import { computeContentHash } from '@/lib/domain/canonical_identity';
 import type { EvidenceGraph } from '@/domain/evidence';
 
 export class DeterministicStagedInputUnavailableError extends Error { readonly deterministic=true; constructor(readonly reason:string){super(`STAGED_INPUT_UNAVAILABLE:${reason}`);} }
@@ -18,6 +19,16 @@ type CandidateBinding = { document_id:string; evidence_graph_id:string; document
 function rawJobText(raw:string):string { try { const parsed=JSON.parse(raw); const candidate=[parsed.rawDescription,parsed.original?.rawDescription,parsed.description,parsed.content].find((v):v is string=>typeof v==='string'&&v.trim().length>0); return candidate?.trim()||raw; } catch { return raw.trim(); } }
 function stableSourceId(plane:'JD'|'CANDIDATE', hash:string){return `${plane.toLowerCase()}-${hash.slice(0,24)}`;}
 function rebaseClaims(value:unknown[], plane:'JD'|'CANDIDATE', ordinal:number):Claim[]{return value.map((raw,index)=>{const claim=claimSchema.parse(raw);return {...claim,id:`${plane}-${ordinal}-${index+1}`,plane,derivedFrom:[],citations:claim.citations};});}
+
+export function assertCanonicalJdContentHash(version: { raw_content: string; job_title: string | null; company_name: string | null; location: string | null; employment_type: string | null; content_hash: string | null }) {
+  const recomputed = computeContentHash({
+    title: version.job_title ?? '', companyName: version.company_name, location: version.location,
+    employmentType: version.employment_type, rawContent: version.raw_content,
+  });
+  if (!version.content_hash || recomputed !== version.content_hash) {
+    throw new DeterministicStagedInputUnavailableError('CANONICAL_JD_HASH_MISMATCH');
+  }
+}
 
 export class ProductionStagedInputAdapter {
   constructor(private readonly db:DatabaseAdapter, private readonly cache=new SqliteStagedEvaluationStore(db)) {}
@@ -64,8 +75,9 @@ export class ProductionStagedInputAdapter {
   }
 
   async build(identity:ProductionStagedIdentity, model:ReasoningModel, onStage:(stage:string)=>void=()=>{}):Promise<StagedResearchInput>{
-    const version=await this.db.one<any>(`SELECT raw_content,job_title,company_name,content_hash FROM opportunity_versions WHERE canonical_job_id=? AND id=?`,[identity.canonicalJobId,identity.opportunityVersion]);
+    const version=await this.db.one<any>(`SELECT raw_content,job_title,company_name,location,employment_type,content_hash FROM opportunity_versions WHERE canonical_job_id=? AND id=?`,[identity.canonicalJobId,identity.opportunityVersion]);
     if(!version) throw new DeterministicStagedInputUnavailableError('OPPORTUNITY_VERSION_MISSING');
+    assertCanonicalJdContentHash(version);
     const jdText=rawJobText(version.raw_content||''); if(!jdText) throw new DeterministicStagedInputUnavailableError('CANONICAL_JD_MISSING');
     let bindings=await this.db.many<CandidateBinding>(`SELECT b.document_id,b.evidence_graph_id,b.document_text_hash,dc.raw_text FROM profile_projection_source_bindings b JOIN document_contents dc ON dc.document_id=b.document_id JOIN evidence_graphs eg ON eg.id=b.evidence_graph_id AND eg.document_id=b.document_id WHERE b.person_id=? AND b.profile_version=? ORDER BY b.document_id`,[identity.personId,identity.profileVersion]);
     if(!bindings.length) bindings=await this.recoverExactCandidateBinding(identity);
