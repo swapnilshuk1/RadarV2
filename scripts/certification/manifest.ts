@@ -107,6 +107,7 @@ export const certificationManifest = [
       "tests/intelligence/staged-decision.test.ts",
       "tests/intelligence/staged-production-integration.test.ts",
       "tests/intelligence/staged-queue-lifecycle.test.ts",
+      "tests/scraper/enrichment-payload-resolution.test.ts",
       "tests/intelligence/staged-composition.test.ts",
       "tests/serving/staged-rich-serving.test.ts",
       "tests/intelligence/bedrock-converse-model.test.ts",

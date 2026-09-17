@@ -6,6 +6,8 @@ Once the v6 context is active, normal acquisition binds new evaluation requireme
 
 The Scraped jobs page reads the authorized active search directly. It shows waiting analysis, active analysis, dossier preparation, failures, ready dossiers (including PASS), and outside-search roles. Unadmitted captures with retained ingestion lineage are counted separately. A failed rich presentation attempt is retained under a separate unavailable presentation version; successful retries take precedence in the visible status. Unattributed historical blobs are not assumed to belong to an account.
 
+Enrichment verifies a bound payload against the exact canonical opportunity, version and content hash in the same database as its queue. An admitted version need not already have a legacy `opportunities` knowledge-graph projection: the ingestion adapter may create that projection under the verified canonical ID. Unknown or mismatched admissions still fail closed; no substitute `o_...` identity is created. A production recovery canary exposed this distinction; older payload tests had pre-created the legacy projection. The certification manifest now includes the canonical-only admission and mismatched-hash regressions.
+
 ## Operational identities
 
 - Context: `6b278ba4743cdaacf692e4eb24425b24743856ca6f984d73dda5e10723c41c30`

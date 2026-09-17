@@ -5,6 +5,7 @@ import { KnowledgeGraphIngestService } from "../../../src/lib/intelligence/Knowl
 import type { KnowledgeGraphBuildReport } from "../../../src/lib/intelligence/KnowledgeGraphBuilder";
 
 import type { StorageProvider } from "../../../src/domain/repositories";
+import { getDatabaseAdapter, type DatabaseAdapter } from "../../../src/data/database";
 
 export async function ingestIntoSqlite(
   card: DetailedCard, 
@@ -12,7 +13,8 @@ export async function ingestIntoSqlite(
   extractorVersion: string,
   persist: boolean = true,
   repos?: StorageProvider,
-  resolvedCanonicalId?: string
+  resolvedCanonicalId?: string,
+  adapter?: DatabaseAdapter
 ): Promise<KnowledgeGraphBuildReport> {
   
   const runId = "run_" + new Date().toISOString().split("T")[0]; // Stub run ID for now
@@ -45,7 +47,23 @@ export async function ingestIntoSqlite(
 
   // 2. Ingestion & Idempotency (Talks to SQLite)
   const actualRepos = repos ?? getRepositories();
-  const service = new KnowledgeGraphIngestService(actualRepos);
+  // Canonical admission and its legacy knowledge-graph projection are separate
+  // stores. A missing projection is repairable only with exact persisted proof.
+  let verifiedAdmissionId: string | undefined;
+  const binding = card.evaluationEvidence;
+  if (binding?.state === 'BOUND') {
+    if (!resolvedCanonicalId || binding.canonicalJobId !== resolvedCanonicalId || !binding.opportunityVersion || !binding.contentHash) {
+      throw new Error('ENRICHMENT_CANONICAL_ADMISSION_MISMATCH');
+    }
+    const admitted = await (adapter || getDatabaseAdapter()).one<{id:string}>(
+      `SELECT ov.id FROM opportunity_versions ov JOIN canonical_opportunities co ON co.id=ov.canonical_job_id
+       WHERE co.id=? AND ov.id=? AND ov.content_hash=?`,
+      [resolvedCanonicalId,binding.opportunityVersion,binding.contentHash]
+    );
+    if (!admitted) throw new Error('ENRICHMENT_CANONICAL_ADMISSION_MISMATCH');
+    verifiedAdmissionId = resolvedCanonicalId;
+  }
+  const service = new KnowledgeGraphIngestService(actualRepos, verifiedAdmissionId);
   
   const finalReport = await service.ingest(graph, report, resolvedCanonicalId);
 

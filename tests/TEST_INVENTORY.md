@@ -424,7 +424,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/scraper/naukri-pagination-browser-context.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 10 |
 | `tests/scraper/fintech-marketing-head-replay.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 8 |
 | `tests/scraper/naukri-cancellation-no-legacy-fetch.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 15 |
-| `tests/scraper/enrichment-payload-resolution.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 20 |
+| `tests/scraper/enrichment-payload-resolution.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 10 | 10 |
 | `tests/scraper/hard-filter-semantics.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 9 | 35 |
 | `tests/scraper/indeed-acquisition-resilience.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 9 |
 | `tests/scraper/indeed-jk-provenance.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 3 | 9 |
