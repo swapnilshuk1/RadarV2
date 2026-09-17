@@ -9,8 +9,10 @@ export function modelSchema(schema: z.ZodTypeAny): Record<string, unknown> {
   if (schema instanceof z.ZodNumber) return { type: 'NUMBER' };
   if (schema instanceof z.ZodBoolean) return { type: 'BOOLEAN' };
   if (schema instanceof z.ZodEnum) return { type: 'STRING', enum: schema.options };
+  if (schema instanceof z.ZodLiteral) return { type: typeof schema.value === 'number' ? 'NUMBER' : typeof schema.value === 'boolean' ? 'BOOLEAN' : 'STRING', enum: [schema.value] };
   if (schema instanceof z.ZodArray) return { type: 'ARRAY', items: modelSchema(schema.element) };
   if (schema instanceof z.ZodUnion) return { anyOf: schema.options.map(modelSchema) };
+  if (schema instanceof z.ZodDiscriminatedUnion) return { anyOf: schema.options.map(modelSchema) };
   if (schema instanceof z.ZodObject) {
     const shape = schema.shape as Record<string, z.ZodTypeAny>;
     return { type: 'OBJECT', properties: Object.fromEntries(Object.entries(shape).map(([key, value]) => [key, modelSchema(value)])), required: Object.keys(shape).filter(key => !shape[key].isOptional()), propertyOrdering: Object.keys(shape) };

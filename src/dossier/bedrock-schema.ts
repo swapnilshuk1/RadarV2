@@ -12,7 +12,9 @@ export function bedrockJsonSchema(schema: z.ZodTypeAny): Record<string, unknown>
     const minLength = schema._def.minLength?.value;
     return { type: 'array', items: bedrockJsonSchema(schema.element), ...((minLength ?? 0) >= 1 ? { minItems: 1 } : {}) };
   }
+  if (schema instanceof z.ZodLiteral) return { type: typeof schema.value === 'number' ? 'number' : typeof schema.value === 'boolean' ? 'boolean' : 'string', enum: [schema.value] };
   if (schema instanceof z.ZodUnion) return { anyOf: schema.options.map(bedrockJsonSchema) };
+  if (schema instanceof z.ZodDiscriminatedUnion) return { anyOf: schema.options.map(bedrockJsonSchema) };
   if (schema instanceof z.ZodObject) {
     const shape = schema.shape as Record<string, z.ZodTypeAny>;
     return {

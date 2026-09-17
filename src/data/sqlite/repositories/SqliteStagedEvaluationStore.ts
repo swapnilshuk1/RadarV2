@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseAdapter } from '@/data/database';
-export const STAGED_POLICY_VERSION = 'staged-v4';
-export const STAGED_CONTRACT_VERSION = 'staged-decision-v2';
+export const STAGED_POLICY_VERSION = 'staged-v5';
+export const STAGED_CONTRACT_VERSION = 'staged-decision-v5';
 export const STAGED_EXTRACTION_CONTRACT_VERSION = 'staged-source-claims-v1';
 export interface StagedEvaluationIdentity { tenantId:string; personId:string; canonicalJobId:string; opportunityVersion:string; evaluationContextFingerprint:string; profileVersion:string; policyVersion:string; ontologyVersion:string; ontologyFingerprint:string; }
 export interface StagedEvaluationRecord extends StagedEvaluationIdentity { jobHash:string; inputFingerprint:string; sourceFingerprints:string[]; modelId:string; modelVersion:string; contractVersion:string; evaluationState:'COMPLETED'|'INPUT_UNAVAILABLE'; decision?:'PURSUE'|'CONSIDER'|'PASS'; screeningViability?:'STRONG'|'PLAUSIBLE'|'FRAGILE'|'BLOCKED'; blockedReason?:string; evaluation:unknown; evaluatedAt:string; }

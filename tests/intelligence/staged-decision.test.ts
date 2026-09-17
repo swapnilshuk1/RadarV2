@@ -100,8 +100,25 @@ class ScriptedModel implements ReasoningModel {
     }
     if (instruction.includes('screening adjudicator')) {
       return actual.requirement.strength === 'REQUIRED'
-        ? { screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'The exact JD says candidates must have the prior experience.', exactSourceQuote: 'Candidates must have relevant experience in Operations.' }
-        : { screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'NONE', reasoning: 'The exact JD marks this preferred and not mandatory.', exactSourceQuote: 'Hindi is preferred, not mandatory.' };
+        ? {
+            screeningFunction: 'ENTRY_QUALIFICATION',
+            gateBasis: 'PRIOR_RELEVANT_EXPERIENCE',
+            reasoning: 'The exact JD says candidates must have the prior experience.',
+            exactSourceQuote: 'Candidates must have relevant experience in Operations.',
+            basisSupport: {
+              kind: 'PRIOR_RELEVANT_EXPERIENCE',
+              experienceText: 'relevant experience in Operations',
+            },
+          }
+        : {
+            screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT',
+            gateBasis: 'NONE',
+            reasoning: 'The exact JD marks this preferred and not mandatory.',
+            exactSourceQuote: 'Hindi is preferred, not mandatory.',
+            basisSupport: {
+              kind: 'NONE',
+            },
+          };
     }
     if (instruction.includes('candidate-to-requirement mapper')) {
       return actual.requirement.strength === 'REQUIRED'
@@ -193,11 +210,109 @@ describe('staged production decision boundary', () => {
       roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Important for delivery.',
     };
     expect(materializeStagedScreeningAdjudication({
-      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'NONE', reasoning: 'Required to perform the role.', exactSourceQuote: 'Required to perform the role.',
+      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT',
+      gateBasis: 'NONE',
+      reasoning: 'Required to perform the role.',
+      exactSourceQuote: 'Required to perform the role.',
+      basisSupport: { kind: 'NONE' },
     }, required).screeningGate).toBe(false);
     expect(materializeStagedScreeningAdjudication({
-      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'Candidates must bring prior relevant experience.', exactSourceQuote: 'Candidates must bring prior relevant experience.',
-    }, required).screeningGate).toBe(true);
+      screeningFunction: 'ENTRY_QUALIFICATION',
+      gateBasis: 'PRIOR_RELEVANT_EXPERIENCE',
+      reasoning: 'Candidates must bring prior relevant experience.',
+      exactSourceQuote: 'Candidates must bring prior relevant experience.',
+      basisSupport: {
+        kind: 'PRIOR_RELEVANT_EXPERIENCE',
+        experienceText: 'prior relevant experience',
+      },
+    }, required, ['Candidates must bring prior relevant experience.']).screeningGate).toBe(true);
+  });
+
+  it('fails closed when ENTRY_QUALIFICATION has no cited exact JD evidence', () => {
+    const required = {
+      id: 'REQ-001', requirement: 'Relevant experience', strength: 'REQUIRED' as const,
+      roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Role requirement.',
+    };
+    expect(() => materializeStagedScreeningAdjudication({
+      screeningFunction: 'ENTRY_QUALIFICATION',
+      gateBasis: 'PRIOR_RELEVANT_EXPERIENCE',
+      reasoning: 'Candidates must bring prior relevant experience.',
+      exactSourceQuote: 'Candidates must bring prior relevant experience.',
+      basisSupport: {
+        kind: 'PRIOR_RELEVANT_EXPERIENCE',
+        experienceText: 'prior relevant experience',
+      },
+    }, required, [])).toThrow('Entry qualification requires cited exact JD evidence');
+  });
+
+  it('enforces category-aware validation for credentialKind', () => {
+    const degreeQuote = "Bachelor's degree in Computer Science is required";
+    const req = {
+      id: 'REQ-001', requirement: degreeQuote, strength: 'REQUIRED' as const,
+      roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Education.',
+    };
+
+    // "Bachelor's degree" + DEGREE -> accepted
+    expect(materializeStagedScreeningAdjudication({
+      screeningFunction: 'ENTRY_QUALIFICATION',
+      gateBasis: 'MANDATORY_CREDENTIAL',
+      exactSourceQuote: degreeQuote,
+      basisSupport: {
+        kind: 'MANDATORY_CREDENTIAL',
+        credentialText: "Bachelor's degree",
+        credentialKind: 'DEGREE',
+      },
+      reasoning: 'Academic degree.',
+    }, req, [degreeQuote]).screeningGate).toBe(true);
+
+    // "Bachelor's degree" + CERTIFICATION -> rejected
+    expect(() => materializeStagedScreeningAdjudication({
+      screeningFunction: 'ENTRY_QUALIFICATION',
+      gateBasis: 'MANDATORY_CREDENTIAL',
+      exactSourceQuote: degreeQuote,
+      basisSupport: {
+        kind: 'MANDATORY_CREDENTIAL',
+        credentialText: "Bachelor's degree",
+        credentialKind: 'CERTIFICATION',
+      },
+      reasoning: 'Mismatched credential kind.',
+    }, req, [degreeQuote])).toThrow('MANDATORY_CREDENTIAL with CERTIFICATION requires source text denoting certification or certified status');
+
+    // Non-degree positive example: PMP certification + CERTIFICATION -> accepted
+    const certQuote = 'Active PMP certification or equivalent';
+    const certReq = {
+      id: 'REQ-002', requirement: certQuote, strength: 'REQUIRED' as const,
+      roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-2'], reasoning: 'Cert requirement.',
+    };
+    expect(materializeStagedScreeningAdjudication({
+      screeningFunction: 'ENTRY_QUALIFICATION',
+      gateBasis: 'MANDATORY_CREDENTIAL',
+      exactSourceQuote: certQuote,
+      basisSupport: {
+        kind: 'MANDATORY_CREDENTIAL',
+        credentialText: 'PMP certification',
+        credentialKind: 'CERTIFICATION',
+      },
+      reasoning: 'Active certification required.',
+    }, certReq, [certQuote]).screeningGate).toBe(true);
+
+    // Non-degree positive example: Valid medical license + LICENSE -> accepted
+    const licenseQuote = 'Must possess an active license';
+    const licenseReq = {
+      id: 'REQ-003', requirement: licenseQuote, strength: 'REQUIRED' as const,
+      roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-3'], reasoning: 'Licensure.',
+    };
+    expect(materializeStagedScreeningAdjudication({
+      screeningFunction: 'ENTRY_QUALIFICATION',
+      gateBasis: 'MANDATORY_CREDENTIAL',
+      exactSourceQuote: licenseQuote,
+      basisSupport: {
+        kind: 'MANDATORY_CREDENTIAL',
+        credentialText: 'active license',
+        credentialKind: 'LICENSE',
+      },
+      reasoning: 'Active license required.',
+    }, licenseReq, [licenseQuote]).screeningGate).toBe(true);
   });
 
   it('rejects internally inconsistent screening adjudications', () => {
@@ -206,31 +321,300 @@ describe('staged production decision boundary', () => {
       roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Role requirement.',
     };
     expect(() => materializeStagedScreeningAdjudication({
-      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'NONE', reasoning: 'Incomplete.', exactSourceQuote: 'Incomplete.',
+      screeningFunction: 'ENTRY_QUALIFICATION',
+      gateBasis: 'NONE',
+      reasoning: 'Incomplete.',
+      exactSourceQuote: 'Incomplete.',
+      basisSupport: { kind: 'NONE' },
     }, required)).toThrow('entry qualification needs a stated gate basis');
+
     expect(() => materializeStagedScreeningAdjudication({
-      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'MANDATORY_CREDENTIAL', reasoning: 'Inconsistent.', exactSourceQuote: 'Inconsistent.',
+      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT',
+      gateBasis: 'MANDATORY_CREDENTIAL',
+      reasoning: 'Inconsistent.',
+      exactSourceQuote: 'Inconsistent.',
+      basisSupport: { kind: 'NONE' },
     }, required)).toThrow('role-performance requirement cannot carry an entry gate basis');
+
     expect(() => materializeStagedScreeningAdjudication({
-      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'Inconsistent preference.', exactSourceQuote: 'Inconsistent preference.',
+      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT',
+      gateBasis: 'NONE',
+      reasoning: 'Inconsistent.',
+      exactSourceQuote: 'Inconsistent.',
+      basisSupport: { kind: 'MINIMUM_TENURE', thresholdText: '5 years' },
+    }, required)).toThrow('role-performance requirement cannot carry basis support');
+
+    expect(() => materializeStagedScreeningAdjudication({
+      screeningFunction: 'ENTRY_QUALIFICATION',
+      gateBasis: 'MINIMUM_TENURE',
+      reasoning: 'Inconsistent kind.',
+      exactSourceQuote: '5 years experience required.',
+      basisSupport: { kind: 'PRIOR_RELEVANT_EXPERIENCE', experienceText: 'experience' },
+    }, required)).toThrow('Gate basis and basisSupport kind must match');
+
+    expect(() => materializeStagedScreeningAdjudication({
+      screeningFunction: 'ENTRY_QUALIFICATION',
+      gateBasis: 'PRIOR_RELEVANT_EXPERIENCE',
+      reasoning: 'Inconsistent preference.',
+      exactSourceQuote: 'Inconsistent preference.',
+      basisSupport: { kind: 'PRIOR_RELEVANT_EXPERIENCE', experienceText: 'Inconsistent preference' },
     }, { ...required, strength: 'PREFERRED' })).toThrow('preferred requirement cannot become an entry qualification');
   });
+
   it('requires an entry basis to be supported by local exact JD qualification wording', () => {
     const required = {
       id: 'REQ-001', requirement: 'Data-driven growth tools', strength: 'REQUIRED' as const,
       roleImportance: 'ENABLER' as const, roleClaimIds: ['JD-1'], reasoning: 'Useful for delivery.',
     };
     expect(validateScreening({
-      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'NONE', reasoning: 'Tool proficiency is performed within the role.',
+      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT',
+      gateBasis: 'NONE',
+      reasoning: 'Tool proficiency is performed within the role.',
       exactSourceQuote: 'Proficiency in data-driven growth tools including Google Sheets and Tableau.',
+      basisSupport: { kind: 'NONE' },
     }, required, ['Proficiency in data-driven growth tools including Google Sheets and Tableau.']).screeningGate).toBe(false);
+
     expect(validateScreening({
-      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'The employer requires relevant prior experience.', exactSourceQuote: 'Candidates must have relevant experience in operations.',
+      screeningFunction: 'ENTRY_QUALIFICATION',
+      gateBasis: 'PRIOR_RELEVANT_EXPERIENCE',
+      reasoning: 'The employer requires relevant prior experience.',
+      exactSourceQuote: 'Candidates must have relevant experience in operations.',
+      basisSupport: {
+        kind: 'PRIOR_RELEVANT_EXPERIENCE',
+        experienceText: 'relevant experience in operations',
+      },
     }, required, ['Candidates must have relevant experience in operations.']).screeningGate).toBe(true);
+
     expect(() => validateScreening({
-      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'Paraphrase is not source evidence.', exactSourceQuote: 'Relevant experience is required.',
+      screeningFunction: 'ENTRY_QUALIFICATION',
+      gateBasis: 'PRIOR_RELEVANT_EXPERIENCE',
+      reasoning: 'Paraphrase is not source evidence.',
+      exactSourceQuote: 'Relevant experience is required.',
+      basisSupport: {
+        kind: 'PRIOR_RELEVANT_EXPERIENCE',
+        experienceText: 'Relevant experience is required.',
+      },
     }, required, ['Candidates must have relevant experience in operations.']))
       .toThrow('exactSourceQuote is not contained');
+  });
+
+  it('requires basisSupport spans to be exact substrings of exactSourceQuote', () => {
+    const required = {
+      id: 'REQ-001', requirement: 'Experience requirement', strength: 'REQUIRED' as const,
+      roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Required.',
+    };
+    const quote = 'Candidates must bring 5+ years of experience in product management.';
+    expect(() => validateScreening({
+      screeningFunction: 'ENTRY_QUALIFICATION',
+      gateBasis: 'MINIMUM_TENURE',
+      reasoning: 'Fabricated threshold.',
+      exactSourceQuote: quote,
+      basisSupport: {
+        kind: 'MINIMUM_TENURE',
+        thresholdText: '10 years',
+      },
+    }, required, [quote])).toThrow('thresholdText must be copied exactly from exactSourceQuote');
+  });
+
+  describe('negative controls', () => {
+    it('regresses original semantic defect: rejects New Product Development skills as ENTRY_QUALIFICATION + MINIMUM_TENURE and accepts as ROLE_PERFORMANCE_REQUIREMENT', () => {
+      const quote = 'New Product Development skills';
+      const requirement = {
+        id: 'REQ-001', requirement: quote, strength: 'REQUIRED' as const,
+        roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Required skill.',
+      };
+
+      expect(() =>
+        materializeStagedScreeningAdjudication(
+          {
+            screeningFunction: 'ENTRY_QUALIFICATION',
+            gateBasis: 'MINIMUM_TENURE',
+            exactSourceQuote: quote,
+            basisSupport: {
+              kind: 'MINIMUM_TENURE',
+              thresholdText: quote,
+            },
+            reasoning: 'Incorrect tenure interpretation.',
+          },
+          requirement,
+          [quote],
+        )
+      ).toThrow(
+        'MINIMUM_TENURE requires an exact source-bound duration threshold'
+      );
+
+      const result = materializeStagedScreeningAdjudication(
+        {
+          screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT',
+          gateBasis: 'NONE',
+          exactSourceQuote: quote,
+          basisSupport: {
+            kind: 'NONE',
+          },
+          reasoning: 'The source states a role capability, not a tenure threshold.',
+        },
+        requirement,
+        [quote],
+      );
+
+      expect(result.screeningGate).toBe(false);
+      expect(result.screeningFunction).toBe('ROLE_PERFORMANCE_REQUIREMENT');
+      expect(result.gateBasis).toBe('NONE');
+    });
+
+    it('classifies Strong track record of driving cross-functional alignment as ROLE_PERFORMANCE_REQUIREMENT', () => {
+      const quote = 'Strong track record of driving cross-functional alignment';
+      const req = {
+        id: 'REQ-001', requirement: quote, strength: 'REQUIRED' as const,
+        roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Alignment capability.',
+      };
+      expect(() => materializeStagedScreeningAdjudication({
+        screeningFunction: 'ENTRY_QUALIFICATION',
+        gateBasis: 'MINIMUM_TENURE',
+        exactSourceQuote: quote,
+        basisSupport: {
+          kind: 'MINIMUM_TENURE',
+          thresholdText: 'track record',
+        },
+        reasoning: 'Attempted tenure gate without duration.',
+      }, req, [quote])).toThrow('MINIMUM_TENURE requires an exact source-bound duration threshold');
+
+      const perfResult = materializeStagedScreeningAdjudication({
+        screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT',
+        gateBasis: 'NONE',
+        exactSourceQuote: quote,
+        basisSupport: { kind: 'NONE' },
+        reasoning: 'On-the-job execution capability.',
+      }, req, [quote]);
+      expect(perfResult.screeningGate).toBe(false);
+      expect(perfResult.screeningFunction).toBe('ROLE_PERFORMANCE_REQUIREMENT');
+      expect(perfResult.gateBasis).toBe('NONE');
+    });
+
+    it('B: rejects Knowledge of GA4, Google Tag Manager, and conversion/call tracking as MANDATORY_CREDENTIAL', () => {
+      const quote = 'Knowledge of GA4, Google Tag Manager, and conversion/call tracking';
+      const req = {
+        id: 'REQ-002', requirement: quote, strength: 'REQUIRED' as const,
+        roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Tool knowledge.',
+      };
+      expect(() => materializeStagedScreeningAdjudication({
+        screeningFunction: 'ENTRY_QUALIFICATION',
+        gateBasis: 'MANDATORY_CREDENTIAL',
+        exactSourceQuote: quote,
+        basisSupport: {
+          kind: 'MANDATORY_CREDENTIAL',
+          credentialText: 'GA4, Google Tag Manager',
+          credentialKind: 'CERTIFICATION',
+        },
+        reasoning: 'Tool knowledge is not a formal credential.',
+      }, req, [quote])).toThrow('MANDATORY_CREDENTIAL with CERTIFICATION requires source text denoting certification or certified status');
+    });
+
+    it('C: rejects Strong grounding in change frameworks with ability to apply them pragmatically as PRIOR_RELEVANT_EXPERIENCE', () => {
+      const quote = 'Strong grounding in change frameworks with ability to apply them pragmatically';
+      const req = {
+        id: 'REQ-003', requirement: quote, strength: 'REQUIRED' as const,
+        roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Change framework grounding.',
+      };
+      expect(() => materializeStagedScreeningAdjudication({
+        screeningFunction: 'ENTRY_QUALIFICATION',
+        gateBasis: 'PRIOR_RELEVANT_EXPERIENCE',
+        exactSourceQuote: quote,
+        basisSupport: {
+          kind: 'PRIOR_RELEVANT_EXPERIENCE',
+          experienceText: 'Strong grounding in change frameworks',
+        },
+        reasoning: 'Grounding without retrospective experiential framing.',
+      }, req, [quote])).toThrow('PRIOR_RELEVANT_EXPERIENCE requires exact source-bound retrospective experience');
+    });
+  });
+
+  describe('positive controls', () => {
+    it('accepts Minimum 10 years of experience in food & beverage or Pharma industry as MINIMUM_TENURE', () => {
+      const quote = 'Minimum 10 years of experience in food & beverage or Pharma industry';
+      const req = { id: 'REQ-P1', requirement: quote, strength: 'REQUIRED' as const, roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Tenure requirement.' };
+      const res = materializeStagedScreeningAdjudication({
+        screeningFunction: 'ENTRY_QUALIFICATION',
+        gateBasis: 'MINIMUM_TENURE',
+        exactSourceQuote: quote,
+        basisSupport: {
+          kind: 'MINIMUM_TENURE',
+          thresholdText: 'Minimum 10 years',
+        },
+        reasoning: 'Explicit 10-year industry tenure requirement.',
+      }, req, [quote]);
+      expect(res.screeningGate).toBe(true);
+      expect(res.gateBasis).toBe('MINIMUM_TENURE');
+    });
+
+    it('accepts Bachelor\'s degree in Food Science & Technology or in Pharma as MANDATORY_CREDENTIAL', () => {
+      const quote = "Bachelor's degree in Food Science & Technology or in Pharma";
+      const req = { id: 'REQ-P2', requirement: quote, strength: 'REQUIRED' as const, roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Degree requirement.' };
+      const res = materializeStagedScreeningAdjudication({
+        screeningFunction: 'ENTRY_QUALIFICATION',
+        gateBasis: 'MANDATORY_CREDENTIAL',
+        exactSourceQuote: quote,
+        basisSupport: {
+          kind: 'MANDATORY_CREDENTIAL',
+          credentialText: "Bachelor's degree",
+          credentialKind: 'DEGREE',
+        },
+        reasoning: 'Formal educational degree requirement.',
+      }, req, [quote]);
+      expect(res.screeningGate).toBe(true);
+      expect(res.gateBasis).toBe('MANDATORY_CREDENTIAL');
+    });
+
+    it('accepts 5+ years of professional experience in marketing or advertising as MINIMUM_TENURE', () => {
+      const quote = '5+ years of professional experience in marketing or advertising';
+      const req = { id: 'REQ-P3', requirement: quote, strength: 'REQUIRED' as const, roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: '5+ years experience.' };
+      const res = materializeStagedScreeningAdjudication({
+        screeningFunction: 'ENTRY_QUALIFICATION',
+        gateBasis: 'MINIMUM_TENURE',
+        exactSourceQuote: quote,
+        basisSupport: {
+          kind: 'MINIMUM_TENURE',
+          thresholdText: '5+ years',
+        },
+        reasoning: 'Explicit duration threshold.',
+      }, req, [quote]);
+      expect(res.screeningGate).toBe(true);
+      expect(res.gateBasis).toBe('MINIMUM_TENURE');
+    });
+
+    it('accepts Experience integrating change into agile / product-based delivery models as PRIOR_RELEVANT_EXPERIENCE', () => {
+      const quote = 'Experience integrating change into agile / product-based delivery models';
+      const req = { id: 'REQ-P4', requirement: quote, strength: 'REQUIRED' as const, roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Change integration experience.' };
+      const res = materializeStagedScreeningAdjudication({
+        screeningFunction: 'ENTRY_QUALIFICATION',
+        gateBasis: 'PRIOR_RELEVANT_EXPERIENCE',
+        exactSourceQuote: quote,
+        basisSupport: {
+          kind: 'PRIOR_RELEVANT_EXPERIENCE',
+          experienceText: 'Experience integrating change',
+        },
+        reasoning: 'Retrospective experience integrating change.',
+      }, req, [quote]);
+      expect(res.screeningGate).toBe(true);
+      expect(res.gateBasis).toBe('PRIOR_RELEVANT_EXPERIENCE');
+    });
+
+    it('accepts Applicants without hands-on X expertise will not be considered. as EXPLICIT_SHORTLIST_CONDITION', () => {
+      const quote = 'Applicants without hands-on X expertise will not be considered.';
+      const req = { id: 'REQ-P5', requirement: quote, strength: 'REQUIRED' as const, roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Exclusionary condition.' };
+      const res = materializeStagedScreeningAdjudication({
+        screeningFunction: 'ENTRY_QUALIFICATION',
+        gateBasis: 'EXPLICIT_SHORTLIST_CONDITION',
+        exactSourceQuote: quote,
+        basisSupport: {
+          kind: 'EXPLICIT_SHORTLIST_CONDITION',
+          selectionConditionText: 'will not be considered',
+        },
+        reasoning: 'Explicit shortlisting/elimination language.',
+      }, req, [quote]);
+      expect(res.screeningGate).toBe(true);
+      expect(res.gateBasis).toBe('EXPLICIT_SHORTLIST_CONDITION');
+    });
   });
   it('keeps application-owned identities and screening-driver admissibility', () => {
     const role = materializeStagedRoleAnalysis({

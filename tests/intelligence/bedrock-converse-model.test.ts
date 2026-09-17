@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BedrockConverseJsonModel } from '../../src/lib/model/bedrock-converse-model';
 import { extractValidatedSourceClaims } from '../../src/dossier/pipeline';
+import { bedrockJsonSchema } from '../../src/dossier/bedrock-schema';
+import { stagedScreeningAdjudicationSchema } from '../../src/dossier/staged-decision-contract';
 import type { ReasoningModel } from '../../src/dossier/contracts';
 
 const response = (content: unknown, status = 200) => new Response(JSON.stringify({
@@ -66,5 +68,16 @@ describe('Bedrock Converse JSON transport', () => {
     expect(claims).toHaveLength(1);
     expect(responseSchema).toMatchObject({ type: 'object' });
     expect(JSON.stringify(responseSchema)).not.toContain('"OBJECT"');
+  });
+
+  it('projects stagedScreeningAdjudicationSchema with discriminated unions and literals', () => {
+    const projected = bedrockJsonSchema(stagedScreeningAdjudicationSchema);
+    expect(projected).toHaveProperty('type', 'object');
+    expect(projected).toHaveProperty('properties');
+    const properties = projected.properties as Record<string, any>;
+    expect(properties).toHaveProperty('basisSupport');
+    expect(properties.basisSupport).toHaveProperty('anyOf');
+    expect(Array.isArray(properties.basisSupport.anyOf)).toBe(true);
+    expect(properties.basisSupport.anyOf.length).toBe(7);
   });
 });
