@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseAdapter } from '@/data/database';
-export const STAGED_POLICY_VERSION = 'staged-v3';
+export const STAGED_POLICY_VERSION = 'staged-v4';
 export const STAGED_CONTRACT_VERSION = 'staged-decision-v2';
 export const STAGED_EXTRACTION_CONTRACT_VERSION = 'staged-source-claims-v1';
 export interface StagedEvaluationIdentity { tenantId:string; personId:string; canonicalJobId:string; opportunityVersion:string; evaluationContextFingerprint:string; profileVersion:string; policyVersion:string; ontologyVersion:string; ontologyFingerprint:string; }

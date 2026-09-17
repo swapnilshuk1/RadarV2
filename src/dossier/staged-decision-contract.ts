@@ -29,6 +29,7 @@ export const stagedScreeningAdjudicationSchema = z.object({
   screeningFunction: stagedScreeningFunctionSchema,
   gateBasis: stagedScreeningGateBasisSchema,
   reasoning: z.string().min(1),
+  exactSourceQuote: z.string().min(1),
 }).strict();
 export type StagedScreeningAdjudication = z.infer<typeof stagedScreeningAdjudicationSchema>;
 
@@ -47,20 +48,9 @@ export function materializeStagedScreeningAdjudication(
   if (requirement.strength === 'PREFERRED' && parsed.screeningFunction === 'ENTRY_QUALIFICATION') {
     throw new Error('A preferred requirement cannot become an entry qualification');
   }
-  if (parsed.screeningFunction === 'ENTRY_QUALIFICATION' && exactJdEvidence.length) {
-    const evidence = exactJdEvidence.join(' ');
-    const qualificationPatterns: Record<Exclude<StagedScreeningAdjudication['gateBasis'], 'NONE'>, RegExp> = {
-      MINIMUM_TENURE: /\b(?:\d+\+?|minimum|at least|years? of)\b[\s\S]{0,80}\bexperience\b|\bexperience\b[\s\S]{0,40}\b(?:\d+\+?|minimum|at least)\b/i,
-      MANDATORY_CREDENTIAL: /\b(?:degree|diploma|certif(?:icate|ication)|license|licence|credential|qualification)\b/i,
-      PRIOR_RELEVANT_EXPERIENCE: /\b(?:prior|relevant|proven|demonstrated|hands-on|professional|industry|domain)\b[\s\S]{0,60}\bexperience\b|\bexperience\b[\s\S]{0,60}\b(?:in|with|across|spanning)\b/i,
-      ELIGIBILITY_CONDITION: /\b(?:eligib(?:le|ility)|authorized|authorised|work permit|right to work|license|licence)\b/i,
-      QUALIFYING_ARTIFACT: /\b(?:portfolio|work sample|case stud(?:y|ies)|writing sample|proof|artifact|artefact)\b/i,
-      EXPLICIT_SHORTLIST_CONDITION: /\b(?:required|must have|must demonstrate|shortlist|qualif(?:y|ied|ication)|entry requirement|minimum requirement)\b/i,
-    };
-    const pattern = parsed.gateBasis === 'NONE' ? undefined : qualificationPatterns[parsed.gateBasis];
-    if (!pattern || !pattern.test(evidence)) {
-      throw new Error(`Entry qualification basis ${parsed.gateBasis} is not supported by the cited JD evidence`);
-    }
+  if (parsed.screeningFunction === 'ENTRY_QUALIFICATION' && exactJdEvidence.length
+    && !exactJdEvidence.some(quote => quote.includes(parsed.exactSourceQuote))) {
+    throw new Error('Entry qualification exactSourceQuote is not contained in the cited JD evidence');
   }
   return {
     ...parsed,

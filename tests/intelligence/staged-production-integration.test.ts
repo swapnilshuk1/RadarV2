@@ -7,7 +7,7 @@ import { computeContentHash } from '../../src/lib/domain/canonical_identity';
 
 describe('staged production persistence boundary', () => {
   it('uses a fresh staged policy and contract identity for post-fix evaluations', () => {
-    expect(STAGED_POLICY_VERSION).toBe('staged-v3');
+    expect(STAGED_POLICY_VERSION).toBe('staged-v4');
     expect(STAGED_CONTRACT_VERSION).toBe('staged-decision-v2');
   });
   it('persists a versioned staged result without fabricating an intrinsic score and is idempotent', async () => {

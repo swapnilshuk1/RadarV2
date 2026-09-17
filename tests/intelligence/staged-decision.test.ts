@@ -100,8 +100,8 @@ class ScriptedModel implements ReasoningModel {
     }
     if (instruction.includes('screening adjudicator')) {
       return actual.requirement.strength === 'REQUIRED'
-        ? { screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'The exact JD says candidates must have the prior experience.' }
-        : { screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'NONE', reasoning: 'The exact JD marks this preferred and not mandatory.' };
+        ? { screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'The exact JD says candidates must have the prior experience.', exactSourceQuote: 'Candidates must have relevant experience in Operations.' }
+        : { screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'NONE', reasoning: 'The exact JD marks this preferred and not mandatory.', exactSourceQuote: 'Hindi is preferred, not mandatory.' };
     }
     if (instruction.includes('candidate-to-requirement mapper')) {
       return actual.requirement.strength === 'REQUIRED'
@@ -193,10 +193,10 @@ describe('staged production decision boundary', () => {
       roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Important for delivery.',
     };
     expect(materializeStagedScreeningAdjudication({
-      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'NONE', reasoning: 'Required to perform the role.',
+      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'NONE', reasoning: 'Required to perform the role.', exactSourceQuote: 'Required to perform the role.',
     }, required).screeningGate).toBe(false);
     expect(materializeStagedScreeningAdjudication({
-      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'Candidates must bring prior relevant experience.',
+      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'Candidates must bring prior relevant experience.', exactSourceQuote: 'Candidates must bring prior relevant experience.',
     }, required).screeningGate).toBe(true);
   });
 
@@ -206,13 +206,13 @@ describe('staged production decision boundary', () => {
       roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Role requirement.',
     };
     expect(() => materializeStagedScreeningAdjudication({
-      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'NONE', reasoning: 'Incomplete.',
+      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'NONE', reasoning: 'Incomplete.', exactSourceQuote: 'Incomplete.',
     }, required)).toThrow('entry qualification needs a stated gate basis');
     expect(() => materializeStagedScreeningAdjudication({
-      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'MANDATORY_CREDENTIAL', reasoning: 'Inconsistent.',
+      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'MANDATORY_CREDENTIAL', reasoning: 'Inconsistent.', exactSourceQuote: 'Inconsistent.',
     }, required)).toThrow('role-performance requirement cannot carry an entry gate basis');
     expect(() => materializeStagedScreeningAdjudication({
-      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'Inconsistent preference.',
+      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'Inconsistent preference.', exactSourceQuote: 'Inconsistent preference.',
     }, { ...required, strength: 'PREFERRED' })).toThrow('preferred requirement cannot become an entry qualification');
   });
   it('requires an entry basis to be supported by local exact JD qualification wording', () => {
@@ -220,13 +220,17 @@ describe('staged production decision boundary', () => {
       id: 'REQ-001', requirement: 'Data-driven growth tools', strength: 'REQUIRED' as const,
       roleImportance: 'ENABLER' as const, roleClaimIds: ['JD-1'], reasoning: 'Useful for delivery.',
     };
-    expect(() => validateScreening({
-      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'The tool proficiency is required.',
-    }, required, ['Proficiency in data-driven growth tools including Google Sheets and Tableau.']))
-      .toThrow('not supported by the cited JD evidence');
     expect(validateScreening({
-      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'The employer requires relevant prior experience.',
+      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'NONE', reasoning: 'Tool proficiency is performed within the role.',
+      exactSourceQuote: 'Proficiency in data-driven growth tools including Google Sheets and Tableau.',
+    }, required, ['Proficiency in data-driven growth tools including Google Sheets and Tableau.']).screeningGate).toBe(false);
+    expect(validateScreening({
+      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'The employer requires relevant prior experience.', exactSourceQuote: 'Candidates must have relevant experience in operations.',
     }, required, ['Candidates must have relevant experience in operations.']).screeningGate).toBe(true);
+    expect(() => validateScreening({
+      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'Paraphrase is not source evidence.', exactSourceQuote: 'Relevant experience is required.',
+    }, required, ['Candidates must have relevant experience in operations.']))
+      .toThrow('exactSourceQuote is not contained');
   });
   it('keeps application-owned identities and screening-driver admissibility', () => {
     const role = materializeStagedRoleAnalysis({
