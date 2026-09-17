@@ -63,7 +63,12 @@ export class EvaluationWorker {
     }
   }
 
-  public async claimNextJob(): Promise<ClaimedJob | null> {
+  public async claimNextJob(queueKind?: ClaimedJob["queueKind"]): Promise<ClaimedJob | null> {
+    const queueFilter = queueKind === "staged"
+      ? "AND ej.status IN ('staged_pending', 'staged_processing')"
+      : queueKind === "legacy"
+        ? "AND ej.status IN ('pending', 'processing')"
+        : "";
     const job = await this.db.one<{
       id: string;
       tenant_id: string;
@@ -86,6 +91,7 @@ export class EvaluationWorker {
         AND er.opportunity_version = ej.opportunity_version 
         AND er.evaluation_context_fingerprint = ej.evaluation_context_fingerprint
        WHERE er.status = 'READY'
+         ${queueFilter}
          AND ((ej.status IN ('pending', 'staged_pending') AND ej.next_attempt_at <= CURRENT_TIMESTAMP)
           OR (ej.status IN ('processing', 'staged_processing') AND ej.locked_at < datetime('now', '-300 seconds')))
        ORDER BY 
@@ -693,8 +699,8 @@ export class EvaluationWorker {
     return result;
   }
 
-  public async pollAndProcessNext(): Promise<WorkerProcessingResult | null> {
-    const job = await this.claimNextJob();
+  public async pollAndProcessNext(queueKind?: ClaimedJob["queueKind"]): Promise<WorkerProcessingResult | null> {
+    const job = await this.claimNextJob(queueKind);
     if (!job) {
       return null;
     }
