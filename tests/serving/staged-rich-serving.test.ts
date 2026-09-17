@@ -10,6 +10,7 @@ import { resolveServingScope } from '../../src/lib/security/scope-resolver';
 import { resolveCanonicalServingReadModel } from '../../src/lib/intelligence/serving/CanonicalServingReadModel';
 import type { Dossier,Passage } from '../../src/dossier/contracts';
 import { readAcquisitionFeed } from '../../src/lib/intelligence/acquisition-feed';
+import { stagedRolloutReadiness,activateReadyStagedRollout } from '../../src/lib/intelligence/staged/StagedRolloutReadiness';
 
 function dossier():Dossier {
   const p=(text:string):Passage=>({text,kind:'ADVICE',state:'INFERRED',confidence:0.8,sourcePlane:'JD',evidenceRefs:['JD-1-1'],reasoning:'Derived from the supplied growth mandate.'});
@@ -80,5 +81,17 @@ describe('rich staged serving activation',()=>{
     await store.save(identity,'input',dossier());
     await new StagedServingPublisher(db).publish(identity);
     expect((await readAcquisitionFeed(db,identity,active)).rows[0].state).toBe('READY');
+  });
+  it('activates only complete serving coverage and never overwrites an independently changed context',async()=>{
+    await db.execute(`UPDATE opportunity_versions SET acquisition_status='ACQUIRED'`);
+    const scope={...identity,contextFingerprint:'staged-context',searchPlanId:'plan_A'};
+    const old=(await db.one<{context_fingerprint:string}>(`SELECT context_fingerprint FROM active_evaluation_contexts WHERE person_id='person_A'`))!.context_fingerprint;
+    expect(await stagedRolloutReadiness(db,scope)).toMatchObject({total:1,unprepared:1,ready:false});
+    await expect(activateReadyStagedRollout(db,scope,old)).rejects.toThrow('ROLLOUT_COVERAGE_INCOMPLETE');
+    await new SqliteRichDossierStore(db).save(identity,'input',dossier());await new StagedServingPublisher(db).publish(identity);
+    expect(await stagedRolloutReadiness(db,scope)).toMatchObject({prepared:1,unprepared:0,ready:true});
+    await expect(activateReadyStagedRollout(db,scope,'unrelated')).rejects.toThrow('ROLLOUT_ACTIVE_CONTEXT_CHANGED');
+    await activateReadyStagedRollout(db,scope,old);
+    expect((await db.one<{context_fingerprint:string}>(`SELECT context_fingerprint FROM active_evaluation_contexts WHERE person_id='person_A'`))!.context_fingerprint).toBe('staged-context');
   });
 });
