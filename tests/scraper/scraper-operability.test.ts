@@ -1177,7 +1177,8 @@ describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AP)
 
     // 2. Truthful snapshot degradation: writeSnapshot returns null on error without throwing
     const badCard: any = {
-      cardHash: "../invalid-nested/\\:::///bad-path",
+      // NUL is rejected by filesystem APIs on both Windows and Linux.
+      cardHash: "invalid\0path",
     };
     const res = writeSnapshot(badCard);
     expect(res).toBeNull();

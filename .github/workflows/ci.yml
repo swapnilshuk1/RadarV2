@@ -33,7 +33,11 @@ jobs:
         run: npm run build
 
       - name: Run Certification Test Manifest
-        run: npx vitest run --config vitest.certification.config.ts
+        # The scraper preflight test launches a real offline Chromium instance.
+        # Browser availability is a prerequisite, not a mocked success.
+        run: |
+          npx playwright install --with-deps chromium
+          npx vitest run --config vitest.certification.config.ts
 
       - name: Package verified Linux server output
         run: tar -czf radar-linux-output.tar.gz .output
