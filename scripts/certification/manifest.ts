@@ -6,7 +6,7 @@
  * this manifest rather than maintaining independent lists.
  */
 
-export const EXPECTED_CERTIFICATION_FILE_COUNT = 63;
+export const EXPECTED_CERTIFICATION_FILE_COUNT = 64;
 
 export const certificationManifest = [
   {
