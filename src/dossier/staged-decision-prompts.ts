@@ -14,13 +14,15 @@ Application mechanics such as covering notes, submission format, interview steps
 
 A JD claim may support more than one derived semantic conclusion. Do not force evidence ancestry to be mutually exclusive. Do not infer anything about the candidate. Cite only supplied JD claim IDs. The application owns requirement and operating-condition IDs, so do not return IDs.`;
 
-export const stagedDecisionScreeningInstruction = `You are RADAR's screening adjudicator. Decide one narrow semantic question for one immutable candidate requirement using its exact JD evidence.
+export const stagedDecisionScreeningInstruction = `You are RADAR's screening adjudicator. Decide the employment-selection function of one immutable candidate requirement using its exact JD evidence.
 
-Return screeningGate=true only when the employer explicitly presents the requirement as something the candidate must possess, have done, or demonstrate as an entry qualification or shortlisting condition. A gate does not need a number. Explicit prior-experience requirements, eligibility conditions, required credentials/licences, and qualifying artifacts can all be gates.
+Return screeningFunction and gateBasis, never a screeningGate boolean. Use ENTRY_QUALIFICATION only when the employer explicitly presents the requirement as something a candidate must possess, have done, or demonstrate before entry or shortlisting. Then select one non-NONE gateBasis: MINIMUM_TENURE, MANDATORY_CREDENTIAL, PRIOR_RELEVANT_EXPERIENCE, ELIGIBILITY_CONDITION, QUALIFYING_ARTIFACT, or EXPLICIT_SHORTLIST_CONDITION. A gate does not need a number.
+
+Use ROLE_PERFORMANCE_REQUIREMENT with gateBasis=NONE when the source describes a capability, skill, proficiency, work style, responsibility, or success expectation for performing the role without establishing it as an employer entry filter. A requirement may be important or REQUIRED for strong performance and still be a role-performance requirement.
 
 A responsibility, success capability, work style, operating expectation, authority shape, compensation, location, or other employment condition is not a screening gate merely because it is important or required for strong performance. PREFERRED or explicitly non-mandatory requirements are never gates.
 
-Judge the exact JD quotations as authoritative. Extracted claim text is contextual help only; if a paraphrase strengthens source wording, follow the exact quotation. Do not reason about the candidate. The application already knows which requirement this answer belongs to, so return only screeningGate and concise reasoning.`;
+Judge the exact JD quotations as authoritative. Extracted claim text is contextual help only; if a paraphrase strengthens source wording, follow the exact quotation. Do not reason about the candidate. The application already knows which requirement this answer belongs to, so return only screeningFunction, gateBasis, and concise reasoning.`;
 
 export const stagedDecisionMappingInstruction = `You are RADAR's candidate-to-requirement mapper. Evaluate one immutable role requirement against the supplied validated candidate evidence.
 

@@ -4,7 +4,55 @@ import { operations, resolutionSchema, type Claim } from './contracts';
 import type {
   StagedMappedRequirement,
   StagedRoleAnalysis,
+  StagedRoleRequirement,
 } from './staged-research';
+
+/**
+ * The model identifies the selection function; the application owns the
+ * resulting screening boolean. This keeps role-performance expectations from
+ * silently becoming employer entry filters.
+ */
+export const stagedScreeningFunctionSchema = z.enum([
+  'ENTRY_QUALIFICATION',
+  'ROLE_PERFORMANCE_REQUIREMENT',
+]);
+export const stagedScreeningGateBasisSchema = z.enum([
+  'MINIMUM_TENURE',
+  'MANDATORY_CREDENTIAL',
+  'PRIOR_RELEVANT_EXPERIENCE',
+  'ELIGIBILITY_CONDITION',
+  'QUALIFYING_ARTIFACT',
+  'EXPLICIT_SHORTLIST_CONDITION',
+  'NONE',
+]);
+export const stagedScreeningAdjudicationSchema = z.object({
+  screeningFunction: stagedScreeningFunctionSchema,
+  gateBasis: stagedScreeningGateBasisSchema,
+  reasoning: z.string().min(1),
+}).strict();
+export type StagedScreeningAdjudication = z.infer<typeof stagedScreeningAdjudicationSchema>;
+
+export function materializeStagedScreeningAdjudication(
+  value: unknown,
+  requirement: StagedRoleRequirement,
+): StagedScreeningAdjudication & { screeningGate: boolean } {
+  const parsed = stagedScreeningAdjudicationSchema.parse(value);
+  if (parsed.screeningFunction === 'ENTRY_QUALIFICATION' && parsed.gateBasis === 'NONE') {
+    throw new Error('An entry qualification needs a stated gate basis');
+  }
+  if (parsed.screeningFunction === 'ROLE_PERFORMANCE_REQUIREMENT' && parsed.gateBasis !== 'NONE') {
+    throw new Error('A role-performance requirement cannot carry an entry gate basis');
+  }
+  if (requirement.strength === 'PREFERRED' && parsed.screeningFunction === 'ENTRY_QUALIFICATION') {
+    throw new Error('A preferred requirement cannot become an entry qualification');
+  }
+  return {
+    ...parsed,
+    screeningGate: requirement.strength === 'REQUIRED'
+      && parsed.screeningFunction === 'ENTRY_QUALIFICATION'
+      && parsed.gateBasis !== 'NONE',
+  };
+}
 
 export const stagedGapNatureSchema = z.enum([
   'PARTIAL_EVIDENCE',

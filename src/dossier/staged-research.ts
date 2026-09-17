@@ -92,6 +92,15 @@ export type StagedRoleAnalysis = {
 };
 export type StagedScreenedRequirement = StagedRoleRequirement & {
   screeningGate: boolean;
+  screeningFunction: 'ENTRY_QUALIFICATION' | 'ROLE_PERFORMANCE_REQUIREMENT';
+  screeningGateBasis:
+    | 'MINIMUM_TENURE'
+    | 'MANDATORY_CREDENTIAL'
+    | 'PRIOR_RELEVANT_EXPERIENCE'
+    | 'ELIGIBILITY_CONDITION'
+    | 'QUALIFYING_ARTIFACT'
+    | 'EXPLICIT_SHORTLIST_CONDITION'
+    | 'NONE';
   screeningReasoning: string;
 };
 export type StagedMappedRequirement = StagedScreenedRequirement & {
@@ -480,6 +489,14 @@ export async function runStagedFrozenResearchDetailed(
   const requirements: StagedMappedRequirement[] = role.requirements.map((requirement, index) => ({
     ...requirement,
     screeningGate: screeningResults[index].screeningGate,
+    // The legacy staged-research path predates typed adjudication. Preserve its
+    // trace shape without making it the authority for the production decision path.
+    screeningFunction: screeningResults[index].screeningGate
+      ? 'ENTRY_QUALIFICATION'
+      : 'ROLE_PERFORMANCE_REQUIREMENT',
+    screeningGateBasis: screeningResults[index].screeningGate
+      ? 'EXPLICIT_SHORTLIST_CONDITION'
+      : 'NONE',
     screeningReasoning: screeningResults[index].reasoning,
     status: mappingResults[index].status,
     candidateClaimIds: mappingResults[index].candidateClaimIds,

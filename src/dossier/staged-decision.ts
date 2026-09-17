@@ -9,17 +9,18 @@ import {
   materializeStagedRoleAnalysis,
   stagedMappingResponseSchema,
   stagedRoleAnalysisSchema,
-  stagedScreeningResponseSchema,
   type StagedMappedRequirement,
   type StagedResearchInput,
   type StagedRoleRequirement,
 } from './staged-research';
 import {
   screeningConstraintForDrivers,
+  materializeStagedScreeningAdjudication,
   materializeStagedDecisionResolutions,
   stagedCareerCapitalSchema,
   stagedDecisionProposalSchema,
   stagedDecisionResolutionResponseSchema,
+  stagedScreeningAdjudicationSchema,
   stagedGapResponseSchema,
   validateStagedDecisionModel,
   validateStagedCareerCapital,
@@ -104,12 +105,8 @@ function exactIds(ids: readonly string[], known: Set<string>, label: string) {
   if (unknown) throw new Error(`Unknown ${label} reference: ${unknown}`);
 }
 
-function validateScreening(value: unknown, requirement: StagedRoleRequirement) {
-  const parsed = stagedScreeningResponseSchema.parse(value);
-  if (parsed.screeningGate && requirement.strength !== 'REQUIRED') {
-    throw new Error('A preferred requirement cannot become a screening gate');
-  }
-  return parsed;
+export function validateScreening(value: unknown, requirement: StagedRoleRequirement) {
+  return materializeStagedScreeningAdjudication(value, requirement);
 }
 
 function validateMapping(value: unknown, candidateClaims: Claim[]) {
@@ -252,7 +249,7 @@ export async function runStagedFrozenDecisionDetailed(
           };
         }),
       },
-      stagedScreeningResponseSchema,
+      stagedScreeningAdjudicationSchema,
       value => validateScreening(value, requirement),
       onStage,
     )),
@@ -275,6 +272,8 @@ export async function runStagedFrozenDecisionDetailed(
   const requirements: StagedMappedRequirement[] = role.requirements.map((requirement, index) => ({
     ...requirement,
     screeningGate: screeningResults[index].screeningGate,
+    screeningFunction: screeningResults[index].screeningFunction,
+    screeningGateBasis: screeningResults[index].gateBasis,
     screeningReasoning: screeningResults[index].reasoning,
     status: mappingResults[index].status,
     candidateClaimIds: mappingResults[index].candidateClaimIds,

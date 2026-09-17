@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { contextFields, scopeFields, type Claim, type EvidenceSource, type ReasoningModel } from '../../src/dossier/contracts';
 import { runStagedFrozenDecisionDetailed } from '../../src/dossier/staged-decision';
 import {
+  materializeStagedScreeningAdjudication,
   screeningConstraintForDrivers,
   stagedCareerCapitalSchema,
   stagedDecisionProposalSchema,
@@ -98,8 +99,8 @@ class ScriptedModel implements ReasoningModel {
     }
     if (instruction.includes('screening adjudicator')) {
       return actual.requirement.strength === 'REQUIRED'
-        ? { screeningGate: true, reasoning: 'The exact JD says candidates must have the prior experience.' }
-        : { screeningGate: false, reasoning: 'The exact JD marks this preferred and not mandatory.' };
+        ? { screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'The exact JD says candidates must have the prior experience.' }
+        : { screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'NONE', reasoning: 'The exact JD marks this preferred and not mandatory.' };
     }
     if (instruction.includes('candidate-to-requirement mapper')) {
       return actual.requirement.strength === 'REQUIRED'
@@ -175,6 +176,8 @@ const baseMapped = (): StagedMappedRequirement => ({
   roleClaimIds: ['JD-1'],
   reasoning: 'Required experience.',
   screeningGate: true,
+  screeningFunction: 'ENTRY_QUALIFICATION',
+  screeningGateBasis: 'PRIOR_RELEVANT_EXPERIENCE',
   screeningReasoning: 'Explicit entry qualification.',
   status: 'NOT_EVIDENCED',
   candidateClaimIds: [],
@@ -183,6 +186,34 @@ const baseMapped = (): StagedMappedRequirement => ({
 });
 
 describe('staged production decision boundary', () => {
+  it('derives screening gates only from an explicit entry-selection function', () => {
+    const required = {
+      id: 'REQ-001', requirement: 'Data analysis capability', strength: 'REQUIRED' as const,
+      roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Important for delivery.',
+    };
+    expect(materializeStagedScreeningAdjudication({
+      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'NONE', reasoning: 'Required to perform the role.',
+    }, required).screeningGate).toBe(false);
+    expect(materializeStagedScreeningAdjudication({
+      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'Candidates must bring prior relevant experience.',
+    }, required).screeningGate).toBe(true);
+  });
+
+  it('rejects internally inconsistent screening adjudications', () => {
+    const required = {
+      id: 'REQ-001', requirement: 'Relevant experience', strength: 'REQUIRED' as const,
+      roleImportance: 'CORE_CAPABILITY' as const, roleClaimIds: ['JD-1'], reasoning: 'Role requirement.',
+    };
+    expect(() => materializeStagedScreeningAdjudication({
+      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'NONE', reasoning: 'Incomplete.',
+    }, required)).toThrow('entry qualification needs a stated gate basis');
+    expect(() => materializeStagedScreeningAdjudication({
+      screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT', gateBasis: 'MANDATORY_CREDENTIAL', reasoning: 'Inconsistent.',
+    }, required)).toThrow('role-performance requirement cannot carry an entry gate basis');
+    expect(() => materializeStagedScreeningAdjudication({
+      screeningFunction: 'ENTRY_QUALIFICATION', gateBasis: 'PRIOR_RELEVANT_EXPERIENCE', reasoning: 'Inconsistent preference.',
+    }, { ...required, strength: 'PREFERRED' })).toThrow('preferred requirement cannot become an entry qualification');
+  });
   it('keeps application-owned identities and screening-driver admissibility', () => {
     const role = materializeStagedRoleAnalysis({
       requirements: [{ requirement: 'Relevant experience in Operations', strength: 'REQUIRED', roleImportance: 'CORE_CAPABILITY', roleClaimIds: ['JD-1'], reasoning: 'Required experience.' }],

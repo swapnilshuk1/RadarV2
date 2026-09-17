@@ -286,12 +286,13 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
     expect(insertCall).toBeUndefined();
     
     // Verify that the queue state was updated properly to retry
-    const retryCall = db.execute.mock.calls.find((call: any[]) => String(call[0]).includes("UPDATE evaluation_jobs") && String(call[0]).includes("status = 'pending'"));
+    const retryCall = db.execute.mock.calls.find((call: any[]) => String(call[0]).includes("UPDATE evaluation_jobs") && String(call[0]).includes("SET status = ?"));
     expect(retryCall).toBeDefined();
     
     const params = retryCall[1];
-    expect(params[0]).toBe(1); // Next attempt number
-    expect(params[1]).toContain("Missing evaluation context");
-    expect(params[3]).toBe(job.id);
+    expect(params[0]).toBe('pending');
+    expect(params[1]).toBe(1); // Next attempt number
+    expect(params[2]).toContain("Missing evaluation context");
+    expect(params[4]).toBe(job.id);
   });
 });

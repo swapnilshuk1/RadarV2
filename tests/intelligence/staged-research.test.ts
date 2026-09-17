@@ -130,7 +130,7 @@ describe('production staged research', () => {
   it('only admits non-direct screening gates as candidate screening drivers', () => {
     const base = {
       id: 'REQ-001', requirement: 'A', strength: 'REQUIRED' as const, roleImportance: 'CORE_CAPABILITY' as const,
-      roleClaimIds: ['JD-1'], reasoning: 'x', screeningReasoning: 'x', candidateClaimIds: [], unsupportedAspects: [], mappingReasoning: 'x',
+      roleClaimIds: ['JD-1'], reasoning: 'x', screeningFunction: 'ENTRY_QUALIFICATION' as const, screeningGateBasis: 'PRIOR_RELEVANT_EXPERIENCE' as const, screeningReasoning: 'x', candidateClaimIds: [], unsupportedAspects: [], mappingReasoning: 'x',
     };
     const rows: StagedMappedRequirement[] = [
       { ...base, screeningGate: true, status: 'DIRECT' },
@@ -156,7 +156,7 @@ describe('production staged research', () => {
       operatingConditions: [], authorityShape: 'Operating leader', roleSideConditions: [],
     }, claims.filter(claim => claim.plane === 'JD'));
     const mapped: StagedMappedRequirement[] = [{
-      ...role.requirements[0], screeningGate: true, screeningReasoning: 'Explicit gate.', status: 'NOT_EVIDENCED', candidateClaimIds: [], unsupportedAspects: ['Operations experience'], mappingReasoning: 'Operations experience is not evidenced in the supplied candidate sources.',
+      ...role.requirements[0], screeningGate: true, screeningFunction: 'ENTRY_QUALIFICATION', screeningGateBasis: 'PRIOR_RELEVANT_EXPERIENCE', screeningReasoning: 'Explicit gate.', status: 'NOT_EVIDENCED', candidateClaimIds: [], unsupportedAspects: ['Operations experience'], mappingReasoning: 'Operations experience is not evidenced in the supplied candidate sources.',
     }];
     const research = assembleStagedResearch(frozen, role, mapped, openResolutions, {
       screeningViability: 'BLOCKED', verdict: 'PASS', rationale: 'The entry qualification is not evidenced in the supplied candidate sources.', narrativePlan,

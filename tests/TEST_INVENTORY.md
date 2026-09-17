@@ -86,6 +86,19 @@ RADAR v2 Test Architecture
 | Authoritative Suite | Primary Invariant Protected | Certification Stage |
 | :--- | :--- | :---: |
 | `tests/intelligence/semantic-evidence-integrity-regression.test.ts` | Dimension grounding prevents false evidence vetoes on rich executive postings. | **Stage 3** |
+| `tests/intelligence/staged-decision.test.ts` | Typed entry-selection adjudication, candidate mapping, gap classification, and decision-boundary invariants for staged intelligence. | **Stage 3** |
+| `tests/intelligence/staged-production-integration.test.ts` | Staged source identity, policy-context isolation, and persistence boundaries. | **Stage 3** |
+| `tests/intelligence/bedrock-converse-model.test.ts` | Bedrock provider request, schema, authentication-redaction, and bounded transport-retry contract. | **Stage 3** |
+| `tests/intelligence/bedrock-claude-model.test.ts` | Bedrock Anthropic Messages adapter request, response, redaction, and transport contract. | Full Suite |
+| `tests/intelligence/bedrock-minimax-model.test.ts` | Bedrock MiniMax adapter request, response, redaction, and transport contract. | Full Suite |
+| `tests/intelligence/bedrock-schema.test.ts` | Standards-compliant Bedrock JSON Schema projection for dossier contracts. | Full Suite |
+| `tests/intelligence/bounded-research-experiment.test.ts` | Isolated staged-reasoning experiment contracts. | Full Suite |
+| `tests/intelligence/dossier-grounding.test.ts` | Evidence-plane, provenance, and grounded dossier validation invariants. | Full Suite |
+| `tests/intelligence/dossier-source-authority.test.ts` | Immutable source snapshot and source-authority boundary. | Full Suite |
+| `tests/intelligence/evidence-extraction-bedrock.test.ts` | Bedrock source-extraction schema and exact-evidence contract. | Full Suite |
+| `tests/intelligence/semantic-seam-benchmark.test.ts` | Fixed semantic seam benchmark validation and scoring contracts. | Full Suite |
+| `tests/intelligence/staged-research.test.ts` | Legacy staged-research compatibility and canonical assembly contracts. | Full Suite |
+| `tests/intelligence/staged-screening-authority.test.ts` | Staged screening authority and exact-JD evidence boundary. | Full Suite |
 | `tests/intelligence/extraction/source-id-harness.test.ts` | Source-ID extraction harness wire adaptation (`const` -> singleton `enum`), spanId strict validation, offset resolution, and candidate/role extraction verification. | Full Suite |
 | `tests/semantic/ontology.test.ts` | Comprehensive executive ontology validation (roles, capabilities, industries, seniority). | Full Suite |
 | `tests/semantic/normalization.test.ts` | Currency, date, location, and seniority string normalization. | Full Suite |
@@ -295,6 +308,20 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/recommendation-golden.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 11 | 46 |
 | `tests/intelligence/schema-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 2 |
 | `tests/intelligence/semantic-evidence-integrity-regression.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 6 | 31 |
+| `tests/intelligence/staged-decision.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 8 | 30 |
+| `tests/intelligence/staged-production-integration.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 5 | 13 |
+| `tests/intelligence/bedrock-converse-model.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 8 | 26 |
+| `tests/intelligence/bedrock-claude-model.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 19 |
+| `tests/intelligence/bedrock-minimax-model.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 19 |
+| `tests/intelligence/bedrock-schema.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 18 |
+| `tests/intelligence/bounded-research-experiment.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 24 |
+| `tests/intelligence/dossier-grounding.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 16 | 68 |
+| `tests/intelligence/dossier-source-authority.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 21 |
+| `tests/intelligence/evidence-extraction-bedrock.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 4 | 17 |
+| `tests/intelligence/extraction/source-id-harness.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 24 |
+| `tests/intelligence/semantic-seam-benchmark.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 26 |
+| `tests/intelligence/staged-research.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 22 |
+| `tests/intelligence/staged-screening-authority.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 3 | 14 |
 | `tests/intelligence/serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 13 |
 | `tests/intelligence/worker-profile-resolution.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 7 | 24 |
 | `tests/security/scraper-auth-permission-non-escalation.test.ts` | Security & Tenant Isolation | **KEEP** | Gate 0 Safety | 1 | 8 |
