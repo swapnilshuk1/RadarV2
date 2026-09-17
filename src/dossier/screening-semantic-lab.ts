@@ -48,17 +48,18 @@ Return:
 
 Semantic rules:
 1. REQUIRED does not automatically mean screening gate. A capability can be essential for strong performance and still be ROLE_PERFORMANCE_REQUIREMENT.
-2. ENTRY_QUALIFICATION means the source presents something the candidate must already possess, have done, or supply in order to qualify for entry/consideration. ENTRY_QUALIFICATION must use exactly one non-NONE gateBasis.
-3. ROLE_PERFORMANCE_REQUIREMENT means the source describes a skill, capability, proficiency, knowledge, working style, responsibility, or success expectation without making it an employer-entry qualification. It must use gateBasis=NONE.
+2. ENTRY_QUALIFICATION means the source requires the candidate to arrive with a pre-existing qualification, credential, eligibility state, artifact, tenure threshold, or retrospective experience/background. Explicit shortlisting/disqualification language is one way to establish an entry qualification, but it is not required when the source already states a genuine pre-entry qualification.
+3. ROLE_PERFORMANCE_REQUIREMENT means the source describes a prospective skill, capability, proficiency, knowledge, working style, responsibility, or success expectation for doing the job, without requiring a distinct pre-existing qualification. It must use gateBasis=NONE.
 4. PREFERRED or explicitly optional requirements are always ROLE_PERFORMANCE_REQUIREMENT / NONE.
-5. MINIMUM_TENURE means an explicit numeric or verbal duration/experience threshold used as an entry qualification.
-6. MANDATORY_CREDENTIAL means a formal educational degree, licence, certification, professional qualification, or registration used as an entry qualification. Tool/platform knowledge is not a credential.
-7. PRIOR_RELEVANT_EXPERIENCE means non-duration retrospective experience/background/exposure used as an entry qualification. Experience wording alone is not enough: distinguish a selection prerequisite from a capability description in the role.
-8. ELIGIBILITY_CONDITION means legal/regulatory/right-to-work/clearance eligibility for employment.
-9. QUALIFYING_ARTIFACT means a candidate-supplied artifact required to qualify or progress, such as a portfolio or work sample.
-10. EXPLICIT_SHORTLIST_CONDITION means the source explicitly ties possession/non-possession to consideration, shortlisting, interview, or disqualification.
-11. Headings and surrounding wording in the supplied quotes are relevant. Do not infer a stronger condition than the source actually states.
-12. Do not reason about the candidate's evidence, fit, desire, willingness, or likelihood of acceptance.`;
+5. Section headings are contextual evidence, not semantic overrides. Headings such as Required Skills, Skills & Capabilities, Qualifications, or Must-Have do not by themselves decide screeningFunction. Do not demote an explicit tenure threshold or retrospective experience requirement merely because it appears under a skills/capabilities heading; likewise do not promote a pure skill/capability statement merely because it appears under a required or must-have heading.
+6. MINIMUM_TENURE means an explicit numeric or verbal duration threshold on experience the candidate must already have. For a REQUIRED candidate requirement, wording such as a number/range of years or months of experience is normally ENTRY_QUALIFICATION / MINIMUM_TENURE unless the source explicitly makes it optional or clearly describes future time-in-role rather than prior experience. Do not require separate shortlisting language.
+7. MANDATORY_CREDENTIAL means a formal educational degree, licence, certification, professional qualification, or registration the candidate must already hold. Tool/platform knowledge is not a credential.
+8. PRIOR_RELEVANT_EXPERIENCE means non-duration retrospective candidate history: prior/proven/hands-on experience, experience doing or managing something, prior background, track record, or exposure. When such retrospective wording is a REQUIRED or must-have candidate requirement, normally treat it as ENTRY_QUALIFICATION / PRIOR_RELEVANT_EXPERIENCE even if it is listed in a skills section. Do not require a numeric duration or explicit shortlisting words. By contrast, expertise, knowledge, proficiency, ability, grounding, comfort, or responsibility wording without retrospective history remains a performance requirement unless the source separately makes it an entry condition.
+9. ELIGIBILITY_CONDITION means legal/regulatory/right-to-work/clearance eligibility for employment.
+10. QUALIFYING_ARTIFACT means a candidate-supplied artifact required to qualify or progress, such as a portfolio or work sample.
+11. EXPLICIT_SHORTLIST_CONDITION means the source explicitly ties possession/non-possession to consideration, shortlisting, interview, or disqualification. Use this when explicit selection language itself is the basis rather than another more specific qualification basis.
+12. Use the requirement wording together with all supplied quotes. Prefer the semantic substance of the requirement over generic section labels. Do not infer a stronger condition than the source actually states.
+13. Do not reason about the candidate's evidence, fit, desire, willingness, or likelihood of acceptance.`;
 
 function schemaForModel(model: ReasoningModel): Record<string, unknown> {
   return /bedrock/i.test(model.id)
