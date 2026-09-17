@@ -18,7 +18,7 @@ type CandidateBinding = { document_id:string; evidence_graph_id:string; document
 
 function rawJobText(raw:string):string { try { const parsed=JSON.parse(raw); const candidate=[parsed.rawDescription,parsed.original?.rawDescription,parsed.description,parsed.content].find((v):v is string=>typeof v==='string'&&v.trim().length>0); return candidate?.trim()||raw; } catch { return raw.trim(); } }
 function stableSourceId(plane:'JD'|'CANDIDATE', hash:string){return `${plane.toLowerCase()}-${hash.slice(0,24)}`;}
-function rebaseClaims(value:unknown[], plane:'JD'|'CANDIDATE', ordinal:number):Claim[]{return value.map((raw,index)=>{const claim=claimSchema.parse(raw);return {...claim,id:`${plane}-${ordinal}-${index+1}`,plane,derivedFrom:[],citations:claim.citations};});}
+function rebaseClaims(value:unknown[], plane:EvidenceSource['plane'], ordinal:number):Claim[]{return value.map((raw,index)=>{const claim=claimSchema.parse(raw);return {...claim,id:`${plane}-${ordinal}-${index+1}`,plane,derivedFrom:[],citations:claim.citations};});}
 
 export function assertCanonicalJdContentHash(version: { raw_content: string; job_title: string | null; company_name: string | null; location: string | null; employment_type: string | null; content_hash: string | null }) {
   const recomputed = computeContentHash({

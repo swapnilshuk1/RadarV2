@@ -14,27 +14,6 @@ Application mechanics such as covering notes, submission format, interview steps
 
 A JD claim may support more than one derived semantic conclusion. Do not force evidence ancestry to be mutually exclusive. Do not infer anything about the candidate. Cite only supplied JD claim IDs. The application owns requirement and operating-condition IDs, so do not return IDs.`;
 
-export const stagedDecisionScreeningInstruction = `You are RADAR's screening adjudicator. Decide the employment-selection function of one immutable candidate requirement using its exact JD evidence.
-
-Return screeningFunction, gateBasis, exactSourceQuote, basisSupport, and concise reasoning. Never return a screeningGate boolean.
-
-Distinguish between an employment selection qualification and a role-performance expectation:
-- Use ENTRY_QUALIFICATION only when the employer explicitly presents the requirement as something a candidate must possess, have done, or demonstrate before entry or shortlisting.
-- Use ROLE_PERFORMANCE_REQUIREMENT with gateBasis=NONE and basisSupport={kind: "NONE"} when the source describes a capability, skill, proficiency, work style, responsibility, or success expectation for performing the role without establishing it as an employer entry filter. A requirement may be essential or REQUIRED for strong performance and still remain a role-performance expectation.
-
-An exact quote is necessary but not sufficient. The quote must support the gate basis selected. Skill, capability, knowledge, proficiency, grounding, expertise, work style or responsibility wording does not by itself establish MINIMUM_TENURE, MANDATORY_CREDENTIAL, or PRIOR_RELEVANT_EXPERIENCE. A capability can still be an entry qualification when the employer explicitly makes it a selection / shortlisting condition.
-
-When selecting ENTRY_QUALIFICATION, select exactly one non-NONE gateBasis and provide matching basisSupport:
-- MINIMUM_TENURE: requires an explicit duration or minimum experience threshold in the source. basisSupport: {kind: "MINIMUM_TENURE", thresholdText: "<exact duration threshold from exactSourceQuote>"}.
-- MANDATORY_CREDENTIAL: requires a formal educational, licensing, certification, registration, or professional qualification requirement. Tool, platform, or software knowledge is not a credential. basisSupport: {kind: "MANDATORY_CREDENTIAL", credentialText: "<exact credential text from exactSourceQuote>", credentialKind: "DEGREE" | "LICENSE" | "CERTIFICATION" | "PROFESSIONAL_QUALIFICATION" | "PROFESSIONAL_REGISTRATION"}.
-- PRIOR_RELEVANT_EXPERIENCE: requires retrospective qualifying experience, track record, prior background, exposure, or past delivery. Grounding, capability, or understanding without retrospective experience wording does not establish this basis. basisSupport: {kind: "PRIOR_RELEVANT_EXPERIENCE", experienceText: "<exact retrospective experience text from exactSourceQuote>"}.
-- ELIGIBILITY_CONDITION: candidate eligibility condition (e.g. right-to-work, citizenship, clearance). basisSupport: {kind: "ELIGIBILITY_CONDITION", conditionText: "<exact eligibility text from exactSourceQuote>"}.
-- QUALIFYING_ARTIFACT: candidate-supplied proof or submission artifact (e.g. portfolio, work sample, code sample). basisSupport: {kind: "QUALIFYING_ARTIFACT", artifactText: "<exact artifact text from exactSourceQuote>"}.
-- EXPLICIT_SHORTLIST_CONDITION: explicit selection language linking possession/non-possession to applicant consideration or shortlisting (e.g. will not be considered, only candidates with). basisSupport: {kind: "EXPLICIT_SHORTLIST_CONDITION", selectionConditionText: "<exact shortlist condition text from exactSourceQuote>"}.
-
-The exactSourceQuote must be an unedited verbatim substring copied from the supplied exact JD quotation. Every text span in basisSupport must be an unedited verbatim substring copied from exactSourceQuote. PREFERRED or explicitly non-mandatory requirements are never gates.
-
-Judge the exact JD quotations as authoritative. Extracted claim text is contextual help only; if a paraphrase strengthens source wording, follow the exact quotation. Do not reason about the candidate.`;
 
 export const stagedDecisionMappingInstruction = `You are RADAR's candidate-to-requirement mapper. Evaluate one immutable role requirement against the supplied validated candidate evidence.
 

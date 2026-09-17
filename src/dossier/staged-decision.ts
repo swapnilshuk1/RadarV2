@@ -15,7 +15,6 @@ import {
 } from './staged-research';
 import {
   screeningConstraintForDrivers,
-  materializeStagedScreeningAdjudication,
   materializeStagedDecisionResolutions,
   stagedCareerCapitalSchema,
   stagedDecisionProposalSchema,
@@ -109,14 +108,6 @@ function exactIds(ids: readonly string[], known: Set<string>, label: string) {
   if (unknown) throw new Error(`Unknown ${label} reference: ${unknown}`);
 }
 
-/** Historical v5 validator retained for direct regression tests only. */
-export function validateScreening(
-  value: unknown,
-  requirement: StagedRoleRequirement,
-  exactJdEvidence: readonly string[] = [],
-) {
-  return materializeStagedScreeningAdjudication(value, requirement, exactJdEvidence);
-}
 
 function buildScreeningQuoteCatalog(
   requirement: StagedRoleRequirement,

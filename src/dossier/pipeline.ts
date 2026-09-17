@@ -70,11 +70,15 @@ Every list requires substantive content; direct/adjacent/transferable may be emp
 
 
 /** Reusable production seam for content-addressed explicit-claim extraction. */
+export class EmptySourceEvidenceError extends Error {
+  constructor(readonly plane: EvidenceSource['plane']) { super(`SOURCE_EXTRACTION_EMPTY:${plane}`); }
+}
 export async function extractValidatedSourceClaims(model: ReasoningModel, source: EvidenceSource, idPrefix: string, onStage: (stage: string) => void = () => {}): Promise<Claim[]> {
   sourceSchema.parse(source);
   return propose(model, evidenceInstruction, { plane: source.plane, idPrefix, sources: [{ ...source, spans: sourceSpans(source) }] }, value => {
     const claims = validateClaims(resolveSourceClaims(value, [source]), [source]);
-    if (!claims.length || claims.some(claim => claim.plane !== source.plane || !claim.id.startsWith(idPrefix))) throw new Error(`Expected grounded ${source.plane} claims with ID prefix ${idPrefix}`);
+    if (!claims.length) throw new EmptySourceEvidenceError(source.plane);
+    if (claims.some(claim => claim.plane !== source.plane || !claim.id.startsWith(idPrefix))) throw new Error(`Expected grounded ${source.plane} claims with ID prefix ${idPrefix}`);
     return claims;
   }, onStage, sourceClaimsSchema);
 }
@@ -139,7 +143,7 @@ function outputSchemaFor(model: ReasoningModel, schema: z.ZodTypeAny): Record<st
   return /bedrock/i.test(model.id) ? bedrockJsonSchema(schema) : modelSchema(schema);
 }
 
-async function propose<T>(model: ReasoningModel, instruction: string, input: unknown, validate: (value: unknown) => T, onRepair: (message: string) => void = () => {}, schema?: z.ZodTypeAny): Promise<T> {
+async function propose<T>(model: ReasoningModel, instruction: string, input: unknown, validate: (value: unknown) => T | Promise<T>, onRepair: (message: string) => void = () => {}, schema?: z.ZodTypeAny): Promise<T> {
 
   // Ephemeral, bounded reuse of validated work lets a failed downstream section
 
@@ -152,6 +156,7 @@ async function propose<T>(model: ReasoningModel, instruction: string, input: unk
   let previous: unknown;
 
   let issue = '';
+  let lastError: unknown;
 
   for (let attempt = 0; attempt < 4; attempt++) {
 
@@ -159,7 +164,7 @@ async function propose<T>(model: ReasoningModel, instruction: string, input: unk
 
       previous = await model.generate(instruction, attempt ? { input, previous, repair: `Repair the specified defect: ${issue}. Preserve all other valid content and claim IDs. Check every reference resolves in supplied evidence or your returned claims. You must return the COMPLETE object matching the schema with all required arrays and fields fully populated (including all 16 resolutions).` } : input, schema ? outputSchemaFor(model, schema) : undefined);
 
-      const result = validate(previous);
+      const result = await validate(previous);
 
       if(verifiedProposals.size >= 64) verifiedProposals.delete(verifiedProposals.keys().next().value!);
 
@@ -168,6 +173,7 @@ async function propose<T>(model: ReasoningModel, instruction: string, input: unk
       return result;
 
     } catch (error) {
+      lastError = error;
 
       issue = error instanceof Error ? error.message : 'Invalid response';
 
@@ -179,6 +185,7 @@ async function propose<T>(model: ReasoningModel, instruction: string, input: unk
 
   }
 
+  if(lastError instanceof EmptySourceEvidenceError)throw lastError;
   throw new Error(`Dossier generation needs source/reasoning repair: ${issue}`);
 
 }
@@ -361,10 +368,23 @@ export async function buildDossier(input: SliceInput, providers: ContextProvider
 
 
 
+  return composeDossier({...frozen,sources,evidence,acquisition}, research, model, onStage);
+}
+
+/** Compose from an already validated decision; production must not run a second evaluator. */
+export async function composeDossier(
+  input: FrozenResearchInput,
+  research: Research,
+  model: ReasoningModel,
+  onStage: (stage: string) => void = () => {},
+  editorial?: { decisionContext: unknown; validateSection: (section:string, value:unknown)=>Promise<void> },
+): Promise<Dossier> {
+  const {sources, acquisition} = input;
   onStage('Composing the dossier and pursuit strategy');
 
   const sections: Record<string, unknown> = {};
   const hasHardScreens = research.evaluation.requirements.some(requirement => requirement.decisionRole === 'HARD_SCREEN');
+  const presentationGuidance = 'Keep executiveThesis to 2–3 sentences and at most 110 words. Do not print evidence identifiers in visible text: place them only in evidenceRefs. Do not claim the candidate has applied or is applying; this is an opportunity under assessment. Do not assert external market rates without supplied market evidence; explain economics using the documented role and candidate evidence.';
   const decisionBundleGuidance = hasHardScreens
     ? 'The central hard-screen issue is fully named in the thesis and fit.gaps. Do not enumerate it anywhere else; in openQuestions, decisionHinges and conversationStrategy refer briefly to the actual documented hard-screen evidence bundle for this dossier and ask for a single, decision-changing body of proof.'
     : 'Do not invent screening or eligibility language. In openQuestions, decisionHinges and conversationStrategy refer briefly to the decisive requirement or pursuit/career evidence bundle for this dossier and ask for a single, decision-changing body of proof.';
@@ -375,11 +395,14 @@ export async function buildDossier(input: SliceInput, providers: ContextProvider
 
     const sectionSchema = z.object({ [key]: compositionSchema.shape[key] });
 
-    const section = await propose(model, compositionInstruction + `\nFor this call return ONLY the top-level key ${key}. This section must ${sectionPurpose[key]}. Review alreadyComposed before writing. Do not repeat a proposition already made there; add a new consequence, proof point, or next action. ${decisionBundleGuidance} Address the candidate directly in conversationStrategy: do not write a recruiter, employer, or interviewer script. ${sectionEvidenceRule(key, hasHardScreens)}`,
+    const section = await propose(model, compositionInstruction + presentationGuidance + `\nFor this call return ONLY the top-level key ${key}. This section must ${sectionPurpose[key]}. Review alreadyComposed before writing. Do not repeat a proposition already made there; add a new consequence, proof point, or next action. ${decisionBundleGuidance} Address the candidate directly in conversationStrategy: do not write a recruiter, employer, or interviewer script. ${sectionEvidenceRule(key, hasHardScreens)}`,
 
-      { opportunity: input.opportunity, candidate: input.candidate, research, alreadyComposed: sections }, value => {
+      { opportunity: input.opportunity, candidate: input.candidate, research, decisionContext:editorial?.decisionContext, alreadyComposed: sections }, async value => {
 
-        const parsed = sectionSchema.parse(value); validatePassages(parsed, research); return parsed;
+        const parsed = sectionSchema.parse(value); validatePassages(parsed, research);
+        if(key==='executiveThesis' && String((parsed as any).executiveThesis.text).trim().split(/\s+/).length>110)throw new Error('Executive thesis must be at most 110 words; move supporting detail to other sections');
+        if(editorial)await editorial.validateSection(key,parsed);
+        return parsed;
 
       }, onStage, sectionSchema);
 

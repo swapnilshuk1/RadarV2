@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BedrockConverseJsonModel } from '../../src/lib/model/bedrock-converse-model';
-import { extractValidatedSourceClaims } from '../../src/dossier/pipeline';
+import { extractValidatedSourceClaims, EmptySourceEvidenceError } from '../../src/dossier/pipeline';
 import { bedrockJsonSchema } from '../../src/dossier/bedrock-schema';
-import { stagedScreeningAdjudicationSchema } from '../../src/dossier/staged-decision-contract';
+import { stagedScreeningAdjudicationSchema } from '../../src/dossier/staged-screening';
 import type { ReasoningModel } from '../../src/dossier/contracts';
 
 const response = (content: unknown, status = 200) => new Response(JSON.stringify({
@@ -11,6 +11,12 @@ const response = (content: unknown, status = 200) => new Response(JSON.stringify
 }), { status, headers: { 'content-type': 'application/json' } });
 
 describe('Bedrock Converse JSON transport', () => {
+  it('reports empty source extraction distinctly after bounded local repairs', async () => {
+    let attempts=0;
+    const model:ReasoningModel={id:'empty-source-test',version:'1',async generate(){attempts++;return {claims:[]};}};
+    await expect(extractValidatedSourceClaims(model,{id:'empty-jd',plane:'JD',title:'Captured page',locator:'test',text:'Navigation only',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'},'JD-1-')).rejects.toBeInstanceOf(EmptySourceEvidenceError);
+    expect(attempts).toBe(4);
+  });
   it('sends the common structured request without putting a credential in its body', async () => {
     let url = ''; let init: RequestInit | undefined;
     const request: typeof fetch = async (requestUrl, requestInit) => { url = String(requestUrl); init = requestInit; return response({ ok: true }); };
@@ -70,14 +76,14 @@ describe('Bedrock Converse JSON transport', () => {
     expect(JSON.stringify(responseSchema)).not.toContain('"OBJECT"');
   });
 
-  it('projects stagedScreeningAdjudicationSchema with discriminated unions and literals', () => {
+  it('projects the current quote-ID screening schema without historical quote-copying fields', () => {
     const projected = bedrockJsonSchema(stagedScreeningAdjudicationSchema);
     expect(projected).toHaveProperty('type', 'object');
     expect(projected).toHaveProperty('properties');
     const properties = projected.properties as Record<string, any>;
-    expect(properties).toHaveProperty('basisSupport');
-    expect(properties.basisSupport).toHaveProperty('anyOf');
-    expect(Array.isArray(properties.basisSupport.anyOf)).toBe(true);
-    expect(properties.basisSupport.anyOf.length).toBe(7);
+    expect(properties.supportQuoteIds).toMatchObject({type:'array',items:{type:'string'}});
+    expect(properties).not.toHaveProperty('basisSupport');
+    expect(properties).not.toHaveProperty('exactSourceQuote');
+    expect(properties).not.toHaveProperty('screeningGate');
   });
 });

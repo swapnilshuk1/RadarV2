@@ -34,3 +34,13 @@ jobs:
 
       - name: Run Certification Test Manifest
         run: npx vitest run --config vitest.certification.config.ts
+
+      - name: Package verified Linux server output
+        run: tar -czf radar-linux-output.tar.gz .output
+
+      - name: Retain release output for this exact commit
+        uses: actions/upload-artifact@v4
+        with:
+          name: radar-linux-output-${{ github.sha }}
+          path: radar-linux-output.tar.gz
+          retention-days: 7

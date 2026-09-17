@@ -6,6 +6,8 @@ import { resolveDossierDecisionState } from "../lib/intelligence/decision-state"
 import { ReadingSurface } from "@/components/radar/opportunity/surfaces/ReadingSurface";
 import { ExecutiveBriefingSurface } from "@/components/radar/opportunity/surfaces/ExecutiveBriefingSurface";
 import { CanonicalDossierV2Surface } from "@/components/radar/opportunity/surfaces/CanonicalDossierV2Surface";
+import { DossierView } from '@/dossier/DossierView';
+import { isExternalPostingUrl } from '@/lib/acquisition/external-posting-url';
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params }: { params: { jobHash: string } }) => {
@@ -72,6 +74,17 @@ export function OpportunityBriefView() {
     );
     router.invalidate();
   };
+
+  if (isEvaluated(o) && o.richDossier) {
+    return <>
+      <div className="memo-container flex flex-wrap items-center justify-between gap-4 py-4">
+        <Link to="/" className="text-primary hover:underline">Return to Shortlist</Link>
+        <div className="flex gap-2" aria-label="Your decision">{(['PURSUE','CONSIDER','PASS'] as const).map(verb=><button key={verb} className="rounded border px-3 py-2" aria-pressed={dossierState.selectedActionForControls===verb} onClick={()=>decide(verb)}>{verb}</button>)}</div>
+        {isExternalPostingUrl(o.applyUrl) && <a href={o.applyUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">View job posting</a>}
+      </div>
+      <DossierView dossier={o.richDossier}/>
+    </>;
+  }
 
   if (o.dossierPresentationV2) {
     return (

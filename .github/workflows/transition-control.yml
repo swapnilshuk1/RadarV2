@@ -1,13 +1,9 @@
 name: Transition Control
 
 on:
-  push:
-    branches:
-      - main
-      - "phase5/**"
-  pull_request:
-    branches:
-      - main
+  # Historical gate evidence remains available for an explicit audit. Normal
+  # rebuild/main changes use the current typecheck/build/certification CI.
+  workflow_dispatch:
 
 permissions:
   contents: read

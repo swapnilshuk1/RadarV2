@@ -1,6 +1,6 @@
 # RADAR Intelligence Rebuild — Product Mission and Non-Negotiable Contract
 
-**Status:** GOVERNING FOR `rebuild/intelligence-ground-up`
+**Status:** GOVERNING FOR `rebuild/intelligence-ground-up` and the integrated `main` branch
 
 **Purpose of this document:** prevent architectural drift, memory loss, audit-first detours, and silent dilution of the product outcome. Every agent entering this branch must read this document before changing intelligence, dossier, enrichment, evaluation, narrative, or related UI code.
 

@@ -1,3 +1,8 @@
+# Historical screening differential
+
+Retired executable from the pre-v6 screening contract. Retained as audit context only; the current executable semantic laboratory is `scripts/run-screening-semantic-lab.ts`.
+
+```typescript
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -95,3 +100,4 @@ await writeFile(outputPath, JSON.stringify({
 }, null, 2));
 
 console.log(resolve(outputPath));
+```

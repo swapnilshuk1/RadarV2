@@ -207,7 +207,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (225 Total Files)
+## 3. Complete Test File Registry (228 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -308,7 +308,10 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/recommendation-golden.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 11 | 46 |
 | `tests/intelligence/schema-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 2 |
 | `tests/intelligence/semantic-evidence-integrity-regression.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 6 | 31 |
-| `tests/intelligence/staged-decision.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 8 | 30 |
+| `tests/intelligence/staged-decision.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 12 | 12 |
+| `tests/intelligence/staged-composition.test.ts` | Editorial / Verdict | **KEEP** | Stage 3 | 3 | 3 |
+| `tests/intelligence/staged-queue-lifecycle.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 10 | 10 |
+| `tests/serving/staged-rich-serving.test.ts` | Serving & Pagination | **KEEP** | Stage 3 | 3 | 3 |
 | `tests/intelligence/staged-production-integration.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 5 | 13 |
 | `tests/intelligence/bedrock-converse-model.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 8 | 26 |
 | `tests/intelligence/bedrock-claude-model.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 19 |

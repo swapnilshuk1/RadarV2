@@ -88,6 +88,14 @@ export interface Dossier extends Composition {
 export interface SliceInput {
   opportunity: Dossier['opportunity']; candidate: Dossier['candidate']; sources: EvidenceSource[];
 }
+export const dossierSchema = compositionSchema.extend({
+  opportunity:z.object({id:z.string(),company:z.string(),title:z.string()}),candidate:z.object({name:z.string()}),
+  verdict:researchSchema.shape.evaluation,narrativePlan:narrativePlanSchema,
+  resolutions:z.array(resolutionSchema),candidateConflicts:z.array(candidateConflictSchema),
+  evidence:z.object({roleClaims:z.array(claimSchema),candidateClaims:z.array(claimSchema),contextualClaims:z.array(claimSchema),relationalClaims:z.array(claimSchema),lineage:z.array(sourceSchema)}),
+  generatedAt:z.string(),generation:z.object({model:z.string(),sourceFingerprint:z.string()}),
+  acquisition:z.array(z.object({provider:z.string(),field:z.string(),operation:z.enum(['retrieve','search']),status:z.enum(['ACQUIRED','UNAVAILABLE']),sourceIds:z.array(z.string()),detail:z.string()})),
+});
 export interface AcquisitionAttempt {
   provider: string; field: string; operation: 'retrieve' | 'search';
   status: 'ACQUIRED' | 'UNAVAILABLE'; sourceIds: string[]; detail: string;

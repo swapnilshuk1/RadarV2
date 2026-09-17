@@ -17,6 +17,9 @@ import { resolveExactCandidateProjectionForScope } from "@/data/sqlite/repositor
 import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
 import { createBedrockGlmResearchModel } from "@/lib/model/bedrock-glm-research-model";
 import { ProductionStagedEvaluationService } from "./staged/ProductionStagedEvaluationService";
+import { ProductionStagedDossierService } from './staged/ProductionStagedDossierService';
+import { StagedServingPublisher } from './staged/StagedServingPublisher';
+import { EmptySourceEvidenceError } from '@/dossier/pipeline';
 import { DeterministicStagedInputUnavailableError } from "./staged/ProductionStagedInputAdapter";
 import { STAGED_POLICY_VERSION, SqliteStagedEvaluationStore, stagedUnavailableEvaluation } from "@/data/sqlite/repositories/SqliteStagedEvaluationStore";
 
@@ -63,7 +66,7 @@ export class EvaluationWorker {
     }
   }
 
-  public async claimNextJob(queueKind?: ClaimedJob["queueKind"]): Promise<ClaimedJob | null> {
+  public async claimNextJob(queueKind?: ClaimedJob["queueKind"], contextFingerprint?: string): Promise<ClaimedJob | null> {
     const queueFilter = queueKind === "staged"
       ? "AND ej.status IN ('staged_pending', 'staged_processing')"
       : queueKind === "legacy"
@@ -92,13 +95,14 @@ export class EvaluationWorker {
         AND er.evaluation_context_fingerprint = ej.evaluation_context_fingerprint
        WHERE er.status = 'READY'
          ${queueFilter}
+         ${contextFingerprint ? 'AND ej.evaluation_context_fingerprint = ?' : ''}
          AND ((ej.status IN ('pending', 'staged_pending') AND ej.next_attempt_at <= CURRENT_TIMESTAMP)
           OR (ej.status IN ('processing', 'staged_processing') AND ej.locked_at < datetime('now', '-300 seconds')))
        ORDER BY 
          CASE WHEN ej.status IN ('processing', 'staged_processing') THEN 0 ELSE 1 END ASC,
          ej.next_attempt_at ASC, 
          ej.created_at ASC
-       LIMIT 1`
+       LIMIT 1`, contextFingerprint ? [contextFingerprint] : []
     );
 
     if (!job) {
@@ -140,6 +144,28 @@ export class EvaluationWorker {
   }
 
   public async processJob(job: ClaimedJob): Promise<WorkerProcessingResult> {
+    // Reasoning can exceed the five-minute claim lease. Renew only the lease we
+    // own; a replacement worker's token must never be extended by this worker.
+    let renewal: Promise<void> | undefined;
+    const heartbeat = setInterval(() => {
+      if (renewal) return;
+      renewal = this.db.execute(
+        `UPDATE evaluation_jobs SET locked_at=CURRENT_TIMESTAMP WHERE id=? AND locked_by=? AND lease_token=? AND status IN ('processing','staged_processing')`,
+        [job.id, this.workerId, job.leaseToken],
+      ).then(() => {}).catch(() => {
+        console.warn('[EvaluationWorker] Lease renewal failed; completion remains token-fenced', job.id);
+      }).finally(() => { renewal = undefined; });
+    }, 60_000);
+    heartbeat.unref();
+    try {
+      return await this.processClaimedJob(job);
+    } finally {
+      clearInterval(heartbeat);
+      await renewal;
+    }
+  }
+
+  private async processClaimedJob(job: ClaimedJob): Promise<WorkerProcessingResult> {
     try {
       const authContext: AuthContext = {
         userId: `worker_${this.workerId}`,
@@ -239,8 +265,18 @@ export class EvaluationWorker {
         }
         try {
           const evaluated = await new ProductionStagedEvaluationService(this.db, createBedrockGlmResearchModel()).evaluate({ ...identity, context });
+          const serving=await this.db.one<{context_fingerprint:string}>(`SELECT context_fingerprint FROM active_evaluation_contexts WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND context_fingerprint=?`,[job.tenantId,job.personId,job.searchPlanId,job.evaluationContextFingerprint]);
+          if(serving){
+            await new ProductionStagedDossierService(this.db,createBedrockGlmResearchModel()).compose(identity);
+            await new StagedServingPublisher(this.db).publish(identity);
+          }
           return this.commitStagedCompletion(job, evaluated.decision);
         } catch (error) {
+          if(error instanceof EmptySourceEvidenceError){
+            const reason=`SOURCE_EXTRACTION_EMPTY:${error.plane}`;
+            await stagedStore.save(stagedUnavailableEvaluation(identity,reason));
+            return this.commitDeterministicStagedFailure(job,reason);
+          }
           if (error instanceof DeterministicStagedInputUnavailableError) {
             const unavailable = stagedUnavailableEvaluation(identity, error.reason);
             await stagedStore.save(unavailable);
@@ -699,8 +735,8 @@ export class EvaluationWorker {
     return result;
   }
 
-  public async pollAndProcessNext(queueKind?: ClaimedJob["queueKind"]): Promise<WorkerProcessingResult | null> {
-    const job = await this.claimNextJob(queueKind);
+  public async pollAndProcessNext(queueKind?: ClaimedJob["queueKind"], contextFingerprint?: string): Promise<WorkerProcessingResult | null> {
+    const job = await this.claimNextJob(queueKind, contextFingerprint);
     if (!job) {
       return null;
     }

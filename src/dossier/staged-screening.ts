@@ -47,28 +47,6 @@ Semantic rules:
 12. Use the requirement wording together with all supplied quotes. Prefer the semantic substance of the requirement over generic section labels. Do not infer a stronger condition than the source actually states.
 13. Do not reason about the candidate's evidence, fit, desire, willingness, or likelihood of acceptance.`;
 
-function normalizeLegacyFixtureProposal(
-  value: unknown,
-  quoteCatalog: readonly StagedScreeningQuote[],
-): unknown {
-  if (!value || typeof value !== 'object') return value;
-  const proposal = value as Record<string, unknown>;
-  if (Array.isArray(proposal.supportQuoteIds)) return value;
-  if (typeof proposal.exactSourceQuote !== 'string') return value;
-
-  const quote = quoteCatalog.find(item =>
-    item.text === proposal.exactSourceQuote
-    || item.text.includes(proposal.exactSourceQuote as string)
-  );
-  if (!quote) return value;
-
-  return {
-    screeningFunction: proposal.screeningFunction,
-    gateBasis: proposal.gateBasis,
-    supportQuoteIds: [quote.id],
-    reasoning: proposal.reasoning,
-  };
-}
 
 export function materializeStagedScreeningAdjudication(
   value: unknown,
@@ -79,9 +57,7 @@ export function materializeStagedScreeningAdjudication(
     throw new Error('Screening adjudication requires application-owned exact JD quote references');
   }
 
-  const parsed = stagedScreeningAdjudicationSchema.parse(
-    normalizeLegacyFixtureProposal(value, quoteCatalog),
-  );
+  const parsed = stagedScreeningAdjudicationSchema.parse(value);
   const knownQuoteIds = new Set(quoteCatalog.map(quote => quote.id));
   if (knownQuoteIds.size !== quoteCatalog.length) {
     throw new Error('Screening quote catalog contains duplicate identifiers');

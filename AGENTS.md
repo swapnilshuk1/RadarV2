@@ -2,10 +2,11 @@
 
 ## READ THIS FIRST
 
-This file governs work on branch:
+This file governs the production main branch and the intelligence rebuild branch:
 
 ```text
 rebuild/intelligence-ground-up
+main
 ```
 
 Before changing intelligence, dossier, evaluation, enrichment, narrative, candidate matching, company context, or related UI code, read:
@@ -16,7 +17,7 @@ docs/rebuild/RADAR_REBUILD_MISSION.md
 
 That document is the detailed product contract. This file is the short operational contract.
 
-Legacy transition/gate documents are historical reference only on this branch unless the product owner explicitly revives them.
+Legacy transition/gate documents are historical reference only unless the product owner explicitly revives them.
 
 ---
 

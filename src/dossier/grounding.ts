@@ -180,6 +180,7 @@ export function validatePassages(composition: unknown, research: Research): void
     return id;
   };
   for (const p of allPassages(composition)) {
+    if ([...claims.keys()].some(id => p.text.includes(id))) throw new Error('Internal evidence identifiers belong in evidenceRefs, never visible prose');
     assertEvidenceBoundCandidateLanguage(p.text, 'Dossier passage');
     if (screeningTerms.test(p.text) && candidateConditions.test(p.text)) throw new Error('Candidate-side conditions cannot be described as employer screening criteria');
     if (recruiterPerspective.test(p.text)) throw new Error('Dossier prose must remain the candidate\'s executive adviser');

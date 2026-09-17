@@ -1,6 +1,8 @@
 import type { DatabaseAdapter } from "../../../src/data/database/adapter";
 import { getDatabaseAdapter } from "../../../src/data/database";
 import crypto from "crypto";
+import { stagedContextPredicate } from '../../../src/lib/intelligence/evaluationQueuePolicy';
+import { failEvaluationDependency } from '../../../src/lib/intelligence/evaluationDependency';
 
 export type JobStatus = "PENDING" | "LEASED" | "RUNNING" | "FAILED" | "RETRY" | "COMPLETE";
 export type FailureType = "RATE_LIMIT" | "NETWORK" | "LLM_TIMEOUT" | "PROMPT_TOO_LONG" | "PARSE_FAILURE" | "UNKNOWN" | null;
@@ -368,7 +370,10 @@ export class EnrichmentQueue {
     opportunityVersion: string,
     pipelineVersion: string = "1.0.0"
   ): Promise<number> {
-    const reqs = await this.db.many<{
+    return this.db.transaction(async tx => {
+    const complete=await tx.one<{id:string}>(`SELECT id FROM enrichment_jobs WHERE canonical_job_id=? AND opportunity_version=? AND pipeline_version=? AND status='COMPLETE'`,[canonicalJobId,opportunityVersion,pipelineVersion]);
+    if(!complete)return 0;
+    const reqs = await tx.many<{
       id: string;
       tenant_id: string;
       person_id: string;
@@ -387,9 +392,9 @@ export class EnrichmentQueue {
 
     if (reqs.length === 0) return 0;
 
-    await this.db.execute(
+    await tx.execute(
       `UPDATE evaluation_requirements 
-       SET status = 'READY', ready_at = CURRENT_TIMESTAMP 
+       SET status = 'READY', blocked_reason = NULL, ready_at = CURRENT_TIMESTAMP
        WHERE canonical_job_id = ? 
          AND opportunity_version = ? 
          AND required_enrichment_pipeline_version = ? 
@@ -399,11 +404,11 @@ export class EnrichmentQueue {
 
     for (const req of reqs) {
       const evalJobId = `eval_${req.tenant_id}_${req.canonical_job_id}_${req.opportunity_version}_${req.evaluation_context_fingerprint.substring(0, 8)}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-      await this.db.execute(
+      await tx.execute(
         `INSERT INTO evaluation_jobs (
            id, tenant_id, person_id, search_plan_id, canonical_job_id,
            opportunity_version, evaluation_context_fingerprint, status, attempts, created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN EXISTS (SELECT 1 FROM evaluation_contexts ec WHERE ec.context_fingerprint = ? AND ec.policy_version = 'staged-v1') THEN 'staged_pending' ELSE 'pending' END, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN EXISTS (SELECT 1 FROM evaluation_contexts ec WHERE ec.context_fingerprint = ? AND ${stagedContextPredicate}) THEN 'staged_pending' ELSE 'pending' END, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
          ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
          DO UPDATE SET 
            status = CASE WHEN evaluation_jobs.status = 'waiting_enrichment' THEN 'pending' WHEN evaluation_jobs.status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE evaluation_jobs.status END,
@@ -422,6 +427,7 @@ export class EnrichmentQueue {
     }
 
     return reqs.length;
+    });
   }
 
   public async failEvaluationRequirements(
@@ -430,16 +436,17 @@ export class EnrichmentQueue {
     pipelineVersion: string = "1.0.0",
     reason: string = "ENRICHMENT_FAILED"
   ): Promise<number> {
-    const res = await this.db.execute(
-      `UPDATE evaluation_requirements 
-       SET status = 'FAILED', blocked_reason = ? 
+    const requirements = await this.db.many<{id:string}>(
+      `SELECT id FROM evaluation_requirements
        WHERE canonical_job_id = ? 
          AND opportunity_version = ? 
          AND required_enrichment_pipeline_version = ? 
          AND status = 'WAITING_ENRICHMENT'`,
-      [reason, canonicalJobId, opportunityVersion, pipelineVersion]
+      [canonicalJobId, opportunityVersion, pipelineVersion]
     );
-    return res.rowsAffected;
+    let changed = 0;
+    for (const requirement of requirements) changed += await failEvaluationDependency(this.db, requirement.id, reason);
+    return changed;
   }
 
   public async markRetry(jobId: string, failureType: FailureType, errorMsg: string, nextRetryAt: string): Promise<void> {

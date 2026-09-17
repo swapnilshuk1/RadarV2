@@ -1,6 +1,8 @@
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
 import { SqliteScrapeRunStore } from "@/data/sqlite/repositories/SqliteScrapeRunStore";
 import { EnrichmentQueue } from "../../../scripts/scraper/persist/queue";
+import { stagedContextPredicate } from './evaluationQueuePolicy';
+import { failEvaluationDependency } from './evaluationDependency';
 
 export interface RunProgress {
   runId: string;
@@ -199,11 +201,7 @@ export class RunReconciliationService {
     );
 
     for (const req of failedEnrichments) {
-      await this.db.execute(
-        `UPDATE evaluation_requirements SET status = 'FAILED', blocked_reason = 'ENRICHMENT_FAILED' WHERE id = ? AND status = 'WAITING_ENRICHMENT'`,
-        [req.id]
-      );
-      requirementsHealed++;
+      requirementsHealed += await failEvaluationDependency(this.db, req.id, 'ENRICHMENT_FAILED');
     }
 
     // 2b. WAITING_ENRICHMENT -> FAILED when NO matching enrichment job exists at all
@@ -218,11 +216,7 @@ export class RunReconciliationService {
     );
 
     for (const req of missingEnrichments) {
-      await this.db.execute(
-        `UPDATE evaluation_requirements SET status = 'FAILED', blocked_reason = 'MISSING_ENRICHMENT_JOB' WHERE id = ? AND status = 'WAITING_ENRICHMENT'`,
-        [req.id]
-      );
-      requirementsHealed++;
+      requirementsHealed += await failEvaluationDependency(this.db, req.id, 'MISSING_ENRICHMENT_JOB');
     }
 
     // 3. For all READY requirements, ensure evaluation job exists in appropriate state
@@ -256,7 +250,7 @@ export class RunReconciliationService {
           `INSERT INTO evaluation_jobs (
              id, tenant_id, person_id, search_plan_id, canonical_job_id,
              opportunity_version, evaluation_context_fingerprint, status, attempts, created_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN EXISTS (SELECT 1 FROM evaluation_contexts ec WHERE ec.context_fingerprint = ? AND ec.policy_version = 'staged-v1') THEN 'staged_pending' ELSE 'pending' END, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN EXISTS (SELECT 1 FROM evaluation_contexts ec WHERE ec.context_fingerprint = ? AND ${stagedContextPredicate}) THEN 'staged_pending' ELSE 'pending' END, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
            ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
            DO UPDATE SET status = CASE WHEN evaluation_jobs.status = 'waiting_enrichment' THEN 'pending' WHEN evaluation_jobs.status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE evaluation_jobs.status END, updated_at = CURRENT_TIMESTAMP`,
           [
@@ -275,15 +269,15 @@ export class RunReconciliationService {
           `UPDATE evaluation_jobs SET status = CASE WHEN status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE 'pending' END, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
           [job.id]
         );
-      } else if (job.status === "dead_letter") {
+      } else if (job.status === "dead_letter" || job.status === "staged_dead_letter") {
         await this.db.execute(
           `UPDATE evaluation_requirements SET status = 'FAILED', blocked_reason = 'EVALUATION_JOB_DEAD_LETTER' WHERE id = ?`,
           [req.id]
         );
         requirementsHealed++;
-      } else if (job.status === "completed") {
+      } else if (job.status === "completed" || job.status === "staged_completed") {
         const mat = await this.db.one<{ id: string }>(
-          `SELECT id FROM materialized_evaluations
+          `SELECT id FROM ${job.status === 'staged_completed' ? 'staged_evaluations' : 'materialized_evaluations'}
            WHERE tenant_id = ? AND person_id = ? AND canonical_job_id = ?
              AND opportunity_version = ? AND evaluation_context_fingerprint = ?
            LIMIT 1`,

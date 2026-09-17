@@ -197,10 +197,10 @@ export class MetricIntegrityValidator {
       if (metrics.tenantId && metrics.searchPlanId && metrics.evaluationContextFingerprint) {
         const canonical = await db.one<{ total: number; evaluated: number; pursue: number; consider: number; pass: number; sparse: number; unmaterialized: number; profile_required: number; not_evaluable: number; acquisition_pending: number; acquisition_failed: number; expired: number; invalid: number; user_pursue: number; user_consider: number; user_pass: number; user_total: number }>(
           `SELECT COUNT(*) AS total,
-            COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE','EVALUATED') AND me.decision IN ('PURSUE','CONSIDER','PASS') AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS evaluated,
-            COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE','EVALUATED') AND me.decision='PURSUE' AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS pursue,
-            COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE','EVALUATED') AND me.decision='CONSIDER' AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS consider,
-            COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE','EVALUATED') AND me.decision='PASS' AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS pass,
+            COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE','EVALUATED','STAGED_EVALUATED') AND me.decision IN ('PURSUE','CONSIDER','PASS') AND (me.quality_score IS NOT NULL OR me.evaluation_state = 'STAGED_EVALUATED') AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS evaluated,
+            COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE','EVALUATED','STAGED_EVALUATED') AND me.decision='PURSUE' AND (me.quality_score IS NOT NULL OR me.evaluation_state = 'STAGED_EVALUATED') AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS pursue,
+            COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE','EVALUATED','STAGED_EVALUATED') AND me.decision='CONSIDER' AND (me.quality_score IS NOT NULL OR me.evaluation_state = 'STAGED_EVALUATED') AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS consider,
+            COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE','EVALUATED','STAGED_EVALUATED') AND me.decision='PASS' AND (me.quality_score IS NOT NULL OR me.evaluation_state = 'STAGED_EVALUATED') AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS pass,
             COUNT(CASE WHEN me.evaluation_state='SPARSE_SPEC' THEN 1 END) AS sparse,
             COUNT(CASE WHEN me.id IS NULL THEN 1 END) AS unmaterialized,
             COUNT(CASE WHEN me.evaluation_state='PROFILE_REQUIRED' THEN 1 END) AS profile_required,
@@ -208,7 +208,7 @@ export class MetricIntegrityValidator {
             COUNT(CASE WHEN me.evaluation_state='ACQUISITION_PENDING' THEN 1 END) AS acquisition_pending,
             COUNT(CASE WHEN me.evaluation_state='ACQUISITION_FAILED' THEN 1 END) AS acquisition_failed,
             COUNT(CASE WHEN me.evaluation_state='EXPIRED' THEN 1 END) AS expired,
-            COUNT(CASE WHEN me.id IS NOT NULL AND NOT (me.evaluation_state='SPARSE_SPEC' OR me.evaluation_state IN ('PROFILE_REQUIRED','NOT_EVALUABLE','ACQUISITION_PENDING','ACQUISITION_FAILED','EXPIRED') OR (me.evaluation_state IN ('COMPLETE','EVALUATED') AND me.decision IN ('PURSUE','CONSIDER','PASS') AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL)) THEN 1 END) AS invalid,
+            COUNT(CASE WHEN me.id IS NOT NULL AND NOT (me.evaluation_state='SPARSE_SPEC' OR me.evaluation_state IN ('PROFILE_REQUIRED','NOT_EVALUABLE','ACQUISITION_PENDING','ACQUISITION_FAILED','EXPIRED') OR (me.evaluation_state IN ('COMPLETE','EVALUATED','STAGED_EVALUATED') AND me.decision IN ('PURSUE','CONSIDER','PASS') AND (me.quality_score IS NOT NULL OR me.evaluation_state = 'STAGED_EVALUATED') AND me.evaluation_fingerprint IS NOT NULL)) THEN 1 END) AS invalid,
             COUNT(CASE WHEN d.action='PURSUE' THEN 1 END) AS user_pursue,
             COUNT(CASE WHEN d.action='CONSIDER' THEN 1 END) AS user_consider,
             COUNT(CASE WHEN d.action='PASS' THEN 1 END) AS user_pass,
