@@ -251,7 +251,7 @@ export async function processJob(
 
     // 2. Ingest into SQLite
     const exStr = JSON.stringify(extraction);
-    const report = await ingestIntoSqlite(detailedCard, exStr, EXTRACTOR_VERSION, true, deps?.repos, resolvedCanonicalId);
+    const report = await ingestIntoSqlite(detailedCard, exStr, EXTRACTOR_VERSION, true, deps?.repos, resolvedCanonicalId, activeDb);
     
     if (report.warnings.length > 0) {
       log(`Ingestion warnings for ${job.id}: ${report.warnings.join(", ")}`, "warn");

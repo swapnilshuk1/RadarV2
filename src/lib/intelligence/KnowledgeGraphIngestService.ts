@@ -2,7 +2,9 @@ import type { StorageProvider } from "../../domain/repositories";
 import type { KnowledgeGraph, KnowledgeGraphBuildReport } from "./KnowledgeGraphBuilder";
 
 export class KnowledgeGraphIngestService {
-  constructor(private repos: StorageProvider) {}
+  // verifiedAdmissionId is supplied only after the acquisition adapter checks
+  // the exact canonical opportunity, immutable version and content hash.
+  constructor(private repos: StorageProvider, private verifiedAdmissionId?: string) {}
 
   /**
    * Persists a validated Knowledge Graph into the canonical SQLite stores.
@@ -31,21 +33,21 @@ export class KnowledgeGraphIngestService {
     // 3. Opportunity
     if (resolvedCanonicalId) {
       // FAIL-CLOSED INVARIANT:
-      // When an authoritative canonical ID was explicitly supplied from acquisition admission,
-      // it MUST already exist in the opportunities table. If it does not exist, fail closed
-      // immediately. It MUST NEVER silently create an o_... opportunity.
+      // An admitted canonical version can lack its legacy knowledge projection.
+      // Repair that projection under the same ID only after persisted admission
+      // verification; an unverified supplied ID still fails closed.
       const existingOp = await this.repos.opportunities.getOpportunity(resolvedCanonicalId);
-      if (!existingOp) {
+      if (!existingOp && this.verifiedAdmissionId !== resolvedCanonicalId) {
         throw new Error(`Canonical opportunity ${resolvedCanonicalId} was explicitly supplied but does not exist in repository`);
       }
 
       report.opportunitiesCreated = 0;
-      graph.opportunity.id = existingOp.id;
-      graph.opportunity.companyId = existingOp.companyId;
+      graph.opportunity.id = resolvedCanonicalId;
+      if (existingOp) graph.opportunity.companyId = existingOp.companyId;
       // Lifecycle rule:
       // Verified -> Verified (never demoted)
       // Archived / Discovered -> Normalized
-      if (existingOp.lifecycle === "Verified") {
+      if (existingOp?.lifecycle === "Verified") {
         graph.opportunity.lifecycle = "Verified";
       } else {
         graph.opportunity.lifecycle = "Normalized";

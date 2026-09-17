@@ -155,6 +155,7 @@ export type EvaluatedOpportunity = {
   /** Optional evaluation-time presentation only; canonical scalars remain authoritative. */
   dossierPresentation?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV1;
   dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
+  richDossier?: import('@/dossier/contracts').Dossier;
 };
 
 export interface ApplicationAction {

@@ -7,6 +7,7 @@
  */
 
 import type { EvidenceGraph, ExtractedFact, FactType } from "../../../domain/evidence";
+import { BedrockConverseJsonModel } from "../../model/bedrock-converse-model";
 import fs from "fs";
 import path from "path";
 
@@ -19,6 +20,7 @@ export interface EvidenceExtractionInput {
 
 export class EvidenceExtractionService {
   private apiKey: string = "";
+  private bedrockToken: string = "";
   private extractorVersion = "1.0.0";
   private promptVersion = "v1.0";
   private modelName = "llama-3.3-70b-versatile";
@@ -49,14 +51,24 @@ export class EvidenceExtractionService {
         }
       }
     }
+    this.bedrockToken = process.env.AWS_BEARER_TOKEN_BEDROCK?.trim() || "";
   }
 
   public async extract(input: EvidenceExtractionInput): Promise<EvidenceGraph> {
     const graphId = `ev-graph-${input.documentId}-${Date.now()}`;
     const now = new Date().toISOString();
 
+    if (!this.apiKey && this.bedrockToken) {
+      try {
+        return await this.bedrockExtract(input, graphId, now);
+      } catch (err: any) {
+        console.warn(`[EvidenceExtractionService] Bedrock extraction failed: ${err.message}; using heuristic fallback.`);
+        return this.heuristicExtract(input, graphId, now);
+      }
+    }
+
     if (!this.apiKey) {
-      console.warn("[EvidenceExtractionService] No GROQ_API_KEY found; falling back to heuristic parsing.");
+      console.warn("[EvidenceExtractionService] No configured extraction credential found; falling back to heuristic parsing.");
       return this.heuristicExtract(input, graphId, now);
     }
 
@@ -150,6 +162,81 @@ Return ONLY a JSON object formatted as:
       console.warn(`[EvidenceExtractionService] LLM extraction failed: ${err.message}; using heuristic fallback.`);
       return this.heuristicExtract(input, graphId, now);
     }
+  }
+
+  /**
+   * The candidate pipeline predates the staged Bedrock model route. Keep Groq
+   * as the primary legacy provider, while allowing a process-supplied Bedrock
+   * bearer token to provide the same factual-extraction contract. Credential
+   * discovery remains outside this service.
+   */
+  private async bedrockExtract(input: EvidenceExtractionInput, graphId: string, now: string): Promise<EvidenceGraph> {
+    const model = new BedrockConverseJsonModel(
+      "zai.glm-5",
+      async () => this.bedrockToken,
+      fetch,
+      { region: "us-east-1", maxOutputTokens: 8192 },
+    );
+    const responseSchema = {
+      type: "object",
+      properties: {
+        facts: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["EMPLOYMENT", "ACHIEVEMENT", "TECHNOLOGY", "LEADERSHIP", "EDUCATION", "LOCATION", "OTHER"] },
+              value: { type: "string" },
+              confidence: { type: "number" },
+              sourceSpan: { type: "string" },
+              justification: { type: "string" },
+            },
+            required: ["type", "value", "confidence", "sourceSpan", "justification"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["facts"],
+      additionalProperties: false,
+    };
+    const output = await model.generate(
+      `You are a factual candidate-evidence extraction engine. Extract discrete facts from the supplied candidate document.\n\nRules:\n1. Do not infer candidate intent, preferences, future plans, or eligibility.\n2. Each sourceSpan must be an exact contiguous quotation from the supplied document.\n3. Preserve original quantities, currencies, titles, employers, and dates.\n4. Classify each fact as EMPLOYMENT, ACHIEVEMENT, TECHNOLOGY, LEADERSHIP, EDUCATION, LOCATION, or OTHER.\n5. Return only the requested JSON object.`,
+      { documentText: input.documentText.slice(0, 10000) },
+      responseSchema,
+    ) as { facts?: unknown[] };
+    const facts = (Array.isArray(output.facts) ? output.facts : [])
+      .map((fact, index) => this.toExtractedFact(fact, input.documentText, input.documentId, index))
+      .filter((fact): fact is ExtractedFact => Boolean(fact));
+    if (facts.length === 0) throw new Error("Bedrock returned no source-grounded candidate facts");
+    return {
+      id: graphId,
+      personId: input.personId,
+      facts,
+      provenance: {
+        documentId: input.documentId,
+        documentHash: input.documentHash,
+        extractorVersion: this.extractorVersion,
+        promptVersion: "bedrock-factual-v1",
+        model: model.version,
+        createdAt: now,
+      },
+    };
+  }
+
+  private toExtractedFact(value: unknown, rawText: string, documentId: string, index: number): ExtractedFact | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const fact = value as Partial<ExtractedFact>;
+    const sourceSpan = typeof fact.sourceSpan === "string" ? fact.sourceSpan.trim() : "";
+    if (!sourceSpan || !rawText.includes(sourceSpan)) return undefined;
+    const allowedTypes: FactType[] = ["EMPLOYMENT", "ACHIEVEMENT", "TECHNOLOGY", "LEADERSHIP", "EDUCATION", "LOCATION", "OTHER"];
+    return {
+      id: `fact-${documentId}-${index + 1}`,
+      type: allowedTypes.includes(fact.type as FactType) ? fact.type as FactType : "OTHER",
+      value: typeof fact.value === "string" ? fact.value : sourceSpan,
+      confidence: typeof fact.confidence === "number" && fact.confidence >= 0 && fact.confidence <= 1 ? fact.confidence : 0.8,
+      sourceSpan,
+      justification: typeof fact.justification === "string" ? fact.justification : "Source-grounded fact extraction",
+    };
   }
 
   private heuristicExtract(input: EvidenceExtractionInput, graphId: string, createdAt: string): EvidenceGraph {

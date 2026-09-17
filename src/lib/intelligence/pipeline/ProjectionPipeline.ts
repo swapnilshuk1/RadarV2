@@ -7,6 +7,8 @@
  */
 
 import { getRepositories } from "../../../data/sqlite/provider";
+import { getDatabaseAdapter } from "../../../data/database";
+import { versionCandidateProjection } from "../../../data/sqlite/repositories/profile-projection-version";
 import type { CandidateDocumentRecord } from "../../../data/sqlite/repositories/SqliteDocumentStore";
 import { EvidenceExtractionService } from "../extraction/EvidenceExtractionService";
 import { EvidenceNormalizer } from "../extraction/EvidenceNormalizer";
@@ -43,6 +45,10 @@ export interface PipelineExecutionInput {
   documentHash: string;
   documentText?: string;
   fileBuffer?: Buffer;
+  /** Serving-policy activation is a separate explicit lifecycle action. */
+  activateServingPlan?: boolean;
+  /** Reject heuristic extraction when establishing an authoritative source set. */
+  requireModelBackedExtraction?: boolean;
 }
 
 export function reuseEvidenceGraphForOwner(
@@ -144,6 +150,10 @@ export class ProjectionPipeline {
           });
         }
 
+        if (input.requireModelBackedExtraction && evidenceGraph.provenance.model === "heuristic") {
+          throw new Error("AUTHORITATIVE_SOURCE_EXTRACTION_UNAVAILABLE");
+        }
+
         await this.repos.documents.saveEvidenceGraph(evidenceGraph);
         currentStage = "NORMALIZED";
       } else {
@@ -186,11 +196,24 @@ export class ProjectionPipeline {
       let finalProjection = baseProjection;
       if (currentStage === "INFERENCE_COMPLETE") {
         await this.repos.documents.updateDocumentStage(documentId, "INFERENCE_COMPLETE", "PROCESSING");
-        finalProjection = OperatingLevelEngine.evaluate(baseProjection, rawText);
+        finalProjection = versionCandidateProjection(OperatingLevelEngine.evaluate(baseProjection, rawText));
         await this.repos.people.saveProjection(personId, finalProjection);
-        // A saved CV projection is a new immutable input. If a real intent
-        // exists, establish a new context and canonical refresh lineage now;
-        // cache invalidation alone is never presented as reevaluation.
+        // A staged evaluation requires this exact profile-to-source binding; there is no latest-document fallback.
+        await getDatabaseAdapter().execute(
+          `INSERT INTO profile_projection_source_bindings (person_id, profile_version, document_id, evidence_graph_id, document_text_hash)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(person_id, profile_version, document_id) DO NOTHING`,
+          [personId, finalProjection.profileVersion, documentId, evidenceGraph.id, textHash || documentHash],
+        );
+        // A saved CV projection is a new immutable input. It must never switch
+        // the serving evaluation policy implicitly; activation is an explicit
+        // action after the caller has selected the policy/context lineage.
+        if (!input.activateServingPlan) {
+          await this.repos.documents.updateDocumentStage(documentId, "PROFILE_READY", "COMPLETED");
+          return { success: true, stage: "PROFILE_READY", deduplicated: isDeduplicated };
+        }
+        // Explicit legacy-serving activation remains available to the caller
+        // that intentionally requests it.
         const intent = await this.repos.documents.getLatestCareerIntent(personId);
         if (!intent) {
           // A projection is usable profile processing, not a recommendation
@@ -238,3 +261,4 @@ export class ProjectionPipeline {
     }
   }
 }
+

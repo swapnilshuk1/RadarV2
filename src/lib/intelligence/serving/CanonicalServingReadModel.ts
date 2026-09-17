@@ -35,7 +35,7 @@ export type CanonicalServingDecisionReadModel = {
 
 /** The single semantic interpretation used by both feed and dossier. */
 export function resolveCanonicalServingReadModel(input: {
-  evaluationState: CanonicalEvaluationState;
+  evaluationState: CanonicalEvaluationState | 'STAGED_EVALUATED';
   engineVerdict: unknown;
   userDecision: UserAction | null;
   evaluationContextFingerprint: string | null;
@@ -43,7 +43,8 @@ export function resolveCanonicalServingReadModel(input: {
   reviewedFingerprint: string | null;
   qualityScore: number | null;
 }): CanonicalServingDecisionReadModel {
-  const requestedState = input.evaluationState;
+  const staged = input.evaluationState === 'STAGED_EVALUATED';
+  const requestedState: CanonicalEvaluationState = input.evaluationState === 'STAGED_EVALUATED' ? 'EVALUATED' : input.evaluationState;
   const evaluatedVerdict = toCanonicalServingVerdict(input.engineVerdict);
   const validScore = typeof input.qualityScore === "number"
     && Number.isFinite(input.qualityScore)
@@ -54,7 +55,7 @@ export function resolveCanonicalServingReadModel(input: {
   // An EVALUATED row is a claim about a complete canonical artifact. Never turn
   // malformed derived data into a plausible recommendation at the read boundary.
   const evaluationState = requestedState === "EVALUATED"
-    && (evaluatedVerdict === "UNKNOWN" || !validScore || !validEvaluationFingerprint)
+    && (evaluatedVerdict === "UNKNOWN" || !(staged ? input.qualityScore === null : validScore) || !validEvaluationFingerprint)
     ? "INVALID"
     : requestedState;
   const engineVerdict = evaluationState === "EVALUATED"

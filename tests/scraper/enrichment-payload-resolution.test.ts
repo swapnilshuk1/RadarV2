@@ -77,6 +77,27 @@ describe("Phase 6: Acquisition Evidence Reliability & Payload Resolution", () =>
     searchQuery: "VP Test"
   };
 
+  it.each([true,false])('enriches a canonical-only admission only when its exact source binding matches: %s', async matches => {
+    const canonicalId='canonical-only',version='canonical-only-version';
+    await db.execute(`INSERT INTO canonical_opportunities(id,source,source_job_id,canonical_url) VALUES (?,'LinkedIn','canonical-source','https://example.com/job')`,[canonicalId]);
+    await db.execute(`INSERT INTO opportunity_versions(id,canonical_job_id,content_hash,job_title,raw_content) VALUES (?,?,'bound-hash','VP Test','A real immutable job description')`,[version,canonicalId]);
+    await memStore.put('payloads/canonical-only.json',JSON.stringify({
+      portal:'LinkedIn',title:'VP Test',company:'Test Company',cardHash:'canonical-source',canonicalJobId:canonicalId,
+      detailUrl:'https://example.com/job',detail:{fetched:true,rawText:'A real immutable job description'},
+      evaluationEvidence:{state:'BOUND',canonicalJobId:canonicalId,opportunityVersion:version,contentHash:matches?'bound-hash':'wrong-hash'}
+    }));
+    await queue.enqueue('canonical-only-enrichment','canonical-source','payloads/canonical-only.json',EXTRACTOR_VERSION,provenance,0,0,'payloads/canonical-only.json',canonicalId,version);
+    const {enrichJobsForRun}=await import('../../scripts/enrich');
+    await enrichJobsForRun('run-regression',{queue,repos});
+    const job=await db.one<{status:string;last_error:string|null}>(`SELECT status,last_error FROM enrichment_jobs WHERE id='canonical-only-enrichment'`);
+    expect(job?.status).toBe(matches?'COMPLETE':'FAILED');
+    const projections=await db.many<{id:string}>('SELECT id FROM opportunities');
+    expect(projections).toEqual(matches?[{id:canonicalId}]:[]);
+    expect((await db.many('SELECT id FROM documents')).length).toBe(matches?1:0);
+    expect((await db.many('SELECT id FROM opportunity_versions')).length).toBe(1);
+    if(!matches)expect(job?.last_error).toContain('ENRICHMENT_CANONICAL_ADMISSION_MISMATCH');
+  });
+
   it("1. proves that a valid payload resolves and becomes a persisted document", async () => {
     await repos.opportunities.mergeOpportunity({
       id: "linkedin:test-opp-1",

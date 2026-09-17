@@ -54,6 +54,7 @@ import { isCanonicalDossierPresentationV1 } from "../../../lib/domain/dossier_pr
 import { classifyOpportunityCategories, type CategoryId } from "../../../lib/domain/category_taxonomy";
 import { resolveServingScope, type ActiveServingContext } from "../../../lib/security/scope-resolver";
 import { SqliteDossierPresentationStore } from "./SqliteDossierPresentationStore";
+import { SqliteRichDossierStore } from './SqliteRichDossierStore';
 
 function toScrapeSource(val: unknown): ScrapeSource {
   if (val === "LinkedIn" || val === "Naukri" || val === "Indeed") return val as ScrapeSource;
@@ -152,7 +153,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          co.canonical_url AS apply_url,
          CASE 
            WHEN me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID') THEN me.evaluation_state
-           WHEN me.id IS NOT NULL THEN 'COMPLETE'
+           WHEN me.evaluation_state = 'STAGED_EVALUATED' THEN 'STAGED_EVALUATED'
+             WHEN me.id IS NOT NULL THEN 'COMPLETE'
            ELSE 'UNMATERIALIZED'
          END AS evaluation_state,
          me.decision AS engine_verdict,
@@ -169,7 +171,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          -- Authoritative Population Tier
          CASE 
            WHEN spc.attention_decision = 'NOT_CANDIDATE' THEN 4
-           WHEN me.decision IS NULL OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID') OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS') OR me.quality_score IS NULL OR me.evaluation_fingerprint IS NULL THEN 4
+           WHEN me.decision IS NULL OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID') OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS') OR (me.quality_score IS NULL AND me.evaluation_state <> 'STAGED_EVALUATED') OR me.evaluation_fingerprint IS NULL THEN 4
            WHEN d.action = 'PASS' THEN 5
            WHEN d.action = 'PURSUE' THEN
              CASE 
@@ -188,7 +190,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
            WHEN me.decision IS NULL
              OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID')
              OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS')
-             OR me.quality_score IS NULL
+             OR (me.quality_score IS NULL AND me.evaluation_state <> 'STAGED_EVALUATED')
              OR me.evaluation_fingerprint IS NULL THEN 4
            WHEN me.decision = 'PURSUE' THEN 0
            WHEN me.decision = 'CONSIDER' THEN 3
@@ -284,9 +286,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       // The shortlist is a canonical server selection: an unreviewed,
       // structurally valid evaluated engine PURSUE/CONSIDER artifact. It is
       // deliberately not reconstructed in browser state from a wider feed.
-      whereConditions.push(`evaluation_state = 'COMPLETE'`);
+      whereConditions.push(`evaluation_state IN ('COMPLETE','EVALUATED','STAGED_EVALUATED')`);
       whereConditions.push(`engine_verdict IN ('PURSUE', 'CONSIDER')`);
-      whereConditions.push(`quality_score IS NOT NULL`);
+      whereConditions.push(`(quality_score IS NOT NULL OR evaluation_state = 'STAGED_EVALUATED')`);
       whereConditions.push(`evaluation_fingerprint IS NOT NULL`);
       whereConditions.push(`user_action = 'NONE'`);
     }
@@ -338,6 +340,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
            co.canonical_url AS apply_url,
            CASE 
            WHEN me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID') THEN me.evaluation_state
+             WHEN me.evaluation_state = 'STAGED_EVALUATED' THEN 'STAGED_EVALUATED'
              WHEN me.id IS NOT NULL THEN 'COMPLETE'
              ELSE 'UNMATERIALIZED'
            END AS evaluation_state,
@@ -357,7 +360,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
            -- 3=engine CONSIDER, 4=non-actionable/invalid, 5=PASS.
            CASE 
              WHEN spc.attention_decision = 'NOT_CANDIDATE' THEN 4
-             WHEN me.decision IS NULL OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID') OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS') OR me.quality_score IS NULL OR me.evaluation_fingerprint IS NULL THEN 4
+             WHEN me.decision IS NULL OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID') OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS') OR (me.quality_score IS NULL AND me.evaluation_state <> 'STAGED_EVALUATED') OR me.evaluation_fingerprint IS NULL THEN 4
              WHEN d.action = 'PASS' THEN 5
              WHEN d.action = 'PURSUE' THEN
                CASE 
@@ -376,7 +379,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
              WHEN me.decision IS NULL
                OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID')
                OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS')
-               OR me.quality_score IS NULL
+               OR (me.quality_score IS NULL AND me.evaluation_state <> 'STAGED_EVALUATED')
                OR me.evaluation_fingerprint IS NULL THEN 4
              WHEN me.decision = 'PURSUE' THEN 0
              WHEN me.decision = 'CONSIDER' THEN 3
@@ -577,11 +580,11 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     }>(
       `SELECT 
          COUNT(*) AS total_screened,
-         COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') AND me.decision = 'PURSUE' AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_pursue,
-         COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') AND me.decision = 'CONSIDER' AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_consider,
+         COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED', 'STAGED_EVALUATED') AND me.decision = 'PURSUE' AND (me.quality_score IS NOT NULL OR me.evaluation_state = 'STAGED_EVALUATED') AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_pursue,
+         COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED', 'STAGED_EVALUATED') AND me.decision = 'CONSIDER' AND (me.quality_score IS NOT NULL OR me.evaluation_state = 'STAGED_EVALUATED') AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_consider,
          COUNT(CASE WHEN me.evaluation_state = 'SPARSE_SPEC' THEN 1 END) AS engine_sparse,
-         COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') AND me.decision = 'PASS' AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_pass,
-         COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') AND me.decision IN ('PURSUE', 'CONSIDER', 'PASS') AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS evaluated,
+         COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED', 'STAGED_EVALUATED') AND me.decision = 'PASS' AND (me.quality_score IS NOT NULL OR me.evaluation_state = 'STAGED_EVALUATED') AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_pass,
+         COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED', 'STAGED_EVALUATED') AND me.decision IN ('PURSUE', 'CONSIDER', 'PASS') AND (me.quality_score IS NOT NULL OR me.evaluation_state = 'STAGED_EVALUATED') AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS evaluated,
          COUNT(CASE WHEN me.evaluation_state = 'SPARSE_SPEC' THEN 1 END) AS sparse,
          COUNT(CASE WHEN me.id IS NULL THEN 1 END) AS unmaterialized,
          COUNT(CASE WHEN me.evaluation_state = 'PROFILE_REQUIRED' THEN 1 END) AS profile_required,
@@ -589,7 +592,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          COUNT(CASE WHEN me.evaluation_state = 'ACQUISITION_PENDING' THEN 1 END) AS acquisition_pending,
          COUNT(CASE WHEN me.evaluation_state = 'ACQUISITION_FAILED' THEN 1 END) AS acquisition_failed,
          COUNT(CASE WHEN me.evaluation_state = 'EXPIRED' THEN 1 END) AS expired,
-         COUNT(CASE WHEN me.id IS NOT NULL AND NOT (me.evaluation_state = 'SPARSE_SPEC' OR me.evaluation_state = 'PROFILE_REQUIRED' OR me.evaluation_state = 'NOT_EVALUABLE' OR me.evaluation_state IN ('ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED') OR (me.evaluation_state IN ('COMPLETE', 'EVALUATED') AND me.decision IN ('PURSUE', 'CONSIDER', 'PASS') AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL)) THEN 1 END) AS invalid,
+         COUNT(CASE WHEN me.id IS NOT NULL AND NOT (me.evaluation_state = 'SPARSE_SPEC' OR me.evaluation_state = 'PROFILE_REQUIRED' OR me.evaluation_state = 'NOT_EVALUABLE' OR me.evaluation_state IN ('ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED') OR (me.evaluation_state IN ('COMPLETE', 'EVALUATED', 'STAGED_EVALUATED') AND me.decision IN ('PURSUE', 'CONSIDER', 'PASS') AND (me.quality_score IS NOT NULL OR me.evaluation_state = 'STAGED_EVALUATED') AND me.evaluation_fingerprint IS NOT NULL)) THEN 1 END) AS invalid,
          COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND d.action = 'PURSUE' THEN 1 END) AS user_pursue,
          COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND d.action = 'CONSIDER' THEN 1 END) AS user_consider,
          COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND d.action = 'PASS' THEN 1 END) AS user_pass,
@@ -603,9 +606,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          COUNT(CASE WHEN (me.id IS NULL OR me.evaluation_state = 'SPARSE_SPEC') AND d.action = 'PASS' THEN 1 END) AS sparse_decisions_pass,
          COUNT(CASE
            WHEN (d.action IS NULL OR d.action = 'NONE')
-            AND me.evaluation_state IN ('COMPLETE', 'EVALUATED')
+            AND me.evaluation_state IN ('COMPLETE', 'EVALUATED', 'STAGED_EVALUATED')
             AND me.decision IN ('PURSUE', 'CONSIDER')
-            AND me.quality_score IS NOT NULL
+            AND (me.quality_score IS NOT NULL OR me.evaluation_state = 'STAGED_EVALUATED')
             AND me.evaluation_fingerprint IS NOT NULL
            THEN 1
          END) AS actionable_review_queue
@@ -672,7 +675,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          me.decision AS decision,
          CASE
            WHEN me.evaluation_state IN ('SPARSE_SPEC', 'PROFILE_REQUIRED', 'NOT_EVALUABLE', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID') THEN me.evaluation_state
-           WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') THEN me.evaluation_state
+           WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED', 'STAGED_EVALUATED') THEN me.evaluation_state
            WHEN me.id IS NOT NULL THEN 'INVALID'
            ELSE 'UNMATERIALIZED'
          END AS evaluation_state,
@@ -729,9 +732,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       else portalMetrics.other++;
 
       const isEvaluated =
-        (r.evaluation_state === "COMPLETE" || r.evaluation_state === "EVALUATED") &&
+        (r.evaluation_state === "COMPLETE" || r.evaluation_state === "EVALUATED" || r.evaluation_state === "STAGED_EVALUATED") &&
         (r.decision === "PURSUE" || r.decision === "CONSIDER" || r.decision === "PASS") &&
-        r.quality_score !== null &&
+        (r.quality_score !== null || r.evaluation_state === 'STAGED_EVALUATED') &&
         Boolean(r.evaluation_fingerprint);
       const isReviewed = r.action !== "NONE";
       const engineVerb = r.decision === "PURSUE" || r.decision === "CONSIDER" || r.decision === "PASS"
@@ -1128,6 +1131,24 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
 
     // Pre-production derived rows that do not carry the canonical intrinsic
     // payload are deliberately not adapted into plausible recommendations.
+    if (row.evaluation_state === 'STAGED_EVALUATED' && rawParsed && typeof rawParsed === 'object') {
+      const staged=rawParsed as Record<string,unknown>;
+      const dossier=staged.schemaVersion==='staged-serving-v1' && typeof staged.inputFingerprint==='string'
+        && staged.evaluationFingerprint===row.evaluation_fingerprint && staged.verdict===row.engine_decision
+        ? await new SqliteRichDossierStore(this.db).get(presentationIdentity,staged.inputFingerprint) : null;
+      const readModel=resolveCanonicalServingReadModel({evaluationState:'STAGED_EVALUATED',engineVerdict:row.engine_decision,userDecision:userState?.userAction??null,evaluationContextFingerprint:row.evaluation_context_fingerprint,evaluationFingerprint:row.evaluation_fingerprint,reviewedFingerprint:row.reviewed_fingerprint,qualityScore:row.quality_score});
+      if(dossier && dossier.verdict.verdict===row.engine_decision && dossier.verdict.screeningViability===staged.screeningViability && readModel.evaluationState==='EVALUATED') {
+        return {
+          evaluationState:'EVALUATED',...oppSource,postedRelative:formatPostedRelative(row.posted_at||undefined),
+          decision:dossier.verdict.verdict,recommendation:dossier.executiveThesis.text,primaryConcern:null,
+          positioning:dossier.candidatePositioning.differentiators.map(p=>p.text),headspace:[],dimensions:[],
+          hiringRisk:dossier.fit.gaps.map(p=>p.text).join(' '),richDossier:dossier,
+          engineRecommendation:{jobHash:row.source_job_id,evaluationFingerprint:row.evaluation_fingerprint!,engineVerdict:dossier.verdict.verdict,vetoed:false,qualityScore:null,evaluatedAt:row.materialized_at||dossier.generatedAt},
+          userDecision:userState,effectiveDecision:readModel.effectiveDecision,reviewState:readModel.reviewState,
+          evaluationContextFingerprint:row.evaluation_context_fingerprint,evaluationFingerprint:row.evaluation_fingerprint,
+        };
+      }
+    }
     if (!isCanonicalIntrinsicEvaluationV4_3(rawParsed)
       || rawParsed.evaluationInputHash !== row.evaluation_fingerprint) {
       const readModel = resolveCanonicalServingReadModel({
@@ -1266,9 +1287,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     }
     if (filters?.shortlistQueue) {
       // Navigation must use the same canonical shortlist membership as feed.
-      whereConditions.push(`evaluation_state = 'COMPLETE'`);
+      whereConditions.push(`evaluation_state IN ('COMPLETE','EVALUATED','STAGED_EVALUATED')`);
       whereConditions.push(`engine_verdict IN ('PURSUE', 'CONSIDER')`);
-      whereConditions.push(`quality_score IS NOT NULL`);
+      whereConditions.push(`(quality_score IS NOT NULL OR evaluation_state = 'STAGED_EVALUATED')`);
       whereConditions.push(`evaluation_fingerprint IS NOT NULL`);
       whereConditions.push(`user_action = 'NONE'`);
     }
@@ -1294,7 +1315,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
            COALESCE(NULLIF(TRIM(ov.job_title), ''), 'UNKNOWN') AS role,
            CASE
              WHEN me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID') THEN me.evaluation_state
-             WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') THEN me.evaluation_state
+             WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED', 'STAGED_EVALUATED') THEN me.evaluation_state
              WHEN me.id IS NOT NULL THEN 'INVALID'
              ELSE 'UNMATERIALIZED'
            END AS evaluation_state,
@@ -1309,7 +1330,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          -- 3=engine CONSIDER, 4=non-actionable/invalid, 5=PASS.
            CASE 
              WHEN spc.attention_decision = 'NOT_CANDIDATE' THEN 4
-             WHEN me.decision IS NULL OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID') OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS') OR me.quality_score IS NULL OR me.evaluation_fingerprint IS NULL THEN 4
+             WHEN me.decision IS NULL OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID') OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS') OR (me.quality_score IS NULL AND me.evaluation_state <> 'STAGED_EVALUATED') OR me.evaluation_fingerprint IS NULL THEN 4
              WHEN d.action = 'PASS' THEN 5
              WHEN d.action = 'PURSUE' THEN
                CASE 
@@ -1327,7 +1348,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
              WHEN me.decision IS NULL
                OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID')
                OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS')
-               OR me.quality_score IS NULL
+               OR (me.quality_score IS NULL AND me.evaluation_state <> 'STAGED_EVALUATED')
                OR me.evaluation_fingerprint IS NULL THEN 4
              WHEN me.decision = 'PURSUE' THEN 0
              WHEN me.decision = 'CONSIDER' THEN 3
