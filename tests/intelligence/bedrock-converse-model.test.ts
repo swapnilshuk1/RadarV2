@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BedrockConverseJsonModel } from '../../src/lib/model/bedrock-converse-model';
+import { extractValidatedSourceClaims } from '../../src/dossier/pipeline';
+import type { ReasoningModel } from '../../src/dossier/contracts';
 
 const response = (content: unknown, status = 200) => new Response(JSON.stringify({
   output: { message: { content: [{ text: JSON.stringify(content) }] } },
@@ -39,5 +41,30 @@ describe('Bedrock Converse JSON transport', () => {
     const model = new BedrockConverseJsonModel('model-id', async () => 'secret-value', request);
     await expect(model.generate('Instruction', {})).rejects.toThrow('Bedrock provider HTTP 403');
     await expect(model.generate('Instruction', {})).rejects.not.toThrow(/secret-value|private provider body/);
+  });
+
+  it('projects source-extraction output through standard Bedrock JSON Schema', async () => {
+    let responseSchema: Record<string, unknown> | undefined;
+    const model: ReasoningModel = {
+      id: 'bedrock-converse', version: 'test',
+      async generate(_instruction, _input, schema) {
+        responseSchema = schema;
+        return {
+          claims: [{
+            id: 'JD-1-model', text: 'Requires operations experience.', state: 'EXPLICIT', confidence: 1,
+            plane: 'JD', citations: [{ sourceId: 'jd', spanId: 's0' }], derivedFrom: [],
+          }],
+        };
+      },
+    };
+
+    const claims = await extractValidatedSourceClaims(model, {
+      id: 'jd', plane: 'JD', title: 'Role', locator: 'test',
+      text: 'Requires operations experience.', capturedAt: '2026-01-01T00:00:00.000Z', attribution: 'JOB_POST',
+    }, 'JD-1-');
+
+    expect(claims).toHaveLength(1);
+    expect(responseSchema).toMatchObject({ type: 'object' });
+    expect(JSON.stringify(responseSchema)).not.toContain('"OBJECT"');
   });
 });

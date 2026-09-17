@@ -7,6 +7,7 @@ import { validateClaims, validateComposition, validatePassages, validateResearch
 import { z } from 'zod';
 
 import { modelSchema } from './model-schema';
+import { bedrockJsonSchema } from './bedrock-schema';
 
 import { resolveSourceClaims, sourceClaimsSchema, sourceSpans } from './source-spans';
 
@@ -133,6 +134,11 @@ const sectionEvidenceRule = (key: string, hasHardScreens: boolean) => {
 
 const verifiedProposals = new Map<string, unknown>();
 
+/** Keep the canonical Zod contract provider-neutral; project it only at the transport edge. */
+function outputSchemaFor(model: ReasoningModel, schema: z.ZodTypeAny): Record<string, unknown> {
+  return /bedrock/i.test(model.id) ? bedrockJsonSchema(schema) : modelSchema(schema);
+}
+
 async function propose<T>(model: ReasoningModel, instruction: string, input: unknown, validate: (value: unknown) => T, onRepair: (message: string) => void = () => {}, schema?: z.ZodTypeAny): Promise<T> {
 
   // Ephemeral, bounded reuse of validated work lets a failed downstream section
@@ -151,7 +157,7 @@ async function propose<T>(model: ReasoningModel, instruction: string, input: unk
 
     try {
 
-      previous = await model.generate(instruction, attempt ? { input, previous, repair: `Repair the specified defect: ${issue}. Preserve all other valid content and claim IDs. Check every reference resolves in supplied evidence or your returned claims. You must return the COMPLETE object matching the schema with all required arrays and fields fully populated (including all 16 resolutions).` } : input, schema ? modelSchema(schema) : undefined);
+      previous = await model.generate(instruction, attempt ? { input, previous, repair: `Repair the specified defect: ${issue}. Preserve all other valid content and claim IDs. Check every reference resolves in supplied evidence or your returned claims. You must return the COMPLETE object matching the schema with all required arrays and fields fully populated (including all 16 resolutions).` } : input, schema ? outputSchemaFor(model, schema) : undefined);
 
       const result = validate(previous);
 
