@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseAdapter } from '@/data/database';
-import { claimSchema, contextFields, scopeFields, type Claim, type EvidenceSource, type ReasoningModel } from '@/dossier/contracts';
-import { extractValidatedSourceClaims, sourceFingerprint } from '@/dossier/pipeline';
+import { claimSchema, sourceSchema, contextFields, scopeFields, type Claim, type ContextProvider, type EvidenceSource, type ReasoningModel } from '@/dossier/contracts';
+import { compareCandidateSources, EmptySourceEvidenceError, extractValidatedSourceClaims, selectRelevantContextSources, sourceFingerprint } from '@/dossier/pipeline';
 import type { StagedResearchInput } from '@/dossier/staged-research';
 import { SqliteStagedEvaluationStore } from '@/data/sqlite/repositories/SqliteStagedEvaluationStore';
 import { versionCandidateProjection } from '@/data/sqlite/repositories/profile-projection-version';
@@ -11,6 +11,9 @@ import { CandidateProjectionBuilderImpl } from '@/lib/intelligence/builders/Cand
 import { OperatingLevelEngine } from '@/lib/intelligence/engines/OperatingLevelEngine';
 import { computeContentHash } from '@/lib/domain/canonical_identity';
 import type { EvidenceGraph } from '@/domain/evidence';
+import {contextInputFingerprint,SqliteStagedInputStore} from '@/data/sqlite/repositories/SqliteStagedInputStore';
+import {ProductionContextProvider} from './ProductionContextProvider';
+import {STAGED_POLICY_VERSION,supportsStagedPolicy} from './stagedPolicy';
 
 export class DeterministicStagedInputUnavailableError extends Error { readonly deterministic=true; constructor(readonly reason:string){super(`STAGED_INPUT_UNAVAILABLE:${reason}`);} }
 export interface ProductionStagedIdentity { tenantId:string; personId:string; canonicalJobId:string; opportunityVersion:string; evaluationContextFingerprint:string; profileVersion:string; }
@@ -31,7 +34,7 @@ export function assertCanonicalJdContentHash(version: { raw_content: string; job
 }
 
 export class ProductionStagedInputAdapter {
-  constructor(private readonly db:DatabaseAdapter, private readonly cache=new SqliteStagedEvaluationStore(db)) {}
+  constructor(private readonly db:DatabaseAdapter, private readonly cache=new SqliteStagedEvaluationStore(db),private readonly providers?:ContextProvider[]) {}
 
   /**
    * An old projection can be used only when one stored candidate document
@@ -75,6 +78,8 @@ export class ProductionStagedInputAdapter {
   }
 
   async build(identity:ProductionStagedIdentity, model:ReasoningModel, onStage:(stage:string)=>void=()=>{}):Promise<StagedResearchInput>{
+    const context=await this.db.one<{policy_version:string;profile_version:string}>(`SELECT policy_version,profile_version FROM evaluation_contexts WHERE context_fingerprint=? AND tenant_id=? AND person_id=?`,[identity.evaluationContextFingerprint,identity.tenantId,identity.personId]);
+    if(!context||!supportsStagedPolicy(context.policy_version)||context.profile_version!==identity.profileVersion)throw new DeterministicStagedInputUnavailableError('EVALUATION_CONTEXT_PROFILE_MISMATCH');
     const version=await this.db.one<any>(`SELECT raw_content,job_title,company_name,location,employment_type,content_hash FROM opportunity_versions WHERE canonical_job_id=? AND id=?`,[identity.canonicalJobId,identity.opportunityVersion]);
     if(!version) throw new DeterministicStagedInputUnavailableError('OPPORTUNITY_VERSION_MISSING');
     assertCanonicalJdContentHash(version);
@@ -82,13 +87,50 @@ export class ProductionStagedInputAdapter {
     let bindings=await this.db.many<CandidateBinding>(`SELECT b.document_id,b.evidence_graph_id,b.document_text_hash,dc.raw_text FROM profile_projection_source_bindings b JOIN document_contents dc ON dc.document_id=b.document_id JOIN evidence_graphs eg ON eg.id=b.evidence_graph_id AND eg.document_id=b.document_id WHERE b.person_id=? AND b.profile_version=? ORDER BY b.document_id`,[identity.personId,identity.profileVersion]);
     if(!bindings.length) bindings=await this.recoverExactCandidateBinding(identity);
     if(!bindings.length) throw new DeterministicStagedInputUnavailableError('PROFILE_SOURCE_PROVENANCE_MISSING');
+    if(context.policy_version==='staged-v6'&&bindings.length!==1)throw new DeterministicStagedInputUnavailableError('MULTIPLE_CANDIDATE_SOURCES_REQUIRE_CONTEXT_POLICY');
     const jdSource:EvidenceSource={id:stableSourceId('JD',version.content_hash||createHash('sha256').update(jdText).digest('hex')),plane:'JD',title:version.job_title||'Opportunity description',locator:`opportunity-version:${identity.canonicalJobId}:${identity.opportunityVersion}`,text:jdText,capturedAt:new Date(0).toISOString(),attribution:'JOB_POST'};
-    const candidateSources:EvidenceSource[]=bindings.map((row)=>({id:stableSourceId('CANDIDATE',row.document_text_hash),plane:'CANDIDATE',title:`Candidate document ${row.document_id}`,locator:`candidate-document:${row.document_id}:evidence:${row.evidence_graph_id}`,text:row.raw_text, capturedAt:new Date(0).toISOString(),attribution:'CANDIDATE_SUPPLIED'}));
+    const candidateSources:EvidenceSource[]=bindings.map((row)=>({id:stableSourceId('CANDIDATE',context.policy_version===STAGED_POLICY_VERSION?createHash('sha256').update(`${row.document_id}:${row.document_text_hash}`).digest('hex'):row.document_text_hash),plane:'CANDIDATE',title:`Candidate document ${row.document_id}`,locator:`candidate-document:${row.document_id}:evidence:${row.evidence_graph_id}`,text:row.raw_text, capturedAt:new Date(0).toISOString(),attribution:'CANDIDATE_SUPPLIED'}));
+    if(context.policy_version===STAGED_POLICY_VERSION)return this.buildContextInput(identity,model,jdSource,candidateSources,onStage);
     const sources=[jdSource,...candidateSources]; const evidence:Claim[]=[];
     for(const source of sources) { const ordinal=source.plane==='JD'?1:candidateSources.findIndex(item=>item.id===source.id)+1; const key={sourceFingerprint:sourceFingerprint([source]),modelId:model.id,modelVersion:model.version}; let cached=await this.cache.cachedClaims(key); if(!cached){onStage(`Extracting immutable ${source.plane} source evidence`); cached=await extractValidatedSourceClaims(model,source,`${source.plane}-1-`,onStage); await this.cache.cacheClaims(key,source,cached);} evidence.push(...rebaseClaims(cached,source.plane,ordinal)); }
     const candidate=await this.db.one<{email:string}>(`SELECT email FROM people WHERE id=? AND tenant_id=?`,[identity.personId,identity.tenantId]);
     const frozenBase={opportunity:{id:identity.canonicalJobId,company:version.company_name||'Unknown company',title:version.job_title||'Unknown role'},candidate:{name:candidate?.email||'Candidate'},sources,evidence,candidateSourceRefs:candidateSources.map(source=>({id:source.id,title:source.title})),candidateConflicts:[],acquisition:[],validEvidenceClaimIds:evidence.map(claim=>claim.id),fields:[...contextFields,...scopeFields]};
     const fingerprint=createHash('sha256').update(JSON.stringify({opportunity:frozenBase.opportunity,candidate:frozenBase.candidate,candidateSources:frozenBase.candidateSourceRefs,candidateConflicts:[],evidence,validEvidenceClaimIds:frozenBase.validEvidenceClaimIds,acquisition:[],fields:frozenBase.fields})).digest('hex');
     return {...frozenBase,fingerprint} as StagedResearchInput;
+  }
+  private async buildContextInput(identity:ProductionStagedIdentity,model:ReasoningModel,jd:EvidenceSource,candidates:EvidenceSource[],onStage:(stage:string)=>void):Promise<StagedResearchInput>{
+    const binding=createHash('sha256').update(JSON.stringify({profile:identity.profileVersion,sources:sourceFingerprint([jd,...candidates])})).digest('hex');
+    const store=new SqliteStagedInputStore(this.db);
+    const existing=await store.get(identity,binding,model);if(existing)return existing;
+    // Composition and retries must never reacquire context for a completed evaluation.
+    if(await this.cache.get(identity))throw new Error('STAGED_COMPLETED_INPUT_SNAPSHOT_MISSING');
+    const version=await this.db.one<{company_name:string|null;job_title:string|null}>(`SELECT company_name,job_title FROM opportunity_versions WHERE id=? AND canonical_job_id=?`,[identity.opportunityVersion,identity.canonicalJobId]);
+    const person=await this.db.one<{email:string}>(`SELECT email FROM people WHERE id=? AND tenant_id=?`,[identity.personId,identity.tenantId]);
+    const opportunity={id:identity.canonicalJobId,company:version?.company_name||'Unknown company',title:version?.job_title||'Unknown role'};
+    onStage('Acquiring and freezing company context');
+    const providers=this.providers??[new ProductionContextProvider(this.db,identity.tenantId)];
+    if(!providers.length)throw new Error('STAGED_CONTEXT_PROVIDER_REQUIRED');
+    const acquired=await Promise.all(providers.map(provider=>provider.acquire(opportunity,contextFields)));
+    const contextSources=acquired.flatMap(result=>result.sources).map(source=>sourceSchema.parse(source));
+    if(contextSources.some(source=>source.plane!=='CONTEXT'))throw new Error('CONTEXT_PROVIDER_SOURCE_PLANE_INVALID');
+    const sources=[jd,...candidates,...[...new Map(contextSources.map(source=>[source.id,source])).values()]];
+    const acquisition=acquired.flatMap(result=>result.attempts);
+    const selected=await selectRelevantContextSources(opportunity,jd,contextSources,model,onStage);
+    for(const attempt of acquisition)attempt.detail+=` Relevance selection: ${selected.reasoning}`;
+    const evidence:Claim[]=[];const ordinals=new Map<string,number>();
+    for(const source of sources){
+      if(source.plane==='CONTEXT'&&!selected.sourceIds.includes(source.id))continue;
+      const ordinal=(ordinals.get(source.plane)||0)+1;ordinals.set(source.plane,ordinal);
+      const key={sourceFingerprint:sourceFingerprint([source]),modelId:model.id,modelVersion:model.version};
+      let claims=await this.cache.cachedClaims(key);
+      if(!claims){
+        try{claims=await extractValidatedSourceClaims(model,source,`${source.plane}-1-`,onStage);}catch(error){if(source.plane!=='CONTEXT'||!(error instanceof EmptySourceEvidenceError))throw error;claims=[];}
+        await this.cache.cacheClaims(key,source,claims);
+      }
+      evidence.push(...rebaseClaims(claims,source.plane,ordinal));
+    }
+    const candidateConflicts=await compareCandidateSources(sources,evidence,model,onStage);
+    const base={opportunity,candidate:{name:person?.email||'Candidate'},sources,evidence,candidateSourceRefs:candidates.map(source=>({id:source.id,title:source.title})),candidateConflicts,acquisition,validEvidenceClaimIds:evidence.map(claim=>claim.id),fields:[...contextFields,...scopeFields]};
+    return store.save(identity,binding,model,{...base,fingerprint:contextInputFingerprint(base)});
   }
 }

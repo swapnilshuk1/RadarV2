@@ -17,10 +17,8 @@ export class SqliteRichDossierStore {
     if(!row)return null;
     try {
       const parsed=dossierSchema.parse(JSON.parse(row.presentation_json));
-      if(parsed.sourceEvaluationFingerprint&&parsed.sourceEvaluationFingerprint!==row.source_evaluation_fingerprint)return null;
-      const exactEvaluation=row.source_evaluation_fingerprint===fingerprint;
-      const exactInputAlias=parsed.sourceInputFingerprint===fingerprint&&parsed.sourceEvaluationFingerprint===row.source_evaluation_fingerprint;
-      return exactEvaluation||exactInputAlias?parsed:null;
+      if(parsed.sourceEvaluationFingerprint!==row.source_evaluation_fingerprint)return null;
+      return row.source_evaluation_fingerprint===fingerprint?parsed:null;
     }catch{return null;}
   }
   async save(identity:DossierPresentationIdentity,sourceEvaluationFingerprint:string,dossier:Dossier):Promise<void> {

@@ -23,6 +23,7 @@ import { StagedServingPublisher } from './staged/StagedServingPublisher';
 import { EmptySourceEvidenceError } from '@/dossier/pipeline';
 import { DeterministicStagedInputUnavailableError } from "./staged/ProductionStagedInputAdapter";
 import { STAGED_POLICY_VERSION, SqliteStagedEvaluationStore, stagedUnavailableEvaluation } from "@/data/sqlite/repositories/SqliteStagedEvaluationStore";
+import {supportsStagedPolicy} from './staged/stagedPolicy';
 
 export interface WorkerOptions {
   adapter?: DatabaseAdapter;
@@ -247,16 +248,16 @@ export class EvaluationWorker {
         createdAt: ctxRow.created_at || new Date().toISOString(),
       };
 
-      if (context.policyVersion === STAGED_POLICY_VERSION && job.queueKind !== "staged") {
+      if (supportsStagedPolicy(context.policyVersion) && job.queueKind !== "staged") {
         throw new Error("STAGED_CONTEXT_REQUIRES_STAGED_QUEUE");
       }
-      if (context.policyVersion !== STAGED_POLICY_VERSION && job.queueKind === "staged") {
+      if (!supportsStagedPolicy(context.policyVersion) && job.queueKind === "staged") {
         throw new Error("LEGACY_CONTEXT_CANNOT_USE_STAGED_QUEUE");
       }
 
       // Policy dispatch keeps the durable worker spine shared while preserving
       // the legacy intrinsic path for existing immutable contexts.
-      if (context.policyVersion === STAGED_POLICY_VERSION) {
+      if (supportsStagedPolicy(context.policyVersion)) {
         const stagedStore = new SqliteStagedEvaluationStore(this.db);
         const identity = { tenantId: job.tenantId, personId: job.personId, canonicalJobId: job.canonicalJobId, opportunityVersion: job.opportunityVersion, evaluationContextFingerprint: job.evaluationContextFingerprint, profileVersion: context.profileVersion, policyVersion: context.policyVersion, ontologyVersion: context.ontologyVersion, ontologyFingerprint: context.ontologyFingerprint };
         if (!isAcquired || !isLifecycleActive) {

@@ -1,5 +1,15 @@
 # Staged intelligence integration and backfill
 
+## Local context-aware revision (18 September 2026; not deployed)
+
+The local default is now `staged-v7` / `staged-decision-v7`. It acquires company context through tenant-scoped verified company domains and optional Tavily search (`TAVILY_API_KEY`). A model checks retrieved-source relevance before those claims enter evaluation. Acquisition failures remain explicit attempts and decision hinges. Real provider configuration and a real v7 evaluation still need validation before release.
+
+Migration `050_staged_frozen_inputs.sql` adds immutable input snapshots. Context documents, validated claims, candidate conflicts, acquisition outcomes, model identity and source binding are frozen before evaluation. Retries and dossier composition reuse that snapshot; refreshing external evidence requires a distinct evaluation context. The migration has been tested only against local test databases.
+
+Historical v6 inputs keep their old fingerprint construction and require exactly one bound candidate document. Multiple bound documents use v7, which computes conflicts without choosing a winning source. Existing v6 evaluations and presentations are retained. The operational identities below describe the historical v6 population; they must not be reused to disguise new context-aware evaluation as v6.
+
+Local changes require localhost proof and explicit release approval before any Oracle mutation. The findings, verification and current read-only production inventory are in [the secondary audit](SECONDARY_AUDIT_2026-09-18.md).
+
 The v6 evaluator produces immutable decisions. Rich dossier composition consumes those decisions separately. `StagedServingPublisher` publishes a matching, validated dossier into the existing serving projection with state `STAGED_EVALUATED` and no invented numeric score. Publication does not change the active context or canonical user decisions. The active pointer is still the sole serving authority.
 
 Once the v6 context is active, normal acquisition binds new evaluation requirements to it. Exact enrichment completion releases those requirements into the staged queue. The evaluation worker renews its lease during long model calls, persists the decision, composes its dossier, publishes it, and completes the obligation. Shadow evaluations continue to stop at staged persistence.
@@ -45,7 +55,7 @@ For existing `dossier-v3.3` results, `node --import tsx scripts/upgrade-staged-d
 
 ## Boundaries and remaining coverage
 
-The v6 frozen production adapter contains JD and candidate evidence. Its existing role/company resolutions remain authoritative for this rollout; the separate context-provider acquisition capability has not been incorporated into the v6 input fingerprint. Do not claim that these dossiers used newly acquired external company research. Adding decision-bearing external context requires a separately identified evaluator context.
+Historical v6 inputs contain JD and candidate evidence. Their role/company resolutions remain authoritative for those stored results; do not claim that those dossiers used newly acquired external company research. The local v7 revision above introduces acquisition under a separately identified evaluator context and cannot retroactively enrich v6 truth.
 
 Navigation-only captures require reacquisition through the established scraper. They are not candidate evidence and are excluded from this backfill by byte equality with the explicitly inspected source version, not by a new English classifier. An empty model extraction is recorded as unavailable after bounded local repair.
 

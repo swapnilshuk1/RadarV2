@@ -4,19 +4,23 @@ import { runMigrations } from '../../src/data/sqlite/migrations/runner';
 import { SqliteStagedEvaluationStore, STAGED_CONTRACT_VERSION, STAGED_POLICY_VERSION, stagedUnavailableEvaluation } from '../../src/data/sqlite/repositories/SqliteStagedEvaluationStore';
 import { assertCanonicalJdContentHash, DeterministicStagedInputUnavailableError } from '../../src/lib/intelligence/staged/ProductionStagedInputAdapter';
 import { computeContentHash } from '../../src/lib/domain/canonical_identity';
+import {stagedEvaluation} from '../fixtures/staged-rich-dossier';
 
 describe('staged production persistence boundary', () => {
   it('uses a fresh staged policy and contract identity for post-fix evaluations', () => {
-    expect(STAGED_POLICY_VERSION).toBe('staged-v6');
-    expect(STAGED_CONTRACT_VERSION).toBe('staged-decision-v6');
+    expect(STAGED_POLICY_VERSION).toBe('staged-v7');
+    expect(STAGED_CONTRACT_VERSION).toBe('staged-decision-v7');
   });
   it('persists a versioned staged result without fabricating an intrinsic score and is idempotent', async () => {
     const db=getDatabaseAdapter(':memory:'); await runMigrations(db);
     const store=new SqliteStagedEvaluationStore(db);
     const identity={tenantId:'tenant',personId:'person',canonicalJobId:'job',opportunityVersion:'version',evaluationContextFingerprint:'context',profileVersion:'profile',policyVersion:STAGED_POLICY_VERSION,ontologyVersion:'ontology',ontologyFingerprint:'ontology-hash'};
-    const record={...identity,jobHash:'job',inputFingerprint:'input',sourceFingerprints:['JD:source'],modelId:'bedrock-converse',modelVersion:'zai.glm-5',contractVersion:STAGED_CONTRACT_VERSION,evaluationState:'COMPLETED' as const,decision:'PASS' as const,screeningViability:'BLOCKED' as const,evaluation:{decision:{verdict:'PASS'}},evaluatedAt:'2026-01-01T00:00:00.000Z'};
-    await store.save(record); await store.save({...record,decision:'PURSUE'});
-    const read=await store.get(identity); expect(read?.decision).toBe('PASS'); expect(read?.evaluationState).toBe('COMPLETED');
+    const record={...identity,jobHash:'job',inputFingerprint:'input',sourceFingerprints:['JD:source'],modelId:'bedrock-converse',modelVersion:'zai.glm-5',contractVersion:STAGED_CONTRACT_VERSION,evaluationState:'COMPLETED' as const,decision:stagedEvaluation.decision.verdict,screeningViability:stagedEvaluation.decision.screeningViability,evaluation:stagedEvaluation,evaluatedAt:'2026-01-01T00:00:00.000Z'};
+    await expect(store.save({...record,evaluation:{decision:{verdict:'PURSUE'}}})).rejects.toThrow();
+    expect(await store.get(identity)).toBeUndefined();
+    await store.save(record); await store.save(record);
+    await expect(store.save({...record,decision:'PASS'})).rejects.toThrow('STAGED_PERSISTED_DECISION_MISMATCH');
+    const read=await store.get(identity); expect(read?.decision).toBe('PURSUE'); expect(read?.evaluationState).toBe('COMPLETED');
     const legacy=await db.one<{count:number}>('SELECT COUNT(*) AS count FROM materialized_evaluations'); expect(legacy?.count).toBe(0);
   });
   it('keys cached source evidence by immutable fingerprint and extraction model identity', async () => {

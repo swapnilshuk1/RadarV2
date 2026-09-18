@@ -311,7 +311,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/staged-decision.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 12 | 12 |
 | `tests/intelligence/staged-composition.test.ts` | Editorial / Verdict | **KEEP** | Stage 3 | 9 | 9 |
 | `tests/intelligence/staged-queue-lifecycle.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 12 | 12 |
-| `tests/serving/staged-rich-serving.test.ts` | Serving & Pagination | **KEEP** | Stage 3 | 5 | 5 |
+| `tests/serving/staged-rich-serving.test.ts` | Serving & Pagination | **KEEP** | Stage 3 | 8 | 8 |
+| `tests/intelligence/staged-context-input.test.ts` | Context / Source Provenance | **KEEP** | Stage 3 | 6 | 6 |
 | `tests/intelligence/staged-production-integration.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 5 | 13 |
 | `tests/intelligence/bedrock-converse-model.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 7 | 7 |
 | `tests/intelligence/bedrock-claude-model.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 19 |

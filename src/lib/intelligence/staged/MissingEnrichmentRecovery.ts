@@ -66,7 +66,7 @@ export class MissingEnrichmentRecovery {
         JOIN evaluation_jobs ej ON ej.tenant_id=er.tenant_id AND ej.person_id=er.person_id AND ej.search_plan_id=er.search_plan_id AND ej.canonical_job_id=er.canonical_job_id AND ej.opportunity_version=er.opportunity_version AND ej.evaluation_context_fingerprint=er.evaluation_context_fingerprint
         WHERE er.tenant_id=? AND er.person_id=? AND er.search_plan_id=? AND er.evaluation_context_fingerprint=?
           AND er.status='FAILED' AND er.blocked_reason='MISSING_ENRICHMENT_JOB' AND ej.status IN ('staged_waiting_enrichment','staged_dead_letter')
-          AND EXISTS(SELECT 1 FROM evaluation_contexts ec WHERE ec.context_fingerprint=er.evaluation_context_fingerprint AND ec.policy_version='staged-v6')
+          AND EXISTS(SELECT 1 FROM evaluation_contexts ec WHERE ec.context_fingerprint=er.evaluation_context_fingerprint AND ec.policy_version IN ('staged-v6','staged-v7'))
           AND NOT EXISTS(SELECT 1 FROM staged_evaluations se WHERE se.tenant_id=er.tenant_id AND se.person_id=er.person_id AND se.canonical_job_id=er.canonical_job_id AND se.opportunity_version=er.opportunity_version AND se.evaluation_context_fingerprint=er.evaluation_context_fingerprint)`,[scope.tenantId,scope.personId,scope.searchPlanId,scope.contextFingerprint]);
       for(const row of rows){
         await tx.execute(`INSERT INTO enrichment_events(job_id,event_type,details) VALUES(?,'EVALUATION_DEPENDENCY_RECOVERED',?)`,[row.enrichment_job_id,JSON.stringify({...row,previousRequirementStatus:'FAILED',previousBlockedReason:'MISSING_ENRICHMENT_JOB',contextFingerprint:scope.contextFingerprint})]);

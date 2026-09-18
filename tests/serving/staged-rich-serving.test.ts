@@ -1,5 +1,11 @@
 import Database from 'better-sqlite3';
-import { beforeEach,describe,expect,it } from 'vitest';
+import { beforeEach,describe,expect,it,vi } from 'vitest';
+import {act,createElement} from 'react';
+import {createRoot} from 'react-dom/client';
+import {JSDOM} from 'jsdom';
+import {DossierView} from '../../src/dossier/DossierView';
+import {composeStagedDossier} from '../../src/dossier/staged-composition';
+import type {StagedResearchInput} from '../../src/dossier/staged-research';
 import { SqliteAdapter } from '../../src/data/database/sqlite';
 import { setupLineageTestFixture,activateLineageTestContext } from '../persistence/lineage_fixture';
 import { SqliteOpportunityQueries } from '../../src/data/sqlite/repositories/SqliteOpportunityQueries';
@@ -16,56 +22,8 @@ import {
 import { readAcquisitionFeed } from '../../src/lib/intelligence/acquisition-feed';
 import { stagedRolloutReadiness,activateReadyStagedRollout } from '../../src/lib/intelligence/staged/StagedRolloutReadiness';
 
-const axis={material:false,candidateClaimIds:[],operatingConditionIds:[],resolutionFields:[]};
-const stagedEvaluation=parseCanonicalStagedDecisionResult({
-  decision:{
-    verdict:'PURSUE',screeningViability:'PLAUSIBLE',
-    decisionHinges:[{requirementIds:['REQ-001'],resolutionFields:[]}],
-    reopeningConditions:[{requirementIds:['REQ-001']}],
-    screeningDriverRequirementIds:[],
-    careerCapital:{authority:axis,scope:axis,functionalAltitude:axis,compensation:axis},
-  },
-  trace:{
-    role:{
-      requirements:[{id:'REQ-001',requirement:'Growth',strength:'REQUIRED',roleImportance:'CORE_CAPABILITY',roleClaimIds:['JD-1-1'],reasoning:'Growth is core to the mandate.'}],
-      operatingConditions:[],authorityShape:'Function',roleSideConditions:[],
-    },
-    requirements:[{
-      id:'REQ-001',requirement:'Growth',strength:'REQUIRED',roleImportance:'CORE_CAPABILITY',roleClaimIds:['JD-1-1'],reasoning:'Growth is core to the mandate.',
-      screeningGate:false,screeningFunction:'ROLE_PERFORMANCE_REQUIREMENT',screeningGateBasis:'NONE',screeningSupportQuoteIds:['REQ-001:Q1'],screeningReasoning:'The source describes role performance, not an entry gate.',
-      status:'NOT_EVIDENCED',candidateClaimIds:[],unsupportedAspects:['direct growth precedent'],mappingReasoning:'The supplied candidate evidence does not directly establish this requirement.',
-    }],
-    resolutions:[],eligibleScreeningDrivers:[],screeningConstraint:'NONE',
-    decision:{
-      verdict:'PURSUE',screeningViability:'PLAUSIBLE',
-      decisionHinges:[{requirementIds:['REQ-001'],resolutionFields:[]}],
-      reopeningConditions:[{requirementIds:['REQ-001']}],
-      screeningDriverRequirementIds:[],
-      careerCapital:{authority:axis,scope:axis,functionalAltitude:axis,compensation:axis},
-    },
-  },
-});
-const evaluationFingerprint=createStagedEvaluationFingerprint({evaluationContextFingerprint:'staged-context',inputFingerprint:'input',evaluation:stagedEvaluation});
-
-function dossier(trace:JsonValue=stagedEvaluation.trace as unknown as JsonValue):Dossier {
-  const p=(text:string):Passage=>({text,kind:'ADVICE',state:'INFERRED',confidence:0.8,sourcePlane:'JD',evidenceRefs:['JD-1-1'],reasoning:'Derived from the supplied growth mandate.'});
-  const list=(text:string)=>[p(text)];
-  return {
-    opportunity:{id:'job',company:'Company',title:'Head of Growth'},candidate:{name:'Candidate'},
-    executiveThesis:p('Assess the growth mandate.'),roleInterest:list('Growth role'),strategicValue:list('Commercial value'),
-    recommendation:{identityAlignment:list('Identity'),capabilityCoverage:list('Capability'),careerCapital:list('Career')},
-    fit:{direct:[],adjacent:[],transferable:[],gaps:list('Validate the operating scope.')},
-    mandate:{immediate:[],nearTerm:[],mediumTerm:[],outcomes:list('Growth outcomes')},successRequirements:list('Delivery'),
-    candidatePositioning:{precedents:[],differentiators:[],evidence:list('Discuss evidence')},
-    openQuestions:list('Clarify remit'),watchPoints:list('Execution risk'),decisionHinges:{strongerPursueIf:[],weakerIf:[],passIf:[]},
-    conversationStrategy:{approach:list('Explore authority'),opening:[],questions:[],positioning:[],screening:[],interview:[],resumeNarrative:[],linkedinStrategy:[]},
-    verdict:{verdict:'PURSUE',screeningViability:'PLAUSIBLE',rationale:'Growth mandate',claimIds:['JD-1-1'],requirements:[{requirement:'Growth',mandatory:true,decisionRole:'CORE_CAPABILITY',status:'NOT_EVIDENCED',roleClaimIds:['JD-1-1'],candidateClaimIds:[],reasoning:'Confirm proof'}]},
-    narrativePlan:{roleArchetype:'Growth',mandateShape:'Build',careerMove:'Growth',authorityShape:'Function',fitShape:'Transferable',evidenceShape:'Mandate',decisionTension:'Scope',companyTrajectory:'Unknown',argument:'Clarify authority',emphasis:['Scope'],sectionOrder:['executiveThesis'],claimIds:['JD-1-1']},
-    resolutions:[],candidateConflicts:[],evidence:{roleClaims:[{id:'JD-1-1',text:'Lead growth.',state:'EXPLICIT',confidence:1,plane:'JD',citations:[{sourceId:'jd',quote:'Lead growth.'}],derivedFrom:[]}],candidateClaims:[],contextualClaims:[],relationalClaims:[],lineage:[{id:'jd',plane:'JD',title:'JD',locator:'job',text:'Lead growth.',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'}]},
-    generatedAt:'2026-01-01',generation:{model:'test',sourceFingerprint:'sources'},acquisition:[],canonicalDecisionTrace:trace,
-    sourceInputFingerprint:'input',sourceEvaluationFingerprint:evaluationFingerprint,
-  };
-}
+import {stagedEvaluation,evaluationFingerprint,dossier} from '../fixtures/staged-rich-dossier';
+import {selectStagedDossierWork} from '../../src/lib/intelligence/staged/dossierBackfillSelection';
 
 describe('rich staged serving activation',()=>{
   let db:SqliteAdapter;
@@ -106,6 +64,65 @@ describe('rich staged serving activation',()=>{
     (wrongTrace as {requirements:Array<{screeningReasoning:string}>}).requirements[0].screeningReasoning='Rewritten by presentation';
     await new SqliteRichDossierStore(db).save(identity,evaluationFingerprint,dossier(wrongTrace));
     await expect(new StagedServingPublisher(db).publish(identity)).rejects.toThrow('DOSSIER_DECISION_TRACE_MISMATCH');
+  });
+  it('composes, persists and serves canonical intelligence into both interactive DossierView templates',async()=>{
+    const template=dossier();
+    const frozen:StagedResearchInput={opportunity:template.opportunity,candidate:template.candidate,sources:template.evidence.lineage,evidence:template.evidence.roleClaims,candidateSourceRefs:[],candidateConflicts:[],acquisition:[],validEvidenceClaimIds:['JD-1-1'],fields:[],fingerprint:'input'};
+    const model={id:'local-scripted-composer',version:'1',async generate(instruction:string){
+      if(instruction.startsWith('Review editorial action consistency'))return {aligned:true,issue:''};
+      const section=instruction.match(/For this call return ONLY the top-level key (\w+)/)?.[1];
+      if(section)return {[section]:template[section as keyof Dossier]};
+      return {rationale:template.verdict.rationale,narrativePlan:template.narrativePlan};
+    }};
+    const composed=await composeStagedDossier(frozen,stagedEvaluation,model);
+    await new SqliteRichDossierStore(db).save(identity,evaluationFingerprint,{...composed,sourceInputFingerprint:'input',sourceEvaluationFingerprint:evaluationFingerprint});
+    await new StagedServingPublisher(db).publish(identity);
+    await db.execute(`UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`);
+    const {scope}=await resolveServingScope('person_A','tenant_A',db);
+    const dto=await new SqliteOpportunityQueries(db).getDossier(scope,'source-job');
+    expect(dto?.evaluationState).toBe('EVALUATED');
+    const rich=(dto as {richDossier:Dossier}).richDossier;
+    expect(rich.canonicalDecisionTrace).toEqual(stagedEvaluation.trace);
+    const dom=new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>');
+    vi.stubGlobal('window',dom.window);vi.stubGlobal('document',dom.window.document);vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);
+    const container=dom.window.document.getElementById('root')!;const root=createRoot(container);
+    try{
+      await act(async()=>root.render(createElement(DossierView,{dossier:rich})));
+      expect(container.querySelector('.dossier-template-a')).not.toBeNull();
+      expect(container.textContent).toContain('PURSUE');
+      expect(container.textContent).toContain('Assess the growth mandate.');
+      const switcher=Array.from(container.querySelectorAll('button')).find(button=>button.textContent?.startsWith('Template B'))!;
+      await act(async()=>switcher.click());
+      expect(container.querySelector('.dossier-template-b')).not.toBeNull();
+      expect(container.textContent).toContain('Executive advisory thesis');
+      const cue=container.querySelector<HTMLButtonElement>('button[aria-label^="Show evidence:"]')!;
+      await act(async()=>cue.click());
+      expect(container.textContent).toContain('Lead growth.');
+      expect(await db.one('SELECT COUNT(*) n FROM canonical_decisions')).toEqual({n:0});
+    }finally{await act(async()=>root.unmount());dom.window.close();vi.unstubAllGlobals();}
+  });
+  it('never uses the input fingerprint as an alias for an exact evaluation fingerprint',async()=>{
+    const store=new SqliteRichDossierStore(db);
+    await store.save(identity,evaluationFingerprint,dossier());
+    expect(await store.get(identity,'input')).toBeNull();
+    expect(await store.get(identity,evaluationFingerprint)).not.toBeNull();
+    await new StagedServingPublisher(db).publish(identity);
+    await db.execute(`UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`);
+    const {scope}=await resolveServingScope('person_A','tenant_A',db);
+    expect((await new SqliteOpportunityQueries(db).getDossier(scope,'source-job'))?.evaluationState).toBe('EVALUATED');
+    // Simulate a stale presentation tied to a different result with the same input.
+    await db.execute(`UPDATE materialized_dossier_presentations SET source_evaluation_fingerprint='different-evaluation',presentation_json=json_set(presentation_json,'$.sourceEvaluationFingerprint','different-evaluation')`);
+    expect(await store.get(identity,evaluationFingerprint)).toBeNull();
+    expect((await new SqliteOpportunityQueries(db).getDossier(scope,'source-job'))?.evaluationState).toBe('INVALID');
+  });
+  it('selects an existing v3.4 dossier for publish-only using the full evaluation fingerprint',async()=>{
+    const options={context:'staged-context',limit:10,publishOnly:true};
+    expect(await selectStagedDossierWork(db,options)).toEqual([]);
+    await new SqliteRichDossierStore(db).save(identity,evaluationFingerprint,dossier());
+    expect(await selectStagedDossierWork(db,{...options,publishOnly:false})).toEqual([]);
+    expect(await selectStagedDossierWork(db,options)).toHaveLength(1);
+    await new StagedServingPublisher(db).publish(identity);
+    expect(await selectStagedDossierWork(db,options)).toEqual([]);
   });
   it('keeps a missing legacy score invalid while accepting an explicitly staged scoreless contract',()=>{
     const input={engineVerdict:'PURSUE',userDecision:null,evaluationContextFingerprint:'ctx',evaluationFingerprint:'eval',reviewedFingerprint:null,qualityScore:null};

@@ -17,7 +17,7 @@ const context=option('context'),expectedActive=option('expected-active');
 if(!context||!expectedActive)throw new Error('EXPLICIT_ROLLOUT_CONTEXTS_REQUIRED');
 loadBedrockCredentials();
 const db=getDatabaseAdapter();
-const contexts=await db.many<{tenant_id:string;person_id:string;search_plan_id:string;profile_version:string}>(`SELECT ecs.tenant_id,ecs.person_id,ecs.search_plan_id,ec.profile_version FROM evaluation_context_scopes ecs JOIN evaluation_contexts ec ON ec.context_fingerprint=ecs.context_fingerprint WHERE ecs.context_fingerprint=? AND ec.policy_version='staged-v6'`,[context]);
+const contexts=await db.many<{tenant_id:string;person_id:string;search_plan_id:string;profile_version:string}>(`SELECT ecs.tenant_id,ecs.person_id,ecs.search_plan_id,ec.profile_version FROM evaluation_context_scopes ecs JOIN evaluation_contexts ec ON ec.context_fingerprint=ecs.context_fingerprint WHERE ecs.context_fingerprint=? AND ec.policy_version IN ('staged-v6','staged-v7')`,[context]);
 if(contexts.length!==1)throw new Error('ROLLOUT_SCOPE_MUST_BE_UNAMBIGUOUS');
 const binding=contexts[0];const scope={tenantId:binding.tenant_id,personId:binding.person_id,searchPlanId:binding.search_plan_id,contextFingerprint:context};
 const composer=new ProductionStagedDossierService(db,createBedrockGlmResearchModel());
