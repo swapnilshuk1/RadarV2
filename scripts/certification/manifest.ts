@@ -6,7 +6,7 @@
  * this manifest rather than maintaining independent lists.
  */
 
-export const EXPECTED_CERTIFICATION_FILE_COUNT = 65;
+export const EXPECTED_CERTIFICATION_FILE_COUNT = 66;
 
 export const certificationManifest = [
   {
@@ -110,6 +110,7 @@ export const certificationManifest = [
       "tests/intelligence/staged-queue-lifecycle.test.ts",
       "tests/scraper/enrichment-payload-resolution.test.ts",
       "tests/intelligence/staged-composition.test.ts",
+      "tests/intelligence/memo-contract.test.ts",
       "tests/serving/staged-rich-serving.test.ts",
       "tests/intelligence/bedrock-converse-model.test.ts",
     ],

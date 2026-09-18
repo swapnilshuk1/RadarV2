@@ -11,7 +11,7 @@ export async function selectStagedDossierWork(db:DatabaseAdapter,input:{context:
  // Page the ordered cohort so an early valid dossier cannot hide later missing work.
  for(let offset=0;;offset+=100){
   const rows=await db.many<Row>(`SELECT tenant_id,person_id,canonical_job_id,opportunity_version,profile_version FROM staged_evaluations
-   WHERE evaluation_context_fingerprint=? AND evaluation_state='COMPLETED' AND unicode(substr(canonical_job_id,1,1)) % ? = ?
+   WHERE evaluation_context_fingerprint=? AND evaluation_state='COMPLETED' AND decision IN ('PURSUE','CONSIDER') AND unicode(substr(canonical_job_id,1,1)) % ? = ?
    ${job?'AND canonical_job_id=?':''}
    ORDER BY CASE decision WHEN 'PURSUE' THEN 0 WHEN 'CONSIDER' THEN 1 ELSE 2 END,canonical_job_id,opportunity_version LIMIT 100 OFFSET ?`,[context,shards,shard,...(job?[job]:[]),offset]);
   for(const row of rows){

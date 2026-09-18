@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import type { JsonModel } from './json-model';
-import { ModelProviderUnavailableError } from './provider-unavailable';
+import { ModelProviderUnavailableError,providerRetryAfterMs } from './provider-unavailable';
 
 type BedrockUsage = { inputTokens?: number; outputTokens?: number; totalTokens?: number };
 
@@ -37,7 +37,9 @@ export class BedrockConverseJsonModel implements JsonModel {
           body: requestBody,
         });
         if (response.status === 429 || response.status >= 500) {
-          failure = new ModelProviderUnavailableError(response.status >= 500 ? 'Bedrock provider HTTP 5xx' : 'Bedrock provider HTTP 429', response.status);
+          const delay = await providerRetryAfterMs(response);
+          failure = new ModelProviderUnavailableError(response.status >= 500 ? 'Bedrock provider HTTP 5xx' : 'Bedrock provider HTTP 429', response.status,delay);
+          if(delay !== undefined)throw failure;
           continue;
         }
         if (response.status === 401 || response.status === 403) throw new ModelProviderUnavailableError(`Bedrock provider HTTP ${response.status}`, response.status);
@@ -53,7 +55,7 @@ export class BedrockConverseJsonModel implements JsonModel {
         const message = error instanceof Error ? error.message : '';
         if (/^Bedrock provider /.test(message)) throw error;
         if (attempt === 2 || !/(abort|timeout|fetch|transport)/i.test(message)) {
-          throw new ModelProviderUnavailableError(/abort|timeout/i.test(message) ? 'Bedrock timeout failure' : 'Bedrock network failure');
+          throw new ModelProviderUnavailableError(/abort|timeout/i.test(message) ? 'Bedrock timeout failure' : 'Bedrock network failure',undefined,30_000);
         }
       }
     }

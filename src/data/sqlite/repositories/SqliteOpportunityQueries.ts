@@ -1141,9 +1141,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         return {
           evaluationState:'EVALUATED',...oppSource,postedRelative:formatPostedRelative(row.posted_at||undefined),
           decision:dossier.verdict.verdict,recommendation:dossier.executiveThesis.text,primaryConcern:null,
-          positioning:dossier.candidatePositioning.differentiators.map(p=>p.text),headspace:[],dimensions:[],
-          hiringRisk:dossier.fit.gaps.map(p=>p.text).join(' '),richDossier:dossier,
-          engineRecommendation:{jobHash:row.source_job_id,evaluationFingerprint:row.evaluation_fingerprint!,engineVerdict:dossier.verdict.verdict,vetoed:false,qualityScore:null,evaluatedAt:row.materialized_at||dossier.generatedAt},
+          positioning:dossier.candidateFit.map(p=>p.assessment.text),headspace:[],dimensions:[],
+          hiringRisk:dossier.decisionConditions.map(p=>p.question.text).join(' '),richDossier:dossier,
+          engineRecommendation:{jobHash:row.source_job_id,evaluationFingerprint:row.evaluation_fingerprint!,engineVerdict:dossier.verdict.verdict,vetoed:false,qualityScore:null,evidenceCoverage:{direct:dossier.verdict.requirements.filter(r=>r.status==='DIRECT').length,adjacent:dossier.verdict.requirements.filter(r=>r.status==='ADJACENT').length,transferable:dossier.verdict.requirements.filter(r=>r.status==='TRANSFERABLE').length,notEvidenced:dossier.verdict.requirements.filter(r=>r.status==='NOT_EVIDENCED').length,contradicted:dossier.verdict.requirements.filter(r=>r.status==='CONTRADICTED').length},screeningViability:dossier.verdict.screeningViability,evaluatedAt:row.materialized_at||dossier.generatedAt},
           userDecision:userState,effectiveDecision:readModel.effectiveDecision,reviewState:readModel.reviewState,
           evaluationContextFingerprint:row.evaluation_context_fingerprint,evaluationFingerprint:row.evaluation_fingerprint,
         };

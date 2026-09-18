@@ -1,4 +1,5 @@
 import {createHash} from 'node:crypto';
+import {ModelProviderUnavailableError,providerRetryAfterMs} from './provider-unavailable';
 /** Model transport is injectable: extraction/narration do not depend on one vendor. */
 export interface JsonModel {
   readonly id: string;
@@ -32,16 +33,14 @@ export class GeminiJsonModel implements JsonModel {
       body: JSON.stringify({ systemInstruction: {parts:[{text:instruction}]}, contents:[{role:'user',parts:[{text:JSON.stringify(input)}]}], generationConfig:{...(this.version.startsWith('gemini-3') ? {} : {temperature:this.options.temperature ?? 0}),responseMimeType:'application/json',...(responseSchema ? {[this.schemaFormat==='json-schema'?'responseJsonSchema':'responseSchema']:responseSchema} : {}),maxOutputTokens:this.options.maxOutputTokens ?? 8192,...(this.version.startsWith('gemini-3') ? {thinkingConfig:{thinkingLevel:this.options.thinkingLevel ?? 'MEDIUM'}} : {thinkingConfig:{thinkingBudget:0}})} }),
       });
       // Do not include credential-bearing request details or provider bodies in logs.
+      const delay = !response.ok ? await providerRetryAfterMs(response) : undefined;
       if (response.status === 429 && attempt < 2) {
-        const header=response.headers.get('retry-after');
-        const seconds=header!==null&&header.trim()!==''?Number(header):NaN;
-        const delay=Number.isFinite(seconds)&&seconds>=0?seconds*1000:header?Date.parse(header)-Date.now():NaN;
         // Long quota windows belong to the durable worker pause, not this request.
-        if(Number.isFinite(delay)&&delay>30_000)throw new Error('Model provider HTTP 429');
-        await new Promise(resolve => setTimeout(resolve, Number.isFinite(delay)&&delay>0?delay:1500*(attempt+1)));
+        if(delay !== undefined && delay>30_000)throw new ModelProviderUnavailableError('Model provider HTTP 429',429,delay);
+        await new Promise(resolve => setTimeout(resolve, delay !== undefined ? Math.max(1000,delay) : 1500*(attempt+1)));
         continue;
       }
-      if (!response.ok) throw new Error(`Model provider HTTP ${response.status}`);
+      if (!response.ok) throw new ModelProviderUnavailableError(`Model provider HTTP ${response.status}`,response.status,delay);
       const payload = await response.json() as { candidates?:Array<{ finishReason?:string; content?:{parts?:Array<{text?:string;thought?:boolean}>} }> };
       const candidate = payload.candidates?.[0];
       if (candidate?.finishReason !== 'STOP') throw new Error(`Model output incomplete: ${candidate?.finishReason ?? 'EMPTY'}`);

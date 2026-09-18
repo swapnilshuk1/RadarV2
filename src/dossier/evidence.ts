@@ -80,18 +80,22 @@ export async function propose<T>(model: ReasoningModel, instruction: string, inp
 
   const key = createHash('sha256').update(JSON.stringify([model.id,model.version,model.configurationFingerprint,instruction,input], (name,value) => name === 'capturedAt' ? undefined : value)).digest('hex');
 
-  if (verifiedProposals.has(key)) return validate(verifiedProposals.get(key));
+  if (verifiedProposals.has(key)) {
+    try { return await validate(verifiedProposals.get(key)); }
+    catch { verifiedProposals.delete(key); }
+  }
 
   let previous: unknown;
 
   let issue = '';
+  const repairIssues: string[] = [];
   let lastError: unknown;
 
   for (let attempt = 0; attempt < 4; attempt++) {
 
     try {
 
-      previous = await model.generate(instruction, attempt ? { input, previous, repair: `Repair the specified defect: ${issue}. Preserve other valid content and evidence references. Check every reference resolves in supplied evidence or your returned claims. Return the complete object required by this call's schema, with only its requested fields. Internal identifiers belong in reference arrays, never visible prose.` } : input, schema ? outputSchemaFor(model, schema) : undefined);
+      previous = await model.generate(instruction, attempt ? { input, previous, repair: `Repair all defects identified so far: ${repairIssues.join('\n')}. Corrections accumulate: never reintroduce an earlier rejected assertion. If a planned premise is unsupported, preserve its decision-relevant issue as a clearly conditional interpretation or verification question, without asserting the premise as fact. Preserve other valid content and evidence references. Check every reference resolves in supplied evidence or your returned claims. Return the complete object required by this call's schema, with only its requested fields. Internal identifiers belong in reference arrays, never visible prose.` } : input, schema ? outputSchemaFor(model, schema) : undefined);
 
       const result = await validate(previous);
 
@@ -106,6 +110,7 @@ export async function propose<T>(model: ReasoningModel, instruction: string, inp
       lastError = error;
 
       issue = error instanceof Error ? error.message : 'Invalid response';
+      if (!repairIssues.includes(issue)) repairIssues.push(issue);
 
       console.warn(`Dossier proposal repair attempt ${attempt + 1}:`, issue);
 
@@ -115,6 +120,9 @@ export async function propose<T>(model: ReasoningModel, instruction: string, inp
 
   }
 
+  // Keep the repair chain so a later resume reaches an accepted repaired result
+  // without regenerating earlier sections. Only an exhausted tail is retryable.
+  await model.discardResponse?.(previous);
   if(lastError instanceof EmptySourceEvidenceError)throw lastError;
   throw new Error(`Dossier generation needs source/reasoning repair: ${issue}`);
 

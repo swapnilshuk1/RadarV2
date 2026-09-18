@@ -31,6 +31,11 @@ export const resolutionSchema = z.object({
   question: z.string().optional(), consequence: z.string().min(1),
 });
 export type FieldResolution = z.infer<typeof resolutionSchema>;
+export const memoSections = ['executiveThesis','opportunityValue','mandate','candidateFit','decisionConditions','approach'] as const;
+export const memoPointSchema = z.object({
+  id:z.string().min(1), section:z.enum(memoSections), point:z.string().min(1),
+  claimIds:z.array(z.string()).min(1), requirementIds:z.array(z.string()), resolutionFields:z.array(z.string()),
+}).strict();
 export const narrativePlanSchema = z.object({
   roleArchetype: z.string().min(1), mandateShape: z.string().min(1),
   careerMove: z.string().min(1), authorityShape: z.string().min(1),
@@ -38,6 +43,7 @@ export const narrativePlanSchema = z.object({
   decisionTension: z.string().min(1), companyTrajectory: z.string().min(1),
   argument: z.string().min(1), emphasis: z.array(z.string()).min(1),
   sectionOrder: z.array(z.string()).min(1), claimIds: z.array(z.string()).min(1),
+  memoPoints:z.array(memoPointSchema).min(1).optional(),
 });
 export const candidateConflictSchema = z.object({
   topic: z.string().min(1), sourceIds: z.array(z.string()).min(2), question: z.string().min(1),
@@ -66,16 +72,12 @@ const passages = z.array(passageSchema).min(1);
 // Child blocks may be empty only when no distinct decision value exists; renderers omit them.
 const childPassages = z.array(passageSchema);
 export const compositionSchema = z.object({
-  executiveThesis: passageSchema, roleInterest: passages, strategicValue: passages,
-  recommendation: z.object({ identityAlignment: passages, capabilityCoverage: passages, careerCapital: passages }),
-  // A fit category may have no demonstrated precedent. The gaps section explains why.
-  fit: z.object({ direct: childPassages, adjacent: childPassages, transferable: childPassages, gaps: passages }),
-  mandate: z.object({ immediate: childPassages, nearTerm: childPassages, mediumTerm: childPassages, outcomes: passages }),
-  successRequirements: passages,
-  candidatePositioning: z.object({ precedents: childPassages, differentiators: childPassages, evidence: passages }),
-  openQuestions: passages, watchPoints: passages,
-  decisionHinges: z.object({ strongerPursueIf: childPassages, weakerIf: childPassages, passIf: childPassages }),
-  conversationStrategy: z.object({ approach: passages, opening: childPassages, questions: childPassages, positioning: childPassages, screening: childPassages, interview: childPassages, resumeNarrative: childPassages, linkedinStrategy: childPassages }),
+  executiveThesis: passageSchema,
+  opportunityValue: passages,
+  mandate: z.object({priorities:passages,outcomes:passages}),
+  candidateFit:z.array(z.object({requirementIds:z.array(z.string()),assessment:passageSchema}).strict()).min(1),
+  decisionConditions:z.array(z.object({requirementIds:z.array(z.string()),resolutionFields:z.array(z.string()),question:passageSchema,consequence:passageSchema}).strict()).min(1),
+  approach:z.object({nextSteps:passages,opening:passageSchema,resumeNarrative:childPassages,linkedinStrategy:childPassages,screening:childPassages,interview:childPassages}),
 });
 export type Composition = z.infer<typeof compositionSchema>;
 export const factualReviewReceiptSchema = z.object({
@@ -83,6 +85,7 @@ export const factualReviewReceiptSchema = z.object({
   evidenceFingerprint: z.string().length(64), inputFingerprint: z.string().min(1),
   reviewer: z.string().min(1), policyVersion: z.string().min(1),
   passageIds: z.array(z.string()), accepted: z.literal(true),
+  coveredPointIds:z.array(z.string()).optional(), planFingerprint:z.string().optional(),
 }).strict();
 export type FactualReviewReceipt = z.infer<typeof factualReviewReceiptSchema>;
 export interface Dossier extends Composition {

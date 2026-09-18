@@ -15,10 +15,10 @@ export function createGeminiFactualReviewModel(options:{projectId?:string;token?
     try{return await generate(instruction,input,schema);}
     catch(error){
       // Infrastructure failures must pause durable work, not consume semantic repair attempts.
-      if(error instanceof SyntaxError || (error instanceof Error && error.message.startsWith('Model output incomplete:')))throw new ModelProviderUnavailableError('GEMINI_REVIEW_OUTPUT_INCOMPLETE: no factual assessment was accepted');
+      if(error instanceof SyntaxError || (error instanceof Error && error.message.startsWith('Model output incomplete:')))throw new ModelProviderUnavailableError('GEMINI_REVIEW_OUTPUT_INCOMPLETE: no factual assessment was accepted',undefined,30_000);
       const httpStatus=error instanceof Error?Number(error.message.match(/HTTP (\d{3})/)?.[1])||undefined:undefined;
       const reason=error instanceof Error&&/ADC|credential/i.test(error.message)?'AUTH':error instanceof Error&&['TimeoutError','AbortError'].includes(error.name)?'TIMEOUT':error instanceof Error&&error.message==='fetch failed'?'NETWORK':'REQUEST';
-      throw new ModelProviderUnavailableError(`GEMINI_REVIEW_PROVIDER_UNAVAILABLE: ${reason}${httpStatus?` (HTTP ${httpStatus})`:''}; verify ADC, project, model access and quota`,httpStatus);
+      throw new ModelProviderUnavailableError(`GEMINI_REVIEW_PROVIDER_UNAVAILABLE: ${reason}${httpStatus?` (HTTP ${httpStatus})`:''}; verify ADC, project, model access and quota`,httpStatus,error instanceof ModelProviderUnavailableError?error.retryAfterMs:['TIMEOUT','NETWORK'].includes(reason)?30_000:undefined);
     }
   };
   return model;

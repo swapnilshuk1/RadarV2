@@ -7,10 +7,11 @@ import {setupLineageTestFixture} from '../persistence/lineage_fixture';
 import {durableDossierModel} from '../../src/lib/intelligence/staged/DurableDossierModel';
 import {dossier as fixtureDossier,stagedEvaluation} from '../fixtures/staged-rich-dossier';
 import {compositionSchema} from '../../src/dossier/contracts';
+import {propose} from '../../src/dossier/evidence';
 import {assertFactualReviewProvenance} from '../../src/dossier/factual-review-integrity';
 import { bindStagedEditorial,composeStagedDossier,reviewStagedEditorialAction,reviewStagedEditorialFacts } from '../../src/dossier/staged-composition';
 import { runStagedFrozenDecisionDetailed } from '../../src/dossier/staged-decision';
-import { ModelProviderUnavailableError } from '../../src/lib/model/provider-unavailable';
+import { ModelProviderUnavailableError,providerRetryAfterMs } from '../../src/lib/model/provider-unavailable';
 import { createGeminiFactualReviewModel } from '../../src/lib/model/gemini-factual-review-model';
 import type { StagedResearchInput } from '../../src/dossier/staged-role';
 import { parseCanonicalStagedDecisionResult } from '../../src/dossier/staged-decision-integrity';
@@ -25,6 +26,61 @@ const decision={verdict:'PASS',screeningViability:'PLAUSIBLE',decisionHinges:[{r
 const staged=parseCanonicalStagedDecisionResult({decision,trace:{decision,role:{requirements:[{id:'REQ-001',requirement:'Growth capability',strength:'PREFERRED',roleImportance:'CORE_CAPABILITY',roleClaimIds:['JD-1-1'],reasoning:'Delivery'}],operatingConditions:[],authorityShape:'Function',roleSideConditions:[]},requirements:[{id:'REQ-001',requirement:'Growth capability',strength:'PREFERRED',roleImportance:'CORE_CAPABILITY',roleClaimIds:['JD-1-1'],reasoning:'Delivery',screeningGate:false,screeningFunction:'ROLE_PERFORMANCE_REQUIREMENT',screeningGateBasis:'NONE',screeningSupportQuoteIds:['REQ-001:Q1'],screeningReasoning:'Performance',status:'DIRECT',candidateClaimIds:['CANDIDATE-1-1'],unsupportedAspects:[],mappingReasoning:'Direct growth precedent'}],resolutions:[{field:'authority',status:'OPEN',value:null,claimIds:[],methods:['ask'],question:'What authority?',consequence:'Changes career value.'}],eligibleScreeningDrivers:[],screeningConstraint:'NONE'}});
 
 describe('staged dossier editorial boundary',()=>{
+  it('carries earlier repair constraints forward instead of oscillating between defects',async()=>{
+    let calls=0;
+    const model={id:'cumulative-repair',version:'1',async generate(_instruction:string,input:any){
+      calls++;if(calls===3){expect(input.repair).toContain('unsupported premise');expect(input.repair).toContain('missing qualification');}
+      return {attempt:calls};
+    }};
+    expect(await propose(model,'memo',{},(value:any)=>{if(value.attempt===1)throw new Error('unsupported premise');if(value.attempt===2)throw new Error('missing qualification');return value;})).toEqual({attempt:3});
+  });
+  it('uses short transient backoff and preserves explicit provider retry metadata',async()=>{
+    expect(new ModelProviderUnavailableError('Throttle',429).retryAfterMs).toBe(30_000);
+    expect(new ModelProviderUnavailableError('Capacity',503).retryAfterMs).toBe(30_000);
+    expect(new ModelProviderUnavailableError('Auth',403).retryAfterMs).toBe(900_000);
+    const now=Date.parse('2026-09-19T00:00:00Z');
+    expect(await providerRetryAfterMs(new Response('',{headers:{'Retry-After':'Sat, 19 Sep 2026 00:02:00 GMT'}}),now)).toBe(120_000);
+    expect(await providerRetryAfterMs(new Response('not JSON',{headers:{'Retry-After':'invalid'}}),now)).toBeUndefined();
+    expect(await providerRetryAfterMs(new Response(JSON.stringify({error:{details:[{'@type':'type.googleapis.com/google.rpc.RetryInfo',retryDelay:'45.5s'}]}})))).toBe(45_500);
+  });
+  it('passes a Gemini quota hint through the reviewer boundary without repeated calls or leaking the body',async()=>{
+    let calls=0;
+    const reviewer=createGeminiFactualReviewModel({projectId:'test-project',token:async()=>'secret',request:async()=>{calls++;return new Response('private provider body',{status:429,headers:{'Retry-After':'90'}});}});
+    const error=await reviewer.generate('review',{}).catch(error=>error);
+    expect(error).toBeInstanceOf(ModelProviderUnavailableError);
+    expect(error.httpStatus).toBe(429);expect(error.retryAfterMs).toBe(90_000);expect(calls).toBe(1);
+    expect(error.message).not.toContain('private provider body');
+  });
+  it.each(['TimeoutError','network'])('uses a short durable delay for %s without a status code',async mode=>{
+    const reviewer=createGeminiFactualReviewModel({projectId:'test-project',token:async()=>'secret',request:async()=>{throw mode==='TimeoutError'?new DOMException('provider timeout','TimeoutError'):new TypeError('fetch failed');}});
+    const error=await reviewer.generate('review',{}).catch(error=>error);
+    expect(error).toBeInstanceOf(ModelProviderUnavailableError);
+    expect(error.retryAfterMs).toBe(30_000);
+  });
+  it('does not trap a resumed composition in rejected cached proposals',async()=>{
+    const db=new SqliteAdapter(new Database(':memory:'));await setupLineageTestFixture(db);
+    let valid=false,calls=0;
+    const model=durableDossierModel(db,'proposal-retry',{id:'repairable-proposal',version:'1',async generate(){calls++;return {valid};}});
+    const validate=(value:any)=>{if(!value.valid)throw new Error('Invalid proposal');return value;};
+    await expect(propose(model,'compose',{},validate)).rejects.toThrow('Invalid proposal');
+    expect((await db.one<{n:number}>('SELECT COUNT(*) n FROM dossier_model_checkpoints'))!.n).toBeGreaterThan(0);
+    const beforeResume=calls;
+    valid=true;expect(await propose(model,'compose',{},validate)).toEqual({valid:true});
+    expect(calls).toBe(beforeResume+1);
+  });
+  it('never composes from the last rejected plan and includes it in bounded repairs',async()=>{
+    const proposal={...editorial,narrativePlan:{...editorial.narrativePlan,memoPoints:fixtureDossier().narrativePlan.memoPoints!.filter(p=>p.section==='candidateFit')}};
+    let calls=0;const stages:string[]=[];
+    const model={id:'invalid-plan',version:'1',discardResponse:vi.fn(),async generate(_instruction:string,input:any){
+      if(calls++)expect(input.previous).toEqual(proposal);
+      return proposal;
+    }};
+    const reviewer={id:'unused-review',version:'1',generate:vi.fn()};
+    await expect(composeStagedDossier(frozen,stagedEvaluation,model,reviewer,s=>stages.push(s))).rejects.toThrow('STAGED_EDITORIAL_FAILED: MEMO_PLAN_DECISION_COVERAGE');
+    expect(calls).toBe(3);expect(stages.some(s=>s.startsWith('Composing'))).toBe(false);
+    expect(model.discardResponse).toHaveBeenCalledExactlyOnceWith(proposal);
+    expect(reviewer.generate).not.toHaveBeenCalled();
+  });
   it('pauses on reviewer infrastructure failure without exposing provider bodies',async()=>{
     const reviewer=createGeminiFactualReviewModel({projectId:'test-project',token:async()=>'private-token',request:async(_url,options)=>{expect(JSON.parse(options!.body as string).generationConfig.thinkingConfig).toEqual({thinkingLevel:'MEDIUM'});return new Response('sensitive provider response',{status:403});}});
     expect(reviewer.version).toBe('gemini-3.8-flash');
@@ -109,19 +165,19 @@ describe('staged dossier editorial boundary',()=>{
       return {[key]:seed[key]};
     }};
     const reviewer={id:'restart-reviewer',version:'1',async generate(_instruction:string,request:any){
-      reviews++;if(fail&&reviews===10)throw new ModelProviderUnavailableError('HTTP 429',429);
-      return {reviews:request.factualReview.passages.map((p:any)=>({passageId:p.passageId,externalComparison:'NONE',candidateAbsence:'NONE',factualAssessment:'Supported by fixture.',supported:true,issue:''}))};
+      reviews++;if(fail&&reviews===4)throw new ModelProviderUnavailableError('HTTP 429',429);
+      return {coveredPointIds:request.memo.assignedPoints.map((p:any)=>p.id),editorialIssues:[],reviews:request.factualReview.passages.map((p:any)=>({passageId:p.passageId,externalComparison:'NONE',candidateAbsence:'NONE',factualAssessment:'Supported by fixture.',supported:true,issue:''}))};
     }};
     await expect(composeStagedDossier(input,stagedEvaluation,durableDossierModel(db,'scope',model),durableDossierModel(db,'scope',reviewer))).rejects.toThrow('HTTP 429');
     const callsBefore=generated;
-    const saved=await db.one<{n:number}>('SELECT COUNT(*) n FROM dossier_model_checkpoints');expect(saved!.n).toBeGreaterThan(15);
+    const saved=await db.one<{n:number}>('SELECT COUNT(*) n FROM dossier_model_checkpoints');expect(saved!.n).toBeGreaterThan(7);
     fail=false;
     // Clear process-local proposal caches to simulate a restart; DB remains.
     vi.resetModules();const resumed=await import('../../src/dossier/staged-composition');
     const result=await resumed.composeStagedDossier(input,stagedEvaluation,durableDossierModel(db,'scope',model),durableDossierModel(db,'scope',reviewer));
     assertFactualReviewProvenance(result);
-    expect(reviews).toBe(12); // nine accepted + failed call + two remaining nonempty sections
-    expect(generated-callsBefore).toBeLessThanOrEqual(2);
+    expect(reviews).toBe(7); // six sections plus the interrupted request
+    expect(generated-callsBefore).toBeLessThanOrEqual(3);
     const request={a:1};const provider=vi.fn(async()=>({ok:true}));
     await durableDossierModel(db,'different-scope',{id:'x',version:'1',generate:provider}).generate('instruction',request);
     await durableDossierModel(db,'different-scope',{id:'x',version:'2',generate:provider}).generate('instruction',request);

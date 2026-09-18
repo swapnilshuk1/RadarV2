@@ -268,7 +268,7 @@ export class EvaluationWorker {
         try {
           const evaluated = await new ProductionStagedEvaluationService(this.db, createBedrockGlmResearchModel()).evaluate({ ...identity, context });
           const serving=await this.db.one<{context_fingerprint:string}>(`SELECT context_fingerprint FROM active_evaluation_contexts WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND context_fingerprint=?`,[job.tenantId,job.personId,job.searchPlanId,job.evaluationContextFingerprint]);
-          if(serving){
+          if(serving&&evaluated.decision!=='PASS'){
             await new ProductionStagedDossierService(this.db,createBedrockGlmResearchModel()).compose(identity);
             await new StagedServingPublisher(this.db).publish(identity);
           }
@@ -506,8 +506,8 @@ export class EvaluationWorker {
       if (err instanceof ModelProviderUnavailableError) {
         // Release only our lease. Keep the requirement READY and do not consume
         // job attempts or classify provider access as a candidate/source failure.
-        await this.db.execute(`UPDATE evaluation_jobs SET status=?,last_error=?,next_attempt_at=datetime('now','+15 minutes'),locked_by=NULL,lease_token=NULL,locked_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND locked_by=? AND lease_token=? AND status=?`,
-          [job.queueKind==='staged'?'staged_pending':'pending',err.message,job.id,this.workerId,job.leaseToken,job.queueKind==='staged'?'staged_processing':'processing']);
+        await this.db.execute(`UPDATE evaluation_jobs SET status=?,last_error=?,next_attempt_at=datetime('now','+' || ? || ' seconds'),locked_by=NULL,lease_token=NULL,locked_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND locked_by=? AND lease_token=? AND status=?`,
+          [job.queueKind==='staged'?'staged_pending':'pending',err.message,Math.ceil(err.retryAfterMs/1000),job.id,this.workerId,job.leaseToken,job.queueKind==='staged'?'staged_processing':'processing']);
         throw err;
       }
       const errorMsg = err?.message || String(err);

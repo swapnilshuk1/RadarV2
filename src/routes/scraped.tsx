@@ -9,7 +9,7 @@ export const Route=createFileRoute('/scraped')({
   head:()=>({meta:[{title:'Scraped jobs - RADAR'},{name:'description',content:'Every captured role and its current analysis status.'}]}),
   component:ScrapedFeed,
 });
-const labels:Record<AcquisitionFeedRow['state'],string>={READY:'Dossier ready',PREPARING:'Preparing dossier',PROCESSING:'Analysis in progress',WAITING:'Awaiting processing',NEEDS_ATTENTION:'Needs attention',OUTSIDE_SEARCH:'Outside your search'};
+const labels:Record<AcquisitionFeedRow['state'],string>={NOT_PURSUED:'Evaluated ? not shortlisted',READY:'Dossier ready',PREPARING:'Preparing dossier',PROCESSING:'Analysis in progress',WAITING:'Awaiting processing',NEEDS_ATTENTION:'Needs attention',OUTSIDE_SEARCH:'Outside your search'};
 
 function ScrapedFeed(){
   const {rows,counts,total,unadmittedCaptures,nextOffset}=Route.useLoaderData();

@@ -95,7 +95,7 @@ provider failure is not a successful no-results search.
 
 ## Versions, recovery and serving
 
-Current contracts are `staged-v8`, `staged-decision-v8`, `dossier-v3.7` and
+Current contracts are `staged-v8`, `staged-decision-v8`, `dossier-v4.0` and
 `editorial-facts-v2`. Existing v6/v7 records and historical presentations retain
 their own meaning. Fresh v7 acquisition/new v7 rollout is not an alternative to v8.
 
@@ -112,10 +112,11 @@ validated recovery path, not a forced status update. Exact job/version/pipeline
 matching matters. An idle queue does not prove population coverage.
 
 Readiness checks the eligible, active, acquired search-plan cohort, valid dossiers,
-publications and operational context receipts. It does not inventory pre-ingestion
-blobs or every excluded/out-of-cohort record. Full backfill needs a separate
-population reconciliation. PASS dossiers belong in the complete opportunity
-surface even when they are absent from the shortlist.
+publications and operational context receipts, with valid PASS evaluations counted
+as prepared without a dossier. It does not inventory pre-ingestion blobs or every
+excluded/out-of-cohort record. The captured-opportunities surface distinguishes
+evaluated PASS results from outstanding processing. Historical population backfill
+is outside the current fresh-scrape scope.
 
 ## Runtime boundaries
 
@@ -125,3 +126,24 @@ The live semantic screening lab remains in `src/dossier/screening-semantic-lab.t
 with `scripts/screening-semantic-corpus.ts`. Scraper dependencies, migrations,
 historical data readers and still-called compatibility paths remain. New work uses the current paths above; the source tree contains no alternate
 monolithic research runner.
+
+
+## Executive memo generation
+
+The canonical production presentation is `dossier-v4.0` / `staged-memo-v4.0`.
+The staged decision remains v8: editorial changes never rewrite its immutable trace.
+The composer writes six non-overlapping sections directly. The narrative plan
+assigns evidence-linked points to their primary section; every requirement and
+material decision hinge must be covered. Gemini reviews factual support and
+semantic point coverage, including duplication against earlier sections. Receipts
+bind both exact content and assigned points. Storage rechecks IDs and coverage.
+Word budgets trigger bounded rewrites, never truncation. All source evidence stays
+available in the reference drawer. Template B is the only renderer, with a
+section-bounded sticky rail (normal flow on mobile), bullets and evidence rows.
+
+The shortlist displays screening viability and evidence coverage instead of a
+fabricated fit score. Viability is distinct from career fit and the pursuit verdict.
+For active contexts the durable evaluation worker composes and publishes only
+PURSUE/CONSIDER results. PASS remains a completed evaluation, with `passSkipped`
+reported by readiness; it is not missing dossier work. No automatic context
+activation is introduced.

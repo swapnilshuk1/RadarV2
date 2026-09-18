@@ -29,7 +29,7 @@ Portal scrape -> preserved payload -> canonical opportunity/version
 ```
 
 The current release contracts are `staged-v8`, `staged-decision-v8`,
-`dossier-v3.7` and `editorial-facts-v2`. Publication does not activate a context.
+`dossier-v4.0` and `editorial-facts-v2`. Publication does not activate a context.
 Historical persisted results remain readable; they are never relabelled as a
 new evaluation policy or used as substitute candidate evidence.
 
@@ -42,7 +42,7 @@ new evaluation policy or used as substitute candidate evidence.
 | Role requirements and mapping contracts | `src/dossier/staged-role.ts` |
 | Screening, decision policy and provenance validation | `src/dossier/staged-screening.ts`, `staged-decision.ts`, `staged-decision-contract.ts`, `staged-decision-integrity.ts` |
 | Section composition and independent factual review | `src/dossier/composition.ts`, `staged-composition.ts`, `factual-review-integrity.ts` |
-| Canonical dossier model and both templates | `src/dossier/contracts.ts`, `DossierView.tsx` |
+| Canonical executive memo and Template B | `src/dossier/contracts.ts`, `DossierView.tsx` |
 | Persistence, migrations and serving queries | `src/data/` |
 | Application routes and shared interface | `src/routes/`, `src/components/` |
 

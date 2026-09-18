@@ -11,6 +11,7 @@ export async function stagedDossierHealth(db:DatabaseAdapter,identity:Production
     if(!record||record.evaluationState!=='COMPLETED')return {dossier:false,published:false};
     const staged=parseCanonicalStagedDecisionResult(record.evaluation);
     if(staged.decision.verdict!==record.decision||staged.decision.screeningViability!==record.screeningViability)return {dossier:false,published:false};
+    if(staged.decision.verdict==='PASS')return {dossier:false,published:false,passSkipped:true};
     const fingerprint=createStagedEvaluationFingerprint({evaluationContextFingerprint:record.evaluationContextFingerprint,inputFingerprint:record.inputFingerprint,evaluation:staged});
     const dossier=await new SqliteRichDossierStore(db).get(identity,fingerprint);
     if(!dossier||dossier.sourceInputFingerprint!==record.inputFingerprint||dossier.verdict.verdict!==record.decision||dossier.verdict.screeningViability!==record.screeningViability)return {dossier:false,published:false};

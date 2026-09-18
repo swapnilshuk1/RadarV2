@@ -6,6 +6,17 @@
 
 ---
 
+## Current owner-approved presentation
+
+Template B is the sole production layout. Both benchmarks remain references for
+substantive richness; a second renderer is not required. The current generation
+contract is an executive memo: decision brief, opportunity value, mandate,
+candidate fit, decision conditions and approach, with complete supporting evidence.
+The acceptance standard is equivalent meaning and decision usefulness, not exact
+copy. PURSUE and CONSIDER receive memos; PASS keeps its canonical evaluation and
+is explicitly skipped for composition. This direction supersedes dual-template
+wording in the benchmark descriptions below.
+
 ## 1. The Mission
 
 RADAR exists to turn a scraped executive job opportunity plus candidate evidence into a **rich, impressive, decision-useful executive dossier** at the quality level represented by the two approved benchmark dossier templates supplied by the product owner:
@@ -119,7 +130,7 @@ Canonical Dossier Model
         ↓
 Narrative Planning
         ↓
-Template A / Template B rendering
+Template B executive memo rendering
 ```
 
 The central engineering question is not:
@@ -305,59 +316,37 @@ Build/hire/mentor language, function remit, company scale, related hiring and or
 
 ---
 
-## 8. Canonical Dossier Intelligence Must Support Both Templates
+## 8. Canonical Intelligence Feeds One Executive Memo
 
-Build one rich canonical dossier model. Template A and Template B are editorial projections of the same intelligence.
+Build one rich canonical intelligence model and one Template B executive memo. Preserve the benchmarks' unique information without generating duplicate sections or a second layout.
 
-At minimum the canonical model must be able to represent:
+The current presentation contract groups the substantive intelligence as follows:
 
 ```text
-opportunity
-verdict
+opportunity + candidate
+verdict + canonicalDecisionTrace
 executiveThesis
-roleInterest
-strategicValue
-recommendation
-  identityAlignment
-  capabilityCoverage
-  careerCapital
-fit
-  direct
-  adjacent
-  transferable
-  gaps
+opportunityValue
+  mandate appeal + identity alignment + career capital
 mandate
-  immediate
-  nearTerm
-  mediumTerm
-  outcomes
-successRequirements
-candidatePositioning
-  precedents
-  differentiators
-  evidence
-openQuestions
-watchPoints
-decisionHinges
-  strongerPursueIf
-  weakerIf
-  passIf
-conversationStrategy
-  approach
-  opening
-  questions
-  positioning
-  screening
-  interview
-  resumeNarrative
-  linkedinStrategy
+  priorities + source-backed milestones + outcomes
+candidateFit
+  mapped requirement IDs + evidence-bounded assessments
+  distinct candidate precedents where useful
+decisionConditions
+  question + consequence + requirement/field references
+approach
+  nextSteps + opening
+  resumeNarrative + linkedinStrategy + screening + interview
+resolutions
+  reporting line + team + scope + company context
+candidateConflicts
 evidence
-  roleClaims
-  candidateClaims
-  contextualClaims
-  relationalClaims
-  lineage
+  roleClaims + candidateClaims + contextualClaims + relationalClaims + lineage
 narrativePlan
+  variation layer + points assigned to one primary section
+generation
+  model identity + factual/coverage review receipts
 ```
 
 A field may be explicit, inferred, or unresolved-as-hinge. A required dossier section must not disappear merely because one source is incomplete.
@@ -426,11 +415,11 @@ The product should feel like a high-quality executive adviser, not an audit repo
 
 ---
 
-## 11. The Two Benchmark Template Contracts
+## 11. Benchmark Content and the Production Memo
 
 ### Template A — DaMENSCH-style dossier
 
-Must be capable of rendering:
+Retain these substantive capabilities where useful, grouped into the memo:
 
 - headline / opportunity identity
 - “Worth pursuing” executive brief
@@ -454,7 +443,7 @@ Must be capable of rendering:
 
 ### Template B — Schnell-style memorandum
 
-Must be capable of rendering:
+Retain these substantive capabilities where useful, grouped into the memo:
 
 - verdict / RADAR score or equivalent decision signal
 - opportunity headline and context
@@ -476,7 +465,7 @@ Must be capable of rendering:
 - interview strategy
 - evidence/methodology/claim lineage
 
-The canonical intelligence model must support **all substantive fields in both**.
+The production memo groups this content into the call, opportunity value, mandate, candidate fit, decision conditions, approach and an expandable evidence reference. Facts have one primary home; brief thesis previews and distinct actions may refer back to them. The evidence model retains detail without requiring repeated prose.
 
 ---
 
@@ -510,9 +499,7 @@ complete intelligence
      ↓
 complete canonical DossierModel
      ↓
-Template A
-     +
-Template B
+Template B executive memo
 ```
 
 Improve the full vertical slice before broadening the system.

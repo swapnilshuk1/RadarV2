@@ -1,66 +1,61 @@
-# Backfill, reviewed dossiers and context activation
+# First scrape and executive memo readiness
 
-Use the [current integration reference](../PRODUCTION_INTEGRATION.md) for
-script flags and the [architecture](../ARCHITECTURE.md) for identities. It describes the current v8/v3.7 workflow.
+Use the canonical `Radar V2` checkout. The production path is staged-v8 evaluation
+followed by dossier-v4.0 memo composition. Template B is the sole layout. Historical
+population backfill is outside the current scope; do not run population recovery
+or `complete-staged-rollout.ts` to prepare the first fresh scrape.
 
-## 1. Fix the scope and target
+## Local proof
 
-Record the exact release SHA, database target, tenant/person, search-plan snapshot,
-profile/source bindings, current inactive v8 context and expected active pointer.
-Set a population cutoff and account for arrivals after it separately. First prove
-the process against an explicitly selected local database copy. Production writes
-and activation require their approved execution scopes.
+Run typecheck, the production build and the certification manifest at the exact
+release commit. `scripts/dossier/validate-memo.ts` accepts an explicit local SQLite
+source, a distinct `.radar` output directory and up to three selected job IDs.
+It opens the source read-only, copies it, probes Bedrock and Gemini once, composes
+through ProductionStagedDossierService, publishes only to the private copy and
+checks exact serving DTOs. It retains durable checkpoints and refuses PASS jobs.
+A resume uses the same output directory; do not discard successful checkpoints.
 
-Do not change code, move its checkout or change model settings under a running
-backfill. Use its pinned release until the batch finishes. Credentials are runtime
-configuration, not files to commit or automatically copy to production.
+Inspect actual memos for the WPP, JioStar and Artificilux examples. Assess source
+support, distinct arguments, material coverage, readability and responsive layout;
+never require identical wording. Open evidence controls and preparation tabs.
+Check the sticky section rails at the middle and end of a desktop section and
+normal document flow on mobile. Retain the generated JSON and render evidence.
 
-## 2. Reconcile the complete population
+## Fresh-scrape preparation
 
-Trace preserved payloads through ingestion, canonical versions, exact enrichment
-dependencies, evaluations, valid dossiers and publications. Include records that
-never reached canonical ingestion. Count distinct jobs and opportunity versions
-separately. Account for completed work, recoverable backlog, blocked work,
-duplicates/superseded records and individually justified exclusions.
+Confirm the intended tenant/person, current candidate profile/source binding,
+search-plan criteria and canonical opportunity identity. Use the existing scraper
+plan preview; do not change search criteria as part of memo preparation.
+Verify Tavily configuration and company identity mappings, Bedrock credentials,
+Gemini ADC/project access, migration 051, blob persistence and worker configuration.
+Never copy credentials into Git or log their contents.
 
-`stagedRolloutReadiness` considers only CANDIDATE search-plan associations with
-ACTIVE, ACQUIRED versions. Its `pending` count covers pending/processing staged
-jobs; it does not establish the absence of waiting/dead-letter or stranded blob
-work. Its exclusion classification also requires operator review: an
-INPUT_UNAVAILABLE row alone is not evidence of a legitimate business exclusion.
+The scrape must target an approved active staged-v8 context. The current legacy
+active pointer is not automatically upgraded by this release. Prepare its intended
+replacement and rollback pointer explicitly; production deployment and activation
+remain separately authorized operations after localhost proof. Do not activate a
+context just to make a preview work.
 
-## 3. Prove and process a bounded slice
+The existing acquisition/enrichment/scheduler path feeds EvaluationWorker. For an
+active staged context, PURSUE/CONSIDER results proceed to durable memo composition
+and publication; PASS completes without a dossier. Provider failures preserve
+checkpoints and remain visible as pending/attention work, not fabricated results.
+Rate limits and server-capacity failures use a 30-second durable delay unless the
+provider supplies a retry hint; Google RetryInfo and Retry-After are preserved.
+Authentication/configuration failures retain a longer pause. The worker and daemon
+use the same delay, without spending semantic job attempts on provider failures.
 
-1. Verify schema migrations, exact source provenance and operational context/model
-   providers. Make a small capability probe after credential/project changes.
-2. Recover dependencies through the existing recovery/enrichment path, matching
-   canonical job, opportunity version and required pipeline. Never force waiting
-   rows into pending or blanket-retry terminal failures.
-3. Enqueue missing eligible work through the scheduler and process bounded batches
-   under the intended context. Preserve completed evaluations and user decisions.
-4. Compose current v3.7 dossiers using durable checkpoints and independent factual
-   review. Validate full evaluation fingerprints and canonical decision traces.
-5. Publish valid dossiers. Inspect representative real outcomes through serving
-   DTOs and both DossierView templates; do not force particular verdicts.
+Use `/scraped` to account for every captured opportunity: waiting, processing,
+preparing, ready, evaluated-not-shortlisted, outside-search or needs-attention.
+The shortlist contains actionable evaluated opportunities and shows semantic
+screening viability and evidence coverage, not an invented numerical score.
+Reconcile unadmitted captures, waiting enrichment and dead letters explicitly.
+Do not force dependency failures through or let PASS look permanently preparing.
 
-Quota/authentication failures remain unresolved work. Preserve checkpoints and
-stop repeated failing calls. Inspect invalid stored dossiers separately from
-missing dossiers: immutable storage does not promise overwrite-on-retry behavior.
+## Release boundary
 
-## 4. Establish completion and activate separately
-
-For every eligible in-scope version, establish completed enrichment, a completed
-evaluation, a valid reviewed dossier and its matching publication. Reconcile the
-entire inventory to zero unexplained gaps. Require readiness with `unprepared=0`
-and `pending=0`, plus explicit accounting for waiting, dead-letter and excluded
-records. Neither an idle worker nor a successful script exit proves completion.
-
-Before activation, verify the actual deployed SHA/architecture, provider settings,
-active pointer, coverage and representative rendered dossiers. A Git commit or
-CI artifact is not proof of the running deployment. Switch only the approved
-context, guarded by the expected previous pointer. Preserve that pointer/release
-as the rollback target; retain historical evaluations and presentations.
-
-PASS results need not appear on the shortlist. Verify them through the complete
-opportunities surface and direct dossier retrieval. Keep separate reports for
-local proof, production preparation, production execution and activation.
+A clean local render and CI artifact are prerequisites, not evidence of production
+activation. Record the exact SHA, deployed artifact, schema and context before an
+approved launch. After the first scrape, compare captured/admitted/enriched/
+evaluated/PASS/memo-published counts and inspect representative served memos.
+No historical backfill is required by the memo code path.

@@ -5,7 +5,7 @@ import { getDatabaseAdapter } from '@/data/database';
 
 export interface AcquisitionFeedRow {
   id:string;version:string;jobHash:string;role:string;company:string;location:string;source:string;
-  state:'READY'|'PREPARING'|'PROCESSING'|'WAITING'|'NEEDS_ATTENTION'|'OUTSIDE_SEARCH';decision:string|null;
+  state:'NOT_PURSUED'|'READY'|'PREPARING'|'PROCESSING'|'WAITING'|'NEEDS_ATTENTION'|'OUTSIDE_SEARCH';decision:string|null;
 }
 export const getAcquisitionFeedFn=createServerFn({method:'GET'})
   .validator((input?:{offset?:number})=>({offset:Math.max(0,Math.trunc(input?.offset||0))}))

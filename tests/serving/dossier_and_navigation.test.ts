@@ -528,7 +528,7 @@ describe("Shortlist canonical dossier presentation contract", () => {
     expect(inlineBriefSource).toContain("dossier?.dossierPresentation");
     expect(inlineBriefSource).toContain("Detailed briefing not materialized for this evaluation.");
     expect(inlineBriefSource).toContain("o.engineRecommendation?.engineVerdict");
-    expect(inlineBriefSource).toContain("o.engineRecommendation?.qualityScore");
+    expect(inlineBriefSource).toContain("o.engineRecommendation?.screeningViability");
     expect(inlineBriefSource).toContain("o.effectiveDecision");
     expect(inlineBriefSource).toContain("o.userDecision?.userAction");
   });

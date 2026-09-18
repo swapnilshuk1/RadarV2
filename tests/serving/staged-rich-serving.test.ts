@@ -41,6 +41,16 @@ describe('rich staged serving activation',()=>{
     await db.execute(`INSERT INTO search_plan_candidates(tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,attention_decision) VALUES('tenant_A','person_A','plan_A','job','version','CANDIDATE')`);
     await new SqliteStagedEvaluationStore(db).save({...identity,jobHash:'job',policyVersion:'staged-v6',ontologyVersion:'v1',ontologyFingerprint:'hash_ontology',inputFingerprint:'input',sourceFingerprints:['jd'],modelId:'test',modelVersion:'test',contractVersion:'staged-decision-v6',evaluationState:'COMPLETED',decision:'PURSUE',screeningViability:'PLAUSIBLE',evaluation:stagedEvaluation,evaluatedAt:'2026-01-01'});
   });
+  it('leaves PASS evaluated without selecting or generating a dossier',async()=>{
+    await db.execute("UPDATE opportunity_versions SET acquisition_status='ACQUIRED' WHERE id='version'");
+    const passed=structuredClone(stagedEvaluation);passed.decision.verdict='PASS';passed.trace.decision.verdict='PASS';
+    await db.execute("UPDATE staged_evaluations SET decision='PASS',evaluation_json=? WHERE canonical_job_id='job'",[JSON.stringify(passed)]);
+    expect(await selectStagedDossierWork(db,{context:'staged-context',limit:10})).toEqual([]);
+    const readiness=await stagedRolloutReadiness(db,{tenantId:'tenant_A',personId:'person_A',searchPlanId:'plan_A',contextFingerprint:'staged-context'});
+    expect(readiness).toMatchObject({prepared:1,passSkipped:1,unprepared:0});
+    expect((await readAcquisitionFeed(db,identity,{contextFingerprint:'staged-context',searchPlanId:'plan_A'})).rows[0].state).toBe('NOT_PURSUED');
+    expect(await db.one('SELECT COUNT(*) n FROM materialized_dossier_presentations')).toEqual({n:0});
+  });
   it('requires an exact-trace dossier and keeps projection separate from serving activation',async()=>{
     const publisher=new StagedServingPublisher(db);
     await expect(publisher.publish(identity)).rejects.toThrow('SERVING_REQUIRES_MATCHING_DOSSIER');
@@ -82,7 +92,7 @@ describe('rich staged serving activation',()=>{
     expect(await selectStagedDossierWork(db,{context:'staged-context',limit:10})).toHaveLength(1);
     expect((await stagedRolloutReadiness(db,{tenantId:'tenant_A',personId:'person_A',searchPlanId:'plan_A',contextFingerprint:'staged-context'})).ready).toBe(false);
   });
-  it('preserves an already published historical dossier when the current write version advances',async()=>{
+  it('does not present a previous layout as the current memo',async()=>{
     const store=new SqliteRichDossierStore(db);await store.save(identity,evaluationFingerprint,dossier());
     await new StagedServingPublisher(db).publish(identity);
     await db.execute("UPDATE materialized_dossier_presentations SET presentation_version='dossier-v3.5'");
@@ -90,7 +100,7 @@ describe('rich staged serving activation',()=>{
     await db.execute("UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'");
     const {scope}=await resolveServingScope('person_A','tenant_A',db);
     expect(await store.get(identity,evaluationFingerprint)).toBeNull();
-    expect((await new SqliteOpportunityQueries(db).getDossier(scope,'source-job'))?.evaluationState).toBe('EVALUATED');
+    expect((await new SqliteOpportunityQueries(db).getDossier(scope,'source-job'))?.evaluationState).not.toBe('EVALUATED');
     // Historical presentation cannot silently qualify as current rollout coverage.
     expect(await selectStagedDossierWork(db,{context:'staged-context',limit:10})).toHaveLength(1);
   });
@@ -110,7 +120,7 @@ describe('rich staged serving activation',()=>{
     await new SqliteRichDossierStore(db).save(identity,evaluationFingerprint,dossier(wrongTrace));
     await expect(new StagedServingPublisher(db).publish(identity)).rejects.toThrow('DOSSIER_DECISION_TRACE_MISMATCH');
   });
-  it('composes, persists and serves canonical intelligence into both interactive DossierView templates',async()=>{
+  it('composes, persists and serves canonical intelligence into the single interactive executive memo',async()=>{
     const template=dossier();
     const frozen:StagedResearchInput={opportunity:template.opportunity,candidate:template.candidate,sources:template.evidence.lineage,evidence:template.evidence.roleClaims,candidateSourceRefs:[],candidateConflicts:[],acquisition:[],validEvidenceClaimIds:['JD-1-1'],fields:[],fingerprint:'input'};
     const model={id:'local-scripted-composer',version:'1',async generate(instruction:string,input:unknown){
@@ -120,7 +130,7 @@ describe('rich staged serving activation',()=>{
       if(section)return {[section]:template[section as keyof Dossier]};
       return {rationale:template.verdict.rationale,narrativePlan:template.narrativePlan};
     }};
-    const reviewer={id:'independent-reviewer',version:'1',async generate(_instruction:string,input:any){return {reviews:input.factualReview.passages.map((p:any)=>({passageId:p.passageId,externalComparison:'NONE',candidateAbsence:'NONE',factualAssessment:'Fixture evidence supports the passage.',supported:true,issue:''}))};}};
+    const reviewer={id:'independent-reviewer',version:'1',async generate(_instruction:string,input:any){return {coveredPointIds:input.memo.assignedPoints.map((p:any)=>p.id),editorialIssues:[],reviews:input.factualReview.passages.map((p:any)=>({passageId:p.passageId,externalComparison:'NONE',candidateAbsence:'NONE',factualAssessment:'Fixture evidence supports the passage.',supported:true,issue:''}))};}};
     const composed=await composeStagedDossier(frozen,stagedEvaluation,model,reviewer);
     expect(composed.generation.factualReviewer).toEqual({model:'independent-reviewer/1',policyVersion:'editorial-facts-v2'});
     await new SqliteRichDossierStore(db).save(identity,evaluationFingerprint,{...composed,sourceInputFingerprint:'input',sourceEvaluationFingerprint:evaluationFingerprint});
@@ -137,13 +147,12 @@ describe('rich staged serving activation',()=>{
     const container=dom.window.document.getElementById('root')!;const root=createRoot(container);
     try{
       await act(async()=>root.render(createElement(DossierView,{dossier:rich})));
-      expect(container.querySelector('.dossier-template-a')).not.toBeNull();
+      expect(container.querySelector('.dossier-template-a')).toBeNull();
       expect(container.textContent).toContain('PURSUE');
       expect(container.textContent).toContain('Assess the growth mandate.');
-      const switcher=Array.from(container.querySelectorAll('button')).find(button=>button.textContent?.startsWith('Template B'))!;
-      await act(async()=>switcher.click());
       expect(container.querySelector('.dossier-template-b')).not.toBeNull();
-      expect(container.textContent).toContain('Executive advisory thesis');
+      expect(container.querySelectorAll('.dossier-rail')).toHaveLength(6);
+      expect(container.querySelectorAll('.dossier-bullets').length).toBeGreaterThan(0);
       const cue=container.querySelector<HTMLButtonElement>('button[aria-label^="Show evidence:"]')!;
       await act(async()=>cue.click());
       expect(container.textContent).toContain('Lead growth.');

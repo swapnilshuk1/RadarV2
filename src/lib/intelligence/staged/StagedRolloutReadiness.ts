@@ -19,7 +19,7 @@ export async function stagedRolloutReadiness(db:DatabaseAdapter,scope:RecoverySc
     FROM search_plan_candidates spc JOIN opportunity_versions ov ON ov.id=spc.opportunity_version AND ov.canonical_job_id=spc.canonical_job_id
     LEFT JOIN staged_evaluations se ON se.tenant_id=spc.tenant_id AND se.person_id=spc.person_id AND se.canonical_job_id=spc.canonical_job_id AND se.opportunity_version=spc.opportunity_version AND se.evaluation_context_fingerprint=?
     WHERE spc.tenant_id=? AND spc.person_id=? AND spc.search_plan_id=? AND spc.attention_decision='CANDIDATE' AND ov.lifecycle_state='ACTIVE' AND ov.acquisition_status='ACQUIRED'`,[scope.contextFingerprint,scope.tenantId,scope.personId,scope.searchPlanId]);
-  let prepared=0,excluded=0;
+  let prepared=0,excluded=0,passSkipped=0;
   for(const row of rows){
     if(row.excluded){excluded++;continue;}
     const identity={tenantId:scope.tenantId,personId:scope.personId,canonicalJobId:row.canonical_job_id,opportunityVersion:row.opportunity_version,evaluationContextFingerprint:scope.contextFingerprint,profileVersion:context?.profile_version||''};
@@ -29,10 +29,11 @@ export async function stagedRolloutReadiness(db:DatabaseAdapter,scope:RecoverySc
       const snapshot=await db.one<{input_json:string}>(`SELECT sf.input_json FROM staged_frozen_inputs sf JOIN staged_evaluations se ON se.tenant_id=sf.tenant_id AND se.person_id=sf.person_id AND se.canonical_job_id=sf.canonical_job_id AND se.opportunity_version=sf.opportunity_version AND se.evaluation_context_fingerprint=sf.evaluation_context_fingerprint AND se.input_fingerprint=sf.input_fingerprint WHERE sf.tenant_id=? AND sf.person_id=? AND sf.canonical_job_id=? AND sf.opportunity_version=? AND sf.evaluation_context_fingerprint=?`,[scope.tenantId,scope.personId,row.canonical_job_id,row.opportunity_version,scope.contextFingerprint]);
       try{operational=validateSnapshot(JSON.parse(snapshot?.input_json||'{}')).acquisition.some((a:{provider:string;status:string})=>a.provider==='context-web-search'&&['RETRIEVED','NO_RESULTS'].includes(a.status))===true;}catch{operational=false;}
     }
-    if(health.dossier&&health.published&&operational)prepared++;
+    if(operational&&health.passSkipped){prepared++;passSkipped++;}
+    else if(health.dossier&&health.published&&operational)prepared++;
   }
   const work=await db.one<{n:number}>(`SELECT COUNT(*) n FROM evaluation_jobs WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND evaluation_context_fingerprint=? AND status IN ('staged_pending','staged_processing')`,[scope.tenantId,scope.personId,scope.searchPlanId,scope.contextFingerprint]);
-  const result={total:rows.length,prepared,excluded,unprepared:rows.length-prepared-excluded,pending:work?.n||0,blockers};
+  const result={total:rows.length,prepared,excluded,passSkipped,unprepared:rows.length-prepared-excluded,pending:work?.n||0,blockers};
   return {...result,ready:!blockers.length&&result.total>0&&prepared>0&&result.unprepared===0&&result.pending===0};
 }
 

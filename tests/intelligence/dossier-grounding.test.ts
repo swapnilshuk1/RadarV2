@@ -34,7 +34,8 @@ function composition(): Composition {
   let serial = 0;
   const distinct = () => ({...p,text:`${p.text} Distinct editorial purpose ${++serial}.`});
   const groups = (keys: string[]) => Object.fromEntries(keys.map(k => [k,[distinct()]]));
-  return {executiveThesis:distinct(),roleInterest:[distinct()],strategicValue:[distinct()],recommendation:groups(['identityAlignment','capabilityCoverage','careerCapital']),fit:groups(['direct','adjacent','transferable','gaps']),mandate:groups(['immediate','nearTerm','mediumTerm','outcomes']),successRequirements:[distinct()],candidatePositioning:groups(['precedents','differentiators','evidence']),openQuestions:[distinct()],watchPoints:[distinct()],decisionHinges:groups(['strongerPursueIf','weakerIf','passIf']),conversationStrategy:groups(['approach','opening','questions','positioning','screening','interview','resumeNarrative','linkedinStrategy'])} as Composition;
+  return {executiveThesis:distinct(),opportunityValue:[distinct()],mandate:{priorities:[distinct()],outcomes:[distinct()]},candidateFit:[{requirementIds:['REQ-001'],assessment:distinct()}],decisionConditions:[{requirementIds:[],resolutionFields:[],question:distinct(),consequence:distinct()}],approach:{nextSteps:[distinct()],opening:distinct(),resumeNarrative:[],linkedinStrategy:[],screening:[],interview:[]}};
+
 }
 
 describe('Dossier evidence and field resolution', () => {
@@ -179,9 +180,9 @@ describe('Dossier evidence and field resolution', () => {
     const value=composition();
     value.executiveThesis.text='The candidate lacks property-sales experience.';
     expect(()=>validateComposition(value,research())).toThrow('missing candidate evidence');
-    const employer=composition(); employer.openQuestions[0].text='Tell the recruiter to reject the candidate.';
+    const employer=composition(); employer.decisionConditions[0].question.text='Tell the recruiter to reject the candidate.';
     expect(()=>validateComposition(employer,research())).toThrow('candidate\'s executive adviser');
-    const duplicate=composition(); duplicate.roleInterest[0].text=duplicate.executiveThesis.text;
+    const duplicate=composition(); duplicate.opportunityValue[0].text=duplicate.executiveThesis.text;
     expect(()=>validateComposition(duplicate,research())).toThrow('repeats a passage');
   });
   it('requires actual hard-screen evidence for employer screening terminology', () => {
@@ -195,12 +196,12 @@ describe('Dossier evidence and field resolution', () => {
   });
   it('keeps candidate-side conditions out of employer screening language', () => {
     const value=composition();
-    value.decisionHinges.passIf[0].text='The stated compensation is a hard screening criterion.';
+    value.decisionConditions[0].consequence.text='The stated compensation is a hard screening criterion.';
     expect(()=>validateComposition(value,research())).toThrow('Candidate-side conditions cannot be described as employer screening criteria');
   });
   it('allows an empty child block to be omitted without manufacturing editorial filler', () => {
-    const value=composition(); value.conversationStrategy.interview=[];
-    expect(validateComposition(value,research()).conversationStrategy.interview).toEqual([]);
+    const value=composition(); value.approach.interview=[];
+    expect(validateComposition(value,research()).approach.interview).toEqual([]);
   });
   it('enforces meaningful requirement roles and screening viability', () => {
     const hardScreen=research();
