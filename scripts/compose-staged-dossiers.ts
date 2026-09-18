@@ -23,7 +23,9 @@ const rows=await db.many<{tenant_id:string;person_id:string;canonical_job_id:str
   SELECT se.tenant_id,se.person_id,se.canonical_job_id,se.opportunity_version,se.profile_version FROM staged_evaluations se
   LEFT JOIN materialized_dossier_presentations p ON p.tenant_id=se.tenant_id AND p.person_id=se.person_id
     AND p.canonical_job_id=se.canonical_job_id AND p.opportunity_version=se.opportunity_version
-    AND p.evaluation_context_fingerprint=se.evaluation_context_fingerprint AND p.presentation_version=? AND p.source_evaluation_fingerprint=se.input_fingerprint
+    AND p.evaluation_context_fingerprint=se.evaluation_context_fingerprint AND p.presentation_version=?
+    AND json_extract(p.presentation_json,'$.sourceInputFingerprint')=se.input_fingerprint
+    AND p.source_evaluation_fingerprint=json_extract(p.presentation_json,'$.sourceEvaluationFingerprint')
   WHERE se.evaluation_context_fingerprint=? AND se.evaluation_state='COMPLETED'
     AND unicode(substr(se.canonical_job_id,1,1)) % ? = ?
     ${job?'AND se.canonical_job_id=?':''}
