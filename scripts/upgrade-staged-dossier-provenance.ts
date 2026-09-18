@@ -4,7 +4,7 @@ import {getDatabaseAdapter} from '../src/data/database';
 import {dossierSchema,type JsonValue} from '../src/dossier/contracts';
 import {bindStagedEditorial} from '../src/dossier/staged-composition';
 import {validateComposition} from '../src/dossier/grounding';
-import {sourceFingerprint} from '../src/dossier/pipeline';
+import {sourceFingerprint} from '../src/dossier/evidence';
 import {assertCanonicalDecisionTrace,createStagedEvaluationFingerprint,parseCanonicalStagedDecisionResult} from '../src/dossier/staged-decision-integrity';
 import {SqliteRichDossierStore,RICH_DOSSIER_VERSION} from '../src/data/sqlite/repositories/SqliteRichDossierStore';
 import {ProductionStagedInputAdapter} from '../src/lib/intelligence/staged/ProductionStagedInputAdapter';

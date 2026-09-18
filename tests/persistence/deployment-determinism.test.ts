@@ -19,6 +19,7 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
   });
 
   it("1. DatabaseAdapter fails fast in production when TURSO_CONNECTION_URL is missing", () => {
+    process.env.RADAR_ENV = "production";
     process.env.NODE_ENV = "production";
     process.env.TURSO_CONNECTION_URL = "";
     process.env.TURSO_DATABASE_URL = "";
@@ -30,6 +31,7 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
   });
 
   it("2. DatabaseAdapter fails fast in production when TURSO_AUTH_TOKEN is missing", () => {
+    process.env.RADAR_ENV = "production";
     process.env.NODE_ENV = "production";
     process.env.TURSO_CONNECTION_URL = "libsql://radar-db.turso.io";
     process.env.TURSO_AUTH_TOKEN = "";
@@ -40,6 +42,7 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
   });
 
   it("3. DatabaseAdapter in production NEVER falls back to better-sqlite3 or radar.sqlite", () => {
+    process.env.RADAR_ENV = "production";
     process.env.NODE_ENV = "production";
     process.env.TURSO_CONNECTION_URL = "";
     process.env.TURSO_DATABASE_URL = "";

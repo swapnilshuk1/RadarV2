@@ -8,7 +8,7 @@ import {ProductionContextProvider} from '../../src/lib/intelligence/staged/Produ
 import {SqliteStagedEvaluationStore} from '../../src/data/sqlite/repositories/SqliteStagedEvaluationStore';
 import {computeContentHash} from '../../src/lib/domain/canonical_identity';
 import {contextFields,type ContextProvider,type EvidenceSource} from '../../src/dossier/contracts';
-import * as pipeline from '../../src/dossier/pipeline';
+import * as pipeline from '../../src/dossier/evidence';
 import {computeEvaluationContextFingerprint} from '../../src/lib/domain/evaluation_fingerprint';
 import {CONTEXT_ACQUISITION_POLICY} from '../../src/lib/intelligence/staged/contextAcquisitionPolicy';
 import {canonicalNormalize,computeDeterministicHash} from '../../src/lib/ontology/compiler/OntologyCompiler';

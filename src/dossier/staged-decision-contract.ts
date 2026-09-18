@@ -5,7 +5,7 @@ import type {
   StagedMappedRequirement,
   StagedRoleAnalysis,
   StagedRoleRequirement,
-} from './staged-research';
+} from './staged-role';
 
 /**
  * The model identifies the selection function; the application owns the

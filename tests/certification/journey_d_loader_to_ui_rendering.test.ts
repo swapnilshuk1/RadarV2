@@ -14,6 +14,7 @@
 import { describe, it, expect } from "vitest";
 import {spawn} from 'node:child_process';
 import {createServer} from 'node:net';
+import {stripVTControlCharacters} from 'node:util';
 import path from 'node:path';
 import {chromium} from 'playwright';
 import {
@@ -37,7 +38,7 @@ it('hydrates the real development app without importing server-only modules into
   let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
   try{
     const deadline=Date.now()+30_000;
-    while(!output.includes(origin)){
+    while(!stripVTControlCharacters(output).includes(origin)){
       if(server.exitCode!==null||Date.now()>deadline)throw new Error(`Browser test server failed to start: ${output.slice(-3000)}`);
       await new Promise(resolve=>setTimeout(resolve,100));
     }

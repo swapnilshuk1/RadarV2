@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BedrockConverseJsonModel } from '../../src/lib/model/bedrock-converse-model';
-import { extractValidatedSourceClaims, EmptySourceEvidenceError } from '../../src/dossier/pipeline';
+import { extractValidatedSourceClaims, EmptySourceEvidenceError } from '../../src/dossier/evidence';
 import { bedrockJsonSchema } from '../../src/dossier/bedrock-schema';
 import { stagedScreeningAdjudicationSchema } from '../../src/dossier/staged-screening';
 import type { ReasoningModel } from '../../src/dossier/contracts';

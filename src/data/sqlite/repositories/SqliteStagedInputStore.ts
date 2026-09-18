@@ -3,7 +3,7 @@ import {z} from 'zod';
 import type {DatabaseAdapter} from '@/data/database';
 import {candidateConflictSchema,claimSchema,sourceSchema} from '@/dossier/contracts';
 import {validateClaims} from '@/dossier/grounding';
-import type {StagedResearchInput} from '@/dossier/staged-research';
+import type {StagedResearchInput} from '@/dossier/staged-role';
 import type {ProductionStagedIdentity} from '@/lib/intelligence/staged/ProductionStagedInputAdapter';
 
 const snapshotSchema=z.object({

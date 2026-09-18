@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseAdapter } from '@/data/database';
 import { claimSchema, sourceSchema, contextFields, scopeFields, type Claim, type ContextProvider, type EvidenceSource, type ReasoningModel } from '@/dossier/contracts';
-import { compareCandidateSources, EmptySourceEvidenceError, extractValidatedSourceClaims, selectRelevantContextSources, sourceFingerprint } from '@/dossier/pipeline';
-import type { StagedResearchInput } from '@/dossier/staged-research';
+import { compareCandidateSources, EmptySourceEvidenceError, extractValidatedSourceClaims, selectRelevantContextSources, sourceFingerprint } from '@/dossier/evidence';
+import type { StagedResearchInput } from '@/dossier/staged-role';
 import { SqliteStagedEvaluationStore } from '@/data/sqlite/repositories/SqliteStagedEvaluationStore';
 import { versionCandidateProjection } from '@/data/sqlite/repositories/profile-projection-version';
 import { EvidenceNormalizer } from '@/lib/intelligence/extraction/EvidenceNormalizer';

@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
@@ -10,12 +11,25 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
   let sqliteDb: Database.Database;
   let adapter: SqliteAdapter;
   let queue: EnrichmentQueue;
+  const legacyQueuePath = path.join(process.cwd(), ".radar", "queue.db");
+  const legacyQueueFingerprint = () => fs.existsSync(legacyQueuePath)
+    ? createHash("sha256").update(fs.readFileSync(legacyQueuePath)).digest("hex")
+    : null;
+  let legacyBefore: string | null;
 
   beforeEach(async () => {
+    legacyBefore = legacyQueueFingerprint();
     sqliteDb = new Database(":memory:");
     adapter = new SqliteAdapter(sqliteDb);
     await runMigrations(adapter);
     queue = new EnrichmentQueue(adapter);
+  });
+
+  afterEach(() => {
+    sqliteDb.close();
+    // An old local artifact may exist. Current queue operations must neither
+    // create it nor change it; deleting historical data is not a test setup step.
+    expect(legacyQueueFingerprint()).toBe(legacyBefore);
   });
 
   it("Invariant 1: Idempotent Enqueue — Duplicate job_hash never creates duplicate work", async () => {
@@ -291,11 +305,8 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
   });
 
   it("Invariant 7: Mechanical Enforcement — No production code opens .radar/queue.db or imports better-sqlite3 in queue", async () => {
-    // 1. Assert .radar/queue.db does not exist
-    const queueDbPath = path.join(process.cwd(), ".radar", "queue.db");
-    expect(fs.existsSync(queueDbPath)).toBe(false);
-
-    // 2. Assert scripts/scraper/persist/queue.ts does NOT import better-sqlite3
+    // The afterEach check verifies no legacy queue file was created or changed.
+    // Assert the queue cannot directly open a local database.
     const queueSource = fs.readFileSync(
       path.join(process.cwd(), "scripts", "scraper", "persist", "queue.ts"),
       "utf-8"

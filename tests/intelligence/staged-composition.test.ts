@@ -12,7 +12,7 @@ import { bindStagedEditorial,composeStagedDossier,reviewStagedEditorialAction,re
 import { runStagedFrozenDecisionDetailed } from '../../src/dossier/staged-decision';
 import { ModelProviderUnavailableError } from '../../src/lib/model/provider-unavailable';
 import { createGeminiFactualReviewModel } from '../../src/lib/model/gemini-factual-review-model';
-import type { StagedResearchInput } from '../../src/dossier/staged-research';
+import type { StagedResearchInput } from '../../src/dossier/staged-role';
 import { parseCanonicalStagedDecisionResult } from '../../src/dossier/staged-decision-integrity';
 
 const frozen:StagedResearchInput={opportunity:{id:'job',company:'Company',title:'Head'},candidate:{name:'Candidate'},

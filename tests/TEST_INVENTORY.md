@@ -89,17 +89,11 @@ RADAR v2 Test Architecture
 | `tests/intelligence/staged-decision.test.ts` | Typed entry-selection adjudication, candidate mapping, gap classification, and decision-boundary invariants for staged intelligence. | **Stage 3** |
 | `tests/intelligence/staged-production-integration.test.ts` | Staged source identity, policy-context isolation, and persistence boundaries. | **Stage 3** |
 | `tests/intelligence/bedrock-converse-model.test.ts` | Bedrock provider request, schema, authentication-redaction, and bounded transport-retry contract. | **Stage 3** |
-| `tests/intelligence/bedrock-claude-model.test.ts` | Bedrock Anthropic Messages adapter request, response, redaction, and transport contract. | Full Suite |
-| `tests/intelligence/bedrock-minimax-model.test.ts` | Bedrock MiniMax adapter request, response, redaction, and transport contract. | Full Suite |
 | `tests/intelligence/bedrock-schema.test.ts` | Standards-compliant Bedrock JSON Schema projection for dossier contracts. | Full Suite |
-| `tests/intelligence/bounded-research-experiment.test.ts` | Isolated staged-reasoning experiment contracts. | Full Suite |
 | `tests/intelligence/dossier-grounding.test.ts` | Evidence-plane, provenance, and grounded dossier validation invariants. | Full Suite |
 | `tests/intelligence/dossier-source-authority.test.ts` | Immutable source snapshot and source-authority boundary. | Full Suite |
 | `tests/intelligence/evidence-extraction-bedrock.test.ts` | Bedrock source-extraction schema and exact-evidence contract. | Full Suite |
-| `tests/intelligence/semantic-seam-benchmark.test.ts` | Fixed semantic seam benchmark validation and scoring contracts. | Full Suite |
-| `tests/intelligence/staged-research.test.ts` | Legacy staged-research compatibility and canonical assembly contracts. | Full Suite |
 | `tests/intelligence/staged-screening-authority.test.ts` | Staged screening authority and exact-JD evidence boundary. | Full Suite |
-| `tests/intelligence/extraction/source-id-harness.test.ts` | Source-ID extraction harness wire adaptation (`const` -> singleton `enum`), spanId strict validation, offset resolution, and candidate/role extraction verification. | Full Suite |
 | `tests/semantic/ontology.test.ts` | Comprehensive executive ontology validation (roles, capabilities, industries, seniority). | Full Suite |
 | `tests/semantic/normalization.test.ts` | Currency, date, location, and seniority string normalization. | Full Suite |
 
@@ -233,7 +227,6 @@ Every test file in the repository is mechanically tracked below:
 | `tests/archive/p2/p2a-principal-risk.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 10 | 43 |
 | `tests/archive/p3/p3a-career-value-protection.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 13 | 16 |
 | `tests/archive/p3/p3a-policy-fix.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 11 | 22 |
-| `tests/archive/phase3-forensic-audit.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 5 | 36 |
 | `tests/archive/stage-3g-cache-isolation.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 5 | 13 |
 | `tests/archive/stage-checkpoints/stage-4f-benchmarks.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 2 | 6 |
 | `tests/archive/stage-phase7-population.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 9 | 16 |
@@ -265,9 +258,6 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/candidate-projection.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 23 |
 | `tests/intelligence/candidate-proof-extractor-v1.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 1 |
 | `tests/intelligence/role-intelligence-extractor-v1.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 1 |
-| `tests/intelligence/extraction/provider-boundary.test.ts` | Semantic Grounding | **KEEP** | Gate 1B targeted | 1 | 8 |
-| `tests/intelligence/extraction/llm-experimental-provider.test.ts` | Semantic Grounding | **KEEP** | Gate 1B Batch 03 targeted | 1 | 19 |
-| `tests/intelligence/extraction/batch04-comparison.test.ts` | Semantic Grounding | **KEEP** | Gate 1B Batch 04 targeted | 1 | 2 |
 | `tests/intelligence/profile-projection-version-compat.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 6 | 6 |
 | `tests/intelligence/canonical-acquisition-integrity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 22 | 63 |
 | `tests/intelligence/canonical-identity.test.ts` | Identity & Candidate Projection | **KEEP** | Operator only (`RADAR_RUN_LIVE_IDENTITY_TESTS=true`) | 7 | 27 |
@@ -286,9 +276,6 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/job-projection-role-work.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 9 | 23 |
 | `tests/intelligence/m10-continuous-pipeline.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 13 | 118 |
 | `tests/intelligence/m42-identity-versioning.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 8 | 16 |
-| `tests/intelligence/m43-attention-gate.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 16 | 29 |
-| `tests/intelligence/m44-dual-write.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 20 |
-| `tests/intelligence/m45-reconciliation.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 13 |
 | `tests/intelligence/m52-enqueuer.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 30 |
 | `tests/intelligence/m53-worker.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 11 | 24 |
 | `tests/intelligence/m8-canonical-serving.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 55 |
@@ -315,16 +302,10 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/staged-context-input.test.ts` | Context / Source Provenance | **KEEP** | Stage 3 | 6 | 6 |
 | `tests/intelligence/staged-production-integration.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 5 | 13 |
 | `tests/intelligence/bedrock-converse-model.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 7 | 7 |
-| `tests/intelligence/bedrock-claude-model.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 19 |
-| `tests/intelligence/bedrock-minimax-model.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 19 |
 | `tests/intelligence/bedrock-schema.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 18 |
-| `tests/intelligence/bounded-research-experiment.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 24 |
 | `tests/intelligence/dossier-grounding.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 16 | 68 |
 | `tests/intelligence/dossier-source-authority.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 21 |
 | `tests/intelligence/evidence-extraction-bedrock.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 4 | 17 |
-| `tests/intelligence/extraction/source-id-harness.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 24 |
-| `tests/intelligence/semantic-seam-benchmark.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 26 |
-| `tests/intelligence/staged-research.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 22 |
 | `tests/intelligence/staged-screening-authority.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 3 | 14 |
 | `tests/intelligence/serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 13 |
 | `tests/intelligence/worker-profile-resolution.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 7 | 24 |
@@ -389,13 +370,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/regression/p2-p2c2-shortlisting-potential.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 11 | 33 |
 | `tests/regression/p2-p2d-engagement-quality.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 12 | 34 |
 | `tests/regression/p2-p2e-compensation-intelligence.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 12 | 32 |
-| `tests/regression/p2-p2f-confidence-intelligence.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 12 | 31 |
 | `tests/regression/p2-p2i-generalization-check.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 10 | 23 |
 | `tests/regression/p3-p3a-shortlisting-calculator.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 16 | 62 |
-| `tests/regression/p7a-freshness-compensation.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 10 | 26 |
-| `tests/regression/p7c-platform-intelligence.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 22 | 39 |
-| `tests/regression/p7d-ux-provenance.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 7 | 17 |
-| `tests/regression/phase4a-contract.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 3 | 19 |
 | `tests/regression/phase4b-serving-engine.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 13 | 57 |
 | `tests/regression/phase4d-optimization.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 5 | 34 |
 | `tests/regression/phase4d-rematerialization.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 8 | 48 |

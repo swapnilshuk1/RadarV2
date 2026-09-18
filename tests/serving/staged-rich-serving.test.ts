@@ -5,7 +5,7 @@ import {createRoot} from 'react-dom/client';
 import {JSDOM} from 'jsdom';
 import {DossierView} from '../../src/dossier/DossierView';
 import {composeStagedDossier} from '../../src/dossier/staged-composition';
-import type {StagedResearchInput} from '../../src/dossier/staged-research';
+import type {StagedResearchInput} from '../../src/dossier/staged-role';
 import { SqliteAdapter } from '../../src/data/database/sqlite';
 import { setupLineageTestFixture,activateLineageTestContext } from '../persistence/lineage_fixture';
 import { SqliteOpportunityQueries } from '../../src/data/sqlite/repositories/SqliteOpportunityQueries';

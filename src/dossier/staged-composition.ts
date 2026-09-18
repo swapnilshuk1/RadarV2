@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { ModelProviderUnavailableError } from '../lib/model/provider-unavailable';
 import { narrativePlanSchema, researchSchema, type FactualReviewReceipt, type JsonValue, type ReasoningModel, type Research } from './contracts';
-import type { StagedResearchInput } from './staged-research';
+import type { StagedResearchInput } from './staged-role';
 import type { StagedDecisionResult } from './staged-decision-contract';
-import { composeDossier } from './pipeline';
+import { composeDossier } from './composition';
 import { bedrockJsonSchema } from './bedrock-schema';
 import { modelSchema } from './model-schema';
 import { allPassages, validateClaims } from './grounding';

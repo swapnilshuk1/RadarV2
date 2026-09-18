@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildDossier, extractValidatedSourceClaims, researchModelInput, sourceFingerprint, type FrozenResearchInput } from '../../src/dossier/pipeline';
+import { extractValidatedSourceClaims, sourceFingerprint } from '../../src/dossier/evidence';
 import { validateComposition, validateResearch, validateClaims, validatePassages } from '../../src/dossier/grounding';
 import { contextFields, scopeFields, type Composition, type EvidenceSource, type Passage, type Research } from '../../src/dossier/contracts';
 import { CompanyWebsiteProvider } from '../../src/dossier/context';
@@ -95,12 +95,6 @@ describe('Dossier evidence and field resolution', () => {
       {...research().claims[1],id:'CANDIDATE-1-1',citations:[{sourceId:'cv',spanId:'s0'}]},
     ]};
     expect(resolveSourceClaims(repeated,[sources[1]]).map(claim=>claim.id)).toEqual(['CANDIDATE-1-1','CANDIDATE-1-2']);
-  });
-  it('projects only the established research contract to the model', () => {
-    const frozen={opportunity:{id:'1',company:'Example',title:'Role'},candidate:{name:'Candidate'},sources,evidence:research().claims,candidateSourceRefs:[{id:'cv',title:'CV'}],candidateConflicts:[],acquisition:[],validEvidenceClaimIds:['jd-role','cv-candidate','relation'],fields:['companySize'],fingerprint:'internal'} as FrozenResearchInput;
-    const payload=researchModelInput(frozen) as Record<string,unknown>;
-    expect(Object.keys(payload).sort()).toEqual(['acquisition','candidate','candidateConflicts','candidateSources','evidence','fields','opportunity','reminders','validEvidenceClaimIds']);
-    expect(payload).not.toHaveProperty('sources'); expect(payload).not.toHaveProperty('fingerprint');
   });
   it('sends the runtime contract to the model with required decision consequences', () => {
     const schema=modelSchema(researchSchema) as {properties:{resolutions:{items:{required:string[]}}}};
@@ -258,32 +252,6 @@ describe('Dossier evidence and field resolution', () => {
   it('retains candidate conflicts as unresolved source differences', () => {
     const value=research(); value.candidateConflicts=[{topic:'Employment dates',sourceIds:['cv','cv2'],question:'Which end date is correct?'}];
     expect(validateResearch(value,[...sources,{...sources[1],id:'cv2',text:'Employment ended in June.'}]).candidateConflicts).toEqual(value.candidateConflicts);
-  });
-  it('calls acquisition, then research/planning, then prose against the same research', async () => {
-    const requests: unknown[]=[];
-    const stages: string[]=[];
-    let proseCall=0;
-    const r=research();
-    r.claims=[
-      {...r.claims[0],id:'JD-1-1'},
-      {...r.claims[1],id:'CANDIDATE-1-1'},
-      {...r.claims[2],derivedFrom:['JD-1-1','CANDIDATE-1-1']},
-    ];
-    r.evaluation.requirements[0].roleClaimIds=['JD-1-1']; r.evaluation.requirements[0].candidateClaimIds=['CANDIDATE-1-1'];
-    const output = await buildDossier({opportunity:{id:'1',company:'Example',title:'Sales Head'},candidate:{name:'Candidate'},sources},[{id:'test',async acquire(){stages.push('acquire');return {sources:[],attempts:[]};}}],{id:'test',version:'test',async generate(_instruction,input){
-      requests.push(input);
-      const request=input as {plane?:string; evidence?:unknown};
-      if(request.plane) return {claims:r.claims.filter(c=>c.plane===request.plane).map(c=>({...c,citations:c.citations.map(ref=>({sourceId:ref.sourceId,spanId:'s0'}))}))};
-      if(request.evidence) return {...r, claims:[r.claims[2]]};
-      return JSON.parse(JSON.stringify(composition()).replaceAll('relation', 'INFERRED-1').replaceAll('Distinct editorial purpose', `Distinct editorial purpose ${++proseCall}`));
-    }},s=>stages.push(s));
-    expect(requests.length).toBeGreaterThan(4);
-    expect((requests[3] as {research:Research}).research.narrativePlan.argument).toContain('domain stretch');
-    expect(output.conversationStrategy.linkedinStrategy).toHaveLength(1);
-    expect(output.evidence.relationalClaims[0].id).toBe('INFERRED-1');
-    expect(output.evidence.relationalClaims[0].id).not.toBe('relation');
-    expect(output.evidence.lineage).toEqual(sources);
-    expect(stages.indexOf('acquire')).toBeLessThan(stages.findIndex(s=>s.includes('Reasoning')));
   });
   it('failed context acquisition remains an acquisition attempt, not a negative company fact',async()=>{
     const provider=new CompanyWebsiteProvider([{url:'https://example.com/',title:'Company'}],async()=>new Response('',{status:503}));

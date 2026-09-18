@@ -16,7 +16,7 @@ import {
   materializeStagedRoleAnalysis,
   type StagedMappedRequirement,
   type StagedResearchInput,
-} from '../../src/dossier/staged-research';
+} from '../../src/dossier/staged-role';
 
 const jdSource: EvidenceSource = {
   id: 'JD-SOURCE',

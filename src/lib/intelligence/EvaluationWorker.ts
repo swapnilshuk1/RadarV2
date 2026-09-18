@@ -20,7 +20,7 @@ import { createBedrockGlmResearchModel } from "@/lib/model/bedrock-glm-research-
 import { ProductionStagedEvaluationService } from "./staged/ProductionStagedEvaluationService";
 import { ProductionStagedDossierService } from './staged/ProductionStagedDossierService';
 import { StagedServingPublisher } from './staged/StagedServingPublisher';
-import { EmptySourceEvidenceError } from '@/dossier/pipeline';
+import { EmptySourceEvidenceError } from '@/dossier/evidence';
 import { DeterministicStagedInputUnavailableError } from "./staged/ProductionStagedInputAdapter";
 import { STAGED_POLICY_VERSION, SqliteStagedEvaluationStore, stagedUnavailableEvaluation } from "@/data/sqlite/repositories/SqliteStagedEvaluationStore";
 import {supportsStagedPolicy} from './staged/stagedPolicy';

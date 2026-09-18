@@ -13,7 +13,7 @@ import {
   type StagedMappedRequirement,
   type StagedResearchInput,
   type StagedRoleRequirement,
-} from './staged-research';
+} from './staged-role';
 import {
   screeningConstraintForDrivers,
   materializeStagedDecisionResolutions,
@@ -28,9 +28,9 @@ import {
   type StagedScreeningDriver,
 } from './staged-decision-contract';
 import {
-  materializeStagedScreeningAdjudication as materializeSourceIdScreeningAdjudication,
-  stagedDecisionScreeningInstruction as stagedDecisionScreeningInstructionV6,
-  stagedScreeningAdjudicationSchema as stagedScreeningAdjudicationSchemaV6,
+  materializeStagedScreeningAdjudication,
+  stagedDecisionScreeningInstruction,
+  stagedScreeningAdjudicationSchema,
   type StagedScreeningQuote,
 } from './staged-screening';
 import {
@@ -256,7 +256,7 @@ export async function runStagedFrozenDecisionDetailed(
       return proposeStage(
         `Adjudicating screening: ${requirement.id}`,
         model,
-        stagedDecisionScreeningInstructionV6,
+        stagedDecisionScreeningInstruction,
         {
           requirement: {
             requirement: requirement.requirement,
@@ -265,8 +265,8 @@ export async function runStagedFrozenDecisionDetailed(
           },
           quoteCatalog,
         },
-        stagedScreeningAdjudicationSchemaV6,
-        value => materializeSourceIdScreeningAdjudication(value, requirement, quoteCatalog),
+        stagedScreeningAdjudicationSchema,
+        value => materializeStagedScreeningAdjudication(value, requirement, quoteCatalog),
         onStage,
       );
     }),
