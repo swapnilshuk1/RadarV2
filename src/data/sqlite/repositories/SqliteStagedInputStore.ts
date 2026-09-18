@@ -10,14 +10,14 @@ const snapshotSchema=z.object({
   opportunity:z.object({id:z.string(),company:z.string(),title:z.string()}),candidate:z.object({name:z.string()}),
   sources:z.array(sourceSchema),evidence:z.array(claimSchema),candidateSourceRefs:z.array(z.object({id:z.string(),title:z.string()})),
   candidateConflicts:z.array(candidateConflictSchema),validEvidenceClaimIds:z.array(z.string()),fields:z.array(z.string()),
-  acquisition:z.array(z.object({provider:z.string(),field:z.string(),operation:z.enum(['retrieve','search']),status:z.enum(['ACQUIRED','UNAVAILABLE']),sourceIds:z.array(z.string()),detail:z.string()})),fingerprint:z.string(),
+  acquisition:z.array(z.object({provider:z.string(),field:z.string(),operation:z.enum(['retrieve','search']),status:z.enum(['ACQUIRED','RETRIEVED','NO_RESULTS','UNAVAILABLE']),sourceIds:z.array(z.string()),detail:z.string()})),fingerprint:z.string(),
 });
 export function contextInputFingerprint(input:Omit<StagedResearchInput,'fingerprint'>):string {
   const {fingerprint:_ignored,...value}=input as StagedResearchInput;
   const canonical=JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.entries(item).sort(([a],[b])=>a.localeCompare(b))):item);
   return createHash('sha256').update(canonical).digest('hex');
 }
-function validateSnapshot(value:unknown):StagedResearchInput {
+export function validateSnapshot(value:unknown):StagedResearchInput {
   const input=snapshotSchema.parse(value);
   if(contextInputFingerprint(input)!==input.fingerprint)throw new Error('STAGED_INPUT_SNAPSHOT_HASH_MISMATCH');
   validateClaims(input.evidence,input.sources);

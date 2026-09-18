@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 /** Model transport is injectable: extraction/narration do not depend on one vendor. */
 export interface JsonModel {
   readonly id: string;
@@ -10,10 +11,14 @@ export class GeminiJsonModel implements JsonModel {
   readonly id = 'vertex-gemini';
   readonly version: string;
   readonly schemaFormat: 'openapi' | 'json-schema';
+  readonly configurationFingerprint: string;
   constructor(private projectId: string, private token: () => Promise<string>, private request: typeof fetch = fetch,
     private options: { model?: string; maxOutputTokens?: number; temperature?: number; timeoutMs?: number; thinkingLevel?: 'LOW'|'MEDIUM'|'HIGH'; location?: 'us-central1'|'global'; schemaFormat?: 'openapi'|'json-schema' } = {}) {
     this.version = options.model ?? 'gemini-2.5-flash';
     this.schemaFormat = options.schemaFormat ?? 'openapi';
+    this.configurationFingerprint=createHash('sha256').update(JSON.stringify({projectId,model:this.version,
+      location:options.location??'us-central1',schemaFormat:this.schemaFormat,maxOutputTokens:options.maxOutputTokens??8192,
+      temperature:options.temperature??0,thinkingLevel:options.thinkingLevel??'MEDIUM'})).digest('hex');
     if (!/^[a-z0-9.-]+$/.test(this.version)) throw new Error('Valid Vertex model identifier required');
     if (!/^[a-z][a-z0-9-]+$/.test(projectId)) throw new Error('Explicit Google Cloud project required');
   }
@@ -28,8 +33,12 @@ export class GeminiJsonModel implements JsonModel {
       });
       // Do not include credential-bearing request details or provider bodies in logs.
       if (response.status === 429 && attempt < 2) {
-        const retryAfter = Number(response.headers.get('retry-after'));
-        await new Promise(resolve => setTimeout(resolve, Number.isFinite(retryAfter) ? retryAfter * 1000 : 1500 * (attempt + 1)));
+        const header=response.headers.get('retry-after');
+        const seconds=header!==null&&header.trim()!==''?Number(header):NaN;
+        const delay=Number.isFinite(seconds)&&seconds>=0?seconds*1000:header?Date.parse(header)-Date.now():NaN;
+        // Long quota windows belong to the durable worker pause, not this request.
+        if(Number.isFinite(delay)&&delay>30_000)throw new Error('Model provider HTTP 429');
+        await new Promise(resolve => setTimeout(resolve, Number.isFinite(delay)&&delay>0?delay:1500*(attempt+1)));
         continue;
       }
       if (!response.ok) throw new Error(`Model provider HTTP ${response.status}`);

@@ -1,3 +1,5 @@
+import {compositionSchema} from '../../src/dossier/contracts';
+import {FACTUAL_REVIEW_POLICY_VERSION,reviewFingerprint,reviewEvidenceFingerprint,reviewPassages} from '../../src/dossier/factual-review-integrity';
 import type {Dossier,JsonValue,Passage} from '../../src/dossier/contracts';
 import {createStagedEvaluationFingerprint,parseCanonicalStagedDecisionResult} from '../../src/dossier/staged-decision-integrity';
 const axis={material:false,candidateClaimIds:[],operatingConditionIds:[],resolutionFields:[]};
@@ -34,7 +36,7 @@ export const evaluationFingerprint=createStagedEvaluationFingerprint({evaluation
 export function dossier(trace:JsonValue=stagedEvaluation.trace as unknown as JsonValue):Dossier {
   const p=(text:string):Passage=>({text,kind:'ADVICE',state:'INFERRED',confidence:0.8,sourcePlane:'JD',evidenceRefs:['JD-1-1'],reasoning:'Derived from the supplied growth mandate.'});
   const list=(text:string)=>[p(text)];
-  return {
+  const result:Dossier={
     opportunity:{id:'job',company:'Company',title:'Head of Growth'},candidate:{name:'Candidate'},
     executiveThesis:p('Assess the growth mandate.'),roleInterest:list('Growth role'),strategicValue:list('Commercial value'),
     recommendation:{identityAlignment:list('Identity'),capabilityCoverage:list('Capability'),careerCapital:list('Career')},
@@ -46,7 +48,12 @@ export function dossier(trace:JsonValue=stagedEvaluation.trace as unknown as Jso
     verdict:{verdict:'PURSUE',screeningViability:'PLAUSIBLE',rationale:'Growth mandate',claimIds:['JD-1-1'],requirements:[{requirement:'Growth',mandatory:true,decisionRole:'CORE_CAPABILITY',status:'NOT_EVIDENCED',roleClaimIds:['JD-1-1'],candidateClaimIds:[],reasoning:'Confirm proof'}]},
     narrativePlan:{roleArchetype:'Growth',mandateShape:'Build',careerMove:'Growth',authorityShape:'Function',fitShape:'Transferable',evidenceShape:'Mandate',decisionTension:'Scope',companyTrajectory:'Unknown',argument:'Clarify authority',emphasis:['Scope'],sectionOrder:['executiveThesis'],claimIds:['JD-1-1']},
     resolutions:stagedEvaluation.trace.resolutions,candidateConflicts:[],evidence:{roleClaims:[{id:'JD-1-1',text:'Lead growth.',state:'EXPLICIT',confidence:1,plane:'JD',citations:[{sourceId:'jd',quote:'Lead growth.'}],derivedFrom:[]}],candidateClaims:[],contextualClaims:[],relationalClaims:[],lineage:[{id:'jd',plane:'JD',title:'JD',locator:'job',text:'Lead growth.',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'}]},
-    generatedAt:'2026-01-01',generation:{model:'test',sourceFingerprint:'sources'},acquisition:[],canonicalDecisionTrace:trace,
+    generatedAt:'2026-01-01',generation:{model:'test',sourceFingerprint:'sources',factualReviewer:{model:'fixture-review/1',policyVersion:FACTUAL_REVIEW_POLICY_VERSION}},acquisition:[],canonicalDecisionTrace:trace,
     sourceInputFingerprint:'input',sourceEvaluationFingerprint:evaluationFingerprint,
   };
+  result.generation.factualReviews=Object.keys(compositionSchema.shape).map(section=>{
+    const value={[section]:result[section as keyof typeof compositionSchema.shape]};
+    return {section,contentFingerprint:reviewFingerprint(value),evidenceFingerprint:reviewEvidenceFingerprint(result.evidence.roleClaims,result.evidence.lineage,result.candidateConflicts),inputFingerprint:'input',reviewer:'fixture-review/1',policyVersion:FACTUAL_REVIEW_POLICY_VERSION,passageIds:reviewPassages(value).map(p=>p.passageId),accepted:true};
+  });
+  return result;
 }

@@ -1135,7 +1135,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       const staged=rawParsed as Record<string,unknown>;
       const dossier=staged.schemaVersion==='staged-serving-v1' && typeof staged.evaluationFingerprint==='string'
         && staged.evaluationFingerprint===row.evaluation_fingerprint && staged.verdict===row.engine_decision
-        ? await new SqliteRichDossierStore(this.db).get(presentationIdentity,staged.evaluationFingerprint) : null;
+        ? await new SqliteRichDossierStore(this.db).getPublished(presentationIdentity,staged.evaluationFingerprint,typeof staged.presentationVersion==='string'?staged.presentationVersion:undefined) : null;
       const readModel=resolveCanonicalServingReadModel({evaluationState:'STAGED_EVALUATED',engineVerdict:row.engine_decision,userDecision:userState?.userAction??null,evaluationContextFingerprint:row.evaluation_context_fingerprint,evaluationFingerprint:row.evaluation_fingerprint,reviewedFingerprint:row.reviewed_fingerprint,qualityScore:row.quality_score});
       if(dossier && dossier.verdict.verdict===row.engine_decision && dossier.verdict.screeningViability===staged.screeningViability && readModel.evaluationState==='EVALUATED') {
         return {

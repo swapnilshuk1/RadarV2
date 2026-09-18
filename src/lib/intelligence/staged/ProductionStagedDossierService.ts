@@ -1,6 +1,8 @@
 import type { DatabaseAdapter } from '@/data/database';
 import { ModelProviderUnavailableError } from '../../model/provider-unavailable';
 import type { ReasoningModel } from '@/dossier/contracts';
+import {DOSSIER_COMPOSITION_RECIPE, FACTUAL_REVIEW_POLICY_VERSION} from '@/dossier/factual-review-integrity';
+import {durableDossierModel, checkpointHash} from './DurableDossierModel';
 import { composeStagedDossier } from '@/dossier/staged-composition';
 import {
   assertCanonicalDecisionTrace,
@@ -31,7 +33,9 @@ export class ProductionStagedDossierService {
     const frozen=await new ProductionStagedInputAdapter(this.db).build(identity,this.model,onStage);
     if(frozen.fingerprint!==evaluation.inputFingerprint)throw new Error('DOSSIER_FROZEN_INPUT_MISMATCH');
     try {
-      const composed=await composeStagedDossier(frozen,staged,this.model,this.factualReviewer??createGeminiFactualReviewModel(),onStage);
+      const reviewer=this.factualReviewer??createGeminiFactualReviewModel();
+      const scope=checkpointHash({tenantId:identity.tenantId,personId:identity.personId,canonicalJobId:identity.canonicalJobId,opportunityVersion:identity.opportunityVersion,evaluationFingerprint,recipe:DOSSIER_COMPOSITION_RECIPE,reviewPolicy:FACTUAL_REVIEW_POLICY_VERSION,composer:[this.model.id,this.model.version,this.model.configurationFingerprint],reviewer:[reviewer.id,reviewer.version,reviewer.configurationFingerprint]});
+      const composed=await composeStagedDossier(frozen,staged,durableDossierModel(this.db,scope,this.model),durableDossierModel(this.db,scope,reviewer),onStage);
       const dossier={
         ...composed,
         sourceEvaluationFingerprint:evaluationFingerprint,
@@ -39,7 +43,10 @@ export class ProductionStagedDossierService {
       };
       assertCanonicalDecisionTrace(dossier,staged.trace);
       await store.save(identity,evaluationFingerprint,dossier);
-      return dossier;
+      const saved=await store.get(identity,evaluationFingerprint);
+      if(!saved)throw new Error('DOSSIER_NOT_PERSISTED');
+      assertCanonicalDecisionTrace(saved,staged.trace);
+      return saved;
     }catch(error){
       if(error instanceof ModelProviderUnavailableError)throw error;
       await store.recordFailure(identity,evaluationFingerprint,error);

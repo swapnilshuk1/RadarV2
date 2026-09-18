@@ -78,6 +78,13 @@ export const compositionSchema = z.object({
   conversationStrategy: z.object({ approach: passages, opening: childPassages, questions: childPassages, positioning: childPassages, screening: childPassages, interview: childPassages, resumeNarrative: childPassages, linkedinStrategy: childPassages }),
 });
 export type Composition = z.infer<typeof compositionSchema>;
+export const factualReviewReceiptSchema = z.object({
+  section: z.string(), contentFingerprint: z.string().length(64),
+  evidenceFingerprint: z.string().length(64), inputFingerprint: z.string().min(1),
+  reviewer: z.string().min(1), policyVersion: z.string().min(1),
+  passageIds: z.array(z.string()), accepted: z.literal(true),
+}).strict();
+export type FactualReviewReceipt = z.infer<typeof factualReviewReceiptSchema>;
 export interface Dossier extends Composition {
   opportunity: { id: string; company: string; title: string };
   candidate: { name: string };
@@ -87,7 +94,7 @@ export interface Dossier extends Composition {
   candidateConflicts: Research['candidateConflicts'];
   evidence: { roleClaims: Claim[]; candidateClaims: Claim[]; contextualClaims: Claim[]; relationalClaims: Claim[]; lineage: EvidenceSource[] };
   generatedAt: string;
-  generation: { model: string; sourceFingerprint: string; factualReviewer?: {model:string;policyVersion:string} };
+  generation: { model: string; sourceFingerprint: string; factualReviewer?: {model:string;policyVersion:string}; factualReviews?: FactualReviewReceipt[] };
   acquisition: AcquisitionAttempt[];
   /** Exact staged semantic trace. Presentation may explain it but never author it. */
   canonicalDecisionTrace?: JsonValue;
@@ -103,15 +110,15 @@ export const dossierSchema = compositionSchema.extend({
   verdict:researchSchema.shape.evaluation,narrativePlan:narrativePlanSchema,
   resolutions:z.array(resolutionSchema),candidateConflicts:z.array(candidateConflictSchema),
   evidence:z.object({roleClaims:z.array(claimSchema),candidateClaims:z.array(claimSchema),contextualClaims:z.array(claimSchema),relationalClaims:z.array(claimSchema),lineage:z.array(sourceSchema)}),
-  generatedAt:z.string(),generation:z.object({model:z.string(),sourceFingerprint:z.string(),factualReviewer:z.object({model:z.string(),policyVersion:z.string()}).optional()}),
-  acquisition:z.array(z.object({provider:z.string(),field:z.string(),operation:z.enum(['retrieve','search']),status:z.enum(['ACQUIRED','UNAVAILABLE']),sourceIds:z.array(z.string()),detail:z.string()})),
+  generatedAt:z.string(),generation:z.object({model:z.string(),sourceFingerprint:z.string(),factualReviewer:z.object({model:z.string(),policyVersion:z.string()}).optional(),factualReviews:z.array(factualReviewReceiptSchema).optional()}),
+  acquisition:z.array(z.object({provider:z.string(),field:z.string(),operation:z.enum(['retrieve','search']),status:z.enum(['ACQUIRED','RETRIEVED','NO_RESULTS','UNAVAILABLE']),sourceIds:z.array(z.string()),detail:z.string()})),
   canonicalDecisionTrace:jsonValueSchema.optional(),
   sourceEvaluationFingerprint:z.string().optional(),
   sourceInputFingerprint:z.string().optional(),
 });
 export interface AcquisitionAttempt {
   provider: string; field: string; operation: 'retrieve' | 'search';
-  status: 'ACQUIRED' | 'UNAVAILABLE'; sourceIds: string[]; detail: string;
+  status: 'ACQUIRED' | 'RETRIEVED' | 'NO_RESULTS' | 'UNAVAILABLE'; sourceIds: string[]; detail: string;
 }
 export const contextFields = ['companySize', 'funding', 'growth', 'workforceTrajectory', 'leadershipChanges', 'relatedHiring', 'marketExpansion', 'organizationalStructure'] as const;
 export const scopeFields = ['reportingLine', 'executiveDistance', 'leadershipMode', 'teamScale', 'functionState', 'geography', 'commercialScope', 'compensation'] as const;
@@ -123,5 +130,8 @@ export interface ContextProvider {
 export interface ReasoningModel {
   readonly id: string; readonly version: string;
   readonly schemaFormat?: 'openapi' | 'json-schema';
+  readonly configurationFingerprint?: string;
   generate(instruction: string, input: unknown, responseSchema?: Record<string, unknown>): Promise<unknown>;
+  /** Discard an invalid transport/coverage response, never an accepted review. */
+  discardResponse?(response: unknown): Promise<void>;
 }

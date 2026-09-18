@@ -11,6 +11,7 @@ import {
   canonicalNormalize,
   computeDeterministicHash,
 } from "@/lib/ontology/compiler/OntologyCompiler";
+import { CONTEXT_ACQUISITION_POLICY } from '../intelligence/staged/contextAcquisitionPolicy';
 import type {
   SearchCriteriaPayload,
   EvaluationContext,
@@ -53,6 +54,7 @@ export function computeEvaluationContextFingerprint(
     ontologyFingerprint: input.ontologyFingerprint.trim(),
     policyVersion: input.policyVersion.trim(),
     profileVersion: input.profileVersion.trim(),
+    ...(input.policyVersion.trim()==='staged-v8'?{contextAcquisition:CONTEXT_ACQUISITION_POLICY}:{}),
   });
 
   return computeDeterministicHash(normalized);

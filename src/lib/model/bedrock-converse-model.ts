@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import type { JsonModel } from './json-model';
 import { ModelProviderUnavailableError } from './provider-unavailable';
 
@@ -7,6 +8,7 @@ type BedrockUsage = { inputTokens?: number; outputTokens?: number; totalTokens?:
 export class BedrockConverseJsonModel implements JsonModel {
   readonly id = 'bedrock-converse';
   readonly version: string;
+  readonly configurationFingerprint: string;
   lastUsage: BedrockUsage | undefined;
 
   constructor(
@@ -14,7 +16,7 @@ export class BedrockConverseJsonModel implements JsonModel {
     private apiKey: () => Promise<string>,
     private request: typeof fetch = fetch,
     private options: { region?: string; timeoutMs?: number; maxOutputTokens?: number } = {},
-  ) { this.version = model; }
+  ) { this.version = model; this.configurationFingerprint=createHash('sha256').update(JSON.stringify({model,region:options.region??'us-east-1',maxOutputTokens:options.maxOutputTokens??12288})).digest('hex'); }
 
   async generate(instruction: string, input: unknown, responseSchema?: Record<string, unknown>): Promise<unknown> {
     const requestBody = JSON.stringify({

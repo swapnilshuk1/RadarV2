@@ -1,4 +1,13 @@
-import { describe,expect,it } from 'vitest';
+import { describe,expect,it,vi } from 'vitest';
+import Database from 'better-sqlite3';
+import {GoogleAuth} from 'google-auth-library';
+import {adcTokenProvider} from '../../src/lib/model/google-adc';
+import {SqliteAdapter} from '../../src/data/database/sqlite';
+import {setupLineageTestFixture} from '../persistence/lineage_fixture';
+import {durableDossierModel} from '../../src/lib/intelligence/staged/DurableDossierModel';
+import {dossier as fixtureDossier,stagedEvaluation} from '../fixtures/staged-rich-dossier';
+import {compositionSchema} from '../../src/dossier/contracts';
+import {assertFactualReviewProvenance} from '../../src/dossier/factual-review-integrity';
 import { bindStagedEditorial,composeStagedDossier,reviewStagedEditorialAction,reviewStagedEditorialFacts } from '../../src/dossier/staged-composition';
 import { runStagedFrozenDecisionDetailed } from '../../src/dossier/staged-decision';
 import { ModelProviderUnavailableError } from '../../src/lib/model/provider-unavailable';
@@ -44,6 +53,79 @@ describe('staged dossier editorial boundary',()=>{
     expect(request.factualReview.claims.map((c:any)=>c.id)).toEqual(['JD-1-1','CANDIDATE-1-1']);
     expect(request.factualReview.sources.map((s:any)=>s.id)).toEqual(['jd','cv']);
     expect(request).not.toHaveProperty('staged');expect(request).not.toHaveProperty('decision');
+    expect(request.factualReview).not.toHaveProperty('availableEvidence');
+  });
+  it('repairs malformed reviewer coverage without rewriting the section',async()=>{
+    let calls=0;
+    const model={id:'review-repair',version:'1',async generate(_instruction:string,input:any){
+      calls++;if(calls===1)return {reviews:[]};
+      expect(input.reviewRepair).toContain('INCOMPLETE');
+      return {reviews:input.factualReview.passages.map((p:any)=>({passageId:p.passageId,externalComparison:'NONE',candidateAbsence:'NONE',factualAssessment:'Supported.',supported:true,issue:''}))};
+    }};
+    const receipt=await reviewStagedEditorialFacts(model,frozen,'executiveThesis',{executiveThesis:factualPassage});
+    expect(receipt.accepted).toBe(true);expect(calls).toBe(2);
+  });
+  it('does not permanently cache malformed reviewer coverage across retries',async()=>{
+    const db=new SqliteAdapter(new Database(':memory:'));await setupLineageTestFixture(db);
+    let broken=true,calls=0;
+    const model={id:'recover-review',version:'1',async generate(_instruction:string,input:any){
+      calls++;return {reviews:broken?[]:input.factualReview.passages.map((p:any)=>({passageId:p.passageId,externalComparison:'NONE',candidateAbsence:'NONE',factualAssessment:'Supported.',supported:true,issue:''}))};
+    }};
+    await expect(reviewStagedEditorialFacts(durableDossierModel(db,'review-scope',model),frozen,'executiveThesis',{executiveThesis:factualPassage})).rejects.toThrow('EDITORIAL_FACT_REVIEW_INVALID');
+    expect(calls).toBe(3);expect(await db.one('SELECT COUNT(*) n FROM dossier_model_checkpoints')).toEqual({n:0});
+    broken=false;
+    expect((await reviewStagedEditorialFacts(durableDossierModel(db,'review-scope',model),frozen,'executiveThesis',{executiveThesis:factualPassage})).accepted).toBe(true);
+    expect(calls).toBe(4);
+  });
+  it('keeps unrelated evidence out of each review while retaining cited ancestry',async()=>{
+    const expanded={...frozen,evidence:[...frozen.evidence,...Array.from({length:200},(_,i)=>({...frozen.evidence[0],id:`unrelated-${i}`,text:'Unrelated company evidence '.repeat(50)}))]};
+    const model={id:'scoped-review',version:'1',async generate(_instruction:string,input:any){
+      expect(input.factualReview.claims).toHaveLength(2);
+      expect(JSON.stringify(input).length).toBeLessThan(4000);
+      return {reviews:input.factualReview.passages.map((p:any)=>({passageId:p.passageId,externalComparison:'NONE',candidateAbsence:'NONE',factualAssessment:'Supported.',supported:true,issue:''}))};
+    }};
+    await reviewStagedEditorialFacts(model,expanded,'executiveThesis',{executiveThesis:factualPassage});
+  });
+  it('uses standard ADC credentials and coalesces simultaneous token requests',async()=>{
+    const auth=new GoogleAuth({scopes:['https://www.googleapis.com/auth/cloud-platform']});
+    expect(auth.fromJSON({type:'authorized_user',client_id:'test',client_secret:'test',refresh_token:'test'}).constructor.name).toBe('UserRefreshClient');
+    expect(auth.fromJSON({type:'service_account',client_email:'test@example.iam.gserviceaccount.com',private_key:'fixture-not-used-for-signing'}).constructor.name).toBe('JWT');
+    expect(auth.fromJSON({type:'external_account',audience:'//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/test/providers/test',subject_token_type:'urn:ietf:params:oauth:token-type:jwt',token_url:'https://sts.googleapis.com/v1/token',credential_source:{file:'fixture-not-read'}}).constructor.name).toBe('IdentityPoolClient');
+    const getAccessToken=vi.fn(async()=>'test-token');const token=adcTokenProvider({getAccessToken});
+    expect(await Promise.all([token(),token(),token()])).toEqual(['test-token','test-token','test-token']);
+    expect(getAccessToken).toHaveBeenCalledTimes(1);
+    await expect(adcTokenProvider({getAccessToken:async()=>{throw new Error('private credential contents');}})()).rejects.toThrow('Google ADC authentication unavailable');
+  });
+  it('resumes an interrupted composition using durable proposals and reviews in a fresh module instance',async()=>{
+    const db=new SqliteAdapter(new Database(':memory:'));await setupLineageTestFixture(db);
+    const seed=fixtureDossier();
+    const input:StagedResearchInput={...frozen,opportunity:seed.opportunity,candidate:seed.candidate,evidence:seed.evidence.roleClaims,sources:seed.evidence.lineage,candidateSourceRefs:[],validEvidenceClaimIds:['JD-1-1']};
+    let generated=0,reviews=0,fail=true;
+    const model={id:'restart-composer',version:'1',async generate(instruction:string){
+      generated++;
+      if(instruction.includes('Return only rationale and narrativePlan'))return {rationale:seed.verdict.rationale,narrativePlan:seed.narrativePlan};
+      if(instruction.includes('Review only whether'))return {aligned:true,issue:''};
+      const key=instruction.match(/ONLY the top-level key (\w+)/)![1] as keyof typeof compositionSchema.shape;
+      return {[key]:seed[key]};
+    }};
+    const reviewer={id:'restart-reviewer',version:'1',async generate(_instruction:string,request:any){
+      reviews++;if(fail&&reviews===10)throw new ModelProviderUnavailableError('HTTP 429',429);
+      return {reviews:request.factualReview.passages.map((p:any)=>({passageId:p.passageId,externalComparison:'NONE',candidateAbsence:'NONE',factualAssessment:'Supported by fixture.',supported:true,issue:''}))};
+    }};
+    await expect(composeStagedDossier(input,stagedEvaluation,durableDossierModel(db,'scope',model),durableDossierModel(db,'scope',reviewer))).rejects.toThrow('HTTP 429');
+    const callsBefore=generated;
+    const saved=await db.one<{n:number}>('SELECT COUNT(*) n FROM dossier_model_checkpoints');expect(saved!.n).toBeGreaterThan(15);
+    fail=false;
+    // Clear process-local proposal caches to simulate a restart; DB remains.
+    vi.resetModules();const resumed=await import('../../src/dossier/staged-composition');
+    const result=await resumed.composeStagedDossier(input,stagedEvaluation,durableDossierModel(db,'scope',model),durableDossierModel(db,'scope',reviewer));
+    assertFactualReviewProvenance(result);
+    expect(reviews).toBe(12); // nine accepted + failed call + two remaining nonempty sections
+    expect(generated-callsBefore).toBeLessThanOrEqual(2);
+    const request={a:1};const provider=vi.fn(async()=>({ok:true}));
+    await durableDossierModel(db,'different-scope',{id:'x',version:'1',generate:provider}).generate('instruction',request);
+    await durableDossierModel(db,'different-scope',{id:'x',version:'2',generate:provider}).generate('instruction',request);
+    expect(provider).toHaveBeenCalledTimes(2);
   });
   it.each([
     {reviews:[]},

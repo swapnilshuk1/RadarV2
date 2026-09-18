@@ -44,7 +44,7 @@ export class CompanyWebsiteProvider implements ContextProvider {
     const all = [...first, ...second];
     const sources = [...new Map(all.flatMap(result => result.source ? [result.source] : []).map(source => [source.id, source])).values()];
     const outcomes = all.map(result => result.outcome);
-    const attempts: AcquisitionAttempt[] = fields.map(field => ({ provider: this.id, field, operation: 'retrieve', status: sources.length ? 'ACQUIRED' : 'UNAVAILABLE', sourceIds: sources.map(s => s.id), detail: `Retrieved pages for field resolution; this does not mean the field is answered. ${outcomes.join('; ')}` }));
+    const attempts: AcquisitionAttempt[] = fields.map(field => ({ provider: this.id, field, operation: 'retrieve', status: sources.length ? 'RETRIEVED' : 'UNAVAILABLE', sourceIds: sources.map(s => s.id), detail: `Retrieved pages for field resolution; this does not mean the field is answered. ${outcomes.join('; ')}` }));
     return { sources, attempts };
   }
 }

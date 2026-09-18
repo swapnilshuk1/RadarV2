@@ -24,6 +24,7 @@ import { stagedRolloutReadiness,activateReadyStagedRollout } from '../../src/lib
 
 import {stagedEvaluation,evaluationFingerprint,dossier} from '../fixtures/staged-rich-dossier';
 import {selectStagedDossierWork} from '../../src/lib/intelligence/staged/dossierBackfillSelection';
+import {RICH_DOSSIER_VERSION} from '../../src/data/sqlite/repositories/SqliteRichDossierStore';
 
 describe('rich staged serving activation',()=>{
   let db:SqliteAdapter;
@@ -59,6 +60,50 @@ describe('rich staged serving activation',()=>{
     expect((await queries.getNavigation(scope,'source-job',{shortlistQueue:true}))?.totalCount).toBe(1);
     expect(await db.one('SELECT COUNT(*) AS n FROM canonical_decisions')).toEqual({n:0});
   });
+  it('rejects unreviewed, incompletely reviewed and post-review edited dossiers at storage',async()=>{
+    const store=new SqliteRichDossierStore(db);
+    const absent=dossier();delete absent.generation.factualReviewer;delete absent.generation.factualReviews;
+    await expect(store.save(identity,evaluationFingerprint,absent)).rejects.toThrow('DOSSIER_FACTUAL_REVIEW_REQUIRED');
+    const incomplete=dossier();incomplete.generation.factualReviews!.pop();
+    await expect(store.save(identity,evaluationFingerprint,incomplete)).rejects.toThrow('DOSSIER_FACTUAL_REVIEW_INCOMPLETE');
+    const edited=dossier();edited.executiveThesis.text='This precise factual assertion was never reviewed.';
+    await expect(store.save(identity,evaluationFingerprint,edited)).rejects.toThrow('DOSSIER_FACTUAL_REVIEW_BINDING_MISMATCH');
+    const changedEvidence=dossier();changedEvidence.evidence.roleClaims[0].text='Different evidence';
+    await expect(store.save(identity,evaluationFingerprint,changedEvidence)).rejects.toThrow('DOSSIER_FACTUAL_REVIEW_BINDING_MISMATCH');
+    expect(await db.one('SELECT COUNT(*) n FROM materialized_dossier_presentations')).toEqual({n:0});
+  });
+  it('rejects corrupt presentation JSON from serving, publish-only selection and readiness',async()=>{
+    const store=new SqliteRichDossierStore(db);await store.save(identity,evaluationFingerprint,dossier());
+    await new StagedServingPublisher(db).publish(identity);
+    await db.execute("UPDATE materialized_dossier_presentations SET presentation_json=json_remove(presentation_json,'$.generation.factualReviews')");
+    expect(await store.get(identity,evaluationFingerprint)).toBeNull();
+    await expect(new StagedServingPublisher(db).publish(identity)).rejects.toThrow('SERVING_REQUIRES_MATCHING_DOSSIER');
+    expect(await selectStagedDossierWork(db,{context:'staged-context',limit:10,publishOnly:true})).toEqual([]);
+    expect(await selectStagedDossierWork(db,{context:'staged-context',limit:10})).toHaveLength(1);
+    expect((await stagedRolloutReadiness(db,{tenantId:'tenant_A',personId:'person_A',searchPlanId:'plan_A',contextFingerprint:'staged-context'})).ready).toBe(false);
+  });
+  it('preserves an already published historical dossier when the current write version advances',async()=>{
+    const store=new SqliteRichDossierStore(db);await store.save(identity,evaluationFingerprint,dossier());
+    await new StagedServingPublisher(db).publish(identity);
+    await db.execute("UPDATE materialized_dossier_presentations SET presentation_version='dossier-v3.5'");
+    await db.execute("UPDATE materialized_evaluations SET evaluation_json=json_remove(evaluation_json,'$.presentationVersion')");
+    await db.execute("UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'");
+    const {scope}=await resolveServingScope('person_A','tenant_A',db);
+    expect(await store.get(identity,evaluationFingerprint)).toBeNull();
+    expect((await new SqliteOpportunityQueries(db).getDossier(scope,'source-job'))?.evaluationState).toBe('EVALUATED');
+    // Historical presentation cannot silently qualify as current rollout coverage.
+    expect(await selectStagedDossierWork(db,{context:'staged-context',limit:10})).toHaveLength(1);
+  });
+  it('will not approve a context-aware rollout merely because rows exist without Tavily',async()=>{
+    await new SqliteRichDossierStore(db).save(identity,evaluationFingerprint,dossier());
+    await new StagedServingPublisher(db).publish(identity);
+    await db.execute("UPDATE evaluation_contexts SET policy_version='staged-v8' WHERE context_fingerprint='staged-context'");
+    const previous=process.env.TAVILY_API_KEY;delete process.env.TAVILY_API_KEY;
+    try{
+      const result=await stagedRolloutReadiness(db,{tenantId:'tenant_A',personId:'person_A',searchPlanId:'plan_A',contextFingerprint:'staged-context'});
+      expect(result.ready).toBe(false);expect(result.blockers).toContain('CONTEXT_SEARCH_CONFIGURATION_REQUIRED');expect(result.prepared).toBe(0);
+    }finally{if(previous===undefined)delete process.env.TAVILY_API_KEY;else process.env.TAVILY_API_KEY=previous;}
+  });
   it('rejects a dossier that keeps the headline but rewrites canonical decision detail',async()=>{
     const wrongTrace=structuredClone(stagedEvaluation.trace) as unknown as JsonValue;
     (wrongTrace as {requirements:Array<{screeningReasoning:string}>}).requirements[0].screeningReasoning='Rewritten by presentation';
@@ -77,7 +122,7 @@ describe('rich staged serving activation',()=>{
     }};
     const reviewer={id:'independent-reviewer',version:'1',async generate(_instruction:string,input:any){return {reviews:input.factualReview.passages.map((p:any)=>({passageId:p.passageId,externalComparison:'NONE',candidateAbsence:'NONE',factualAssessment:'Fixture evidence supports the passage.',supported:true,issue:''}))};}};
     const composed=await composeStagedDossier(frozen,stagedEvaluation,model,reviewer);
-    expect(composed.generation.factualReviewer).toEqual({model:'independent-reviewer/1',policyVersion:'editorial-facts-v1'});
+    expect(composed.generation.factualReviewer).toEqual({model:'independent-reviewer/1',policyVersion:'editorial-facts-v2'});
     await new SqliteRichDossierStore(db).save(identity,evaluationFingerprint,{...composed,sourceInputFingerprint:'input',sourceEvaluationFingerprint:evaluationFingerprint});
     await new StagedServingPublisher(db).publish(identity);
     await db.execute(`UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`);

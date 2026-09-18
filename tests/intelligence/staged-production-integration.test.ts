@@ -8,8 +8,8 @@ import {stagedEvaluation} from '../fixtures/staged-rich-dossier';
 
 describe('staged production persistence boundary', () => {
   it('uses a fresh staged policy and contract identity for post-fix evaluations', () => {
-    expect(STAGED_POLICY_VERSION).toBe('staged-v7');
-    expect(STAGED_CONTRACT_VERSION).toBe('staged-decision-v7');
+    expect(STAGED_POLICY_VERSION).toBe('staged-v8');
+    expect(STAGED_CONTRACT_VERSION).toBe('staged-decision-v8');
   });
   it('persists a versioned staged result without fabricating an intrinsic score and is idempotent', async () => {
     const db=getDatabaseAdapter(':memory:'); await runMigrations(db);

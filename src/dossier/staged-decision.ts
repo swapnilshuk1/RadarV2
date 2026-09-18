@@ -229,7 +229,7 @@ export async function runStagedFrozenDecisionDetailed(
   frozen: StagedResearchInput,
   model: ReasoningModel,
   onStage: (stage: string) => void = () => {},
-  options: { policyVersion?: 'staged-v6' | 'staged-v7' } = {},
+  options: { policyVersion?: 'staged-v6' | 'staged-v7' | 'staged-v8' } = {},
 ): Promise<StagedDecisionResult> {
   const roleClaims = frozen.evidence.filter(claim => claim.plane === 'JD');
   const candidateClaims = frozen.evidence.filter(claim => claim.plane === 'CANDIDATE');
@@ -309,6 +309,7 @@ export async function runStagedFrozenDecisionDetailed(
       role,
       evidence: frozen.evidence,
       acquisition: frozen.acquisition,
+      ...(options.policyVersion==='staged-v8'?{candidateConflicts:frozen.candidateConflicts,conflictInstruction:'These conflicts are unresolved. Do not choose a winner or treat a conflicting premise as settled.'}:{}),
       fields: frozen.fields,
     },
     stagedDecisionResolutionResponseSchema,
@@ -364,12 +365,13 @@ export async function runStagedFrozenDecisionDetailed(
     stagedDecisionCareerCapitalInstruction,
     {
       candidateClaims,
+      ...(options.policyVersion==='staged-v8'?{candidateConflicts:frozen.candidateConflicts,conflictInstruction:'Do not resolve candidate-source conflicts by choosing a winner.'}:{}),
       operatingConditions: role.operatingConditions,
       authorityShape: role.authorityShape,
       resolutions,
     },
     stagedCareerCapitalSchema,
-    value => validateStagedCareerCapital(value, role, resolutions, candidateClaims, options.policyVersion === 'staged-v7'),
+    value => validateStagedCareerCapital(value, role, resolutions, candidateClaims, (options.policyVersion === 'staged-v7' || options.policyVersion === 'staged-v8')),
     onStage,
   );
 
@@ -387,11 +389,12 @@ export async function runStagedFrozenDecisionDetailed(
   const decision = await proposeStage(
     'Reasoning about pursuit decision',
     model,
-    options.policyVersion === 'staged-v7' ? contextAwareDecisionInstruction : stagedDecisionInstruction,
+    (options.policyVersion === 'staged-v7' || options.policyVersion === 'staged-v8') ? contextAwareDecisionInstruction : stagedDecisionInstruction,
     {
       opportunity: frozen.opportunity,
       candidate: frozen.candidate,
-      ...(options.policyVersion === 'staged-v7' ? { candidateClaims } : {}),
+      ...((options.policyVersion === 'staged-v7' || options.policyVersion === 'staged-v8') ? { candidateClaims } : {}),
+      ...(options.policyVersion==='staged-v8'?{candidateConflicts:frozen.candidateConflicts,conflictInstruction:'Keep conflicts unresolved and express material uncertainty as decision hinges.'}:{}),
       immutableRequirements,
       eligibleScreeningDrivers: drivers.map(driver => ({
         id: driver.id,

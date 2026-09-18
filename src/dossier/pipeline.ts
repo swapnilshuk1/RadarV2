@@ -150,7 +150,7 @@ async function propose<T>(model: ReasoningModel, instruction: string, input: unk
 
   // retry without re-extracting unchanged evidence. Source text remains in key.
 
-  const key = createHash('sha256').update(JSON.stringify([model.id,model.version,instruction,input], (name,value) => name === 'capturedAt' ? undefined : value)).digest('hex');
+  const key = createHash('sha256').update(JSON.stringify([model.id,model.version,model.configurationFingerprint,instruction,input], (name,value) => name === 'capturedAt' ? undefined : value)).digest('hex');
 
   if (verifiedProposals.has(key)) return validate(verifiedProposals.get(key));
 

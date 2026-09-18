@@ -9,10 +9,12 @@ import { EvidenceNormalizer } from '@/lib/intelligence/extraction/EvidenceNormal
 import { OntologyResolver } from '@/lib/intelligence/extraction/OntologyResolver';
 import { CandidateProjectionBuilderImpl } from '@/lib/intelligence/builders/CandidateProjectionBuilder';
 import { OperatingLevelEngine } from '@/lib/intelligence/engines/OperatingLevelEngine';
+import {computeEvaluationContextFingerprint} from '@/lib/domain/evaluation_fingerprint';
 import { computeContentHash } from '@/lib/domain/canonical_identity';
 import type { EvidenceGraph } from '@/domain/evidence';
 import {contextInputFingerprint,SqliteStagedInputStore} from '@/data/sqlite/repositories/SqliteStagedInputStore';
 import {ProductionContextProvider} from './ProductionContextProvider';
+import {ModelProviderUnavailableError} from '../../model/provider-unavailable';
 import {STAGED_POLICY_VERSION,supportsStagedPolicy} from './stagedPolicy';
 
 export class DeterministicStagedInputUnavailableError extends Error { readonly deterministic=true; constructor(readonly reason:string){super(`STAGED_INPUT_UNAVAILABLE:${reason}`);} }
@@ -78,7 +80,7 @@ export class ProductionStagedInputAdapter {
   }
 
   async build(identity:ProductionStagedIdentity, model:ReasoningModel, onStage:(stage:string)=>void=()=>{}):Promise<StagedResearchInput>{
-    const context=await this.db.one<{policy_version:string;profile_version:string}>(`SELECT policy_version,profile_version FROM evaluation_contexts WHERE context_fingerprint=? AND tenant_id=? AND person_id=?`,[identity.evaluationContextFingerprint,identity.tenantId,identity.personId]);
+    const context=await this.db.one<{policy_version:string;profile_version:string;search_plan_snapshot_id:string;ontology_version:string;ontology_fingerprint:string}>(`SELECT policy_version,profile_version,search_plan_snapshot_id,ontology_version,ontology_fingerprint FROM evaluation_contexts WHERE context_fingerprint=? AND tenant_id=? AND person_id=?`,[identity.evaluationContextFingerprint,identity.tenantId,identity.personId]);
     if(!context||!supportsStagedPolicy(context.policy_version)||context.profile_version!==identity.profileVersion)throw new DeterministicStagedInputUnavailableError('EVALUATION_CONTEXT_PROFILE_MISMATCH');
     const version=await this.db.one<any>(`SELECT raw_content,job_title,company_name,location,employment_type,content_hash FROM opportunity_versions WHERE canonical_job_id=? AND id=?`,[identity.canonicalJobId,identity.opportunityVersion]);
     if(!version) throw new DeterministicStagedInputUnavailableError('OPPORTUNITY_VERSION_MISSING');
@@ -89,8 +91,8 @@ export class ProductionStagedInputAdapter {
     if(!bindings.length) throw new DeterministicStagedInputUnavailableError('PROFILE_SOURCE_PROVENANCE_MISSING');
     if(context.policy_version==='staged-v6'&&bindings.length!==1)throw new DeterministicStagedInputUnavailableError('MULTIPLE_CANDIDATE_SOURCES_REQUIRE_CONTEXT_POLICY');
     const jdSource:EvidenceSource={id:stableSourceId('JD',version.content_hash||createHash('sha256').update(jdText).digest('hex')),plane:'JD',title:version.job_title||'Opportunity description',locator:`opportunity-version:${identity.canonicalJobId}:${identity.opportunityVersion}`,text:jdText,capturedAt:new Date(0).toISOString(),attribution:'JOB_POST'};
-    const candidateSources:EvidenceSource[]=bindings.map((row)=>({id:stableSourceId('CANDIDATE',context.policy_version===STAGED_POLICY_VERSION?createHash('sha256').update(`${row.document_id}:${row.document_text_hash}`).digest('hex'):row.document_text_hash),plane:'CANDIDATE',title:`Candidate document ${row.document_id}`,locator:`candidate-document:${row.document_id}:evidence:${row.evidence_graph_id}`,text:row.raw_text, capturedAt:new Date(0).toISOString(),attribution:'CANDIDATE_SUPPLIED'}));
-    if(context.policy_version===STAGED_POLICY_VERSION)return this.buildContextInput(identity,model,jdSource,candidateSources,onStage);
+    const candidateSources:EvidenceSource[]=bindings.map((row)=>({id:stableSourceId('CANDIDATE',context.policy_version!=='staged-v6'?createHash('sha256').update(`${row.document_id}:${row.document_text_hash}`).digest('hex'):row.document_text_hash),plane:'CANDIDATE',title:`Candidate document ${row.document_id}`,locator:`candidate-document:${row.document_id}:evidence:${row.evidence_graph_id}`,text:row.raw_text, capturedAt:new Date(0).toISOString(),attribution:'CANDIDATE_SUPPLIED'}));
+    if(context.policy_version!=='staged-v6')return this.buildContextInput(identity,model,jdSource,candidateSources,onStage,context.policy_version,computeEvaluationContextFingerprint({tenantId:identity.tenantId,personId:identity.personId,searchPlanSnapshotId:context.search_plan_snapshot_id,ontologyVersion:context.ontology_version,ontologyFingerprint:context.ontology_fingerprint,policyVersion:context.policy_version,profileVersion:context.profile_version}));
     const sources=[jdSource,...candidateSources]; const evidence:Claim[]=[];
     for(const source of sources) { const ordinal=source.plane==='JD'?1:candidateSources.findIndex(item=>item.id===source.id)+1; const key={sourceFingerprint:sourceFingerprint([source]),modelId:model.id,modelVersion:model.version}; let cached=await this.cache.cachedClaims(key); if(!cached){onStage(`Extracting immutable ${source.plane} source evidence`); cached=await extractValidatedSourceClaims(model,source,`${source.plane}-1-`,onStage); await this.cache.cacheClaims(key,source,cached);} evidence.push(...rebaseClaims(cached,source.plane,ordinal)); }
     const candidate=await this.db.one<{email:string}>(`SELECT email FROM people WHERE id=? AND tenant_id=?`,[identity.personId,identity.tenantId]);
@@ -98,10 +100,12 @@ export class ProductionStagedInputAdapter {
     const fingerprint=createHash('sha256').update(JSON.stringify({opportunity:frozenBase.opportunity,candidate:frozenBase.candidate,candidateSources:frozenBase.candidateSourceRefs,candidateConflicts:[],evidence,validEvidenceClaimIds:frozenBase.validEvidenceClaimIds,acquisition:[],fields:frozenBase.fields})).digest('hex');
     return {...frozenBase,fingerprint} as StagedResearchInput;
   }
-  private async buildContextInput(identity:ProductionStagedIdentity,model:ReasoningModel,jd:EvidenceSource,candidates:EvidenceSource[],onStage:(stage:string)=>void):Promise<StagedResearchInput>{
+  private async buildContextInput(identity:ProductionStagedIdentity,model:ReasoningModel,jd:EvidenceSource,candidates:EvidenceSource[],onStage:(stage:string)=>void,policyVersion:string,expectedContextFingerprint:string):Promise<StagedResearchInput>{
     const binding=createHash('sha256').update(JSON.stringify({profile:identity.profileVersion,sources:sourceFingerprint([jd,...candidates])})).digest('hex');
     const store=new SqliteStagedInputStore(this.db);
     const existing=await store.get(identity,binding,model);if(existing)return existing;
+    if(policyVersion!==STAGED_POLICY_VERSION)throw new ModelProviderUnavailableError('FRESH_CONTEXT_INPUT_REQUIRES_STAGED_V8');
+    if(identity.evaluationContextFingerprint!==expectedContextFingerprint)throw new ModelProviderUnavailableError('CONTEXT_ACQUISITION_POLICY_IDENTITY_MISMATCH');
     // Composition and retries must never reacquire context for a completed evaluation.
     if(await this.cache.get(identity))throw new Error('STAGED_COMPLETED_INPUT_SNAPSHOT_MISSING');
     const version=await this.db.one<{company_name:string|null;job_title:string|null}>(`SELECT company_name,job_title FROM opportunity_versions WHERE id=? AND canonical_job_id=?`,[identity.opportunityVersion,identity.canonicalJobId]);
@@ -111,6 +115,7 @@ export class ProductionStagedInputAdapter {
     const providers=this.providers??[new ProductionContextProvider(this.db,identity.tenantId)];
     if(!providers.length)throw new Error('STAGED_CONTEXT_PROVIDER_REQUIRED');
     const acquired=await Promise.all(providers.map(provider=>provider.acquire(opportunity,contextFields)));
+    if(!acquired.some(result=>result.attempts.some(attempt=>['RETRIEVED','NO_RESULTS','ACQUIRED'].includes(attempt.status))))throw new ModelProviderUnavailableError('CONTEXT_ACQUISITION_NOT_OPERATIONAL');
     const contextSources=acquired.flatMap(result=>result.sources).map(source=>sourceSchema.parse(source));
     if(contextSources.some(source=>source.plane!=='CONTEXT'))throw new Error('CONTEXT_PROVIDER_SOURCE_PLANE_INVALID');
     const sources=[jd,...candidates,...[...new Map(contextSources.map(source=>[source.id,source])).values()]];
