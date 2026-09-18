@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() => z.union([
+  z.string(), z.number(), z.boolean(), z.null(), z.array(jsonValueSchema), z.record(z.string(), jsonValueSchema),
+]));
+
 export const planeSchema = z.enum(['JD', 'CANDIDATE', 'CONTEXT', 'RELATIONAL']);
 export const sourceSchema = z.object({
   id: z.string().min(1), plane: z.enum(['JD', 'CANDIDATE', 'CONTEXT']),
@@ -84,6 +89,11 @@ export interface Dossier extends Composition {
   generatedAt: string;
   generation: { model: string; sourceFingerprint: string };
   acquisition: AcquisitionAttempt[];
+  /** Exact staged semantic trace. Presentation may explain it but never author it. */
+  canonicalDecisionTrace?: JsonValue;
+  /** Exact semantic output identity and its frozen-input lineage for staged dossiers. */
+  sourceEvaluationFingerprint?: string;
+  sourceInputFingerprint?: string;
 }
 export interface SliceInput {
   opportunity: Dossier['opportunity']; candidate: Dossier['candidate']; sources: EvidenceSource[];
@@ -95,6 +105,9 @@ export const dossierSchema = compositionSchema.extend({
   evidence:z.object({roleClaims:z.array(claimSchema),candidateClaims:z.array(claimSchema),contextualClaims:z.array(claimSchema),relationalClaims:z.array(claimSchema),lineage:z.array(sourceSchema)}),
   generatedAt:z.string(),generation:z.object({model:z.string(),sourceFingerprint:z.string()}),
   acquisition:z.array(z.object({provider:z.string(),field:z.string(),operation:z.enum(['retrieve','search']),status:z.enum(['ACQUIRED','UNAVAILABLE']),sourceIds:z.array(z.string()),detail:z.string()})),
+  canonicalDecisionTrace:jsonValueSchema.optional(),
+  sourceEvaluationFingerprint:z.string().optional(),
+  sourceInputFingerprint:z.string().optional(),
 });
 export interface AcquisitionAttempt {
   provider: string; field: string; operation: 'retrieve' | 'search';

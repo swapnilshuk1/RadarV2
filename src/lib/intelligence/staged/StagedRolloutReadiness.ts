@@ -6,7 +6,7 @@ import type { RecoveryScope } from './MissingEnrichmentRecovery';
 export async function stagedRolloutReadiness(db:DatabaseAdapter,scope:RecoveryScope){
   const counts=await db.one<{total:number;prepared:number;excluded:number;unprepared:number}>(`WITH coverage AS (
     SELECT CASE WHEN se.evaluation_state='INPUT_UNAVAILABLE' OR EXISTS(SELECT 1 FROM recovery_queue rq WHERE rq.tenant_id=spc.tenant_id AND rq.canonical_job_id=spc.canonical_job_id AND rq.opportunity_version_id=spc.opportunity_version AND rq.reason='SOURCE_NOT_JOB_DESCRIPTION') THEN 'EXCLUDED'
-      WHEN se.evaluation_state='COMPLETED' AND me.evaluation_state='STAGED_EVALUATED' AND me.decision=se.decision AND p.source_evaluation_fingerprint=se.input_fingerprint THEN 'PREPARED'
+      WHEN se.evaluation_state='COMPLETED' AND me.evaluation_state='STAGED_EVALUATED' AND me.decision=se.decision AND me.evaluation_fingerprint IS NOT NULL AND p.source_evaluation_fingerprint=me.evaluation_fingerprint THEN 'PREPARED'
       ELSE 'UNPREPARED' END AS state
     FROM search_plan_candidates spc JOIN opportunity_versions ov ON ov.id=spc.opportunity_version AND ov.canonical_job_id=spc.canonical_job_id
     LEFT JOIN staged_evaluations se ON se.tenant_id=spc.tenant_id AND se.person_id=spc.person_id AND se.canonical_job_id=spc.canonical_job_id AND se.opportunity_version=spc.opportunity_version AND se.evaluation_context_fingerprint=?

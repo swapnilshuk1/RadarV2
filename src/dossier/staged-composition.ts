@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { narrativePlanSchema, researchSchema, type ReasoningModel, type Research } from './contracts';
+import { narrativePlanSchema, researchSchema, type JsonValue, type ReasoningModel, type Research } from './contracts';
 import type { StagedResearchInput } from './staged-research';
 import type { StagedDecisionResult } from './staged-decision-contract';
 import { composeDossier } from './pipeline';
@@ -54,7 +54,7 @@ export async function composeStagedDossier(frozen: StagedResearchInput, staged: 
   }
   if(!research) throw new Error(`STAGED_EDITORIAL_FAILED: ${issue}`);
   const alignmentSchema=z.object({aligned:z.boolean(),issue:z.string()}).strict();
-  return composeDossier(frozen,research,model,onStage,{
+  const dossier=await composeDossier(frozen,research,model,onStage,{
     decisionContext:{...staged.decision,action:staged.decision.verdict==='PASS'?'DO_NOT_PURSUE':staged.decision.verdict==='PURSUE'?'PURSUE':'INVESTIGATE_BEFORE_COMMITTING',instruction:'PASS means do not pursue, never passes screening. Explain this fixed action, including limitations and reopening conditions. Role value and candidate strengths remain valuable to describe even for PASS. Do not silently substitute a different recommendation in prose.'},
     validateSection:async(section,value)=>{
       if(section!=='executiveThesis'&&section!=='recommendation')return;
@@ -63,4 +63,7 @@ export async function composeStagedDossier(frozen: StagedResearchInput, staged: 
       if(!review.aligned)throw new Error(`EDITORIAL_DECISION_ALIGNMENT: ${review.issue}`);
     },
   });
+  // The editorial layer may compress for prose, but the canonical staged truth
+  // travels losslessly with the dossier and is never model-authored.
+  return {...dossier,canonicalDecisionTrace:structuredClone(staged.trace) as unknown as JsonValue};
 }

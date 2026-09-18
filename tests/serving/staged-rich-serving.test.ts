@@ -8,11 +8,46 @@ import { SqliteRichDossierStore } from '../../src/data/sqlite/repositories/Sqlit
 import { StagedServingPublisher } from '../../src/lib/intelligence/staged/StagedServingPublisher';
 import { resolveServingScope } from '../../src/lib/security/scope-resolver';
 import { resolveCanonicalServingReadModel } from '../../src/lib/intelligence/serving/CanonicalServingReadModel';
-import type { Dossier,Passage } from '../../src/dossier/contracts';
+import type { Dossier,JsonValue,Passage } from '../../src/dossier/contracts';
+import {
+  createStagedEvaluationFingerprint,
+  parseCanonicalStagedDecisionResult,
+} from '../../src/dossier/staged-decision-integrity';
 import { readAcquisitionFeed } from '../../src/lib/intelligence/acquisition-feed';
 import { stagedRolloutReadiness,activateReadyStagedRollout } from '../../src/lib/intelligence/staged/StagedRolloutReadiness';
 
-function dossier():Dossier {
+const axis={material:false,candidateClaimIds:[],operatingConditionIds:[],resolutionFields:[]};
+const stagedEvaluation=parseCanonicalStagedDecisionResult({
+  decision:{
+    verdict:'PURSUE',screeningViability:'PLAUSIBLE',
+    decisionHinges:[{requirementIds:['REQ-001'],resolutionFields:[]}],
+    reopeningConditions:[{requirementIds:['REQ-001']}],
+    screeningDriverRequirementIds:[],
+    careerCapital:{authority:axis,scope:axis,functionalAltitude:axis,compensation:axis},
+  },
+  trace:{
+    role:{
+      requirements:[{id:'REQ-001',requirement:'Growth',strength:'REQUIRED',roleImportance:'CORE_CAPABILITY',roleClaimIds:['JD-1-1'],reasoning:'Growth is core to the mandate.'}],
+      operatingConditions:[],authorityShape:'Function',roleSideConditions:[],
+    },
+    requirements:[{
+      id:'REQ-001',requirement:'Growth',strength:'REQUIRED',roleImportance:'CORE_CAPABILITY',roleClaimIds:['JD-1-1'],reasoning:'Growth is core to the mandate.',
+      screeningGate:false,screeningFunction:'ROLE_PERFORMANCE_REQUIREMENT',screeningGateBasis:'NONE',screeningSupportQuoteIds:['REQ-001:Q1'],screeningReasoning:'The source describes role performance, not an entry gate.',
+      status:'NOT_EVIDENCED',candidateClaimIds:[],unsupportedAspects:['direct growth precedent'],mappingReasoning:'The supplied candidate evidence does not directly establish this requirement.',
+    }],
+    resolutions:[],eligibleScreeningDrivers:[],screeningConstraint:'NONE',
+    decision:{
+      verdict:'PURSUE',screeningViability:'PLAUSIBLE',
+      decisionHinges:[{requirementIds:['REQ-001'],resolutionFields:[]}],
+      reopeningConditions:[{requirementIds:['REQ-001']}],
+      screeningDriverRequirementIds:[],
+      careerCapital:{authority:axis,scope:axis,functionalAltitude:axis,compensation:axis},
+    },
+  },
+});
+const evaluationFingerprint=createStagedEvaluationFingerprint({evaluationContextFingerprint:'staged-context',inputFingerprint:'input',evaluation:stagedEvaluation});
+
+function dossier(trace:JsonValue=stagedEvaluation.trace as unknown as JsonValue):Dossier {
   const p=(text:string):Passage=>({text,kind:'ADVICE',state:'INFERRED',confidence:0.8,sourcePlane:'JD',evidenceRefs:['JD-1-1'],reasoning:'Derived from the supplied growth mandate.'});
   const list=(text:string)=>[p(text)];
   return {
@@ -27,9 +62,11 @@ function dossier():Dossier {
     verdict:{verdict:'PURSUE',screeningViability:'PLAUSIBLE',rationale:'Growth mandate',claimIds:['JD-1-1'],requirements:[{requirement:'Growth',mandatory:true,decisionRole:'CORE_CAPABILITY',status:'NOT_EVIDENCED',roleClaimIds:['JD-1-1'],candidateClaimIds:[],reasoning:'Confirm proof'}]},
     narrativePlan:{roleArchetype:'Growth',mandateShape:'Build',careerMove:'Growth',authorityShape:'Function',fitShape:'Transferable',evidenceShape:'Mandate',decisionTension:'Scope',companyTrajectory:'Unknown',argument:'Clarify authority',emphasis:['Scope'],sectionOrder:['executiveThesis'],claimIds:['JD-1-1']},
     resolutions:[],candidateConflicts:[],evidence:{roleClaims:[{id:'JD-1-1',text:'Lead growth.',state:'EXPLICIT',confidence:1,plane:'JD',citations:[{sourceId:'jd',quote:'Lead growth.'}],derivedFrom:[]}],candidateClaims:[],contextualClaims:[],relationalClaims:[],lineage:[{id:'jd',plane:'JD',title:'JD',locator:'job',text:'Lead growth.',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'}]},
-    generatedAt:'2026-01-01',generation:{model:'test',sourceFingerprint:'sources'},acquisition:[],
+    generatedAt:'2026-01-01',generation:{model:'test',sourceFingerprint:'sources'},acquisition:[],canonicalDecisionTrace:trace,
+    sourceInputFingerprint:'input',sourceEvaluationFingerprint:evaluationFingerprint,
   };
 }
+
 describe('rich staged serving activation',()=>{
   let db:SqliteAdapter;
   const identity={tenantId:'tenant_A',personId:'person_A',canonicalJobId:'job',opportunityVersion:'version',evaluationContextFingerprint:'staged-context',profileVersion:'profile'};
@@ -43,12 +80,12 @@ describe('rich staged serving activation',()=>{
     await db.execute(`INSERT INTO canonical_opportunities(id,source,source_job_id,canonical_url) VALUES('job','LinkedIn','source-job','https://example.com/job')`);
     await db.execute(`INSERT INTO opportunity_versions(id,canonical_job_id,content_hash,job_title,raw_content,lifecycle_state) VALUES('version','job','hash','Head of Growth','Lead growth.','ACTIVE')`);
     await db.execute(`INSERT INTO search_plan_candidates(tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,attention_decision) VALUES('tenant_A','person_A','plan_A','job','version','CANDIDATE')`);
-    await new SqliteStagedEvaluationStore(db).save({...identity,jobHash:'job',policyVersion:'staged-v6',ontologyVersion:'v1',ontologyFingerprint:'hash_ontology',inputFingerprint:'input',sourceFingerprints:['jd'],modelId:'test',modelVersion:'test',contractVersion:'staged-decision-v6',evaluationState:'COMPLETED',decision:'PURSUE',screeningViability:'PLAUSIBLE',evaluation:{decision:{verdict:'PURSUE'}},evaluatedAt:'2026-01-01'});
+    await new SqliteStagedEvaluationStore(db).save({...identity,jobHash:'job',policyVersion:'staged-v6',ontologyVersion:'v1',ontologyFingerprint:'hash_ontology',inputFingerprint:'input',sourceFingerprints:['jd'],modelId:'test',modelVersion:'test',contractVersion:'staged-decision-v6',evaluationState:'COMPLETED',decision:'PURSUE',screeningViability:'PLAUSIBLE',evaluation:stagedEvaluation,evaluatedAt:'2026-01-01'});
   });
-  it('requires a dossier and keeps projection separate from serving activation',async()=>{
+  it('requires an exact-trace dossier and keeps projection separate from serving activation',async()=>{
     const publisher=new StagedServingPublisher(db);
     await expect(publisher.publish(identity)).rejects.toThrow('SERVING_REQUIRES_MATCHING_DOSSIER');
-    await new SqliteRichDossierStore(db).save(identity,'input',dossier());
+    await new SqliteRichDossierStore(db).save(identity,evaluationFingerprint,dossier());
     await publisher.publish(identity);
     const queries=new SqliteOpportunityQueries(db);const {scope}=await resolveServingScope('person_A','tenant_A',db);
     expect((await queries.getFeed(scope)).items[0].evaluationState).toBe('UNMATERIALIZED');
@@ -57,12 +94,18 @@ describe('rich staged serving activation',()=>{
     expect(feed.items).toHaveLength(1);
     expect(feed.items[0]).toMatchObject({engineVerdict:'PURSUE',qualityScore:null,evaluationState:'EVALUATED'});
     const detail=await queries.getDossier(scope,'source-job');
-    expect(detail).toMatchObject({evaluationState:'EVALUATED',richDossier:{verdict:{verdict:'PURSUE'}}});
+    expect(detail).toMatchObject({evaluationState:'EVALUATED',richDossier:{verdict:{verdict:'PURSUE'},canonicalDecisionTrace:{requirements:[{id:'REQ-001',screeningSupportQuoteIds:['REQ-001:Q1']}]}}});
     const metrics=await queries.getMetrics(scope);
     expect(metrics.engineBreakdown.pursue).toBe(1);
     expect(metrics.evaluationPopulation.evaluated).toBe(1);
     expect((await queries.getNavigation(scope,'source-job',{shortlistQueue:true}))?.totalCount).toBe(1);
     expect(await db.one('SELECT COUNT(*) AS n FROM canonical_decisions')).toEqual({n:0});
+  });
+  it('rejects a dossier that keeps the headline but rewrites canonical decision detail',async()=>{
+    const wrongTrace=structuredClone(stagedEvaluation.trace) as unknown as JsonValue;
+    (wrongTrace as {requirements:Array<{screeningReasoning:string}>}).requirements[0].screeningReasoning='Rewritten by presentation';
+    await new SqliteRichDossierStore(db).save(identity,evaluationFingerprint,dossier(wrongTrace));
+    await expect(new StagedServingPublisher(db).publish(identity)).rejects.toThrow('DOSSIER_DECISION_TRACE_MISMATCH');
   });
   it('keeps a missing legacy score invalid while accepting an explicitly staged scoreless contract',()=>{
     const input={engineVerdict:'PURSUE',userDecision:null,evaluationContextFingerprint:'ctx',evaluationFingerprint:'eval',reviewedFingerprint:null,qualityScore:null};
@@ -75,10 +118,10 @@ describe('rich staged serving activation',()=>{
     await db.execute(`INSERT INTO evaluation_jobs(id,tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,status) VALUES('ej','tenant_A','person_A','plan_A','job','version','staged-context','staged_completed')`);
     expect((await readAcquisitionFeed(db,identity,active)).rows[0].state).toBe('PREPARING');
     const store=new SqliteRichDossierStore(db);
-    await store.recordFailure(identity,'input',new Error('Presentation unavailable'));
+    await store.recordFailure(identity,evaluationFingerprint,new Error('Presentation unavailable'));
     expect((await readAcquisitionFeed(db,identity,active)).rows[0].state).toBe('NEEDS_ATTENTION');
     expect((await readAcquisitionFeed(db,{tenantId:'tenant_B',personId:'person_B'},active)).total).toBe(0);
-    await store.save(identity,'input',dossier());
+    await store.save(identity,evaluationFingerprint,dossier());
     await new StagedServingPublisher(db).publish(identity);
     expect((await readAcquisitionFeed(db,identity,active)).rows[0].state).toBe('READY');
   });
@@ -88,7 +131,7 @@ describe('rich staged serving activation',()=>{
     const old=(await db.one<{context_fingerprint:string}>(`SELECT context_fingerprint FROM active_evaluation_contexts WHERE person_id='person_A'`))!.context_fingerprint;
     expect(await stagedRolloutReadiness(db,scope)).toMatchObject({total:1,unprepared:1,ready:false});
     await expect(activateReadyStagedRollout(db,scope,old)).rejects.toThrow('ROLLOUT_COVERAGE_INCOMPLETE');
-    await new SqliteRichDossierStore(db).save(identity,'input',dossier());await new StagedServingPublisher(db).publish(identity);
+    await new SqliteRichDossierStore(db).save(identity,evaluationFingerprint,dossier());await new StagedServingPublisher(db).publish(identity);
     expect(await stagedRolloutReadiness(db,scope)).toMatchObject({prepared:1,unprepared:0,ready:true});
     await expect(activateReadyStagedRollout(db,scope,'unrelated')).rejects.toThrow('ROLLOUT_ACTIVE_CONTEXT_CHANGED');
     await activateReadyStagedRollout(db,scope,old);
