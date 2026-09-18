@@ -1,76 +1,37 @@
-# RADAR Live Scraper — v1
+# RADAR acquisition and enrichment
 
-Professional-grade, resumable job scraper for **LinkedIn**, **Indeed**, and **Naukri**.
-
-## Pipeline
+The acquisition pipeline preserves portal capability, source identity, payloads
+and durable scrape orchestration for LinkedIn, Indeed and Naukri. It hands off to
+the evaluation scheduler; a successful scrape alone does not establish that an
+opportunity has an evaluation, dossier or serving publication.
 
 ```text
-Acquisition  → JobSnapshot         (portal handler + persistent context)
-Extraction   → ExtractionResult    (deterministic-first, LLM fallback)
-Assembly     → RecommendationRecord
-Persistence  → src/data/live-scraped.json  (atomic write, system-of-record)
+Scrape run -> portal capture -> preserved payload -> canonical opportunity/version
+           -> exact enrichment job -> evaluation requirement -> staged worker
 ```
 
-Each layer writes to `.scraper-cache/` and is version-guarded so a bumped
-extractor invalidates old artifacts automatically.
+| Responsibility | Entry point |
+| --- | --- |
+| Scrape orchestration | `scripts/scrape.ts`, `scripts/scraper/run/` |
+| Portal adapters | `scripts/scraper/portals/` |
+| Payload and ingestion persistence | `scripts/scraper/persist/`, `src/lib/storage/blob-store.ts` |
+| Enrichment leases, completion and dependency release | `scripts/scraper/persist/queue.ts`, `scripts/enrich.ts` |
+| Evaluation scheduling | `src/lib/intelligence/EvaluationWorkScheduler.ts` |
+| Staged worker | `scripts/process-staged-evaluation-jobs.ts` |
 
-## Resumable Run Manager
+The configured database and canonical source/version lineage are authoritative.
+`live-scraped.json` is not the serving system of record. Local payload paths must
+be readable by the intended worker host; retaining a blob on another machine does
+not satisfy that dependency.
 
-- `.scraper-cache/runs/<runId>/manifest.json` — every work unit
-  (portal × keyword × page and per-card sub-units) with status.
-- `.scraper-cache/runs/<runId>/journal.ndjson` — append-only, fsync'd log.
-- `.scraper-cache/runs/latest.json` — pointer for the next `resume`.
+Dependency matching uses canonical job, opportunity version and required
+enrichment pipeline identity. Do not force waiting rows through evaluation,
+fabricate enrichment completion or infer account ownership for unattributed blobs.
+Follow the [backfill runbook](../../docs/operations/CONTEXT_REEVALUATION_DOSSIER_RUNBOOK.md)
+to reconcile captures that have not reached the end user.
 
-On crash / SIGINT / SIGTERM:
-1. Journal is fsync'd on every event.
-2. Manifest is atomically re-written on every status change.
-3. Next run with `{ resume: true }` (the default from the server function)
-   reopens the same run, flips `running`→`pending`, and continues.
-
-Version bumps in `scripts/scraper/versions.ts` invalidate an in-flight
-resume automatically — the manager starts a fresh run instead of mixing
-schemas.
-
-## Portals
-
-| Portal | Login | Detail scrape | Session cache |
-|---|---|---|---|
-| LinkedIn | Manual (2-min gate) | `.jobs-description__content` | `.scraper-cache/profiles/linkedin` |
-| Indeed | Not required, CAPTCHA-gated | `#jobDescriptionText` | `.scraper-cache/profiles/indeed` |
-| Naukri | Not required | `.styles_JDC__dang-inner-html__h0K4t` etc. | `.scraper-cache/profiles/naukri` |
-
-Portals run in parallel (`portalConcurrency=3`) and cards inside each portal
-run in a bounded pool (`cardConcurrency=4`). Detail tabs are always closed
-after read to avoid the Naukri tab-bloat failure mode.
-
-## Extraction contract (see `docs/extractor-remediation.md`)
-
-- Every `Explicit` field passes through `anchor()` — the quote must literally
-  appear in `rawText` or the field is downgraded to `Missing`.
-- Word-boundary regex on sentence-tokenised text; no `text.includes()` for
-  concept detection.
-- Disqualifier windows force `Missing` when negating phrases sit within ±12
-  words of a candidate hit.
-- LLM (Gemini) is invoked **only** for Core dimensions the deterministic pass
-  couldn't fill, and its output is written as `Inferred` / `provenance: "llm"`
-  — never `Explicit`.
-
-## Provenance & Quality
-
-Replaces the old numeric confidence score:
-
-- `provenance`: `"explicit" | "inferred" | "llm"`
-- `quality`: `"high" | "medium" | "low"`
-
-Every extractor also stamps `extractorId` (`"requiredLevel@1.0.0"` etc.) so a
-regression can be traced to the module that produced it.
-
-## Running
-
-```bash
-# Requires: bun add playwright-extra puppeteer-extra-plugin-stealth
-# Optional: export GEMINI_API_KEY=... to enable LLM fallback
-bun run scripts/scrape.ts
-```
-
-Or trigger from the app via `triggerScrapeFn` (server function).
+Inspect CLI flags and the explicit database target before invoking `npm run
+scrape`, `npm run scrape:preflight` or `npm run enrich`. These commands are not
+read-only inventory tools. Production execution follows the approved plan.
+Generated browser proofs go under `.radar/portal-browser-proof`; reusable DOM
+snapshots are under `tests/fixtures/acquisition/portal-snapshots`.

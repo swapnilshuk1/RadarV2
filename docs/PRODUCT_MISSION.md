@@ -1,4 +1,4 @@
-# RADAR Intelligence Rebuild — Product Mission and Non-Negotiable Contract
+# RADAR Product Mission and Non-Negotiable Contract
 
 **Status:** GOVERNING FOR `rebuild/intelligence-ground-up` and the integrated `main` branch
 
@@ -583,11 +583,13 @@ Only an explicit affirmative response from the product owner authorizes the chan
 Before any intelligence/dossier/enrichment/evaluation work:
 
 1. `AGENTS.md`
-2. `docs/rebuild/RADAR_REBUILD_MISSION.md`
+2. `docs/PRODUCT_MISSION.md`
 3. Inspect the current scraper/acquisition boundary before changing dependencies.
 4. Inspect the current benchmark-oriented dossier work before introducing new abstractions.
 
-Historical transition documents under `docs/transition/` and prior intelligence architecture are **historical evidence**, not the governing product mission for this rebuild branch unless explicitly referenced by this document.
+Use `docs/ARCHITECTURE.md` for the current implementation and `docs/README.md`
+for current operational guidance. This product mission remains the governing
+contract when implementation details change.
 
 ---
 

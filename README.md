@@ -3,7 +3,12 @@
 RADAR turns a preserved job opportunity, an explicitly bound candidate profile,
 and acquired company context into an evidence-grounded executive dossier.
 Read [AGENTS.md](AGENTS.md) and the
-[product mission](docs/rebuild/RADAR_REBUILD_MISSION.md) before changing it.
+[product mission](docs/PRODUCT_MISSION.md) before changing it.
+
+Start with the [documentation index](docs/README.md),
+[current architecture](docs/ARCHITECTURE.md),
+[backfill runbook](docs/operations/CONTEXT_REEVALUATION_DOSSIER_RUNBOOK.md) and
+[deployment guide](DEPLOYMENT.md) for implementation and operational details.
 
 ## Workspace
 
@@ -89,4 +94,4 @@ activation counts separate. An idle queue is not a completed backfill, and PASS
 results need not appear on the shortlist.
 
 Production execution and activation require an approved plan after local proof.
-See [the current readiness notes](docs/rebuild/PRODUCTION_READINESS_AUDIT_FIXES.md).
+See the [current production integration guide](docs/PRODUCTION_INTEGRATION.md).

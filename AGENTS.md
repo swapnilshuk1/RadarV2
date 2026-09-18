@@ -12,12 +12,16 @@ main
 Before changing intelligence, dossier, evaluation, enrichment, narrative, candidate matching, company context, or related UI code, read:
 
 ```text
-docs/rebuild/RADAR_REBUILD_MISSION.md
+docs/PRODUCT_MISSION.md
 ```
 
 That document is the detailed product contract. This file is the short operational contract.
 
-Legacy transition/gate documents are historical reference only unless the product owner explicitly revives them.
+Use `docs/README.md` as the documentation index and `docs/ARCHITECTURE.md`
+for the current implementation. The canonical checkout is
+`C:\Users\swapn\Downloads\Radar V2` on `main`; keep an active backfill on its
+pinned worktree until it finishes. Keep documentation focused on the current
+implementation and operating procedures. This does not change the product mission below.
 
 ---
 

@@ -1,7 +1,7 @@
 import fs from "fs";
 import * as cheerio from "cheerio";
 
-const html = fs.readFileSync("docs/artifacts/naukri_j-dca748b4c4c8.html", "utf8");
+const html = fs.readFileSync("tests/fixtures/acquisition/portal-snapshots/naukri_j-dca748b4c4c8.html", "utf8");
 const $ = cheerio.load(html);
 
 console.log("=== NAUKRI TOPTIER DOM HIERARCHY ===");

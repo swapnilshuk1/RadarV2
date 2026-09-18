@@ -12,7 +12,7 @@
  * 2. Stratified Pilot Mode (--pilot):
  *    Executes the strict 10-record pilot cohort (5 Indeed, 5 Naukri; P0/P1/P2; external ATS; truncation; expired).
  *    Generates immutable v2 versions, evaluates fit, computes decision distortion rate.
- *    Generates: scripts/historical_recovery_ledger.json & docs/historical_recovery_pilot_report.md
+ *    Generates: scripts/historical_recovery_ledger.json & .radar/historical_recovery_pilot_report.md
  */
 
 import {
@@ -211,7 +211,8 @@ async function run() {
 
   // Generate markdown pilot report if in pilot mode
   if (isPilot && !isDryRun) {
-    const docPath = path.resolve(process.cwd(), "docs/historical_recovery_pilot_report.md");
+    const docPath = path.resolve(process.cwd(), ".radar/historical_recovery_pilot_report.md");
+    fs.mkdirSync(path.dirname(docPath), { recursive: true });
     let md = `# RADAR V4 — Historical Recovery Pilot Report (10-Record Controlled Cohort)\n\n`;
     md += `**Execution Date**: ${new Date().toISOString()}\n`;
     md += `**Cohort Size**: 10 Opportunities (5 Indeed, 5 Naukri)\n`;
@@ -261,7 +262,7 @@ async function run() {
     md += `- **Canonical ID Preservation**: 100% of v2 rows preserve \`canonical_job_id\`\n`;
 
     fs.writeFileSync(docPath, md, "utf-8");
-    console.log(`[Report] Generated Pilot Forensic Report at docs/historical_recovery_pilot_report.md`);
+    console.log(`[Report] Generated Pilot Forensic Report at .radar/historical_recovery_pilot_report.md`);
   }
 }
 
