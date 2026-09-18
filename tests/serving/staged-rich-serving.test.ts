@@ -19,7 +19,7 @@ import {
   createStagedEvaluationFingerprint,
   parseCanonicalStagedDecisionResult,
 } from '../../src/dossier/staged-decision-integrity';
-import { readAcquisitionFeed } from '../../src/lib/intelligence/acquisition-feed';
+import { readAcquisitionFeed } from '../../src/lib/intelligence/server/acquisition-feed-read-model';
 import { stagedRolloutReadiness,activateReadyStagedRollout } from '../../src/lib/intelligence/staged/StagedRolloutReadiness';
 
 import {stagedEvaluation,evaluationFingerprint,dossier} from '../fixtures/staged-rich-dossier';

@@ -12,12 +12,50 @@
  */
 
 import { describe, it, expect } from "vitest";
+import {spawn} from 'node:child_process';
+import {createServer} from 'node:net';
+import path from 'node:path';
+import {chromium} from 'playwright';
 import {
   resolveShortlistCardScore,
   resolveShortlistCardBadgeState,
 } from "@/routes/index";
 import type { Opportunity } from "@/data/opportunity-fixtures";
 import type { CanonicalOpportunityMetrics } from "@/lib/intelligence/metric-integrity";
+
+it('hydrates the real development app without importing server-only modules into the browser',async()=>{
+  const reservation=createServer();await new Promise<void>(resolve=>reservation.listen(0,'127.0.0.1',resolve));
+  const port=(reservation.address() as {port:number}).port;
+  await new Promise<void>(resolve=>reservation.close(()=>resolve()));
+  const origin=`http://127.0.0.1:${port}`;
+  const server=spawn(process.execPath,[path.resolve('node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port',String(port),'--strictPort'],{
+    cwd:process.cwd(),stdio:['ignore','pipe','pipe'],
+    // Never connect this browser regression to an operator's configured database.
+    env:{...process.env,NODE_ENV:'development',RADAR_ENV:'test',RADAR_USE_TURSO:'false',TURSO_CONNECTION_URL:'',TURSO_DATABASE_URL:'',TURSO_AUTH_TOKEN:'',RADAR_EXPECTED_DB_TARGET_FINGERPRINT:'test-sqlite:memory'},
+  });
+  let output='';server.stdout.on('data',chunk=>{output+=String(chunk);});server.stderr.on('data',chunk=>{output+=String(chunk);});
+  let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
+  try{
+    const deadline=Date.now()+30_000;
+    while(!output.includes(origin)){
+      if(server.exitCode!==null||Date.now()>deadline)throw new Error(`Browser test server failed to start: ${output.slice(-3000)}`);
+      await new Promise(resolve=>setTimeout(resolve,100));
+    }
+    browser=await chromium.launch({headless:true});
+    const page=await browser.newPage();const errors:string[]=[];
+    page.on('pageerror',error=>errors.push(error.message));
+    await page.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():route.abort());
+    const response=await page.goto(origin,{waitUntil:'networkidle',timeout:30_000});
+    expect(response?.status()).toBe(200);
+    expect(new URL(page.url()).pathname).toBe('/login');
+    expect(await page.locator('#google-oauth-btn').isVisible()).toBe(true);
+    expect(errors).toEqual([]);
+  }finally{
+    await browser?.close();
+    server.kill();
+    if(server.exitCode===null)await new Promise<void>(resolve=>{server.once('exit',()=>resolve());setTimeout(resolve,5000).unref();});
+  }
+},65_000);
 
 describe("Journey D: Loader Data → Component State & UI Rendering Parity", () => {
   const mockMetrics: CanonicalOpportunityMetrics = {
