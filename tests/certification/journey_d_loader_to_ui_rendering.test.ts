@@ -32,7 +32,7 @@ it('hydrates the real development app without importing server-only modules into
   const server=spawn(process.execPath,[path.resolve('node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port',String(port),'--strictPort'],{
     cwd:process.cwd(),stdio:['ignore','pipe','pipe'],
     // Never connect this browser regression to an operator's configured database.
-    env:{...process.env,NODE_ENV:'development',RADAR_ENV:'test',RADAR_USE_TURSO:'false',TURSO_CONNECTION_URL:'',TURSO_DATABASE_URL:'',TURSO_AUTH_TOKEN:'',RADAR_EXPECTED_DB_TARGET_FINGERPRINT:'test-sqlite:memory'},
+    env:{...process.env,NODE_ENV:'development',RADAR_ENV:'test',RADAR_USE_TURSO:'false',TURSO_CONNECTION_URL:'',TURSO_DATABASE_URL:'',TURSO_AUTH_TOKEN:'',RADAR_EXPECTED_DB_TARGET_FINGERPRINT:'test-sqlite:memory',NO_COLOR:'1',FORCE_COLOR:'0'},
   });
   let output='';server.stdout.on('data',chunk=>{output+=String(chunk);});server.stderr.on('data',chunk=>{output+=String(chunk);});
   let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
