@@ -69,12 +69,15 @@ describe('rich staged serving activation',()=>{
     const template=dossier();
     const frozen:StagedResearchInput={opportunity:template.opportunity,candidate:template.candidate,sources:template.evidence.lineage,evidence:template.evidence.roleClaims,candidateSourceRefs:[],candidateConflicts:[],acquisition:[],validEvidenceClaimIds:['JD-1-1'],fields:[],fingerprint:'input'};
     const model={id:'local-scripted-composer',version:'1',async generate(instruction:string,input:unknown){
+      if(input && typeof input==='object' && 'factualReview' in input)throw new Error('Factual review must use the independent reviewer');
       if(input && typeof input==='object' && 'fixedAction' in input)return {aligned:true,issue:''};
       const section=instruction.match(/For this call return ONLY the top-level key (\w+)/)?.[1];
       if(section)return {[section]:template[section as keyof Dossier]};
       return {rationale:template.verdict.rationale,narrativePlan:template.narrativePlan};
     }};
-    const composed=await composeStagedDossier(frozen,stagedEvaluation,model);
+    const reviewer={id:'independent-reviewer',version:'1',async generate(_instruction:string,input:any){return {reviews:input.factualReview.passages.map((p:any)=>({passageId:p.passageId,externalComparison:'NONE',candidateAbsence:'NONE',factualAssessment:'Fixture evidence supports the passage.',supported:true,issue:''}))};}};
+    const composed=await composeStagedDossier(frozen,stagedEvaluation,model,reviewer);
+    expect(composed.generation.factualReviewer).toEqual({model:'independent-reviewer/1',policyVersion:'editorial-facts-v1'});
     await new SqliteRichDossierStore(db).save(identity,evaluationFingerprint,{...composed,sourceInputFingerprint:'input',sourceEvaluationFingerprint:evaluationFingerprint});
     await new StagedServingPublisher(db).publish(identity);
     await db.execute(`UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`);
@@ -82,6 +85,7 @@ describe('rich staged serving activation',()=>{
     const dto=await new SqliteOpportunityQueries(db).getDossier(scope,'source-job');
     expect(dto?.evaluationState).toBe('EVALUATED');
     const rich=(dto as {richDossier:Dossier}).richDossier;
+    expect(rich.generation.factualReviewer).toEqual(composed.generation.factualReviewer);
     expect(rich.canonicalDecisionTrace).toEqual(stagedEvaluation.trace);
     const dom=new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>');
     vi.stubGlobal('window',dom.window);vi.stubGlobal('document',dom.window.document);vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);

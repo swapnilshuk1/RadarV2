@@ -10,10 +10,11 @@ import {
 import { SqliteRichDossierStore } from '@/data/sqlite/repositories/SqliteRichDossierStore';
 import { SqliteStagedEvaluationStore } from '@/data/sqlite/repositories/SqliteStagedEvaluationStore';
 import { ProductionStagedInputAdapter, type ProductionStagedIdentity } from './ProductionStagedInputAdapter';
+import { createGeminiFactualReviewModel } from '../../model/gemini-factual-review-model';
 
 /** Additive presentation work never changes the immutable staged decision or serving pointer. */
 export class ProductionStagedDossierService {
-  constructor(private readonly db:DatabaseAdapter,private readonly model:ReasoningModel) {}
+  constructor(private readonly db:DatabaseAdapter,private readonly model:ReasoningModel,private readonly factualReviewer?:ReasoningModel) {}
   async compose(identity:ProductionStagedIdentity,onStage:(stage:string)=>void=()=>{}) {
     const evaluation=await new SqliteStagedEvaluationStore(this.db).get(identity);
     if(!evaluation||evaluation.evaluationState!=='COMPLETED')throw new Error('DOSSIER_REQUIRES_COMPLETED_EVALUATION');
@@ -30,7 +31,7 @@ export class ProductionStagedDossierService {
     const frozen=await new ProductionStagedInputAdapter(this.db).build(identity,this.model,onStage);
     if(frozen.fingerprint!==evaluation.inputFingerprint)throw new Error('DOSSIER_FROZEN_INPUT_MISMATCH');
     try {
-      const composed=await composeStagedDossier(frozen,staged,this.model,onStage);
+      const composed=await composeStagedDossier(frozen,staged,this.model,this.factualReviewer??createGeminiFactualReviewModel(),onStage);
       const dossier={
         ...composed,
         sourceEvaluationFingerprint:evaluationFingerprint,

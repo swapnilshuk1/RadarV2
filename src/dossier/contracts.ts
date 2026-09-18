@@ -87,7 +87,7 @@ export interface Dossier extends Composition {
   candidateConflicts: Research['candidateConflicts'];
   evidence: { roleClaims: Claim[]; candidateClaims: Claim[]; contextualClaims: Claim[]; relationalClaims: Claim[]; lineage: EvidenceSource[] };
   generatedAt: string;
-  generation: { model: string; sourceFingerprint: string };
+  generation: { model: string; sourceFingerprint: string; factualReviewer?: {model:string;policyVersion:string} };
   acquisition: AcquisitionAttempt[];
   /** Exact staged semantic trace. Presentation may explain it but never author it. */
   canonicalDecisionTrace?: JsonValue;
@@ -103,7 +103,7 @@ export const dossierSchema = compositionSchema.extend({
   verdict:researchSchema.shape.evaluation,narrativePlan:narrativePlanSchema,
   resolutions:z.array(resolutionSchema),candidateConflicts:z.array(candidateConflictSchema),
   evidence:z.object({roleClaims:z.array(claimSchema),candidateClaims:z.array(claimSchema),contextualClaims:z.array(claimSchema),relationalClaims:z.array(claimSchema),lineage:z.array(sourceSchema)}),
-  generatedAt:z.string(),generation:z.object({model:z.string(),sourceFingerprint:z.string()}),
+  generatedAt:z.string(),generation:z.object({model:z.string(),sourceFingerprint:z.string(),factualReviewer:z.object({model:z.string(),policyVersion:z.string()}).optional()}),
   acquisition:z.array(z.object({provider:z.string(),field:z.string(),operation:z.enum(['retrieve','search']),status:z.enum(['ACQUIRED','UNAVAILABLE']),sourceIds:z.array(z.string()),detail:z.string()})),
   canonicalDecisionTrace:jsonValueSchema.optional(),
   sourceEvaluationFingerprint:z.string().optional(),
@@ -122,5 +122,6 @@ export interface ContextProvider {
 }
 export interface ReasoningModel {
   readonly id: string; readonly version: string;
+  readonly schemaFormat?: 'openapi' | 'json-schema';
   generate(instruction: string, input: unknown, responseSchema?: Record<string, unknown>): Promise<unknown>;
 }

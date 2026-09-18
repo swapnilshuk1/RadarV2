@@ -116,6 +116,18 @@ describe('Dossier evidence and field resolution', () => {
     expect(bodies[0].generationConfig.temperature).toBe(0);
     expect(bodies[1].generationConfig.responseSchema).toEqual(modelSchema(researchSchema));
   });
+  it('uses the global Gemini endpoint and JSON Schema without exposing thought parts',async()=>{
+    let target='',body:any;
+    const request:typeof fetch=async(url,options)=>{target=String(url);body=JSON.parse(options!.body as string);return new Response(JSON.stringify({candidates:[{finishReason:'STOP',content:{parts:[{thought:true,text:'private reasoning'},{text:'{"ok":true}'}]}}]}));};
+    const model=new GeminiJsonModel('test-project',async()=>'test-token',request,{model:'gemini-3.8-flash',location:'global',schemaFormat:'json-schema',thinkingLevel:'HIGH'});
+    const schema={type:'object',properties:{ok:{type:'boolean'}},required:['ok']};
+    await expect(model.generate('review',{},schema)).resolves.toEqual({ok:true});
+    expect(target).toBe('https://aiplatform.googleapis.com/v1/projects/test-project/locations/global/publishers/google/models/gemini-3.8-flash:generateContent');
+    expect(body.generationConfig.responseJsonSchema).toEqual(schema);
+    expect(body.generationConfig).not.toHaveProperty('responseSchema');
+    expect(body.generationConfig).not.toHaveProperty('temperature');
+    expect(body.generationConfig.thinkingConfig).toEqual({thinkingLevel:'HIGH'});
+  });
   it('preserves grounded inference and open fields instead of dropping them', () => {
     const result = validateResearch(research(),sources);
     expect(result.claims.find(c => c.id === 'relation')?.state).toBe('INFERRED');
