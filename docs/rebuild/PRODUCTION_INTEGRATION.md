@@ -22,6 +22,10 @@ The inventory on 17 September 2026 contained 401 eligible active versions: 352 h
 
 ## Bounded, resumable operation
 
+Provider outages are operational failures. HTTP 401/403 and exhausted transient transport failures bypass semantic repairs. The evaluation worker releases its lease without consuming job attempts or failing the requirement; its daemon pauses claims for 15 minutes. Explicit batch commands stop on provider failure, and dossier infrastructure failures do not become permanent unavailable-presentation markers. A fresh capability probe must succeed before restarting an outage-stopped batch.
+
+For the September 2026 HTTP-403 cohort, `scripts/recover-staged-provider-failures.ts --context=<context> --limit=1` previews one eligible failed evaluation. Add `--execute` only after a successful capability probe. It verifies exact completed enrichment, current eligibility, no existing staged result and matching failed requirement, then records the previous failure in `enrichment_events` before reopening work. Increase the limit after a recovered evaluation canary succeeds. Use the composition CLI to explicitly retry old failed presentations; it retains their failure markers and skips already successful publication. The normal rollout supervisor deliberately skips those historical failure markers.
+
 Use the context above wherever `<context>` appears. Run recovery on the enrichment worker host: this deployment uses a local filesystem BlobStore. Do not write a payload on a different computer and assume the worker can read it.
 
 1. `scripts/recover-missing-enrichment.ts --context=<context> --limit=50 --exclude-source-version=<known navigation source>` previews missing dependencies. With `--execute --worker-host=<actual hostname>`, it reconstructs an immutable payload from hash-verified canonical source text and enqueues normal enrichment. It does not claim a new network acquisition or fabricate enrichment completion.

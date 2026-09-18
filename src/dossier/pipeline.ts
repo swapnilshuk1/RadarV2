@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { ModelProviderUnavailableError } from '../lib/model/provider-unavailable';
 
 import { candidateConflictSchema, claimSchema, compositionSchema, researchSchema, contextFields, scopeFields, sourceSchema, type Claim, type ContextProvider, type Dossier, type EvidenceSource, type ReasoningModel, type Research, type SliceInput } from './contracts';
 
@@ -173,6 +174,7 @@ async function propose<T>(model: ReasoningModel, instruction: string, input: unk
       return result;
 
     } catch (error) {
+      if (error instanceof ModelProviderUnavailableError) throw error;
       lastError = error;
 
       issue = error instanceof Error ? error.message : 'Invalid response';

@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { ModelProviderUnavailableError } from '../model/provider-unavailable';
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
 import { AuthContext, authorizePersonScope } from "@/lib/security/auth";
 import { runEngineSingleIntrinsic } from "./engine";
@@ -501,6 +502,13 @@ export class EvaluationWorker {
 
       return await this.commitEvaluationMaterialization(job, materialized, dossierPresentationV2);
     } catch (err: any) {
+      if (err instanceof ModelProviderUnavailableError) {
+        // Release only our lease. Keep the requirement READY and do not consume
+        // job attempts or classify provider access as a candidate/source failure.
+        await this.db.execute(`UPDATE evaluation_jobs SET status=?,last_error=?,next_attempt_at=datetime('now','+15 minutes'),locked_by=NULL,lease_token=NULL,locked_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND locked_by=? AND lease_token=? AND status=?`,
+          [job.queueKind==='staged'?'staged_pending':'pending',err.message,job.id,this.workerId,job.leaseToken,job.queueKind==='staged'?'staged_processing':'processing']);
+        throw err;
+      }
       const errorMsg = err?.message || String(err);
       const nextAttemptNumber = job.attempts + 1;
       const processingStatus = job.queueKind === "staged" ? "staged_processing" : "processing";

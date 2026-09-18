@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ModelProviderUnavailableError } from '../lib/model/provider-unavailable';
 import { narrativePlanSchema, researchSchema, type JsonValue, type ReasoningModel, type Research } from './contracts';
 import type { StagedResearchInput } from './staged-research';
 import type { StagedDecisionResult } from './staged-decision-contract';
@@ -50,7 +51,7 @@ export async function composeStagedDossier(frozen: StagedResearchInput, staged: 
       const proposal=await model.generate(instruction,{opportunity:frozen.opportunity,candidate:frozen.candidate,evidence:frozen.evidence,staged,repair:issue||undefined},/bedrock/i.test(model.id)?bedrockJsonSchema(editorialSchema):modelSchema(editorialSchema));
       research=bindStagedEditorial(frozen,staged,proposal);
       break;
-    } catch(error) { issue=error instanceof Error?error.message:'Invalid editorial plan'; }
+    } catch(error) { if(error instanceof ModelProviderUnavailableError)throw error; issue=error instanceof Error?error.message:'Invalid editorial plan'; }
   }
   if(!research) throw new Error(`STAGED_EDITORIAL_FAILED: ${issue}`);
   const alignmentSchema=z.object({aligned:z.boolean(),issue:z.string()}).strict();

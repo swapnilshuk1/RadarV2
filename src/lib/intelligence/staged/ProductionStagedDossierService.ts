@@ -1,4 +1,5 @@
 import type { DatabaseAdapter } from '@/data/database';
+import { ModelProviderUnavailableError } from '../../model/provider-unavailable';
 import type { ReasoningModel } from '@/dossier/contracts';
 import { composeStagedDossier } from '@/dossier/staged-composition';
 import {
@@ -39,6 +40,7 @@ export class ProductionStagedDossierService {
       await store.save(identity,evaluationFingerprint,dossier);
       return dossier;
     }catch(error){
+      if(error instanceof ModelProviderUnavailableError)throw error;
       await store.recordFailure(identity,evaluationFingerprint,error);
       throw error;
     }

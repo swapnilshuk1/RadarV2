@@ -1,5 +1,6 @@
 /** Supervised rollout drain: never switches serving until exact dossier coverage is complete. */
 import { getDatabaseAdapter } from '../src/data/database';
+import { ModelProviderUnavailableError } from '../src/lib/model/provider-unavailable';
 import { getBlobStore } from '../src/lib/storage/blob-store';
 import { loadBedrockCredentials } from '../src/lib/model/bedrock-credentials';
 import { createBedrockGlmResearchModel } from '../src/lib/model/bedrock-glm-research-model';
@@ -35,7 +36,7 @@ while(true){
   for(const row of rows){
     const identity={...scope,evaluationContextFingerprint:context,canonicalJobId:row.canonical_job_id,opportunityVersion:row.opportunity_version,profileVersion:binding.profile_version};
     try{await composer.compose(identity);await publisher.publish(identity);console.log(JSON.stringify({job:row.canonical_job_id,status:'published',presentationVersion:RICH_DOSSIER_VERSION}));}
-    catch(error){console.error(JSON.stringify({job:row.canonical_job_id,status:'presentation_failed',error:error instanceof Error?error.message:String(error)}));}
+    catch(error){console.error(JSON.stringify({job:row.canonical_job_id,status:'presentation_failed',error:error instanceof Error?error.message:String(error)}));if(error instanceof ModelProviderUnavailableError)throw error;}
   }
   const readiness=await stagedRolloutReadiness(db,scope);console.log(JSON.stringify({context,...readiness}));
   if(readiness.ready){

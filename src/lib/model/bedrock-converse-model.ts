@@ -1,4 +1,5 @@
 import type { JsonModel } from './json-model';
+import { ModelProviderUnavailableError } from './provider-unavailable';
 
 type BedrockUsage = { inputTokens?: number; outputTokens?: number; totalTokens?: number };
 
@@ -34,9 +35,10 @@ export class BedrockConverseJsonModel implements JsonModel {
           body: requestBody,
         });
         if (response.status === 429 || response.status >= 500) {
-          failure = new Error(response.status >= 500 ? 'Bedrock provider HTTP 5xx' : 'Bedrock provider HTTP 429');
+          failure = new ModelProviderUnavailableError(response.status >= 500 ? 'Bedrock provider HTTP 5xx' : 'Bedrock provider HTTP 429', response.status);
           continue;
         }
+        if (response.status === 401 || response.status === 403) throw new ModelProviderUnavailableError(`Bedrock provider HTTP ${response.status}`, response.status);
         if (!response.ok) throw new Error(`Bedrock provider HTTP ${response.status}`);
         const payload = await response.json() as { output?: { message?: { content?: Array<{ text?: string }> } }; usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number } };
         const content = payload.output?.message?.content?.map(block => block.text ?? '').join('');
@@ -44,11 +46,12 @@ export class BedrockConverseJsonModel implements JsonModel {
         this.lastUsage = payload.usage;
         try { return JSON.parse(content); } catch { throw new Error('Bedrock provider returned invalid JSON'); }
       } catch (error) {
+        if (error instanceof ModelProviderUnavailableError) throw error;
         failure = error;
         const message = error instanceof Error ? error.message : '';
         if (/^Bedrock provider /.test(message)) throw error;
         if (attempt === 2 || !/(abort|timeout|fetch|transport)/i.test(message)) {
-          throw new Error(/abort|timeout/i.test(message) ? 'Bedrock timeout failure' : 'Bedrock network failure');
+          throw new ModelProviderUnavailableError(/abort|timeout/i.test(message) ? 'Bedrock timeout failure' : 'Bedrock network failure');
         }
       }
     }

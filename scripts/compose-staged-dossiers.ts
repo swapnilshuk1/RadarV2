@@ -1,4 +1,5 @@
 import { getDatabaseAdapter } from '../src/data/database';
+import { ModelProviderUnavailableError } from '../src/lib/model/provider-unavailable';
 import { loadBedrockCredentials } from '../src/lib/model/bedrock-credentials';
 import { createBedrockGlmResearchModel } from '../src/lib/model/bedrock-glm-research-model';
 import { ProductionStagedDossierService } from '../src/lib/intelligence/staged/ProductionStagedDossierService';
@@ -41,6 +42,7 @@ for(const row of rows) {
     if(publish)await new StagedServingPublisher(db).publish(identity);
     console.log(JSON.stringify({job:row.canonical_job_id,status:publish?'dossier_published':'dossier_completed'}));
   }catch(error){
+    if(error instanceof ModelProviderUnavailableError)throw error;
     failures+=1;
     console.error(JSON.stringify({job:row.canonical_job_id,status:'dossier_failed',error:error instanceof Error?error.message:String(error)}));
   }

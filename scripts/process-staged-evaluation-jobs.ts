@@ -27,3 +27,4 @@ for (let index = 0; index < maxJobs; index += 1) {
   console.log(JSON.stringify({completed:index+1,...outcomes[outcomes.length-1]}));
 }
 console.log(JSON.stringify({ requested: maxJobs, processed: outcomes.length, outcomes }));
+if(outcomes.some(outcome=>outcome.status==='dead_letter'))process.exitCode=1;

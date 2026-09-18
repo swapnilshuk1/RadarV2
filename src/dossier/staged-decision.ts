@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { ModelProviderUnavailableError } from '../lib/model/provider-unavailable';
 import { z } from 'zod';
 
 import { type Claim, type ReasoningModel } from './contracts';
@@ -96,6 +97,7 @@ async function proposeStage<T>(
       verifiedStageResults.set(key, structuredClone(previous));
       return result;
     } catch (error) {
+      if (error instanceof ModelProviderUnavailableError) throw error;
       issue = error instanceof Error ? error.message : 'Invalid stage response';
     }
   }

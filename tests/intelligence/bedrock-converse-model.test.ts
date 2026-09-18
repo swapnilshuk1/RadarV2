@@ -4,6 +4,7 @@ import { extractValidatedSourceClaims, EmptySourceEvidenceError } from '../../sr
 import { bedrockJsonSchema } from '../../src/dossier/bedrock-schema';
 import { stagedScreeningAdjudicationSchema } from '../../src/dossier/staged-screening';
 import type { ReasoningModel } from '../../src/dossier/contracts';
+import { ModelProviderUnavailableError } from '../../src/lib/model/provider-unavailable';
 
 const response = (content: unknown, status = 200) => new Response(JSON.stringify({
   output: { message: { content: [{ text: JSON.stringify(content) }] } },
@@ -11,6 +12,12 @@ const response = (content: unknown, status = 200) => new Response(JSON.stringify
 }), { status, headers: { 'content-type': 'application/json' } });
 
 describe('Bedrock Converse JSON transport', () => {
+  it('stops source repair immediately on provider access failure', async () => {
+    let calls=0;
+    const model=new BedrockConverseJsonModel('access-failure-test',async()=>'secret',async()=>{calls++;return new Response('',{status:403});});
+    await expect(extractValidatedSourceClaims(model,{id:'provider-failure-jd',plane:'JD',title:'Role',locator:'test',text:'Lead growth.',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'},'JD-1-')).rejects.toBeInstanceOf(ModelProviderUnavailableError);
+    expect(calls).toBe(1);
+  });
   it('reports empty source extraction distinctly after bounded local repairs', async () => {
     let attempts=0;
     const model:ReasoningModel={id:'empty-source-test',version:'1',async generate(){attempts++;return {claims:[]};}};

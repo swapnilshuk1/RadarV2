@@ -1,5 +1,7 @@
 import { describe,expect,it } from 'vitest';
-import { bindStagedEditorial } from '../../src/dossier/staged-composition';
+import { bindStagedEditorial,composeStagedDossier } from '../../src/dossier/staged-composition';
+import { runStagedFrozenDecisionDetailed } from '../../src/dossier/staged-decision';
+import { ModelProviderUnavailableError } from '../../src/lib/model/provider-unavailable';
 import type { StagedResearchInput } from '../../src/dossier/staged-research';
 import { parseCanonicalStagedDecisionResult } from '../../src/dossier/staged-decision-integrity';
 
@@ -13,6 +15,12 @@ const decision={verdict:'PASS',screeningViability:'PLAUSIBLE',decisionHinges:[{r
 const staged=parseCanonicalStagedDecisionResult({decision,trace:{decision,role:{requirements:[{id:'REQ-001',requirement:'Growth capability',strength:'PREFERRED',roleImportance:'CORE_CAPABILITY',roleClaimIds:['JD-1-1'],reasoning:'Delivery'}],operatingConditions:[],authorityShape:'Function',roleSideConditions:[]},requirements:[{id:'REQ-001',requirement:'Growth capability',strength:'PREFERRED',roleImportance:'CORE_CAPABILITY',roleClaimIds:['JD-1-1'],reasoning:'Delivery',screeningGate:false,screeningFunction:'ROLE_PERFORMANCE_REQUIREMENT',screeningGateBasis:'NONE',screeningSupportQuoteIds:['REQ-001:Q1'],screeningReasoning:'Performance',status:'DIRECT',candidateClaimIds:['CANDIDATE-1-1'],unsupportedAspects:[],mappingReasoning:'Direct growth precedent'}],resolutions:[{field:'authority',status:'OPEN',value:null,claimIds:[],methods:['ask'],question:'What authority?',consequence:'Changes career value.'}],eligibleScreeningDrivers:[],screeningConstraint:'NONE'}});
 
 describe('staged dossier editorial boundary',()=>{
+  it.each(['evaluation','composition'])('stops %s without semantic repairs on provider failure',async phase=>{
+    let calls=0;const error=new ModelProviderUnavailableError('Bedrock provider HTTP 403',403);
+    const model={id:'provider-failure-test',version:phase,async generate(){calls++;throw error;}};
+    await expect(phase==='evaluation'?runStagedFrozenDecisionDetailed(frozen,model):composeStagedDossier(frozen,staged,model)).rejects.toBe(error);
+    expect(calls).toBe(1);
+  });
   it('preserves verdict, viability, mapping and screening roles while adding narrative',()=>{
     const result=bindStagedEditorial(frozen,staged,editorial);
     expect(result.evaluation.verdict).toBe('PASS');
