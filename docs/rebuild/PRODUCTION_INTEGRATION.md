@@ -41,6 +41,8 @@ Run TypeScript, the production build, and the current certification manifest bef
 
 Before activation, verify representative rendered PURSUE and PASS dossiers, exact context/profile/source binding, prepared serving coverage, metrics, and unchanged canonical user decisions. Activate only the explicitly bound context. Rollback restores the previous pointer and previous PM2 release; staged results and presentation audit records remain intact.
 
+For existing `dossier-v3.3` results, `node --import tsx scripts/upgrade-staged-dossier-provenance.ts --context=<fingerprint>` validates an additive upgrade without model calls or input-cache writes. It reconstructs the exact frozen input, compares the existing decision, requirements, resolutions, evidence and sources, and applies current composition and canonical-trace validation. `--execute` writes a separate current-version presentation and serving projection while preserving every historical presentation and the active serving pointer. Mismatches require investigation or normal composition; they are never silently upgraded.
+
 ## Boundaries and remaining coverage
 
 The v6 frozen production adapter contains JD and candidate evidence. Its existing role/company resolutions remain authoritative for this rollout; the separate context-provider acquisition capability has not been incorporated into the v6 input fingerprint. Do not claim that these dossiers used newly acquired external company research. Adding decision-bearing external context requires a separately identified evaluator context.
