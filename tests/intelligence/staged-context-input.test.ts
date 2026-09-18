@@ -74,10 +74,11 @@ describe('context-aware immutable production input',()=>{
  });
  it('uses the tenant-owned verified website and searches without sending candidate evidence',async()=>{
   await db.execute(`INSERT INTO intelligence_company_entities(tenant_id,id,normalized_name,official_domain) VALUES('tenant_A','company','company','company.example')`);
-  const request=vi.fn(async(url:RequestInfo|URL)=>String(url).startsWith('https://api.tavily.com/')?new Response(JSON.stringify({results:[{url:'https://news.example/company',title:'Company expands',raw_content:'Company opened a regional office.'}]}),{status:200}):new Response('<html><body><main>Company operates in two markets.</main></body></html>',{status:200}));
+  const request=vi.fn(async(url:RequestInfo|URL,_init?:RequestInit)=>String(url).startsWith('https://api.tavily.com/')?new Response(JSON.stringify({results:[{url:'https://news.example/company',title:'Company expands',raw_content:'Company opened a regional office.'}]}),{status:200}):new Response('<html><body><main>Company operates in two markets.</main></body></html>',{status:200}));
   const result=await new ProductionContextProvider(db,'tenant_A',request as typeof fetch,'fixture-key').acquire({id:'job',company:'Company',title:'Head of Growth'},contextFields);
   expect(result.sources).toHaveLength(2);expect(result.attempts.some(a=>a.operation==='search'&&a.status==='ACQUIRED')).toBe(true);
   const search=request.mock.calls.find(([url])=>String(url).includes('api.tavily.com'))!;
   expect(JSON.stringify(search)).not.toContain('Employment began');
+  expect(JSON.parse(String(search[1]?.body)).query).not.toContain('Head of Growth');
  });
 });

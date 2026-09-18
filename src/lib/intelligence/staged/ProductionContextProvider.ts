@@ -31,7 +31,8 @@ export class ProductionContextProvider implements ContextProvider {
       record('context-web-search','search',[],'Web search unavailable: TAVILY_API_KEY is not configured. Unresolved fields require grounded inference or a decision hinge.');
     }else{
       try{
-        const response=await this.request('https://api.tavily.com/search',{method:'POST',redirect:'error',signal:AbortSignal.timeout(25_000),headers:{'Content-Type':'application/json',Authorization:`Bearer ${this.searchKey}`},body:JSON.stringify({query:`${opportunity.company} company leadership funding growth workforce organization market expansion ${opportunity.title}`,search_depth:'advanced',max_results:5,include_raw_content:'text',include_answer:false})});
+        // The job title pulls search toward syndicated vacancies rather than company evidence.
+        const response=await this.request('https://api.tavily.com/search',{method:'POST',redirect:'error',signal:AbortSignal.timeout(25_000),headers:{'Content-Type':'application/json',Authorization:`Bearer ${this.searchKey}`},body:JSON.stringify({query:`${opportunity.company} company financial results leadership funding workforce growth market expansion`,search_depth:'advanced',max_results:5,include_raw_content:'text',include_answer:false})});
         if(!response.ok)throw new Error(`CONTEXT_SEARCH_HTTP_${response.status}`);
         const payload=await response.json() as {results?:Array<{url?:string;title?:string;raw_content?:string|null;content?:string}>};
         const found:EvidenceSource[]=[];
