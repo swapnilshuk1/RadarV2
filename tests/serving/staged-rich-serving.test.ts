@@ -68,8 +68,8 @@ describe('rich staged serving activation',()=>{
   it('composes, persists and serves canonical intelligence into both interactive DossierView templates',async()=>{
     const template=dossier();
     const frozen:StagedResearchInput={opportunity:template.opportunity,candidate:template.candidate,sources:template.evidence.lineage,evidence:template.evidence.roleClaims,candidateSourceRefs:[],candidateConflicts:[],acquisition:[],validEvidenceClaimIds:['JD-1-1'],fields:[],fingerprint:'input'};
-    const model={id:'local-scripted-composer',version:'1',async generate(instruction:string){
-      if(instruction.startsWith('Review editorial action consistency'))return {aligned:true,issue:''};
+    const model={id:'local-scripted-composer',version:'1',async generate(instruction:string,input:unknown){
+      if(input && typeof input==='object' && 'fixedAction' in input)return {aligned:true,issue:''};
       const section=instruction.match(/For this call return ONLY the top-level key (\w+)/)?.[1];
       if(section)return {[section]:template[section as keyof Dossier]};
       return {rationale:template.verdict.rationale,narrativePlan:template.narrativePlan};

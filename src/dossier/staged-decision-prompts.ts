@@ -75,3 +75,9 @@ The application owns the complete screening-driver list and the immutable career
 Use evidence-bounded language. Do not convert 'not evidenced' into 'the candidate lacks'. Do not speculate about undisclosed artifacts or their probability of existing.
 
 Decision hinges may reference only unresolved/non-DIRECT requirements or context/scope resolutions. Reopening conditions may reference only unresolved/non-DIRECT requirements. Every returned identifier must come from the supplied immutable state.`;
+
+/** v7 adds the evidence needed to interpret the immutable career-capital references. */
+export const contextAwareDecisionInstruction = stagedDecisionInstruction + `
+
+The verdict is a candidate pursuit action: PURSUE means the evidence supports taking the next pursuit step; CONSIDER means investigate a material decision hinge before committing to pursuit; PASS means DO_NOT_PURSUE on the supplied evidence. PASS never means passes screening. Screening viability is a separate axis, not a synonym for any pursuit action.
+The supplied candidateClaims are the immutable evidence behind careerCapital.candidateClaimIds. Read the referenced claims alongside the role operating conditions and resolutions to assess the significance of the already adjudicated change. A material career-capital axis establishes a meaningful change, not automatically a loss or a gain. Do not infer a demotion merely from an unstated headcount, or personal preference from a difference in scope. Preserve upstream mapping and screening judgments. Use CONSIDER when a material unresolved question prevents an evidence-supported pursuit commitment or rejection, subject to the binding screeningConstraint; a BLOCKED_REQUIRED gate still requires PASS.`;

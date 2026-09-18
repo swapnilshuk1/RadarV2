@@ -20,6 +20,11 @@ if(file){
   if(!row)throw new Error('Persisted rich dossier not found');
   raw=JSON.parse(row.presentation_json);
 }
+if(process.argv.includes('--dto')){
+  const dto=raw as {evaluationState?:string;richDossier?:unknown};
+  if(dto?.evaluationState!=='EVALUATED'||!dto.richDossier)throw new Error('Evaluated serving DTO with a rich dossier required');
+  raw=dto.richDossier;
+}
 const dossier=dossierSchema.parse(raw);
 const port=Number(option('port')||'4318');
 const origin=`http://127.0.0.1:${port}`;

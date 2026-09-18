@@ -78,7 +78,7 @@ export async function extractValidatedSourceClaims(model: ReasoningModel, source
   sourceSchema.parse(source);
   return propose(model, evidenceInstruction, { plane: source.plane, idPrefix, sources: [{ ...source, spans: sourceSpans(source) }] }, value => {
     const claims = validateClaims(resolveSourceClaims(value, [source]), [source]);
-    if (!claims.length) throw new EmptySourceEvidenceError(source.plane);
+    if (!claims.length && source.plane !== 'CONTEXT') throw new EmptySourceEvidenceError(source.plane);
     if (claims.some(claim => claim.plane !== source.plane || !claim.id.startsWith(idPrefix))) throw new Error(`Expected grounded ${source.plane} claims with ID prefix ${idPrefix}`);
     return claims;
   }, onStage, sourceClaimsSchema);
@@ -163,7 +163,7 @@ async function propose<T>(model: ReasoningModel, instruction: string, input: unk
 
     try {
 
-      previous = await model.generate(instruction, attempt ? { input, previous, repair: `Repair the specified defect: ${issue}. Preserve all other valid content and claim IDs. Check every reference resolves in supplied evidence or your returned claims. You must return the COMPLETE object matching the schema with all required arrays and fields fully populated (including all 16 resolutions).` } : input, schema ? outputSchemaFor(model, schema) : undefined);
+      previous = await model.generate(instruction, attempt ? { input, previous, repair: `Repair the specified defect: ${issue}. Preserve other valid content and evidence references. Check every reference resolves in supplied evidence or your returned claims. Return the complete object required by this call's schema, with only its requested fields. Internal identifiers belong in reference arrays, never visible prose.` } : input, schema ? outputSchemaFor(model, schema) : undefined);
 
       const result = await validate(previous);
 
@@ -406,7 +406,7 @@ export async function composeDossier(
 
   const sections: Record<string, unknown> = {};
   const hasHardScreens = research.evaluation.requirements.some(requirement => requirement.decisionRole === 'HARD_SCREEN');
-  const presentationGuidance = 'Keep executiveThesis to 2–3 sentences and at most 110 words. Do not print evidence identifiers in visible text: place them only in evidenceRefs. Do not claim the candidate has applied or is applying; this is an opportunity under assessment. Do not assert external market rates without supplied market evidence; explain economics using the documented role and candidate evidence.';
+  const presentationGuidance = 'Keep executiveThesis to 2–3 sentences and at most 110 words. Describe the next action in plain language; the application renders the verdict badge. Do not print uppercase PURSUE, CONSIDER or PASS action codes in narrative prose. Translate internal analytical field names into natural executive advice. Do not print evidence identifiers in visible text: place them only in evidenceRefs. Do not claim the candidate has applied or is applying; this is an opportunity under assessment. Do not assert external market rates without supplied market evidence; explain economics using the documented role and candidate evidence. A personalized company-context comparison may cite CANDIDATE plus CONTEXT evidence as RELATIONAL inference; do not add an irrelevant JD citation merely to satisfy a two-plane rule. Candidate achievements still require candidate evidence.';
   const decisionBundleGuidance = hasHardScreens
     ? 'The central hard-screen issue is fully named in the thesis and fit.gaps. Do not enumerate it anywhere else; in openQuestions, decisionHinges and conversationStrategy refer briefly to the actual documented hard-screen evidence bundle for this dossier and ask for a single, decision-changing body of proof.'
     : 'Do not invent screening or eligibility language. In openQuestions, decisionHinges and conversationStrategy refer briefly to the decisive requirement or pursuit/career evidence bundle for this dossier and ask for a single, decision-changing body of proof.';

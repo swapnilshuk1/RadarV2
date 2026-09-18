@@ -37,6 +37,7 @@ import {
   stagedDecisionGapInstruction,
   stagedDecisionCareerCapitalInstruction,
   stagedDecisionInstruction,
+  contextAwareDecisionInstruction,
   stagedDecisionMappingInstruction,
   stagedDecisionResolutionInstruction,
   stagedDecisionRoleInstruction,
@@ -228,6 +229,7 @@ export async function runStagedFrozenDecisionDetailed(
   frozen: StagedResearchInput,
   model: ReasoningModel,
   onStage: (stage: string) => void = () => {},
+  options: { policyVersion?: 'staged-v6' | 'staged-v7' } = {},
 ): Promise<StagedDecisionResult> {
   const roleClaims = frozen.evidence.filter(claim => claim.plane === 'JD');
   const candidateClaims = frozen.evidence.filter(claim => claim.plane === 'CANDIDATE');
@@ -367,7 +369,7 @@ export async function runStagedFrozenDecisionDetailed(
       resolutions,
     },
     stagedCareerCapitalSchema,
-    value => validateStagedCareerCapital(value, role, resolutions, candidateClaims),
+    value => validateStagedCareerCapital(value, role, resolutions, candidateClaims, options.policyVersion === 'staged-v7'),
     onStage,
   );
 
@@ -385,10 +387,11 @@ export async function runStagedFrozenDecisionDetailed(
   const decision = await proposeStage(
     'Reasoning about pursuit decision',
     model,
-    stagedDecisionInstruction,
+    options.policyVersion === 'staged-v7' ? contextAwareDecisionInstruction : stagedDecisionInstruction,
     {
       opportunity: frozen.opportunity,
       candidate: frozen.candidate,
+      ...(options.policyVersion === 'staged-v7' ? { candidateClaims } : {}),
       immutableRequirements,
       eligibleScreeningDrivers: drivers.map(driver => ({
         id: driver.id,

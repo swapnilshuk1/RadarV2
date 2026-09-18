@@ -47,7 +47,7 @@ export function validateClaims(value: unknown, sources: EvidenceSource[]): Claim
     if (claim.plane === 'CANDIDATE' && [...planes].some(p => p !== 'CANDIDATE')) throw new Error(`Candidate claim contaminated: ${claim.id}`);
     if (claim.plane === 'JD' && [...planes].some(p => p !== 'JD' && !(claim.state === 'INFERRED' && p === 'CONTEXT'))) throw new Error(`Role claim contaminated: ${claim.id}`);
     if (claim.plane === 'CONTEXT' && [...planes].some(p => p !== 'CONTEXT' && !(claim.state === 'INFERRED' && p === 'JD'))) throw new Error(`Context claim contaminated: ${claim.id}`);
-    if (claim.plane === 'RELATIONAL' && (!planes.has('JD') || !planes.has('CANDIDATE') || claim.state !== 'INFERRED')) throw new Error(`Relational claim needs role and candidate evidence: ${claim.id}`);
+    if (claim.plane === 'RELATIONAL' && (!(planes.has('JD') || planes.has('CONTEXT')) || !planes.has('CANDIDATE') || claim.state !== 'INFERRED')) throw new Error(`Relational claim needs role or context plus candidate evidence: ${claim.id}`);
     return planes;
   };
   parsed.forEach(c => visit(c));
@@ -196,7 +196,7 @@ export function validatePassages(composition: unknown, research: Research): void
     const hasRelational = cited.some(c => c.plane === 'RELATIONAL');
     const hasContext = cited.some(c => c.plane === 'CONTEXT');
 
-    if (hasRelational || (hasJd && hasCandidate)) {
+    if (hasRelational || ((hasJd || hasContext) && hasCandidate)) {
       p.sourcePlane = 'RELATIONAL';
     } else if (hasContext && hasJd && !hasCandidate) {
       p.sourcePlane = 'CONTEXT';
@@ -210,7 +210,7 @@ export function validatePassages(composition: unknown, research: Research): void
 
     if (p.sourcePlane === 'CANDIDATE' && p.evidenceRefs.some(id => claims.get(id)!.plane !== 'CANDIDATE')) throw new Error('Narrative candidate evidence contaminated');
     if (p.sourcePlane === 'RELATIONAL') {
-      if (!cited.some(c => c.plane === 'RELATIONAL') && !(cited.some(c => c.plane === 'JD') && cited.some(c => c.plane === 'CANDIDATE'))) throw new Error(`Personalized narrative needs both evidence planes. Passage: ${p.text}. Cited IDs: ${p.evidenceRefs.join(', ')}. Cite the actual relevant JD and candidate claims, or use CANDIDATE for a candidate-only observation, JD for a role-only observation, CONTEXT for company-only interpretation.`);
+      if (!hasRelational && !((hasJd || hasContext) && hasCandidate)) throw new Error(`Personalized narrative needs candidate evidence plus role or context evidence. Passage: ${p.text}. Cited IDs: ${p.evidenceRefs.join(', ')}. Cite the actual relevant sources; use CANDIDATE for a candidate-only observation, JD for a role-only observation, CONTEXT for company-only interpretation.`);
     }
   }
   const passages = allPassages(composition);

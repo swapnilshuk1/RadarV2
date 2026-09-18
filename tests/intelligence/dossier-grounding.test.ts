@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildDossier, researchModelInput, sourceFingerprint, type FrozenResearchInput } from '../../src/dossier/pipeline';
-import { validateComposition, validateResearch } from '../../src/dossier/grounding';
+import { buildDossier, extractValidatedSourceClaims, researchModelInput, sourceFingerprint, type FrozenResearchInput } from '../../src/dossier/pipeline';
+import { validateComposition, validateResearch, validateClaims, validatePassages } from '../../src/dossier/grounding';
 import { contextFields, scopeFields, type Composition, type EvidenceSource, type Passage, type Research } from '../../src/dossier/contracts';
 import { CompanyWebsiteProvider } from '../../src/dossier/context';
 import { readSliceInput } from '../../scripts/dossier/source-input';
@@ -139,6 +139,27 @@ describe('Dossier evidence and field resolution', () => {
   it('requires both evidence planes for relational reasoning', () => {
     const value=research(); value.claims[2].derivedFrom=['jd-role'];
     expect(() => validateResearch(value,sources)).toThrow('Relational claim needs');
+  });
+  it('grounds candidate-company comparison without inventing an unrelated JD citation', () => {
+    const context:EvidenceSource={...sources[0],id:'company',plane:'CONTEXT',text:'The company is building a marketing team.'};
+    const value=research();
+    value.claims.push({id:'company-team',text:context.text,state:'EXPLICIT',confidence:1,plane:'CONTEXT',citations:[{sourceId:context.id,quote:context.text}],derivedFrom:[]});
+    value.claims[2]={...value.claims[2],text:'Candidate team-building experience is relevant to company expansion.',derivedFrom:['cv-candidate','company-team']};
+    expect(()=>validateClaims(value.claims,[...sources,context])).not.toThrow();
+    const passage:Passage={text:'Use the documented team-building precedent to explore the company expansion.',kind:'ADVICE',state:'INFERRED',confidence:0.8,sourcePlane:'RELATIONAL',evidenceRefs:['cv-candidate','company-team'],reasoning:'Candidate and company evidence establish a comparable team-building situation.'};
+    expect(()=>validatePassages({passage},value)).not.toThrow();
+    value.claims[2].derivedFrom=['company-team'];
+    expect(()=>validateClaims(value.claims,[...sources,context])).toThrow('Relational claim needs');
+    value.claims[2].derivedFrom=['cv-candidate','company-team'];
+    value.claims[2].plane='CANDIDATE';
+    expect(()=>validateClaims(value.claims,[...sources,context])).toThrow('Candidate claim contaminated');
+  });
+  it('accepts an evidence-free context page without pressuring the model to invent claims', async()=>{
+    let calls=0;
+    const model={id:'empty-context-probe',version:'1',async generate(){calls++;return {claims:[]};}};
+    const context:EvidenceSource={...sources[0],id:'empty-context',plane:'CONTEXT',text:'Loading viewer...'};
+    expect(await extractValidatedSourceClaims(model,context,'CONTEXT-1-')).toEqual([]);
+    expect(calls).toBe(1);
   });
   it('rejects circular derivations', () => {
     const value=research(); value.claims[2].derivedFrom.push('relation');

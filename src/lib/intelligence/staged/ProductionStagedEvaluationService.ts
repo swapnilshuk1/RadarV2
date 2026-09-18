@@ -12,7 +12,7 @@ export class ProductionStagedEvaluationService {
   async evaluate(identity:ProductionStagedIdentity & {context:EvaluationContext},onStage:(stage:string)=>void=()=>{}):Promise<StagedEvaluationRecord>{
     const existing=await this.store.get(identity); if(existing) return existing;
     const frozen=await this.inputs.build(identity,this.model,onStage);
-    const staged=await runStagedFrozenDecisionDetailed(frozen,this.model,onStage);
+    const staged=await runStagedFrozenDecisionDetailed(frozen,this.model,onStage,{policyVersion:identity.context.policyVersion==='staged-v7'?'staged-v7':'staged-v6'});
     const record:StagedEvaluationRecord={tenantId:identity.tenantId,personId:identity.personId,canonicalJobId:identity.canonicalJobId,opportunityVersion:identity.opportunityVersion,jobHash:identity.canonicalJobId,evaluationContextFingerprint:identity.evaluationContextFingerprint,profileVersion:identity.profileVersion,policyVersion:identity.context.policyVersion,ontologyVersion:identity.context.ontologyVersion,ontologyFingerprint:identity.context.ontologyFingerprint,inputFingerprint:frozen.fingerprint,sourceFingerprints:frozen.sources.map(source=>`${source.plane}:${source.locator}`),modelId:this.model.id,modelVersion:this.model.version,contractVersion:stagedContractForPolicy(identity.context.policyVersion),evaluationState:'COMPLETED',decision:staged.decision.verdict,screeningViability:staged.decision.screeningViability,evaluation:{decision:staged.decision,trace:staged.trace},evaluatedAt:new Date().toISOString()};
     await this.store.save(record); return record;
   }

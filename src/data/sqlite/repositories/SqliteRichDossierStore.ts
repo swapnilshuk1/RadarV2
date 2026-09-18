@@ -3,7 +3,7 @@ import { dossierSchema, type Dossier } from '@/dossier/contracts';
 import { validateComposition } from '@/dossier/grounding';
 import type { DossierPresentationIdentity } from './SqliteDossierPresentationStore';
 
-export const RICH_DOSSIER_VERSION='dossier-v3.4';
+export const RICH_DOSSIER_VERSION='dossier-v3.5';
 export const RICH_DOSSIER_FAILURE_VERSION=`${RICH_DOSSIER_VERSION}-unavailable`;
 export class SqliteRichDossierStore {
   constructor(private readonly db:DatabaseAdapter) {}

@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest';
-import { bindStagedEditorial,composeStagedDossier } from '../../src/dossier/staged-composition';
+import { bindStagedEditorial,composeStagedDossier,reviewStagedEditorialAction } from '../../src/dossier/staged-composition';
 import { runStagedFrozenDecisionDetailed } from '../../src/dossier/staged-decision';
 import { ModelProviderUnavailableError } from '../../src/lib/model/provider-unavailable';
 import type { StagedResearchInput } from '../../src/dossier/staged-research';
@@ -15,6 +15,20 @@ const decision={verdict:'PASS',screeningViability:'PLAUSIBLE',decisionHinges:[{r
 const staged=parseCanonicalStagedDecisionResult({decision,trace:{decision,role:{requirements:[{id:'REQ-001',requirement:'Growth capability',strength:'PREFERRED',roleImportance:'CORE_CAPABILITY',roleClaimIds:['JD-1-1'],reasoning:'Delivery'}],operatingConditions:[],authorityShape:'Function',roleSideConditions:[]},requirements:[{id:'REQ-001',requirement:'Growth capability',strength:'PREFERRED',roleImportance:'CORE_CAPABILITY',roleClaimIds:['JD-1-1'],reasoning:'Delivery',screeningGate:false,screeningFunction:'ROLE_PERFORMANCE_REQUIREMENT',screeningGateBasis:'NONE',screeningSupportQuoteIds:['REQ-001:Q1'],screeningReasoning:'Performance',status:'DIRECT',candidateClaimIds:['CANDIDATE-1-1'],unsupportedAspects:[],mappingReasoning:'Direct growth precedent'}],resolutions:[{field:'authority',status:'OPEN',value:null,claimIds:[],methods:['ask'],question:'What authority?',consequence:'Changes career value.'}],eligibleScreeningDrivers:[],screeningConstraint:'NONE'}});
 
 describe('staged dossier editorial boundary',()=>{
+  it('keeps action codes in the application verdict instead of admitting a competing prose label',async()=>{
+    let calls=0;const model={id:'action-label-boundary',version:'1',async generate(){calls++;return {aligned:true,issue:''};}};
+    await expect(reviewStagedEditorialAction(model,'CONSIDER','executiveThesis',{executiveThesis:{text:'PASS for now; investigate later.',kind:'ADVICE',state:'INFERRED',confidence:0.8,sourcePlane:'JD',evidenceRefs:['JD-1-1'],reasoning:'Fixture'}})).rejects.toThrow('Action labels belong');
+    expect(calls).toBe(0);
+  });
+  it('limits editorial action review to the fixed action without reopening evaluation axes',async()=>{
+    let payload:any;
+    const model={id:'review-boundary',version:'1',async generate(_instruction:string,input:unknown){payload=input;return {aligned:true,issue:''};}};
+    await reviewStagedEditorialAction(model,'CONSIDER','executiveThesis',{text:'Investigate the mandate before committing.'});
+    expect(payload.fixedAction).toEqual({verdict:'CONSIDER',action:'INVESTIGATE_BEFORE_COMMITTING'});
+    expect(payload).not.toHaveProperty('decision');
+    expect(payload.fixedAction).not.toHaveProperty('screeningViability');
+    expect(payload.fixedAction).not.toHaveProperty('careerCapital');
+  });
   it.each(['evaluation','composition'])('stops %s without semantic repairs on provider failure',async phase=>{
     let calls=0;const error=new ModelProviderUnavailableError('Bedrock provider HTTP 403',403);
     const model={id:'provider-failure-test',version:phase,async generate(){calls++;throw error;}};

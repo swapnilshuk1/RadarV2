@@ -109,26 +109,35 @@ export function validateStagedCareerCapital(
   role: StagedRoleAnalysis,
   resolutions: z.infer<typeof resolutionSchema>[],
   candidateClaims: Claim[],
+  collectIssues = false,
 ): StagedCareerCapital {
   const parsed = stagedCareerCapitalSchema.parse(value);
   const operatingIds = new Set(role.operatingConditions.map(item => item.id));
   const resolutionFields = new Set(resolutions.map(item => item.field));
   const candidateIds = new Set(candidateClaims.map(item => item.id));
+  const issues: string[] = [];
+  const check = (validate: () => void) => {
+    try { validate(); } catch (error) {
+      if (!collectIssues) throw error;
+      issues.push(error instanceof Error ? error.message : 'Invalid career-capital reference');
+    }
+  };
 
   for (const [axis, judgment] of Object.entries(parsed)) {
-    exactIds(judgment.candidateClaimIds, candidateIds, `${axis} career-capital candidate claim`);
-    exactIds(judgment.operatingConditionIds, operatingIds, `${axis} career-capital operating condition`);
-    exactIds(judgment.resolutionFields, resolutionFields, `${axis} career-capital resolution field`);
+    check(() => exactIds(judgment.candidateClaimIds, candidateIds, `${axis} career-capital candidate claim`));
+    check(() => exactIds(judgment.operatingConditionIds, operatingIds, `${axis} career-capital operating condition`));
+    check(() => exactIds(judgment.resolutionFields, resolutionFields, `${axis} career-capital resolution field`));
     const supportCount = judgment.candidateClaimIds.length
       + judgment.operatingConditionIds.length
       + judgment.resolutionFields.length;
     if (judgment.material && !supportCount) {
-      throw new Error(`Material ${axis} career-capital axis needs immutable supporting references`);
+      check(() => { throw new Error(`Material ${axis} career-capital axis needs immutable supporting references`); });
     }
     if (!judgment.material && supportCount) {
-      throw new Error(`Non-material ${axis} career-capital axis cannot carry supporting references`);
+      check(() => { throw new Error(`Non-material ${axis} career-capital axis cannot carry supporting references${collectIssues ? `: set ${axis}.candidateClaimIds, ${axis}.operatingConditionIds and ${axis}.resolutionFields to [] while preserving material=false` : ''}`); });
     }
   }
+  if (issues.length) throw new Error(issues.join('; '));
   return parsed;
 }
 

@@ -305,6 +305,17 @@ describe('staged production decision boundary', () => {
       authority: { material: true, candidateClaimIds: [], operatingConditionIds: [], resolutionFields: [] },
     }, role, [], candidateClaims)).toThrow('Material authority career-capital axis needs immutable supporting references');
 
+    const multipleDefects = {
+      ...noCareerCapital,
+      authority: { ...noCareerCapital.authority, material: true, candidateClaimIds: ['UNKNOWN'] },
+      compensation: { ...noCareerCapital.compensation, candidateClaimIds: ['CANDIDATE-1'] },
+    };
+    expect(() => validateStagedCareerCapital(multipleDefects, role, [], candidateClaims, true))
+      .toThrow(/Unknown authority.*Non-material compensation.*set compensation.candidateClaimIds/);
+    // Historical repair behavior remains fail-fast; v7 gets every mechanical defect at once.
+    expect(() => validateStagedCareerCapital(multipleDefects, role, [], candidateClaims))
+      .toThrow('Unknown authority career-capital candidate claim reference: UNKNOWN');
+
     expect(stagedCareerCapitalSchema.parse({
       ...noCareerCapital,
       authority: { material: true, candidateClaimIds: ['CANDIDATE-1'], operatingConditionIds: ['OP-001'], resolutionFields: [] },
@@ -335,6 +346,21 @@ describe('staged production decision boundary', () => {
     expect(result.decision).not.toHaveProperty('narrativePlan');
     expect(result.decision.careerCapital).toEqual(noCareerCapital);
     expect(result.decision.decisionHinges[0]).not.toHaveProperty('statement');
+  });
+
+  it('supplies career evidence and explicit pursuit actions only to the v7 decision stage', async()=>{
+    for(const policyVersion of ['staged-v6','staged-v7'] as const){
+      let request:any,wording='';
+      class CapturingModel extends ScriptedModel {
+        async generate(instruction:string,input:any){if(instruction.includes('executive decision reasoner')){request=input.input??input;wording=instruction;}return super.generate(instruction,input);}
+      }
+      await runStagedFrozenDecisionDetailed({...frozen,opportunity:{...frozen.opportunity,id:`decision-evidence-${policyVersion}`}},new CapturingModel(),()=>{},{policyVersion});
+      if(policyVersion==='staged-v7'){
+        expect(request.candidateClaims).toEqual(claims.filter(claim=>claim.plane==='CANDIDATE'));
+        expect(wording).toContain('PASS means DO_NOT_PURSUE');
+        expect(wording).toContain('CONSIDER means investigate');
+      }else{expect(request).not.toHaveProperty('candidateClaims');expect(wording).not.toContain('PASS means DO_NOT_PURSUE');}
+    }
   });
 
   it('rejects a question on a resolved field before decision reasoning', async () => {
