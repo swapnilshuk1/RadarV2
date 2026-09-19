@@ -24,12 +24,20 @@ it is running.
 Portal scrape -> preserved payload -> canonical opportunity/version
              -> enrichment dependency -> durable evaluation job
              -> frozen JD + candidate sources + acquired context
-             -> staged decision -> reviewed rich dossier -> publication
-                                                        -> explicit activation
+             -> staged decision -> validated draft -> labelled publication
+                                    -> durable factual review -> reviewed revision
+             (context activation remains a separate explicit operation)
 ```
 
 The current release contracts are `staged-v8`, `staged-decision-v8`,
 `dossier-v4.1` and `memo-facts-v4`. Publication does not activate a context.
+
+PURSUE/CONSIDER drafts carry **AI draft · factual review pending**. Run
+`npm run worker:reviews` as a separate supervised process after migration 052.
+Gemini 3.8 Flash remains the default reviewer; model adapters are independent of
+the queue. See the [review-worker runbook](docs/operations/DOSSIER_REVIEW_WORKER.md)
+for configuration, retry behavior and local verification. Reviewed dossiers retain
+their strict receipt validation; drafts never masquerade as reviewed output.
 
 Gemini review reuses an explicit, one-hour cache of fixed candidate evidence and
 review instructions when the input meets the provider's minimum size. Each job's
@@ -38,18 +46,18 @@ optimization can be disabled with `RADAR_GEMINI_CONTEXT_CACHE=off`.
 Historical persisted results remain readable; they are never relabelled as a
 new evaluation policy or used as substitute candidate evidence.
 
-| Responsibility | Location |
-| --- | --- |
-| Portal acquisition, payload preservation, enrichment queue | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts` |
-| Durable scheduling and evaluation worker | `src/lib/intelligence/EvaluationWorkScheduler.ts`, `EvaluationWorker.ts` |
-| Production input, context acquisition, checkpoints and rollout | `src/lib/intelligence/staged/` |
-| Evidence extraction, conflicts and source fingerprints | `src/dossier/evidence.ts` |
-| Role requirements and mapping contracts | `src/dossier/staged-role.ts` |
-| Screening, decision policy and provenance validation | `src/dossier/staged-screening.ts`, `staged-decision.ts`, `staged-decision-contract.ts`, `staged-decision-integrity.ts` |
-| Whole-memo composition and compact factual review | `src/dossier/composition.ts`, `staged-composition.ts`, `memo-review.ts`, `factual-review-integrity.ts` |
-| Canonical executive memo and Template B | `src/dossier/contracts.ts`, `DossierView.tsx` |
-| Persistence, migrations and serving queries | `src/data/` |
-| Application routes and shared interface | `src/routes/`, `src/components/` |
+| Responsibility                                                 | Location                                                                                                               |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Portal acquisition, payload preservation, enrichment queue     | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts`                                                           |
+| Durable scheduling and evaluation worker                       | `src/lib/intelligence/EvaluationWorkScheduler.ts`, `EvaluationWorker.ts`                                               |
+| Production input, context acquisition, checkpoints and rollout | `src/lib/intelligence/staged/`                                                                                         |
+| Evidence extraction, conflicts and source fingerprints         | `src/dossier/evidence.ts`                                                                                              |
+| Role requirements and mapping contracts                        | `src/dossier/staged-role.ts`                                                                                           |
+| Screening, decision policy and provenance validation           | `src/dossier/staged-screening.ts`, `staged-decision.ts`, `staged-decision-contract.ts`, `staged-decision-integrity.ts` |
+| Whole-memo composition and compact factual review              | `src/dossier/composition.ts`, `staged-composition.ts`, `memo-review.ts`, `factual-review-integrity.ts`                 |
+| Canonical executive memo and Template B                        | `src/dossier/contracts.ts`, `DossierView.tsx`                                                                          |
+| Persistence, migrations and serving queries                    | `src/data/`                                                                                                            |
+| Application routes and shared interface                        | `src/routes/`, `src/components/`                                                                                       |
 
 The semantic screening lab and regression corpus remain available. Historical
 experiment reports are evidence, not production entry points. Retired code can

@@ -73,6 +73,7 @@ export async function reviewMemo(
   research: Research,
   memo: Composition,
   accepted = new Map<string, FactualReviewReceipt>(),
+  onDefect: () => Promise<void> = async () => {},
 ): Promise<FactualReviewReceipt[]> {
   const evidenceFingerprint = reviewEvidenceFingerprint(
     frozen.evidence,
@@ -160,6 +161,17 @@ export async function reviewMemo(
     try {
       const parsed = memoReviewSchema.parse(response);
       const expected = new Set(passages.map((p) => p.passageId));
+      // A real adverse finding remains actionable even when the reviewer makes
+      // a separate bookkeeping error and a later transport attempt is throttled.
+      if (
+        parsed.checks.some((check) => expected.has(check.passageId) && !check.supported) ||
+        parsed.defects.some(
+          (defect) =>
+            defect.passageIds.some((id) => expected.has(id)) ||
+            defect.pointIds.some((id) => assignedPoints.some((point) => point.id === id)),
+        )
+      )
+        await onDefect();
       const seen = new Set<string>();
       const assigned = new Set(assignedPoints.map((p) => p.id));
       for (const id of [

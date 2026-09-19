@@ -438,3 +438,20 @@
     position: static;
   }
 }
+.dossier-review-status {
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid currentColor;
+  border-radius: 0.4rem;
+  font: 0.9rem/1.5 sans-serif;
+}
+.dossier-review-status.pending {
+  color: #805211;
+  background: #fff8e9;
+}
+.dossier-review-status.reviewed {
+  color: #34634a;
+}
+.dossier-review-status p {
+  margin: 0.35rem 0 0;
+}

@@ -23,8 +23,17 @@ import {
   type NavigationContext,
   type OpaqueCursor,
 } from "../../../lib/intelligence/opportunity-queries";
-import { encodeCursor, decodeCursor, CursorValidationError } from "../../../lib/intelligence/cursor";
-import { MetricIntegrityValidator, reconcileEvaluationPopulation, type CanonicalOpportunityMetrics, type EvaluationPopulationBreakdown } from "../../../lib/intelligence/metric-integrity";
+import {
+  encodeCursor,
+  decodeCursor,
+  CursorValidationError,
+} from "../../../lib/intelligence/cursor";
+import {
+  MetricIntegrityValidator,
+  reconcileEvaluationPopulation,
+  type CanonicalOpportunityMetrics,
+  type EvaluationPopulationBreakdown,
+} from "../../../lib/intelligence/metric-integrity";
 import type { ServingStopwatch } from "../../../lib/intelligence/serving/observability";
 import type {
   EngineVerdict,
@@ -35,7 +44,10 @@ import type {
   CanonicalServingVerdict,
   CanonicalReviewState,
 } from "../../../domain/decision_v4";
-import { resolveCanonicalServingReadModel, type CanonicalEvaluationState } from "../../../lib/intelligence/serving/CanonicalServingReadModel";
+import {
+  resolveCanonicalServingReadModel,
+  type CanonicalEvaluationState,
+} from "../../../lib/intelligence/serving/CanonicalServingReadModel";
 export type AttentionDecision = "CANDIDATE" | "NOT_CANDIDATE";
 import type {
   Opportunity,
@@ -51,10 +63,22 @@ import {
 } from "../../../lib/intelligence/serving/EvaluationServingEngine";
 import { isCanonicalIntrinsicEvaluationV4_3 } from "../../../lib/domain/evaluation_payloads";
 import { isCanonicalDossierPresentationV1 } from "../../../lib/domain/dossier_presentation";
-import { classifyOpportunityCategories, type CategoryId } from "../../../lib/domain/category_taxonomy";
-import { resolveServingScope, type ActiveServingContext } from "../../../lib/security/scope-resolver";
+import {
+  classifyOpportunityCategories,
+  type CategoryId,
+} from "../../../lib/domain/category_taxonomy";
+import {
+  resolveServingScope,
+  type ActiveServingContext,
+} from "../../../lib/security/scope-resolver";
 import { SqliteDossierPresentationStore } from "./SqliteDossierPresentationStore";
-import { SqliteRichDossierStore } from './SqliteRichDossierStore';
+import { SqliteRichDossierStore } from "./SqliteRichDossierStore";
+import { DRAFT_DOSSIER_VERSION, SqliteDossierReviewQueue } from "./SqliteDossierReviewQueue";
+import { SqliteStagedEvaluationStore } from "./SqliteStagedEvaluationStore";
+import {
+  parseCanonicalStagedDecisionResult,
+  createStagedEvaluationFingerprint,
+} from "@/dossier/staged-decision-integrity";
 
 function toScrapeSource(val: unknown): ScrapeSource {
   if (val === "LinkedIn" || val === "Naukri" || val === "Indeed") return val as ScrapeSource;
@@ -107,7 +131,16 @@ export interface RawFeedRow {
   posted_at: string | null;
   posted_precision: string | null;
   apply_url: string | null;
-  evaluation_state: "COMPLETE" | "SPARSE_SPEC" | "NOT_EVALUABLE" | "PROFILE_REQUIRED" | "ACQUISITION_PENDING" | "ACQUISITION_FAILED" | "EXPIRED" | "INVALID" | "UNMATERIALIZED";
+  evaluation_state:
+    | "COMPLETE"
+    | "SPARSE_SPEC"
+    | "NOT_EVALUABLE"
+    | "PROFILE_REQUIRED"
+    | "ACQUISITION_PENDING"
+    | "ACQUISITION_FAILED"
+    | "EXPIRED"
+    | "INVALID"
+    | "UNMATERIALIZED";
   engine_verdict: string | null;
   quality_score: number | null;
   evaluation_context_fingerprint: string | null;
@@ -139,7 +172,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
    */
   async getFeedRaw(
     scope: AuthorizedPersonScope,
-    activeContext: ActiveServingContext
+    activeContext: ActiveServingContext,
   ): Promise<FeedSummary[]> {
     const rows = await this.db.many<RawFeedRow>(
       `SELECT 
@@ -223,7 +256,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         scope.tenantId,
         scope.personId,
         activeContext.searchPlanId,
-      ]
+      ],
     );
 
     return rows.map((r) => this.mapFeedRow(r));
@@ -241,7 +274,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     cursor?: OpaqueCursor,
     filters?: FeedFilters,
     pageSize = 24,
-    stopwatch?: ServingStopwatch
+    stopwatch?: ServingStopwatch,
   ): Promise<FeedPage> {
     const resolved = await resolveServingScope(scope.personId, scope.tenantId, this.db);
     stopwatch?.markScopeResolved();
@@ -258,7 +291,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     const filterSignature = this.feedFilterSignature(filters);
     const decoded = cursor ? decodeCursor(cursor) : null;
     if (decoded && decoded.filterSignature !== filterSignature) {
-      throw new CursorValidationError("Cursor filter mismatch. Request a new page-one cursor for the selected feed filters.");
+      throw new CursorValidationError(
+        "Cursor filter mismatch. Request a new page-one cursor for the selected feed filters.",
+      );
     }
     const hasCursor = decoded !== null;
 
@@ -437,7 +472,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          quality_score DESC,
          job_hash ASC
        LIMIT ?`,
-      queryParams
+      queryParams,
     );
     stopwatch?.markSqlExecuted();
 
@@ -467,7 +502,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
   private mapFeedRow(r: RawFeedRow): FeedSummary {
     const userAction = r.user_action === "NONE" ? null : toUserAction(r.user_action);
     const readModel = resolveCanonicalServingReadModel({
-      evaluationState: r.evaluation_state === "COMPLETE" ? "EVALUATED" : r.evaluation_state as CanonicalEvaluationState,
+      evaluationState:
+        r.evaluation_state === "COMPLETE"
+          ? "EVALUATED"
+          : (r.evaluation_state as CanonicalEvaluationState),
       engineVerdict: r.engine_verdict,
       userDecision: userAction,
       evaluationContextFingerprint: r.evaluation_context_fingerprint,
@@ -476,9 +514,11 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       qualityScore: r.quality_score,
     });
     const persistedCategories = parseCategoryIds(r.category_ids);
-    const cats = readModel.evaluationState === "SPARSE_SPEC" && !persistedCategories.includes("needs_more_signal")
-      ? [...persistedCategories, "needs_more_signal" as CategoryId]
-      : persistedCategories;
+    const cats =
+      readModel.evaluationState === "SPARSE_SPEC" &&
+      !persistedCategories.includes("needs_more_signal")
+        ? [...persistedCategories, "needs_more_signal" as CategoryId]
+        : persistedCategories;
 
     return {
       jobHash: r.job_hash,
@@ -500,7 +540,14 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       effectiveDecision: readModel.effectiveDecision,
       reviewState: readModel.reviewState,
       populationTier: r.population_tier,
-      reviewWorkflowState: readModel.reviewState === "CURRENT" ? "REVIEWED_CURRENT" : readModel.reviewState === "STALE" ? "REVIEWED_STALE" : readModel.reviewState === "UNKNOWN" ? "REVIEWED_UNKNOWN" : "UNREVIEWED",
+      reviewWorkflowState:
+        readModel.reviewState === "CURRENT"
+          ? "REVIEWED_CURRENT"
+          : readModel.reviewState === "STALE"
+            ? "REVIEWED_STALE"
+            : readModel.reviewState === "UNKNOWN"
+              ? "REVIEWED_UNKNOWN"
+              : "UNREVIEWED",
       categoryIds: cats,
     };
   }
@@ -522,28 +569,44 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         totalDecisions: 0,
         remainingToReview: 0,
         engineBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0 },
-        evaluationPopulation: { evaluated: 0, sparse: 0, unmaterialized: 0, profileRequired: 0, notEvaluable: 0, acquisitionPending: 0, acquisitionFailed: 0, expired: 0, invalid: 0 },
+        evaluationPopulation: {
+          evaluated: 0,
+          sparse: 0,
+          unmaterialized: 0,
+          profileRequired: 0,
+          notEvaluable: 0,
+          acquisitionPending: 0,
+          acquisitionFailed: 0,
+          expired: 0,
+          invalid: 0,
+        },
         userBreakdown: { pursue: 0, consider: 0, pass: 0, total: 0 },
         effectiveBreakdown: { pursue: 0, consider: 0, pass: 0, none: 0, sparse: 0 },
         integrity: {
           status: "UNAVAILABLE",
           validatedAt: generatedAt,
-          checks: [{
-            code: "CANONICAL_SCOPE_UNAVAILABLE",
-            metricName: "canonicalPopulationScope",
-            expected: "active search-plan context",
-            actual: "none",
-            status: "ERROR",
-            message: "Metrics cannot be reconciled without an active canonical search-plan context.",
-          }],
-          discrepancies: [{
-            code: "CANONICAL_SCOPE_UNAVAILABLE",
-            metricName: "canonicalPopulationScope",
-            expected: "active search-plan context",
-            actual: "none",
-            status: "ERROR",
-            message: "Metrics cannot be reconciled without an active canonical search-plan context.",
-          }],
+          checks: [
+            {
+              code: "CANONICAL_SCOPE_UNAVAILABLE",
+              metricName: "canonicalPopulationScope",
+              expected: "active search-plan context",
+              actual: "none",
+              status: "ERROR",
+              message:
+                "Metrics cannot be reconciled without an active canonical search-plan context.",
+            },
+          ],
+          discrepancies: [
+            {
+              code: "CANONICAL_SCOPE_UNAVAILABLE",
+              metricName: "canonicalPopulationScope",
+              expected: "active search-plan context",
+              actual: "none",
+              status: "ERROR",
+              message:
+                "Metrics cannot be reconciled without an active canonical search-plan context.",
+            },
+          ],
           summaryMessage: "Metrics unavailable: no active canonical search-plan context.",
         },
       };
@@ -638,7 +701,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         scope.tenantId,
         scope.personId,
         activeContext.searchPlanId,
-      ]
+      ],
     );
 
     // Independent population source: this intentionally does not reuse any
@@ -695,10 +758,13 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         scope.tenantId,
         scope.personId,
         activeContext.searchPlanId,
-      ]
+      ],
     );
 
-    const categoryCounts: Record<string, { total: number; unreviewed: number; shortlisted: number }> = {
+    const categoryCounts: Record<
+      string,
+      { total: number; unreviewed: number; shortlisted: number }
+    > = {
       all: { total: 0, unreviewed: 0, shortlisted: 0 },
       needs_more_signal: { total: 0, unreviewed: 0, shortlisted: 0 },
       transformation: { total: 0, unreviewed: 0, shortlisted: 0 },
@@ -732,17 +798,19 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       else portalMetrics.other++;
 
       const isEvaluated =
-        (r.evaluation_state === "COMPLETE" || r.evaluation_state === "EVALUATED" || r.evaluation_state === "STAGED_EVALUATED") &&
+        (r.evaluation_state === "COMPLETE" ||
+          r.evaluation_state === "EVALUATED" ||
+          r.evaluation_state === "STAGED_EVALUATED") &&
         (r.decision === "PURSUE" || r.decision === "CONSIDER" || r.decision === "PASS") &&
-        (r.quality_score !== null || r.evaluation_state === 'STAGED_EVALUATED') &&
+        (r.quality_score !== null || r.evaluation_state === "STAGED_EVALUATED") &&
         Boolean(r.evaluation_fingerprint);
       const isReviewed = r.action !== "NONE";
-      const engineVerb = r.decision === "PURSUE" || r.decision === "CONSIDER" || r.decision === "PASS"
-        ? r.decision
-        : null;
-      const explicitUserDecision = r.action === "PURSUE" || r.action === "CONSIDER" || r.action === "PASS"
-        ? r.action
-        : null;
+      const engineVerb =
+        r.decision === "PURSUE" || r.decision === "CONSIDER" || r.decision === "PASS"
+          ? r.decision
+          : null;
+      const explicitUserDecision =
+        r.action === "PURSUE" || r.action === "CONSIDER" || r.action === "PASS" ? r.action : null;
       if (explicitUserDecision) {
         userBreakdown[explicitUserDecision.toLowerCase() as "pursue" | "consider" | "pass"]++;
         userBreakdown.total++;
@@ -757,7 +825,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
 
         const isShortlisted = engineVerb === "PURSUE" || engineVerb === "CONSIDER";
         const cats = parseCategoryIds(r.category_ids);
-        if (r.evaluation_state === "SPARSE_SPEC" && !cats.includes("needs_more_signal")) cats.push("needs_more_signal");
+        if (r.evaluation_state === "SPARSE_SPEC" && !cats.includes("needs_more_signal"))
+          cats.push("needs_more_signal");
 
         for (const cat of cats) {
           if (categoryCounts[cat]) {
@@ -774,7 +843,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         else effectiveBreakdown.none++;
 
         const cats = parseCategoryIds(r.category_ids);
-        if (r.evaluation_state === "SPARSE_SPEC" && !cats.includes("needs_more_signal")) cats.push("needs_more_signal");
+        if (r.evaluation_state === "SPARSE_SPEC" && !cats.includes("needs_more_signal"))
+          cats.push("needs_more_signal");
 
         for (const cat of cats) {
           if (categoryCounts[cat]) {
@@ -812,8 +882,13 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       metricName: "evaluatedVerdicts",
       expected: evaluationPopulation.evaluated,
       actual: engineBreakdown.pursue + engineBreakdown.consider + engineBreakdown.pass,
-      status: evaluationPopulation.evaluated === engineBreakdown.pursue + engineBreakdown.consider + engineBreakdown.pass ? "PASS" as const : "ERROR" as const,
-      message: "Only valid evaluated PURSUE, CONSIDER, and PASS artifacts contribute to the engine verdict partition.",
+      status:
+        evaluationPopulation.evaluated ===
+        engineBreakdown.pursue + engineBreakdown.consider + engineBreakdown.pass
+          ? ("PASS" as const)
+          : ("ERROR" as const),
+      message:
+        "Only valid evaluated PURSUE, CONSIDER, and PASS artifacts contribute to the engine verdict partition.",
     };
     const totalShortlisted = engineBreakdown.pursue + engineBreakdown.consider;
     const remainingToReview = Math.max(0, totalScreened - totalDecisions);
@@ -835,7 +910,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       discoveryMetrics: {
         engineQualified: totalShortlisted,
         actionableReviewQueue: agg?.actionable_review_queue || 0,
-        unreviewedSparse: categoryCounts["needs_more_signal"]?.unreviewed || (categoryCounts["needs_more_signal"]?.total ?? engineBreakdown.sparse),
+        unreviewedSparse:
+          categoryCounts["needs_more_signal"]?.unreviewed ||
+          (categoryCounts["needs_more_signal"]?.total ?? engineBreakdown.sparse),
       },
       decisionMetrics: {
         totalDecided: totalDecisions,
@@ -878,7 +955,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
   async getDossier(
     scope: AuthorizedPersonScope,
     jobHash: string,
-    stopwatch?: ServingStopwatch
+    stopwatch?: ServingStopwatch,
   ): Promise<ServedOpportunity | null> {
     const resolved = await resolveServingScope(scope.personId, scope.tenantId, this.db);
     stopwatch?.markScopeResolved();
@@ -979,7 +1056,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         jobHash,
         jobHash,
         jobHash,
-      ]
+      ],
     );
     stopwatch?.markSqlExecuted();
 
@@ -1017,13 +1094,15 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         applyUrl: row.apply_url || undefined,
         reasonCode: unavailState,
         evaluationFingerprint: readModel.evaluationFingerprint,
-        userDecision: userDecision ? {
-          personId: scope.personId,
-          jobHash: row.source_job_id,
-          userAction: userDecision,
-          reviewedFingerprint: readModel.reviewedFingerprint,
-          updatedAt: row.user_decision_updated_at,
-        } : null,
+        userDecision: userDecision
+          ? {
+              personId: scope.personId,
+              jobHash: row.source_job_id,
+              userAction: userDecision,
+              reviewedFingerprint: readModel.reviewedFingerprint,
+              updatedAt: row.user_decision_updated_at,
+            }
+          : null,
         effectiveDecision: readModel.effectiveDecision,
         reviewState: readModel.reviewState,
       };
@@ -1058,13 +1137,15 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         applyUrl: row.apply_url || undefined,
         contextFingerprint: activeContext.contextFingerprint,
         evaluationFingerprint: readModel.evaluationFingerprint,
-        userDecision: userDecision ? {
-          personId: scope.personId,
-          jobHash: row.source_job_id,
-          userAction: userDecision,
-          reviewedFingerprint: readModel.reviewedFingerprint,
-          updatedAt: row.user_decision_updated_at,
-        } : null,
+        userDecision: userDecision
+          ? {
+              personId: scope.personId,
+              jobHash: row.source_job_id,
+              userAction: userDecision,
+              reviewedFingerprint: readModel.reviewedFingerprint,
+              updatedAt: row.user_decision_updated_at,
+            }
+          : null,
         effectiveDecision: readModel.effectiveDecision,
         reviewState: readModel.reviewState,
       } as UnmaterializedOpportunity;
@@ -1095,13 +1176,15 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         applyUrl: row.apply_url || undefined,
         reasonCode: "MALFORMED_EVALUATION",
         evaluationFingerprint: readModel.evaluationFingerprint,
-        userDecision: userDecision ? {
-          personId: scope.personId,
-          jobHash: row.source_job_id,
-          userAction: userDecision,
-          reviewedFingerprint: readModel.reviewedFingerprint,
-          updatedAt: row.user_decision_updated_at,
-        } : null,
+        userDecision: userDecision
+          ? {
+              personId: scope.personId,
+              jobHash: row.source_job_id,
+              userAction: userDecision,
+              reviewedFingerprint: readModel.reviewedFingerprint,
+              updatedAt: row.user_decision_updated_at,
+            }
+          : null,
         effectiveDecision: readModel.effectiveDecision,
         reviewState: readModel.reviewState,
       };
@@ -1131,26 +1214,133 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
 
     // Pre-production derived rows that do not carry the canonical intrinsic
     // payload are deliberately not adapted into plausible recommendations.
-    if (row.evaluation_state === 'STAGED_EVALUATED' && rawParsed && typeof rawParsed === 'object') {
-      const staged=rawParsed as Record<string,unknown>;
-      const dossier=staged.schemaVersion==='staged-serving-v1' && typeof staged.evaluationFingerprint==='string'
-        && staged.evaluationFingerprint===row.evaluation_fingerprint && staged.verdict===row.engine_decision
-        ? await new SqliteRichDossierStore(this.db).getPublished(presentationIdentity,staged.evaluationFingerprint,typeof staged.presentationVersion==='string'?staged.presentationVersion:undefined) : null;
-      const readModel=resolveCanonicalServingReadModel({evaluationState:'STAGED_EVALUATED',engineVerdict:row.engine_decision,userDecision:userState?.userAction??null,evaluationContextFingerprint:row.evaluation_context_fingerprint,evaluationFingerprint:row.evaluation_fingerprint,reviewedFingerprint:row.reviewed_fingerprint,qualityScore:row.quality_score});
-      if(dossier && dossier.verdict.verdict===row.engine_decision && dossier.verdict.screeningViability===staged.screeningViability && readModel.evaluationState==='EVALUATED') {
+    if (row.evaluation_state === "STAGED_EVALUATED" && rawParsed && typeof rawParsed === "object") {
+      const staged = rawParsed as Record<string, unknown>;
+      const validPublication =
+        staged.schemaVersion === "staged-serving-v1" &&
+        typeof staged.evaluationFingerprint === "string" &&
+        staged.evaluationFingerprint === row.evaluation_fingerprint &&
+        staged.verdict === row.engine_decision;
+      const fp =
+        typeof staged.evaluationFingerprint === "string" ? staged.evaluationFingerprint : "";
+      const pending = validPublication && staged.presentationVersion === DRAFT_DOSSIER_VERSION;
+      const queue = new SqliteDossierReviewQueue(this.db);
+      const reviewed = validPublication
+        ? await new SqliteRichDossierStore(this.db).getPublished(
+            presentationIdentity,
+            fp,
+            typeof staged.presentationVersion === "string" ? staged.presentationVersion : undefined,
+          )
+        : null;
+      const dossier = reviewed ?? (pending ? await queue.getDraft(presentationIdentity, fp) : null);
+      const readModel = resolveCanonicalServingReadModel({
+        evaluationState: "STAGED_EVALUATED",
+        engineVerdict: row.engine_decision,
+        userDecision: userState?.userAction ?? null,
+        evaluationContextFingerprint: row.evaluation_context_fingerprint,
+        evaluationFingerprint: row.evaluation_fingerprint,
+        reviewedFingerprint: row.reviewed_fingerprint,
+        qualityScore: row.quality_score,
+      });
+      if (
+        dossier &&
+        dossier.verdict.verdict === row.engine_decision &&
+        dossier.verdict.screeningViability === staged.screeningViability &&
+        readModel.evaluationState === "EVALUATED"
+      ) {
         return {
-          evaluationState:'EVALUATED',...oppSource,postedRelative:formatPostedRelative(row.posted_at||undefined),
-          decision:dossier.verdict.verdict,recommendation:dossier.executiveThesis.text,primaryConcern:null,
-          positioning:dossier.candidateFit.map(p=>p.assessment.text),headspace:[],dimensions:[],
-          hiringRisk:dossier.decisionConditions.map(p=>p.question.text).join(' '),richDossier:dossier,
-          engineRecommendation:{jobHash:row.source_job_id,evaluationFingerprint:row.evaluation_fingerprint!,engineVerdict:dossier.verdict.verdict,vetoed:false,qualityScore:null,evidenceCoverage:{direct:dossier.verdict.requirements.filter(r=>r.status==='DIRECT').length,adjacent:dossier.verdict.requirements.filter(r=>r.status==='ADJACENT').length,transferable:dossier.verdict.requirements.filter(r=>r.status==='TRANSFERABLE').length,notEvidenced:dossier.verdict.requirements.filter(r=>r.status==='NOT_EVIDENCED').length,contradicted:dossier.verdict.requirements.filter(r=>r.status==='CONTRADICTED').length},screeningViability:dossier.verdict.screeningViability,evaluatedAt:row.materialized_at||dossier.generatedAt},
-          userDecision:userState,effectiveDecision:readModel.effectiveDecision,reviewState:readModel.reviewState,
-          evaluationContextFingerprint:row.evaluation_context_fingerprint,evaluationFingerprint:row.evaluation_fingerprint,
+          evaluationState: "EVALUATED",
+          ...oppSource,
+          postedRelative: formatPostedRelative(row.posted_at || undefined),
+          decision: dossier.verdict.verdict,
+          recommendation: dossier.executiveThesis.text,
+          primaryConcern: null,
+          positioning: dossier.candidateFit.map((p) => p.assessment.text),
+          headspace: [],
+          dimensions: [],
+          hiringRisk: dossier.decisionConditions.map((p) => p.question.text).join(" "),
+          richDossier: dossier,
+          memoReviewState: reviewed ? "reviewed" : "pending",
+          engineRecommendation: {
+            jobHash: row.source_job_id,
+            evaluationFingerprint: row.evaluation_fingerprint!,
+            engineVerdict: dossier.verdict.verdict,
+            vetoed: false,
+            qualityScore: null,
+            evidenceCoverage: {
+              direct: dossier.verdict.requirements.filter((r) => r.status === "DIRECT").length,
+              adjacent: dossier.verdict.requirements.filter((r) => r.status === "ADJACENT").length,
+              transferable: dossier.verdict.requirements.filter((r) => r.status === "TRANSFERABLE")
+                .length,
+              notEvidenced: dossier.verdict.requirements.filter((r) => r.status === "NOT_EVIDENCED")
+                .length,
+              contradicted: dossier.verdict.requirements.filter((r) => r.status === "CONTRADICTED")
+                .length,
+            },
+            screeningViability: dossier.verdict.screeningViability,
+            evaluatedAt: row.materialized_at || dossier.generatedAt,
+          },
+          userDecision: userState,
+          effectiveDecision: readModel.effectiveDecision,
+          reviewState: readModel.reviewState,
+          evaluationContextFingerprint: row.evaluation_context_fingerprint,
+          evaluationFingerprint: row.evaluation_fingerprint,
         };
       }
+      // Withholding prose does not erase a valid opportunity or the user's decision.
+      if (
+        pending &&
+        !dossier &&
+        readModel.evaluationState === "EVALUATED" &&
+        (await queue.find(presentationIdentity, fp))
+      ) {
+        const record = await new SqliteStagedEvaluationStore(this.db).get(presentationIdentity);
+        if (record?.evaluationState === "COMPLETED") {
+          const canonical = parseCanonicalStagedDecisionResult(record.evaluation);
+          if (
+            createStagedEvaluationFingerprint({
+              evaluationContextFingerprint: record.evaluationContextFingerprint,
+              inputFingerprint: record.inputFingerprint,
+              evaluation: canonical,
+            }) === fp &&
+            canonical.decision.verdict === row.engine_decision
+          ) {
+            return {
+              evaluationState: "EVALUATED",
+              ...oppSource,
+              postedRelative: formatPostedRelative(row.posted_at || undefined),
+              decision: canonical.decision.verdict,
+              recommendation:
+                "Memo temporarily unavailable while factual corrections are reviewed.",
+              primaryConcern: null,
+              positioning: [],
+              headspace: [],
+              dimensions: [],
+              hiringRisk: "",
+              memoReviewState: "withheld",
+              userDecision: userState,
+              effectiveDecision: readModel.effectiveDecision,
+              reviewState: readModel.reviewState,
+              evaluationContextFingerprint: row.evaluation_context_fingerprint,
+              evaluationFingerprint: fp,
+              engineRecommendation: {
+                jobHash: row.source_job_id,
+                evaluationFingerprint: fp,
+                engineVerdict: canonical.decision.verdict,
+                vetoed: false,
+                qualityScore: null,
+                screeningViability: canonical.decision.screeningViability,
+                evaluatedAt: record.evaluatedAt,
+              },
+            };
+          }
+        }
+      }
     }
-    if (!isCanonicalIntrinsicEvaluationV4_3(rawParsed)
-      || rawParsed.evaluationInputHash !== row.evaluation_fingerprint) {
+    if (
+      !isCanonicalIntrinsicEvaluationV4_3(rawParsed) ||
+      rawParsed.evaluationInputHash !== row.evaluation_fingerprint
+    ) {
       const readModel = resolveCanonicalServingReadModel({
         evaluationState: "INVALID",
         engineVerdict: null,
@@ -1178,11 +1368,18 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       return invalidOpp;
     }
 
-    const opp = serveCanonicalEvaluatedPayload(rawParsed, oppSource, userState, Boolean(row.vetoed)) as EvaluatedOpportunity;
+    const opp = serveCanonicalEvaluatedPayload(
+      rawParsed,
+      oppSource,
+      userState,
+      Boolean(row.vetoed),
+    ) as EvaluatedOpportunity;
     // Presentation is additive only. A malformed presentation is deliberately
     // omitted without allowing it to corrupt canonical evaluation truth.
-    if (isCanonicalDossierPresentationV1(rawParsed.dossierPresentation)
-      && rawParsed.dossierPresentation.evaluationInputHash === rawParsed.evaluationInputHash) {
+    if (
+      isCanonicalDossierPresentationV1(rawParsed.dossierPresentation) &&
+      rawParsed.dossierPresentation.evaluationInputHash === rawParsed.evaluationInputHash
+    ) {
       opp.dossierPresentation = rawParsed.dossierPresentation;
     }
     const readModel = resolveCanonicalServingReadModel({
@@ -1219,24 +1416,28 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       opp.engineRecommendation = {
         ...opp.engineRecommendation,
         engineVerdict: readModel.engineVerdict,
-        evaluationFingerprint: row.evaluation_fingerprint || opp.engineRecommendation.evaluationFingerprint,
+        evaluationFingerprint:
+          row.evaluation_fingerprint || opp.engineRecommendation.evaluationFingerprint,
         qualityScore: row.quality_score,
       };
     }
     opp.evaluationContextFingerprint = readModel.evaluationContextFingerprint;
     opp.evaluationFingerprint = readModel.evaluationFingerprint;
     opp.effectiveDecision = readModel.effectiveDecision as EffectiveDecision;
-    (opp as EvaluatedOpportunity & { reviewState: CanonicalReviewState }).reviewState = readModel.reviewState;
+    (opp as EvaluatedOpportunity & { reviewState: CanonicalReviewState }).reviewState =
+      readModel.reviewState;
 
     const presentationV2 = await presentationStore.getPresentation(
       presentationIdentity,
       row.evaluation_fingerprint,
     );
-    if (presentationV2
-      && presentationV2.evaluation.state === "EVALUATED"
-      && presentationV2.evaluation.fingerprint === row.evaluation_fingerprint
-      && presentationV2.evaluation.verdict === row.engine_decision
-      && presentationV2.evaluation.score === row.quality_score) {
+    if (
+      presentationV2 &&
+      presentationV2.evaluation.state === "EVALUATED" &&
+      presentationV2.evaluation.fingerprint === row.evaluation_fingerprint &&
+      presentationV2.evaluation.verdict === row.engine_decision &&
+      presentationV2.evaluation.score === row.quality_score
+    ) {
       opp.dossierPresentationV2 = presentationV2;
     }
 
@@ -1253,7 +1454,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
   async getNavigation(
     scope: AuthorizedPersonScope,
     jobHash: string,
-    filters?: FeedFilters
+    filters?: FeedFilters,
   ): Promise<NavigationContext | null> {
     const resolved = await resolveServingScope(scope.personId, scope.tenantId, this.db);
     const activeContext = resolved.activeContext;
@@ -1268,7 +1469,14 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
        JOIN canonical_opportunities co ON co.id = spc.canonical_job_id
        WHERE spc.tenant_id = ? AND spc.person_id = ? AND spc.search_plan_id = ?
          AND (co.source_job_id = ? OR co.id = ? OR spc.canonical_job_id = ?) LIMIT 1`,
-      [scope.tenantId, scope.personId, scope.activeSearchPlanId || activeContext.searchPlanId, jobHash, jobHash, jobHash]
+      [
+        scope.tenantId,
+        scope.personId,
+        scope.activeSearchPlanId || activeContext.searchPlanId,
+        jobHash,
+        jobHash,
+        jobHash,
+      ],
     );
     const targetHash = aliasRow ? String(aliasRow.source_job_id) : jobHash;
 
@@ -1389,7 +1597,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          CASE WHEN quality_score IS NULL THEN 1 ELSE 0 END ASC,
          quality_score DESC,
          job_hash ASC`,
-      queryParams
+      queryParams,
     );
 
     const totalCount = rows.length;

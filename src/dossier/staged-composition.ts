@@ -9,6 +9,7 @@ import {
   type ReasoningModel,
   type FactualReviewReceipt,
   type JsonValue,
+  type Dossier,
 } from "./contracts";
 import type { StagedResearchInput } from "./staged-role";
 import type { StagedDecisionResult } from "./staged-decision-contract";
@@ -217,20 +218,17 @@ async function writeMemo(
   throw new Error(`Dossier generation needs source/reasoning repair: ${repair?.issue}`);
 }
 
-export async function composeStagedDossier(
+function memoWriter(
   frozen: StagedResearchInput,
   staged: StagedDecisionResult,
   model: ReasoningModel,
-  factualReviewer: ReasoningModel,
-  onStage: (stage: string) => void = () => {},
-) {
-  const accepted = new Map<string, FactualReviewReceipt>();
+): ReasoningModel {
   const catalog = {
     claimIds: frozen.evidence.map((c) => c.id),
     requirementIds: staged.trace.requirements.map((r) => r.id),
     resolutionFields: staged.trace.resolutions.map((r) => r.field),
   };
-  const writer: ReasoningModel = {
+  return {
     id: model.id,
     version: model.version,
     configurationFingerprint: model.configurationFingerprint,
@@ -239,11 +237,57 @@ export async function composeStagedDossier(
     generate: (instruction, input, schema) =>
       model.generate(instruction, input, schema ? bindMemoReferences(schema, catalog) : schema),
   };
+}
+
+/** A structurally validated draft deliberately carries no factual-review receipt. */
+export async function composeStagedDraft(
+  frozen: StagedResearchInput,
+  staged: StagedDecisionResult,
+  model: ReasoningModel,
+  onStage: (stage: string) => void = () => {},
+): Promise<Dossier> {
+  const result = await writeMemo(
+    memoWriter(frozen, staged, model),
+    memoInputPacket(frozen, staged),
+    frozen,
+    staged,
+    onStage,
+  );
+  return {
+    ...assembleMemo(frozen, result.research, result.memo, model),
+    sourceInputFingerprint: frozen.fingerprint,
+    canonicalDecisionTrace: structuredClone(staged.trace) as unknown as JsonValue,
+  };
+}
+
+export async function composeStagedDossier(
+  frozen: StagedResearchInput,
+  staged: StagedDecisionResult,
+  model: ReasoningModel,
+  factualReviewer: ReasoningModel,
+  onStage: (stage: string) => void = () => {},
+  initialDraft?: Dossier,
+  onDefect: () => Promise<void> = async () => {},
+) {
+  const accepted = new Map<string, FactualReviewReceipt>();
+  const writer = memoWriter(frozen, staged, model);
   onStage("Writing the complete executive memo");
   const packet = memoInputPacket(frozen, staged);
-  let previous: Draft | undefined, repair: Repair | undefined;
+  let previous: Draft | undefined = initialDraft
+    ? memoDraftSchema.parse({
+        rationale: initialDraft.verdict.rationale,
+        narrativePlan: initialDraft.narrativePlan,
+        memo: compositionSchema.parse(initialDraft),
+      })
+    : undefined;
+  let repair: Repair | undefined;
   for (let reviewAttempt = 0; reviewAttempt < 3; reviewAttempt++) {
-    const result = await writeMemo(writer, packet, frozen, staged, onStage, previous, repair);
+    const seeded = previous && !repair ? inspectDraft(previous, frozen, staged) : undefined;
+    if (seeded && !("result" in seeded)) throw new Error("REVIEW_DRAFT_INVALID");
+    const result =
+      seeded && "result" in seeded
+        ? seeded.result
+        : await writeMemo(writer, packet, frozen, staged, onStage, previous, repair);
     onStage("Checking factual support for the memo");
     let receipts: FactualReviewReceipt[];
     try {
@@ -254,8 +298,10 @@ export async function composeStagedDossier(
         result.research,
         result.memo,
         accepted,
+        onDefect,
       );
     } catch (error) {
+      if (error instanceof MemoReviewRepair) await onDefect();
       if (!(error instanceof MemoReviewRepair) || reviewAttempt === 2) throw error;
       previous = result.draft;
       repair = { sections: error.sections, editorial: false, issue: error.message };

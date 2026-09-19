@@ -12,7 +12,11 @@ import { compositionSchema } from "../../src/dossier/contracts";
 import { allPassages } from "../../src/dossier/grounding";
 import { propose } from "../../src/dossier/evidence";
 import { assertFactualReviewProvenance } from "../../src/dossier/factual-review-integrity";
-import { bindStagedEditorial, composeStagedDossier } from "../../src/dossier/staged-composition";
+import {
+  bindStagedEditorial,
+  composeStagedDossier,
+  composeStagedDraft,
+} from "../../src/dossier/staged-composition";
 import { runStagedFrozenDecisionDetailed } from "../../src/dossier/staged-decision";
 import {
   ModelProviderUnavailableError,
@@ -403,6 +407,14 @@ describe("staged dossier editorial boundary", () => {
       })(),
     ).rejects.toThrow("Google ADC authentication unavailable");
   });
+  it('bounds a stalled ADC refresh so review cannot hold its lane indefinitely',async()=>{
+    vi.useFakeTimers();
+    try {
+      const token=adcTokenProvider({getAccessToken:()=>new Promise<string>(()=>{})},30_000);
+      const check=expect(token()).rejects.toThrow('Google ADC authentication unavailable');
+      await vi.advanceTimersByTimeAsync(30_000);await check;
+    } finally {vi.useRealTimers();}
+  });
   it.each(["evaluation", "composition"])(
     "stops %s without semantic repairs on provider failure",
     async (phase) => {
@@ -504,6 +516,50 @@ describe("staged dossier editorial boundary", () => {
     expect(reviewer.generate).toHaveBeenCalledTimes(1);
     expect(result.canonicalDecisionTrace).toEqual(stagedEvaluation.trace);
     assertFactualReviewProvenance(result);
+  });
+  it("publishes a draft without a reviewer and later reviews that exact draft without rewriting", async () => {
+    const writer = { id: "writer", version: "1", generate: vi.fn(async () => draft()) };
+    const pending = await composeStagedDraft(frozen, stagedEvaluation, writer);
+    expect(pending.generation.factualReviewer).toBeUndefined();
+    expect(() => assertFactualReviewProvenance(pending)).toThrow("DOSSIER_FACTUAL_REVIEW_REQUIRED");
+    const reviewer = {
+      id: "portable-reviewer",
+      version: "1",
+      generate: vi.fn(async (_i: string, input: any) => accept(input)),
+    };
+    const result = await composeStagedDossier(
+      frozen,
+      stagedEvaluation,
+      writer,
+      reviewer,
+      () => {},
+      pending,
+    );
+    expect(writer.generate).toHaveBeenCalledTimes(1);
+    expect(reviewer.generate).toHaveBeenCalledTimes(1);
+    assertFactualReviewProvenance(result);
+    expect(result.canonicalDecisionTrace).toEqual(pending.canonicalDecisionTrace);
+  });
+  it("withholds adverse findings before repairing reviewer bookkeeping or encountering a 429", async () => {
+    const writer = { id: "writer", version: "1", generate: vi.fn(async () => draft()) };
+    const pending = await composeStagedDraft(frozen, stagedEvaluation, writer);
+    let calls = 0;
+    const reviewer = {
+      id: "reviewer",
+      version: "1",
+      generate: vi.fn(async (_i: string, input: any) => {
+        if (calls++) throw new ModelProviderUnavailableError("429", 429);
+        const response = accept(input);
+        response.checks[0].supported = false;
+        return response; // Contradicts acceptedPassageIds: cannot accept the receipt.
+      }),
+    };
+    const withhold = vi.fn(async () => {});
+    await expect(
+      composeStagedDossier(frozen, stagedEvaluation, writer, reviewer, () => {}, pending, withhold),
+    ).rejects.toThrow("429");
+    expect(withhold).toHaveBeenCalled();
+    expect(writer.generate).toHaveBeenCalledTimes(1);
   });
   it("resumes an interrupted review without regenerating the complete memo", async () => {
     const db = new SqliteAdapter(new Database(":memory:"));

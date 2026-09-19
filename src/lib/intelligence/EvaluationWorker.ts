@@ -269,8 +269,8 @@ export class EvaluationWorker {
           const evaluated = await new ProductionStagedEvaluationService(this.db, createBedrockGlmResearchModel()).evaluate({ ...identity, context });
           const serving=await this.db.one<{context_fingerprint:string}>(`SELECT context_fingerprint FROM active_evaluation_contexts WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND context_fingerprint=?`,[job.tenantId,job.personId,job.searchPlanId,job.evaluationContextFingerprint]);
           if(serving&&evaluated.decision!=='PASS'){
-            await new ProductionStagedDossierService(this.db,createBedrockGlmResearchModel()).compose(identity);
-            await new StagedServingPublisher(this.db).publish(identity);
+            await new ProductionStagedDossierService(this.db,createBedrockGlmResearchModel()).compose(identity,()=>{},{draftOnly:true});
+            await new StagedServingPublisher(this.db).publish(identity,{allowDraft:true});
           }
           return this.commitStagedCompletion(job, evaluated.decision);
         } catch (error) {

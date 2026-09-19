@@ -10,6 +10,7 @@ export function createGeminiFactualReviewModel(
     token?: () => Promise<string>;
     request?: typeof fetch;
     contextCache?: boolean;
+    model?: string;
   } = {},
 ) {
   const projectId = (options.projectId ?? process.env.GCP_PROJECT_ID)?.trim();
@@ -21,7 +22,7 @@ export function createGeminiFactualReviewModel(
       ? geminiContextCacheRequest(options.request ?? fetch)
       : (options.request ?? fetch),
     {
-      model: "gemini-3.8-flash",
+      model: options.model ?? process.env.RADAR_FACTUAL_REVIEW_MODEL ?? "gemini-3.8-flash",
       location: "global",
       schemaFormat: "json-schema",
       thinkingLevel: "MEDIUM",

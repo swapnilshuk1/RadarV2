@@ -32,6 +32,11 @@ import {
 import { stagedEvaluation, evaluationFingerprint, dossier } from "../fixtures/staged-rich-dossier";
 import { selectStagedDossierWork } from "../../src/lib/intelligence/staged/dossierBackfillSelection";
 import { RICH_DOSSIER_VERSION } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";
+import { SqliteDossierReviewQueue } from "../../src/data/sqlite/repositories/SqliteDossierReviewQueue";
+import { DossierReviewWorker } from "../../src/lib/intelligence/staged/DossierReviewWorker";
+import { ProductionStagedDossierService } from "../../src/lib/intelligence/staged/ProductionStagedDossierService";
+import { ModelProviderUnavailableError } from "../../src/lib/model/provider-unavailable";
+import { renderToStaticMarkup } from "react-dom/server";
 
 describe("rich staged serving activation", () => {
   let db: SqliteAdapter;
@@ -114,6 +119,59 @@ describe("rich staged serving activation", () => {
     expect(await db.one("SELECT COUNT(*) n FROM materialized_dossier_presentations")).toEqual({
       n: 0,
     });
+  });
+  it("serves labelled drafts through 429, withholds defects and atomically promotes reviewed output", async () => {
+    const pending = dossier();
+    delete pending.generation.factualReviewer;
+    delete pending.generation.factualReviews;
+    const queue = new SqliteDossierReviewQueue(db);
+    await queue.enqueue(identity, evaluationFingerprint, pending);
+    await new StagedServingPublisher(db).publish(identity, { allowDraft: true });
+    const { scope } = await resolveServingScope("person_A", "tenant_A", db);
+    const queries = new SqliteOpportunityQueries(db);
+    expect((await queries.getFeed(scope)).items[0].evaluationState).toBe("UNMATERIALIZED");
+    await db.execute(
+      `UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`,
+    );
+    const read = () => queries.getDossier(scope, "source-job");
+    expect(await read()).toMatchObject({ memoReviewState: "pending", decision: "PURSUE" });
+    expect(
+      renderToStaticMarkup(
+        createElement(DossierView, { dossier: pending, reviewState: "pending" }),
+      ),
+    ).toContain("factual review pending");
+    const model = () => ({ id: "test", version: "1", generate: vi.fn() });
+    const worker = new DossierReviewWorker(db, model, model);
+    const compose = vi.spyOn(ProductionStagedDossierService.prototype, "compose");
+    try {
+      compose.mockRejectedValueOnce(new ModelProviderUnavailableError("429", 429, 1000));
+      expect(await worker.pollOnce()).toMatchObject({ status: "retry" });
+      expect(await read()).toMatchObject({
+        memoReviewState: "pending",
+        richDossier: { executiveThesis: pending.executiveThesis },
+      });
+      await db.execute("UPDATE dossier_review_lane SET next_attempt_at=0");
+      await db.execute("UPDATE dossier_review_jobs SET next_attempt_at=0");
+      compose.mockImplementationOnce(async (_i, _s, options) => {
+        await options!.onDefect!();
+        throw new ModelProviderUnavailableError("429", 429, 1000);
+      });
+      await worker.pollOnce();
+      const withheld = await read();
+      expect(withheld).toMatchObject({ memoReviewState: "withheld", decision: "PURSUE" });
+      expect((withheld as any).richDossier).toBeUndefined();
+      await db.execute("UPDATE dossier_review_lane SET next_attempt_at=0");
+      await db.execute("UPDATE dossier_review_jobs SET next_attempt_at=0");
+      compose.mockResolvedValueOnce(dossier());
+      expect(await worker.pollOnce()).toMatchObject({ status: "completed" });
+      expect(await read()).toMatchObject({ memoReviewState: "reviewed", decision: "PURSUE" });
+      expect(await db.one("SELECT COUNT(*) n FROM canonical_decisions")).toEqual({ n: 0 });
+      expect(await db.one("SELECT status FROM dossier_review_jobs")).toEqual({
+        status: "completed",
+      });
+    } finally {
+      compose.mockRestore();
+    }
   });
   it("requires an exact-trace dossier and keeps projection separate from serving activation", async () => {
     const publisher = new StagedServingPublisher(db);

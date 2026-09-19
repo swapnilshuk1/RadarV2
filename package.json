@@ -44,7 +44,8 @@
     "db:status": "tsx scripts/db-status.ts",
     "worker:documents": "tsx scripts/process-document-jobs.ts",
     "worker:enrichment": "tsx scripts/enrich.ts",
-    "worker:evaluations": "tsx scripts/run-evaluation-worker.ts"
+    "worker:evaluations": "tsx scripts/run-evaluation-worker.ts",
+    "worker:reviews": "tsx scripts/run-dossier-review-worker.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",

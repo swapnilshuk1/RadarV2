@@ -1,7 +1,6 @@
 # RADAR architecture
 
-Current implementation reference, reconciled against `433588c` on 19 September
-2026. This describes code, not a claim about the deployed release or current
+Current implementation reference, reconciled against `433588c` on 19 September 2026. This describes code, not a claim about the deployed release or current
 backfill counts. The [product mission](PRODUCT_MISSION.md) governs
 product behavior; the [documentation index](README.md) lists current operational guidance.
 
@@ -38,33 +37,33 @@ unless composition/publication is explicitly requested.
 
 ## Canonical code map
 
-| Responsibility | Implementation |
-| --- | --- |
-| Acquisition and enrichment | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts` |
-| Dependency scheduling | `src/lib/intelligence/EvaluationWorkScheduler.ts`, `scripts/scraper/persist/queue.ts` |
-| Durable claims and worker lifecycle | `src/lib/intelligence/EvaluationWorker.ts` |
-| Immutable production input | `src/lib/intelligence/staged/ProductionStagedInputAdapter.ts` |
-| Company retrieval and acquisition recipe | `src/lib/intelligence/staged/ProductionContextProvider.ts`, `contextAcquisitionPolicy.ts` |
-| Claim extraction, source fingerprints and candidate conflicts | `src/dossier/evidence.ts` |
-| Role/mapping contracts and application-assigned IDs | `src/dossier/staged-role.ts` |
-| Screening quote IDs and derived gates | `src/dossier/staged-screening.ts` |
-| Decision orchestration, contracts and validation | `src/dossier/staged-decision.ts`, `staged-decision-contract.ts`, `staged-decision-integrity.ts` |
-| Composition and factual review | `src/dossier/composition.ts`, `staged-composition.ts`, `factual-review-integrity.ts` |
-| Durable composition requests | `src/lib/intelligence/staged/DurableDossierModel.ts` |
-| Persistence and activation pointers | `src/data/sqlite/repositories/SqliteStagedInputStore.ts`, `SqliteStagedEvaluationStore.ts`, `SqliteRichDossierStore.ts`, `SqliteEvaluationContextStore.ts` |
-| Publication and readiness | `src/lib/intelligence/staged/StagedServingPublisher.ts`, `stagedDossierHealth.ts`, `StagedRolloutReadiness.ts` |
-| Both presentation templates | `src/dossier/DossierView.tsx`, using the shared `contracts.ts` model |
+| Responsibility                                                | Implementation                                                                                                                                             |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Acquisition and enrichment                                    | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts`                                                                                               |
+| Dependency scheduling                                         | `src/lib/intelligence/EvaluationWorkScheduler.ts`, `scripts/scraper/persist/queue.ts`                                                                      |
+| Durable claims and worker lifecycle                           | `src/lib/intelligence/EvaluationWorker.ts`                                                                                                                 |
+| Immutable production input                                    | `src/lib/intelligence/staged/ProductionStagedInputAdapter.ts`                                                                                              |
+| Company retrieval and acquisition recipe                      | `src/lib/intelligence/staged/ProductionContextProvider.ts`, `contextAcquisitionPolicy.ts`                                                                  |
+| Claim extraction, source fingerprints and candidate conflicts | `src/dossier/evidence.ts`                                                                                                                                  |
+| Role/mapping contracts and application-assigned IDs           | `src/dossier/staged-role.ts`                                                                                                                               |
+| Screening quote IDs and derived gates                         | `src/dossier/staged-screening.ts`                                                                                                                          |
+| Decision orchestration, contracts and validation              | `src/dossier/staged-decision.ts`, `staged-decision-contract.ts`, `staged-decision-integrity.ts`                                                            |
+| Composition and factual review                                | `src/dossier/composition.ts`, `staged-composition.ts`, `factual-review-integrity.ts`                                                                       |
+| Durable composition requests                                  | `src/lib/intelligence/staged/DurableDossierModel.ts`                                                                                                       |
+| Persistence and activation pointers                           | `src/data/sqlite/repositories/SqliteStagedInputStore.ts`, `SqliteStagedEvaluationStore.ts`, `SqliteRichDossierStore.ts`, `SqliteEvaluationContextStore.ts` |
+| Publication and readiness                                     | `src/lib/intelligence/staged/StagedServingPublisher.ts`, `stagedDossierHealth.ts`, `StagedRolloutReadiness.ts`                                             |
+| Both presentation templates                                   | `src/dossier/DossierView.tsx`, using the shared `contracts.ts` model                                                                                       |
 
 ## Identity and provenance
 
-| Identity | Meaning |
-| --- | --- |
-| `canonicalJobId` / `opportunityVersion` | The canonical job and the exact acquired version under evaluation |
-| `tenantId` / `personId` | Authorization and candidate scope |
-| `profileVersion` | The explicitly bound candidate projection and its reconstructible source bindings; no latest-CV substitution |
-| `evaluationContextFingerprint` | Hash of tenant/person, search-plan snapshot, ontology version/fingerprint, policy and profile; v8 also includes the acquisition recipe |
-| `inputFingerprint` / `sourceFingerprints` | The frozen input and its source identities, distinct from the resulting evaluation |
-| Full evaluation fingerprint | `createStagedEvaluationFingerprint` binds context, input and canonical evaluation content; dossier lookup and publication use this identity |
+| Identity                                  | Meaning                                                                                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `canonicalJobId` / `opportunityVersion`   | The canonical job and the exact acquired version under evaluation                                                                           |
+| `tenantId` / `personId`                   | Authorization and candidate scope                                                                                                           |
+| `profileVersion`                          | The explicitly bound candidate projection and its reconstructible source bindings; no latest-CV substitution                                |
+| `evaluationContextFingerprint`            | Hash of tenant/person, search-plan snapshot, ontology version/fingerprint, policy and profile; v8 also includes the acquisition recipe      |
+| `inputFingerprint` / `sourceFingerprints` | The frozen input and its source identities, distinct from the resulting evaluation                                                          |
+| Full evaluation fingerprint               | `createStagedEvaluationFingerprint` binds context, input and canonical evaluation content; dossier lookup and publication use this identity |
 
 `computeEvaluationContextFingerprint` lives in
 `src/lib/domain/evaluation_fingerprint.ts`. Staged persistence is scoped by tenant,
@@ -127,7 +126,6 @@ with `scripts/screening-semantic-corpus.ts`. Scraper dependencies, migrations,
 historical data readers and still-called compatibility paths remain. New work uses the current paths above; the source tree contains no alternate
 monolithic research runner.
 
-
 ## Executive memo generation
 
 The canonical production presentation is `dossier-v4.1` / `staged-memo-v4.1`.
@@ -150,7 +148,13 @@ ceilings are enforced again at persistence/serving boundaries. Repairs return on
 affected blocks through a restricted schema; accepted blocks are preserved rather
 than rewritten. No text is truncated.
 
-One compact Gemini review checks factual support, material point coverage and
+Draft publication is independent of factual review. The evaluation worker writes
+a structurally validated memo, enqueues it in `dossier_review_jobs`, and publishes
+`dossier-v4.1-draft` for an already active context. The draft has no review receipts
+and the serving DTO explicitly labels its status. PASS still skips composition.
+
+The separate `DossierReviewWorker` uses a provider-neutral `ReasoningModel` factory.
+Gemini is the default. One compact review checks factual support, material point coverage and
 consistency with the fixed action. It sees all candidate facts plus cited role and
 context evidence. It requires a source comparison for every passage, including first-person outreach,
 with explicit attention to duration, sector and projection qualifiers. It reports
@@ -162,6 +166,15 @@ its own model configuration; changing the reviewer does not invalidate writer
 checkpoints. Formatting repair and factual repair have separate bounded budgets.
 Provider failures
 never consume semantic repairs or turn into accepted text.
+
+Migration 052 persists a shared review lane, exact draft hash, evaluation identity,
+lease, due time and retry state. A 429 pauses only review; the labelled draft remains
+available. An adverse factual finding withholds draft prose immediately, even if
+the same response has a coverage bookkeeping defect. The opportunity and user
+decision remain available. Heartbeats protect long requests; lease-fenced completion
+atomically saves reviewed output and upgrades an existing publication. A review
+never creates serving activation. Polling visible pending dossier pages refreshes
+the DTO every 30 seconds. Reviewed storage continues to reject unreviewed output.
 
 Gemini 3.8 Flash explicitly caches the immutable candidate evidence, source binding,
 clarifications and reviewer instructions for one hour. The content hash includes the
@@ -183,7 +196,7 @@ pairs. Empty preparation channels are omitted.
 
 The shortlist displays screening viability and evidence coverage instead of a
 fabricated fit score. Viability is distinct from career fit and the pursuit verdict.
-For active contexts the durable evaluation worker composes and publishes only
+For active contexts the durable evaluation worker drafts and publishes only
 PURSUE/CONSIDER results. PASS remains a completed evaluation, with `passSkipped`
 reported by readiness; it is not missing dossier work. No automatic context
 activation is introduced.

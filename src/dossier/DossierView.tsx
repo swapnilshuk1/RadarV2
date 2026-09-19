@@ -2,7 +2,15 @@ import { useState, type ReactNode } from "react";
 import type { Claim, Dossier, Passage } from "./contracts";
 import "./dossier.css";
 
-export function DossierView({ dossier: d }: { dossier: Dossier }) {
+export function DossierView({
+  dossier: d,
+  reviewState,
+}: {
+  dossier: Dossier;
+  reviewState?: "pending" | "reviewed";
+}) {
+  const reviewed =
+    reviewState === "reviewed" || (!reviewState && Boolean(d.generation.factualReviews?.length));
   const [selected, setSelected] = useState<Passage | null>(null);
   const [selectedPlaneLabel, setSelectedPlaneLabel] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<
@@ -123,6 +131,16 @@ export function DossierView({ dossier: d }: { dossier: Dossier }) {
         <span className="label-mono">Executive decision memo</span>
       </nav>
       <div className="dossier-body">
+        <div className={`dossier-review-status ${reviewed ? "reviewed" : "pending"}`} role="status">
+          <strong>
+            {reviewed ? "Factual review completed" : "AI draft · factual review pending"}
+          </strong>
+          {!reviewed && (
+            <p>
+              This memo may be revised after source checks. Confirm material claims before acting.
+            </p>
+          )}
+        </div>
         <header className="dossier-hero">
           <div>
             <div className="dossier-kicker">
