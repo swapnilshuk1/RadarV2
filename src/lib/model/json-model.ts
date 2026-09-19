@@ -66,6 +66,7 @@ export class GeminiJsonModel implements JsonModel {
     input: unknown,
     responseSchema?: Record<string, unknown>,
   ): Promise<unknown> {
+    this.lastUsage = undefined;
     const location = this.options.location ?? "us-central1";
     const host =
       location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;

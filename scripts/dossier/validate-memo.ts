@@ -76,6 +76,8 @@ const record = (model: ReasoningModel) => {
           httpStatus: error.httpStatus,
           retryAfterMs: error.retryAfterMs,
           elapsedMs: Date.now() - start,
+          reason: error.message,
+          usage: (model as any).lastUsage,
         };
         fs.writeFileSync(
           path.join(root, `provider-failure-${id}.json`),

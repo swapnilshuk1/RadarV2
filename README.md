@@ -30,6 +30,11 @@ Portal scrape -> preserved payload -> canonical opportunity/version
 
 The current release contracts are `staged-v8`, `staged-decision-v8`,
 `dossier-v4.1` and `memo-facts-v4`. Publication does not activate a context.
+
+Gemini review reuses an explicit, one-hour cache of fixed candidate evidence and
+review instructions when the input meets the provider's minimum size. Each job's
+evidence and memo remain separate. Cache hits are visible in token usage; the
+optimization can be disabled with `RADAR_GEMINI_CONTEXT_CACHE=off`.
 Historical persisted results remain readable; they are never relabelled as a
 new evaluation policy or used as substitute candidate evidence.
 

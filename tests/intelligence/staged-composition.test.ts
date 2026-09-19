@@ -303,6 +303,7 @@ describe("staged dossier editorial boundary", () => {
         expect(JSON.parse(options!.body as string).generationConfig.thinkingConfig).toEqual({
           thinkingLevel: "MEDIUM",
         });
+        expect(JSON.parse(options!.body as string).generationConfig.maxOutputTokens).toBe(16384);
         return new Response("sensitive provider response", { status: 403 });
       },
     });
@@ -312,6 +313,26 @@ describe("staged dossier editorial boundary", () => {
     expect(error.httpStatus).toBe(403);
     expect(error.message).not.toContain("sensitive");
     expect(error.message).not.toContain("private-token");
+  });
+  it("does not attribute previous successful token usage to a rate-limited attempt", async () => {
+    let calls = 0;
+    const reviewer = createGeminiFactualReviewModel({
+      projectId: "test-project",
+      token: async () => "test-token",
+      request: async () =>
+        ++calls === 1
+          ? new Response(
+              JSON.stringify({
+                candidates: [{ finishReason: "STOP", content: { parts: [{ text: "{}" }] } }],
+                usageMetadata: { promptTokenCount: 10, cachedContentTokenCount: 5 },
+              }),
+            )
+          : new Response("{}", { status: 429 }),
+    });
+    await reviewer.generate("review", {});
+    expect(reviewer.lastUsage?.cachedContentTokenCount).toBe(5);
+    await expect(reviewer.generate("review", {})).rejects.toMatchObject({ httpStatus: 429 });
+    expect(reviewer.lastUsage).toBeUndefined();
   });
   it.each(["MAX_TOKENS", "INVALID_JSON"])(
     "does not turn %s reviewer output into prose repair",
@@ -604,7 +625,10 @@ describe("staged dossier editorial boundary", () => {
       id: "scoped-review",
       version: "1",
       async generate(_i: string, input: any) {
-        expect(input.claims.map((c: any) => c.id)).toEqual(["JD-1-1", "CANDIDATE-1-1"]);
+        expect(input.claims.map((c: any) => c.id)).toEqual(["JD-1-1"]);
+        expect(input.sharedContext.candidateEvidence.map((c: any) => c.id)).toEqual([
+          "CANDIDATE-1-1",
+        ]);
         expect(input.fixedAction).toBe("PURSUE");
         return accept(input);
       },
@@ -823,7 +847,7 @@ describe("staged dossier editorial boundary", () => {
         id: "clarified-source-review",
         version: "1",
         async generate(_i: string, input: any) {
-          expect(input.candidateClarifications).toEqual(expected);
+          expect(input.sharedContext.candidateClarifications).toEqual(expected);
           return accept(input);
         },
       };

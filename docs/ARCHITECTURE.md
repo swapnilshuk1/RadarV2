@@ -163,6 +163,20 @@ checkpoints. Formatting repair and factual repair have separate bounded budgets.
 Provider failures
 never consume semantic repairs or turn into accepted text.
 
+Gemini 3.8 Flash explicitly caches the immutable candidate evidence, source binding,
+clarifications and reviewer instructions for one hour. The content hash includes the
+model and complete shared packet; changed sources or instructions cannot reuse an
+older cache. Job evidence, passages and decisions stay request-specific. Unexpired
+cloud metadata permits reuse after worker restarts. Inputs below the provider's
+4,096-token minimum are sent intact without padding. Unsupported cache permissions
+fall back to the complete request; rate limits pause durable work. Set
+`RADAR_GEMINI_CONTEXT_CACHE=off` to disable this optimization. Generation usage
+records expose `cachedContentTokenCount`; caching reduces repeated input work and
+cost, but does not guarantee relief from shared-capacity 429 responses.
+The reviewer retains medium reasoning with a 16,384-token total output ceiling;
+this includes internal thinking as well as structured review JSON. Memo word limits
+are independent. Incomplete output is rejected with its completion reason recorded.
+
 Template B is the only renderer: a single-column header, narrow section-bounded
 sticky rail (normal flow on mobile), short fit labels and compact question/impact
 pairs. Empty preparation channels are omitted.

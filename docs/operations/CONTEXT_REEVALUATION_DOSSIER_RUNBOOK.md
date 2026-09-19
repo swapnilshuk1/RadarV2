@@ -15,7 +15,8 @@ through ProductionStagedDossierService, publishes only to the private copy and
 checks exact serving DTOs. It retains durable checkpoints and refuses PASS jobs.
 A resume uses the same output directory; do not discard successful checkpoints.
 
-Inspect actual memos for the WPP, JioStar and Artificilux examples. Assess source
+Inspect actual memos for the WPP and Artificilux examples; retain JioStar's current
+PASS evaluation without forcing it into memo composition. Assess source
 support, distinct arguments, material coverage, readability and responsive layout;
 never require identical wording. Open evidence controls and preparation tabs.
 Check the sticky section rails at the middle and end of a desktop section and
@@ -40,7 +41,16 @@ The existing acquisition/enrichment/scheduler path feeds EvaluationWorker. For a
 active staged context, PURSUE/CONSIDER results proceed to durable memo composition
 and publication; PASS completes without a dossier. Provider failures preserve
 checkpoints and remain visible as pending/attention work, not fabricated results.
-Gemini sends one wire request per attempt. Consecutive rate-limit/capacity failures
+Gemini sends one generation request per attempt. Its explicit cache holds fixed
+candidate evidence and reviewer instructions for one hour, bound to their exact
+content and model. It is reused across jobs and worker restarts; job-specific
+evidence remains in each request. Confirm `cachedContentTokenCount` in recorded
+usage rather than assuming a hit. Cache setup needs list/create/count access;
+unsupported cache access falls back to the full evidence request. Inputs below
+4,096 tokens are not padded. `RADAR_GEMINI_CONTEXT_CACHE=off` disables caching.
+Google's cached-input discount applies to the cached portion, not the complete
+generation bill; explicit cache storage is also billable.
+Consecutive rate-limit/capacity failures
 use a 30/60/120-second backoff with small jitter; Google RetryInfo and Retry-After
 are honored when longer. The next eligible time is persisted by the worker; the
 consecutive-failure counter resets on provider success or process restart.
