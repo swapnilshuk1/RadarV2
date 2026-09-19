@@ -1,97 +1,48 @@
-# RADAR v2 — Oracle Cloud Deployment Guide
+# RADAR deployment and release verification
 
-This document contains the single source of truth for deploying RADAR v2 to the live Oracle Cloud Server and pushing to GitHub.
+Current guide as of 19 September 2026. The primary checkout is
+`C:\Users\swapn\Downloads\Radar V2` on `main`. See the
+[architecture](docs/ARCHITECTURE.md) and [backfill runbook](docs/operations/CONTEXT_REEVALUATION_DOSSIER_RUNBOOK.md).
+Use this guide for release preparation and verification.
 
----
+## Prove locally and identify the release
 
-## 1. Quick Deploy (Automated 1-Command)
+Use an isolated local database with explicit environment overrides; `npm run dev`
+can run migrations and must not inherit a production database target accidentally.
+Validate relevant behavior, TypeScript, the production build and the certification
+manifest. CI packages `.output` for its exact commit SHA. Pushing `main` runs CI;
+it does not deploy or activate serving.
 
-Run from the project root (`c:\Users\swapn\Downloads\radar-local-v2`):
+Choose an artifact built for the actual target operating system, CPU architecture
+and Node runtime. A Windows build is not a Linux deployment artifact, and a Linux
+x64 artifact is not proof of ARM64 compatibility. Verify the live host rather than
+assuming a particular OCI machine shape or architecture.
 
-```bash
-# Recommended standard deployment:
-npm run deploy
+## Prepare a concrete production execution plan
 
-# Or with custom commit message:
-npx tsx scripts/deploy.ts "Commit message"
+Record the approved SHA/artifact, target host/database, web and worker processes,
+required migrations/configuration, population scope, exact commands, stop
+conditions, previous release and active-context rollback pointer. Verify that all
+workers can access the existing payload/profile stores on the intended host.
 
-# Or via PowerShell script:
-.\scripts\deploy.ps1 "Commit message"
-```
+Current v8 rollout requires operational context search and the configured model
+providers. Google ADC must work under the production process identity. Keys being
+present locally do not establish production access or quota. Keep credentials
+outside Git and release archives.
 
-What this does automatically:
-1. Validates TypeScript types (`npx tsc --noEmit`).
-2. Runs local production build (`npm run build`).
-3. Commits any modified files and pushes to GitHub (`git push origin main`).
-4. Connects to Oracle VM over SSH using `C:\Users\swapn\.ssh\oracle_official.key`.
-5. Pulls latest code, runs `npm install`, `npm run build`, and restarts PM2 (`pm2 restart radar-v2`).
+`scripts/deploy.ts` and older deployment helpers can perform live writes and
+restarts. Their presence is not authorization to execute them. Production server,
+database and process changes require explicit approval after local proof. Do not
+deploy simply to complete a code cleanup or documentation update.
 
----
+## Verify before activation
 
-## 2. Infrastructure & Connection Details
+After an approved deployment, verify the actual running SHA, process versions,
+database target, migration state, provider access and rendered application. Inspect
+evaluation, dossier and publication coverage separately. Backfill and
+`STAGED_EVALUATED` publication do not themselves activate a new context.
 
-| Property | Value | Notes |
-| :--- | :--- | :--- |
-| **Server IP** | `161.118.175.246` | Oracle Cloud VM |
-| **Domain URL** | `http://161.118.175.246.sslip.io/` | Live public application |
-| **SSH User** | `ubuntu` | Standard Ubuntu user |
-| **SSH Private Key** | `C:\Users\swapn\.ssh\oracle_official.key` | **Never use `.pub` file for private key!** |
-| **SSH Host Alias** | `oracle-radar` | Saved in `~/.ssh/config` |
-| **Remote Directory** | `/home/ubuntu/radar-local-v2` | Cloned repository on server |
-| **Process Manager** | `pm2` | Process name: `radar-v2` |
-| **Git Remote** | `origin` (`https://github.com/swapnilshuk1/RadarV2.git`) | Branch: `main` |
-| **Database** | Turso Cloud (`libsql://radar-db-swapnilshuk1.aws-ap-south-1.turso.io`) | Dual cloud/local SQLite |
-
----
-
-## 3. Manual SSH & Management Commands
-
-### Connect to Server:
-```bash
-# Using SSH config alias:
-ssh oracle-radar
-
-# Or direct with key flag:
-ssh -o StrictHostKeyChecking=no -i "C:\Users\swapn\.ssh\oracle_official.key" ubuntu@161.118.175.246
-```
-
-### Server PM2 Service Commands:
-```bash
-# Check status
-pm2 status
-
-# View live logs
-pm2 logs radar-v2 --lines 100
-
-# Restart application
-pm2 restart radar-v2
-
-# Stop / Start
-pm2 stop radar-v2
-pm2 start radar-v2
-```
-
----
-
-## 4. SSH Configuration Reference (`~/.ssh/config`)
-
-Ensure `C:\Users\swapn\.ssh\config` contains:
-```ssh-config
-Host oracle-radar 161.118.175.246 161.118.175.246.sslip.io
-    HostName 161.118.175.246
-    User ubuntu
-    IdentityFile C:\Users\swapn\.ssh\oracle_official.key
-    StrictHostKeyChecking no
-    IdentitiesOnly yes
-```
-
----
-
-## 5. Operational Topology & Distributed Execution Protocol (ADR-003 Active)
-
-The distributed `scrape_runs` state machine and `BlobStore` object storage layers are deployed and production-certified:
-
-1. **Decoupled Execution**: Live scraping and background enrichment workers (`scripts/enrich.ts` / `EvaluationWorker`) can run across independent hosts and container instances.
-2. **Durable Object Storage**: Scraped card payloads and snapshots are managed via `BlobStore` and referenced by durable `payload_key` in Turso Cloud (`enrichment_jobs`), removing local disk colocation requirements.
-3. **Distributed Worker Leases**: Workers lease jobs concurrently from Turso Cloud using transactional atomic leasing with lease expiration and automatic crash failover.
-4. **Tenant Scoping & Run Ownership**: All run lifecycles, cancellations, audit events, and metrics are tenant-isolated in Turso (`scrape_runs`, `scrape_run_events`) with database-enforced per-scope mutex preventing duplicate active runs.
+Activate only after the approved readiness and rendered-dossier evidence is clean.
+Guard against an unexpected active-pointer change. Rollback restores the previous
+approved release/context; it does not erase newer immutable evaluations, source
+evidence or user decisions.

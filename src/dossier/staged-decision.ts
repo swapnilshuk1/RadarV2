@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { ModelProviderUnavailableError } from '../lib/model/provider-unavailable';
 import { z } from 'zod';
 
 import { type Claim, type ReasoningModel } from './contracts';
@@ -12,7 +13,7 @@ import {
   type StagedMappedRequirement,
   type StagedResearchInput,
   type StagedRoleRequirement,
-} from './staged-research';
+} from './staged-role';
 import {
   screeningConstraintForDrivers,
   materializeStagedDecisionResolutions,
@@ -27,15 +28,16 @@ import {
   type StagedScreeningDriver,
 } from './staged-decision-contract';
 import {
-  materializeStagedScreeningAdjudication as materializeSourceIdScreeningAdjudication,
-  stagedDecisionScreeningInstruction as stagedDecisionScreeningInstructionV6,
-  stagedScreeningAdjudicationSchema as stagedScreeningAdjudicationSchemaV6,
+  materializeStagedScreeningAdjudication,
+  stagedDecisionScreeningInstruction,
+  stagedScreeningAdjudicationSchema,
   type StagedScreeningQuote,
 } from './staged-screening';
 import {
   stagedDecisionGapInstruction,
   stagedDecisionCareerCapitalInstruction,
   stagedDecisionInstruction,
+  contextAwareDecisionInstruction,
   stagedDecisionMappingInstruction,
   stagedDecisionResolutionInstruction,
   stagedDecisionRoleInstruction,
@@ -96,6 +98,7 @@ async function proposeStage<T>(
       verifiedStageResults.set(key, structuredClone(previous));
       return result;
     } catch (error) {
+      if (error instanceof ModelProviderUnavailableError) throw error;
       issue = error instanceof Error ? error.message : 'Invalid stage response';
     }
   }
@@ -226,6 +229,7 @@ export async function runStagedFrozenDecisionDetailed(
   frozen: StagedResearchInput,
   model: ReasoningModel,
   onStage: (stage: string) => void = () => {},
+  options: { policyVersion?: 'staged-v6' | 'staged-v7' | 'staged-v8' } = {},
 ): Promise<StagedDecisionResult> {
   const roleClaims = frozen.evidence.filter(claim => claim.plane === 'JD');
   const candidateClaims = frozen.evidence.filter(claim => claim.plane === 'CANDIDATE');
@@ -252,7 +256,7 @@ export async function runStagedFrozenDecisionDetailed(
       return proposeStage(
         `Adjudicating screening: ${requirement.id}`,
         model,
-        stagedDecisionScreeningInstructionV6,
+        stagedDecisionScreeningInstruction,
         {
           requirement: {
             requirement: requirement.requirement,
@@ -261,8 +265,8 @@ export async function runStagedFrozenDecisionDetailed(
           },
           quoteCatalog,
         },
-        stagedScreeningAdjudicationSchemaV6,
-        value => materializeSourceIdScreeningAdjudication(value, requirement, quoteCatalog),
+        stagedScreeningAdjudicationSchema,
+        value => materializeStagedScreeningAdjudication(value, requirement, quoteCatalog),
         onStage,
       );
     }),
@@ -305,6 +309,7 @@ export async function runStagedFrozenDecisionDetailed(
       role,
       evidence: frozen.evidence,
       acquisition: frozen.acquisition,
+      ...(options.policyVersion==='staged-v8'?{candidateConflicts:frozen.candidateConflicts,conflictInstruction:'These conflicts are unresolved. Do not choose a winner or treat a conflicting premise as settled.'}:{}),
       fields: frozen.fields,
     },
     stagedDecisionResolutionResponseSchema,
@@ -360,12 +365,13 @@ export async function runStagedFrozenDecisionDetailed(
     stagedDecisionCareerCapitalInstruction,
     {
       candidateClaims,
+      ...(options.policyVersion==='staged-v8'?{candidateConflicts:frozen.candidateConflicts,conflictInstruction:'Do not resolve candidate-source conflicts by choosing a winner.'}:{}),
       operatingConditions: role.operatingConditions,
       authorityShape: role.authorityShape,
       resolutions,
     },
     stagedCareerCapitalSchema,
-    value => validateStagedCareerCapital(value, role, resolutions, candidateClaims),
+    value => validateStagedCareerCapital(value, role, resolutions, candidateClaims, (options.policyVersion === 'staged-v7' || options.policyVersion === 'staged-v8')),
     onStage,
   );
 
@@ -383,10 +389,12 @@ export async function runStagedFrozenDecisionDetailed(
   const decision = await proposeStage(
     'Reasoning about pursuit decision',
     model,
-    stagedDecisionInstruction,
+    (options.policyVersion === 'staged-v7' || options.policyVersion === 'staged-v8') ? contextAwareDecisionInstruction : stagedDecisionInstruction,
     {
       opportunity: frozen.opportunity,
       candidate: frozen.candidate,
+      ...((options.policyVersion === 'staged-v7' || options.policyVersion === 'staged-v8') ? { candidateClaims } : {}),
+      ...(options.policyVersion==='staged-v8'?{candidateConflicts:frozen.candidateConflicts,conflictInstruction:'Keep conflicts unresolved and express material uncertainty as decision hinges.'}:{}),
       immutableRequirements,
       eligibleScreeningDrivers: drivers.map(driver => ({
         id: driver.id,

@@ -73,6 +73,8 @@ export interface EngineRecommendationV4 {
   readonly vetoed: boolean;
   readonly vetoReason?: string | null;
   readonly qualityScore: number | null; // Model C authoritative continuous quality score (0..100 or null)
+  readonly evidenceCoverage?: {direct:number;adjacent:number;transferable:number;notEvidenced:number;contradicted:number};
+  readonly screeningViability?: "STRONG"|"PLAUSIBLE"|"FRAGILE"|"BLOCKED";
   readonly parsingConfidence?: number;   // 0.0..1.0 when persisted
   readonly evaluatedAt: string;
   readonly triggeredRuleIds?: string[];

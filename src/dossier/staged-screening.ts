@@ -4,7 +4,7 @@ import {
   stagedScreeningFunctionSchema,
   stagedScreeningGateBasisSchema,
 } from './staged-decision-contract';
-import type { StagedRoleRequirement } from './staged-research';
+import type { StagedRoleRequirement } from './staged-role';
 
 export const stagedScreeningQuoteSchema = z.object({
   id: z.string().min(1),

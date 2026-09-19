@@ -47,7 +47,7 @@ export function validateClaims(value: unknown, sources: EvidenceSource[]): Claim
     if (claim.plane === 'CANDIDATE' && [...planes].some(p => p !== 'CANDIDATE')) throw new Error(`Candidate claim contaminated: ${claim.id}`);
     if (claim.plane === 'JD' && [...planes].some(p => p !== 'JD' && !(claim.state === 'INFERRED' && p === 'CONTEXT'))) throw new Error(`Role claim contaminated: ${claim.id}`);
     if (claim.plane === 'CONTEXT' && [...planes].some(p => p !== 'CONTEXT' && !(claim.state === 'INFERRED' && p === 'JD'))) throw new Error(`Context claim contaminated: ${claim.id}`);
-    if (claim.plane === 'RELATIONAL' && (!planes.has('JD') || !planes.has('CANDIDATE') || claim.state !== 'INFERRED')) throw new Error(`Relational claim needs role and candidate evidence: ${claim.id}`);
+    if (claim.plane === 'RELATIONAL' && (!(planes.has('JD') || planes.has('CONTEXT')) || !planes.has('CANDIDATE') || claim.state !== 'INFERRED')) throw new Error(`Relational claim needs role or context plus candidate evidence: ${claim.id}`);
     return planes;
   };
   parsed.forEach(c => visit(c));
@@ -185,9 +185,9 @@ export function validatePassages(composition: unknown, research: Research): void
     if (screeningTerms.test(p.text) && candidateConditions.test(p.text)) throw new Error('Candidate-side conditions cannot be described as employer screening criteria');
     if (recruiterPerspective.test(p.text)) throw new Error('Dossier prose must remain the candidate\'s executive adviser');
     p.evidenceRefs = p.evidenceRefs.map(resolveId);
-    if (p.evidenceRefs.some(id => !claims.has(id))) throw new Error('Narrative cites unknown claim');
+    if (p.evidenceRefs.some(id => !claims.has(id))) throw new Error(`Narrative cites unknown claim: ${p.evidenceRefs.filter(id=>!claims.has(id)).join(', ')}. Use supplied claim IDs from research.claims, not requirement IDs or punctuation.`);
     if (screeningTerms.test(p.text) && !p.evidenceRefs.some(id => hasHardScreenLineage(id))) throw new Error(`Employer screening terminology needs actual hard-screen evidence. Passage: ${p.text}`);
-    if (p.state === 'EXPLICIT' && (p.kind !== 'CONCLUSION' || p.evidenceRefs.some(id => claims.get(id)!.state === 'INFERRED'))) throw new Error('Advice, questions and inference cannot become explicit fact');
+    if (p.state === 'EXPLICIT' && (p.kind !== 'CONCLUSION' || p.evidenceRefs.some(id => claims.get(id)!.state === 'INFERRED'))) throw new Error(`Passage ${p.kind}/${p.state} cannot be EXPLICIT: only conclusions supported entirely by explicit evidence qualify. Use INFERRED for advice, questions and derived conclusions. Passage: ${p.text}`);
     if (p.state === 'INFERRED' && !p.reasoning?.trim()) throw new Error('Narrative inference needs reasoning');
 
     const cited = p.evidenceRefs.map(id => claims.get(id)!);
@@ -196,7 +196,7 @@ export function validatePassages(composition: unknown, research: Research): void
     const hasRelational = cited.some(c => c.plane === 'RELATIONAL');
     const hasContext = cited.some(c => c.plane === 'CONTEXT');
 
-    if (hasRelational || (hasJd && hasCandidate)) {
+    if (hasRelational || ((hasJd || hasContext) && hasCandidate)) {
       p.sourcePlane = 'RELATIONAL';
     } else if (hasContext && hasJd && !hasCandidate) {
       p.sourcePlane = 'CONTEXT';
@@ -210,7 +210,7 @@ export function validatePassages(composition: unknown, research: Research): void
 
     if (p.sourcePlane === 'CANDIDATE' && p.evidenceRefs.some(id => claims.get(id)!.plane !== 'CANDIDATE')) throw new Error('Narrative candidate evidence contaminated');
     if (p.sourcePlane === 'RELATIONAL') {
-      if (!cited.some(c => c.plane === 'RELATIONAL') && !(cited.some(c => c.plane === 'JD') && cited.some(c => c.plane === 'CANDIDATE'))) throw new Error(`Personalized narrative needs both evidence planes. Passage: ${p.text}. Cited IDs: ${p.evidenceRefs.join(', ')}. Cite the actual relevant JD and candidate claims, or use CANDIDATE for a candidate-only observation, JD for a role-only observation, CONTEXT for company-only interpretation.`);
+      if (!hasRelational && !((hasJd || hasContext) && hasCandidate)) throw new Error(`Personalized narrative needs candidate evidence plus role or context evidence. Passage: ${p.text}. Cited IDs: ${p.evidenceRefs.join(', ')}. Cite the actual relevant sources; use CANDIDATE for a candidate-only observation, JD for a role-only observation, CONTEXT for company-only interpretation.`);
     }
   }
   const passages = allPassages(composition);

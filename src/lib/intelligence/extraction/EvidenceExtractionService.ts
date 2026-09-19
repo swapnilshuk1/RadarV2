@@ -1,3 +1,4 @@
+import type { JsonModel } from '../../model/json-model';
 /**
  * EvidenceExtractionService.ts
  *
@@ -7,7 +8,7 @@
  */
 
 import type { EvidenceGraph, ExtractedFact, FactType } from "../../../domain/evidence";
-import { BedrockConverseJsonModel } from "../../model/bedrock-converse-model";
+import { BedrockMantleJsonModel } from "../../model/bedrock-mantle-model";
 import fs from "fs";
 import path from "path";
 
@@ -25,7 +26,7 @@ export class EvidenceExtractionService {
   private promptVersion = "v1.0";
   private modelName = "llama-3.3-70b-versatile";
 
-  constructor() {
+  constructor(private readonly model?:JsonModel) {
     if (typeof process !== "undefined" && process.env && process.env.GROQ_API_KEY) {
       this.apiKey = process.env.GROQ_API_KEY;
     } else if (typeof window === "undefined" && typeof process !== "undefined" && process.cwd) {
@@ -51,12 +52,14 @@ export class EvidenceExtractionService {
         }
       }
     }
-    this.bedrockToken = process.env.AWS_BEARER_TOKEN_BEDROCK?.trim() || "";
+    this.bedrockToken = process.env.BEDROCK_MANTLE_API_KEY?.trim() || "";
   }
 
   public async extract(input: EvidenceExtractionInput): Promise<EvidenceGraph> {
     const graphId = `ev-graph-${input.documentId}-${Date.now()}`;
     const now = new Date().toISOString();
+
+    if (this.model) return this.bedrockExtract(input, graphId, now);
 
     if (!this.apiKey && this.bedrockToken) {
       try {
@@ -167,11 +170,11 @@ Return ONLY a JSON object formatted as:
   /**
    * The candidate pipeline predates the staged Bedrock model route. Keep Groq
    * as the primary legacy provider, while allowing a process-supplied Bedrock
-   * bearer token to provide the same factual-extraction contract. Credential
+   * Mantle key to provide the same factual-extraction contract. Credential
    * discovery remains outside this service.
    */
   private async bedrockExtract(input: EvidenceExtractionInput, graphId: string, now: string): Promise<EvidenceGraph> {
-    const model = new BedrockConverseJsonModel(
+    const model = this.model ?? new BedrockMantleJsonModel(
       "zai.glm-5",
       async () => this.bedrockToken,
       fetch,
@@ -201,7 +204,7 @@ Return ONLY a JSON object formatted as:
     };
     const output = await model.generate(
       `You are a factual candidate-evidence extraction engine. Extract discrete facts from the supplied candidate document.\n\nRules:\n1. Do not infer candidate intent, preferences, future plans, or eligibility.\n2. Each sourceSpan must be an exact contiguous quotation from the supplied document.\n3. Preserve original quantities, currencies, titles, employers, and dates.\n4. Classify each fact as EMPLOYMENT, ACHIEVEMENT, TECHNOLOGY, LEADERSHIP, EDUCATION, LOCATION, or OTHER.\n5. Return only the requested JSON object.`,
-      { documentText: input.documentText.slice(0, 10000) },
+      { documentText: input.documentText },
       responseSchema,
     ) as { facts?: unknown[] };
     const facts = (Array.isArray(output.facts) ? output.facts : [])

@@ -56,7 +56,7 @@ interface TraceResult {
 }
 
 async function runBrowserProof() {
-  const artifactsDir = path.resolve(process.cwd(), "docs/artifacts");
+  const artifactsDir = path.resolve(process.cwd(), ".radar/portal-browser-proof");
   if (!fs.existsSync(artifactsDir)) {
     fs.mkdirSync(artifactsDir, { recursive: true });
   }

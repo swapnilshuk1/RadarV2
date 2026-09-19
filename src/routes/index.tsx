@@ -332,8 +332,8 @@ function Shortlist() {
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="label-mono text-foreground font-semibold tracking-wider text-xs sm:text-sm uppercase">
                 {selectedCategoryId === "all"
-                  ? `Sorted by Fit · ${totalShortlisted} Shortlisted`
-                  : `Sorted by Fit · ${
+                  ? `Your shortlist · ${totalShortlisted} Shortlisted`
+                  : `Your shortlist · ${
                       selectedCategoryId === "needs_more_signal"
                         ? metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? (isLoadingCategory ? "..." : activeOps.length)
                         : metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? (isLoadingCategory ? "..." : activeOps.length)
@@ -730,7 +730,8 @@ function ShortlistCardRow({
   onExpand: (opportunity: EvaluatedOpportunity) => void;
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
-  const { rawScore, scoreDisplay } = resolveShortlistCardScore(o);
+  const screening = o.engineRecommendation?.screeningViability;
+  const coverage = o.engineRecommendation?.evidenceCoverage;
   const { primaryLabel, badgeClass, isStale, staleLabel, previousAction } = resolveShortlistCardBadgeState(o);
   const evaluatedDossier = (dossier && isEvaluated(dossier) ? dossier : undefined) ?? o;
   const dossierBrief = evaluatedDossier?.dossierPresentation?.brief as {
@@ -752,12 +753,6 @@ function ShortlistCardRow({
     }
   }, [isOpen]);
 
-  const scoreClass = 
-    (typeof rawScore === "number" && rawScore >= 75)
-      ? "score-badge-high" 
-      : (typeof rawScore === "number" && rawScore >= 60)
-        ? "score-badge-mid" 
-        : "score-badge-low";
 
   return (
     <li
@@ -821,6 +816,8 @@ function ShortlistCardRow({
             {o.company} · {o.location}{(o as { workModel?: string }).workModel ? ` (${(o as { workModel?: string }).workModel})` : ""} · {o.scrapedFrom}
           </span>
 
+          {coverage && <span className="mt-2 block text-xs text-muted-foreground">Evidence: {coverage.direct} direct &middot; {coverage.adjacent} adjacent &middot; {coverage.transferable} transferable{coverage.notEvidenced>0?` / ${coverage.notEvidenced} not evidenced`:''}{coverage.contradicted>0?` / ${coverage.contradicted} conflicting`:''}</span>}
+
           {dossierBrief?.memory?.retentionSentence && <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
             {dossierBrief.memory.retentionSentence}
           </span>}
@@ -834,8 +831,8 @@ function ShortlistCardRow({
         </span>
 
         <span className="flex shrink-0 flex-col items-end gap-2">
-          <span className={`flex shrink-0 items-center justify-center h-10 w-10 rounded-full border-2 font-display text-lg font-bold shadow-xs ${scoreClass}`}>
-            {scoreDisplay}
+          <span className="max-w-36 rounded-md border border-border px-2.5 py-1.5 text-right text-xs leading-snug text-muted-foreground" title="Employer screening accessibility; separate from career fit and the pursuit decision">
+            {screening ? `${screening.charAt(0)}${screening.slice(1).toLowerCase()} screening` : 'Evaluation available'}
           </span>
           <span className="label-mono text-[0.68rem] text-muted-foreground group-hover:text-foreground font-semibold transition-colors">
             {isOpen ? "— Close" : "+ Brief"}

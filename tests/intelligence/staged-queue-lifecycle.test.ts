@@ -1,5 +1,10 @@
 import Database from 'better-sqlite3';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ModelProviderUnavailableError } from '../../src/lib/model/provider-unavailable';
+import { ProductionStagedEvaluationService } from '../../src/lib/intelligence/staged/ProductionStagedEvaluationService';
+import { ProductionStagedDossierService } from '../../src/lib/intelligence/staged/ProductionStagedDossierService';
+import { StagedServingPublisher } from '../../src/lib/intelligence/staged/StagedServingPublisher';
+import {recoverStagedProviderFailures} from '../../src/lib/intelligence/staged/StagedProviderRecovery';
 import { SqliteAdapter } from '../../src/data/database/sqlite';
 import { setupLineageTestFixture } from '../persistence/lineage_fixture';
 import { EvaluationWorkScheduler } from '../../src/lib/intelligence/EvaluationWorkScheduler';
@@ -28,6 +33,51 @@ describe('staged enrichment dependency lifecycle', () => {
   async function state() {
     return db.one<{status:string;requirement:string;blocked_reason:string|null}>(`SELECT ej.status,er.status AS requirement,er.blocked_reason FROM evaluation_jobs ej JOIN evaluation_requirements er ON er.evaluation_context_fingerprint=ej.evaluation_context_fingerprint`);
   }
+  it.each(['PURSUE','CONSIDER','PASS'] as const)('completes %s while composing only actionable active-context results',async decision=>{
+    await db.execute(`UPDATE opportunity_versions SET acquisition_status='ACQUIRED',lifecycle_state='ACTIVE'`);
+    await enrichment();await new EvaluationWorkScheduler(db).ensureWork(identity);
+    await db.execute(`INSERT OR IGNORE INTO evaluation_context_scopes(context_fingerprint,tenant_id,person_id,search_plan_id) VALUES('staged-context','tenant_A','person_A','plan_A')`);
+    await db.execute(`INSERT INTO active_evaluation_contexts(tenant_id,person_id,search_plan_id,context_fingerprint,activated_by) VALUES('tenant_A','person_A','plan_A','staged-context','test-fixture')`);
+    const worker=new EvaluationWorker(db);const job=await worker.claimNextJob('staged');
+    const evaluate=vi.spyOn(ProductionStagedEvaluationService.prototype,'evaluate').mockResolvedValue({decision} as any);
+    const compose=vi.spyOn(ProductionStagedDossierService.prototype,'compose').mockResolvedValue({} as any);
+    const publish=vi.spyOn(StagedServingPublisher.prototype,'publish').mockResolvedValue(undefined as any);
+    try{
+      expect(await worker.processJob(job!)).toMatchObject({status:'completed',decision});
+      expect(compose).toHaveBeenCalledTimes(decision==='PASS'?0:1);
+      expect(publish).toHaveBeenCalledTimes(decision==='PASS'?0:1);
+      expect(await state()).toMatchObject({status:'staged_completed',requirement:'SATISFIED'});
+    }finally{evaluate.mockRestore();compose.mockRestore();publish.mockRestore();}
+  });
+  it.each([[403,900_000],[429,45_000]])('releases the owned lease with provider-specific delay for HTTP %s without spending attempts',async(httpStatus,retryAfterMs)=>{
+    await db.execute(`UPDATE opportunity_versions SET acquisition_status='ACQUIRED',lifecycle_state='ACTIVE'`);
+    await enrichment();await new EvaluationWorkScheduler(db).ensureWork(identity);
+    const worker=new EvaluationWorker(db);const job=await worker.claimNextJob('staged');
+    const error=new ModelProviderUnavailableError(`Provider HTTP ${httpStatus}`,httpStatus,retryAfterMs);
+    const evaluation=vi.spyOn(ProductionStagedEvaluationService.prototype,'evaluate').mockRejectedValue(error);
+    try{await expect(worker.processJob(job!)).rejects.toBe(error);}finally{evaluation.mockRestore();}
+    expect(await state()).toMatchObject({status:'staged_pending',requirement:'READY'});
+    expect(await db.one('SELECT attempts,locked_by,lease_token FROM evaluation_jobs')).toEqual({attempts:0,locked_by:null,lease_token:null});
+    const delay=await db.one<{seconds:number}>(`SELECT CAST(strftime('%s',next_attempt_at)-strftime('%s','now') AS INTEGER) AS seconds FROM evaluation_jobs`);
+    expect(delay!.seconds).toBeGreaterThanOrEqual(retryAfterMs/1000-2);expect(delay!.seconds).toBeLessThanOrEqual(retryAfterMs/1000);
+    expect(await worker.claimNextJob('staged')).toBeNull();
+    expect(await db.one('SELECT COUNT(*) n FROM staged_evaluations')).toEqual({n:0});
+  });
+  it('recovers only scoped provider dead letters and retains the original failure',async()=>{
+    await db.execute(`UPDATE opportunity_versions SET acquisition_status='ACQUIRED',lifecycle_state='ACTIVE'`);
+    await enrichment();await new EvaluationWorkScheduler(db).ensureWork(identity);
+    await db.execute(`UPDATE evaluation_jobs SET status='staged_dead_letter',attempts=3,last_error='Bedrock provider HTTP 403'`);
+    await db.execute(`UPDATE evaluation_requirements SET status='FAILED',blocked_reason='EVALUATION_DEAD_LETTER:Bedrock provider HTTP 403'`);
+    const scope={...identity,contextFingerprint:identity.evaluationContextFingerprint};
+    expect(await recoverStagedProviderFailures(db,{...scope,personId:'other'},10,true)).toEqual([]);
+    expect(await recoverStagedProviderFailures(db,scope,10)).toHaveLength(1);
+    expect(await state()).toMatchObject({status:'staged_dead_letter',requirement:'FAILED'});
+    expect(await recoverStagedProviderFailures(db,scope,10,true)).toHaveLength(1);
+    expect(await state()).toMatchObject({status:'staged_pending',requirement:'READY'});
+    expect(await recoverStagedProviderFailures(db,scope,10,true)).toEqual([]);
+    const audit=await db.one<{details:string}>(`SELECT details FROM enrichment_events WHERE event_type='EVALUATION_PROVIDER_FAILURE_RECOVERED'`);
+    expect(JSON.parse(audit!.details)).toMatchObject({attempts:3,last_error:'Bedrock provider HTTP 403',previousRequirementStatus:'FAILED'});
+  });
   it.each([false,true])('releases v6 into staged queue with existing job=%s', async existing => {
     await new EvaluationWorkScheduler(db).ensureWork(identity);
     if (!existing) await db.execute('DELETE FROM evaluation_jobs');

@@ -32,7 +32,7 @@ export function InlineBrief({ opportunity: o, dossier, onDecide }: {
   const bottomLine = brief?.pursuitStrategy?.bottomLine ?? brief?.oneMinuteTLDR?.bottomLine;
   const track = o.mandateArchetype ?? presentation?.focusTopic ?? null;
   const engineVerdict = o.engineRecommendation?.engineVerdict ?? "UNKNOWN";
-  const qualityScore = o.engineRecommendation?.qualityScore ?? null;
+  const screening = o.engineRecommendation?.screeningViability;
   const userDecision = o.userDecision?.userAction ?? "NONE";
   const effectiveDecision = o.effectiveDecision ?? engineVerdict;
 
@@ -51,7 +51,7 @@ export function InlineBrief({ opportunity: o, dossier, onDecide }: {
       <div><span className="label-mono text-[0.68rem] font-bold text-muted-foreground uppercase block pb-1">Mandate Ledger</span><dl className="mt-1.5 space-y-2 border-t border-border/50 pt-2.5">
         {track && <div className="flex items-baseline justify-between gap-3"><dt className="label-mono text-[0.65rem] text-muted-foreground">Track</dt><dd className="truncate font-mono text-[0.7rem] text-foreground font-medium">{track}</dd></div>}
         <div className="flex items-baseline justify-between gap-3"><dt className="label-mono text-[0.65rem] text-muted-foreground">Source</dt><dd className="truncate font-mono text-[0.7rem] text-foreground font-medium">{o.scrapedFrom}</dd></div>
-        <div className="flex items-baseline justify-between gap-3"><dt className="label-mono text-[0.65rem] text-muted-foreground">Score</dt><dd className="truncate font-mono text-[0.7rem] text-foreground font-medium">{qualityScore ?? "Unknown"}</dd></div>
+        <div className="flex items-baseline justify-between gap-3"><dt className="label-mono text-[0.65rem] text-muted-foreground">Screening</dt><dd className="truncate font-mono text-[0.7rem] text-foreground font-medium">{screening ? screening.toLowerCase() : "See evaluation"}</dd></div>
         <div className="flex items-baseline justify-between gap-3"><dt className="label-mono text-[0.65rem] text-muted-foreground">Effective decision</dt><dd className="truncate font-mono text-[0.7rem] text-foreground font-medium">{effectiveDecision}</dd></div>
         <div className="flex items-baseline justify-between gap-3"><dt className="label-mono text-[0.65rem] text-muted-foreground">Your decision</dt><dd className="truncate font-mono text-[0.7rem] text-foreground font-medium">{userDecision}</dd></div>
       </dl></div>

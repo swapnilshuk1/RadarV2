@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildDossier, researchModelInput, sourceFingerprint, type FrozenResearchInput } from '../../src/dossier/pipeline';
-import { validateComposition, validateResearch } from '../../src/dossier/grounding';
+import { extractValidatedSourceClaims, sourceFingerprint } from '../../src/dossier/evidence';
+import { validateComposition, validateResearch, validateClaims, validatePassages } from '../../src/dossier/grounding';
 import { contextFields, scopeFields, type Composition, type EvidenceSource, type Passage, type Research } from '../../src/dossier/contracts';
 import { CompanyWebsiteProvider } from '../../src/dossier/context';
 import { readSliceInput } from '../../scripts/dossier/source-input';
@@ -34,7 +34,8 @@ function composition(): Composition {
   let serial = 0;
   const distinct = () => ({...p,text:`${p.text} Distinct editorial purpose ${++serial}.`});
   const groups = (keys: string[]) => Object.fromEntries(keys.map(k => [k,[distinct()]]));
-  return {executiveThesis:distinct(),roleInterest:[distinct()],strategicValue:[distinct()],recommendation:groups(['identityAlignment','capabilityCoverage','careerCapital']),fit:groups(['direct','adjacent','transferable','gaps']),mandate:groups(['immediate','nearTerm','mediumTerm','outcomes']),successRequirements:[distinct()],candidatePositioning:groups(['precedents','differentiators','evidence']),openQuestions:[distinct()],watchPoints:[distinct()],decisionHinges:groups(['strongerPursueIf','weakerIf','passIf']),conversationStrategy:groups(['approach','opening','questions','positioning','screening','interview','resumeNarrative','linkedinStrategy'])} as Composition;
+  return {executiveThesis:{...distinct(),kind:"CONCLUSION",state:"INFERRED"},opportunityValue:[distinct()],mandate:{priorities:[distinct()],outcomes:[distinct()]},candidateFit:[{label:'Team building',requirementIds:['REQ-001'],assessment:distinct()}],decisionConditions:[{requirementIds:[],resolutionFields:[],question:{...distinct(),kind:"QUESTION",state:"INFERRED"},consequence:{...distinct(),kind:"CONCLUSION",state:"INFERRED"}}],approach:{nextSteps:[distinct()],opening:distinct(),resumeNarrative:[],linkedinStrategy:[],screening:[],interview:[]}};
+
 }
 
 describe('Dossier evidence and field resolution', () => {
@@ -89,18 +90,22 @@ describe('Dossier evidence and field resolution', () => {
     Object.assign(operatingShape.evaluation.requirements[0],{requirement:'Individual contributor role',roleClaimIds:['jd-operating-shape']});
     expect(()=>validateResearch(operatingShape,[minified,candidate])).toThrow('explicit employer entry qualification');
   });
+  it('reports all nonadjacent citation groups together without altering source text', () => {
+    const source = {...sources[1], text:'First fact. Second fact. Third fact. Fourth fact.'};
+    const claims = ['CANDIDATE-1-1','CANDIDATE-1-2'].map((id,i) => ({...research().claims[1],id,citations:[{sourceId:'cv',spanId:`s${i}`},{sourceId:'cv',spanId:`s${i+2}`}]}));
+    const result = () => resolveSourceClaims({claims},[source]);
+    expect(result).toThrow('CANDIDATE-1-1');
+    expect(result).toThrow('CANDIDATE-1-2');
+    expect(result).toThrow('s0, s2');
+    expect(result).toThrow('s1, s3');
+    expect(claims[0].citations).toHaveLength(2);
+  });
   it('assigns source-scoped ordinals when the model repeats a source-claim ID', () => {
     const repeated={claims:[
       {...research().claims[1],id:'CANDIDATE-1-1',citations:[{sourceId:'cv',spanId:'s0'}]},
       {...research().claims[1],id:'CANDIDATE-1-1',citations:[{sourceId:'cv',spanId:'s0'}]},
     ]};
     expect(resolveSourceClaims(repeated,[sources[1]]).map(claim=>claim.id)).toEqual(['CANDIDATE-1-1','CANDIDATE-1-2']);
-  });
-  it('projects only the established research contract to the model', () => {
-    const frozen={opportunity:{id:'1',company:'Example',title:'Role'},candidate:{name:'Candidate'},sources,evidence:research().claims,candidateSourceRefs:[{id:'cv',title:'CV'}],candidateConflicts:[],acquisition:[],validEvidenceClaimIds:['jd-role','cv-candidate','relation'],fields:['companySize'],fingerprint:'internal'} as FrozenResearchInput;
-    const payload=researchModelInput(frozen) as Record<string,unknown>;
-    expect(Object.keys(payload).sort()).toEqual(['acquisition','candidate','candidateConflicts','candidateSources','evidence','fields','opportunity','reminders','validEvidenceClaimIds']);
-    expect(payload).not.toHaveProperty('sources'); expect(payload).not.toHaveProperty('fingerprint');
   });
   it('sends the runtime contract to the model with required decision consequences', () => {
     const schema=modelSchema(researchSchema) as {properties:{resolutions:{items:{required:string[]}}}};
@@ -115,6 +120,18 @@ describe('Dossier evidence and field resolution', () => {
     expect(bodies[0].generationConfig.maxOutputTokens).toBe(8192);
     expect(bodies[0].generationConfig.temperature).toBe(0);
     expect(bodies[1].generationConfig.responseSchema).toEqual(modelSchema(researchSchema));
+  });
+  it('uses the global Gemini endpoint and JSON Schema without exposing thought parts',async()=>{
+    let target='',body:any;
+    const request:typeof fetch=async(url,options)=>{target=String(url);body=JSON.parse(options!.body as string);return new Response(JSON.stringify({candidates:[{finishReason:'STOP',content:{parts:[{thought:true,text:'private reasoning'},{text:'{"ok":true}'}]}}]}));};
+    const model=new GeminiJsonModel('test-project',async()=>'test-token',request,{model:'gemini-3.8-flash',location:'global',schemaFormat:'json-schema',thinkingLevel:'HIGH'});
+    const schema={type:'object',properties:{ok:{type:'boolean'}},required:['ok']};
+    await expect(model.generate('review',{},schema)).resolves.toEqual({ok:true});
+    expect(target).toBe('https://aiplatform.googleapis.com/v1/projects/test-project/locations/global/publishers/google/models/gemini-3.8-flash:generateContent');
+    expect(body.generationConfig.responseJsonSchema).toEqual(schema);
+    expect(body.generationConfig).not.toHaveProperty('responseSchema');
+    expect(body.generationConfig).not.toHaveProperty('temperature');
+    expect(body.generationConfig.thinkingConfig).toEqual({thinkingLevel:'HIGH'});
   });
   it('preserves grounded inference and open fields instead of dropping them', () => {
     const result = validateResearch(research(),sources);
@@ -140,21 +157,42 @@ describe('Dossier evidence and field resolution', () => {
     const value=research(); value.claims[2].derivedFrom=['jd-role'];
     expect(() => validateResearch(value,sources)).toThrow('Relational claim needs');
   });
+  it('grounds candidate-company comparison without inventing an unrelated JD citation', () => {
+    const context:EvidenceSource={...sources[0],id:'company',plane:'CONTEXT',text:'The company is building a marketing team.'};
+    const value=research();
+    value.claims.push({id:'company-team',text:context.text,state:'EXPLICIT',confidence:1,plane:'CONTEXT',citations:[{sourceId:context.id,quote:context.text}],derivedFrom:[]});
+    value.claims[2]={...value.claims[2],text:'Candidate team-building experience is relevant to company expansion.',derivedFrom:['cv-candidate','company-team']};
+    expect(()=>validateClaims(value.claims,[...sources,context])).not.toThrow();
+    const passage:Passage={text:'Use the documented team-building precedent to explore the company expansion.',kind:'ADVICE',state:'INFERRED',confidence:0.8,sourcePlane:'RELATIONAL',evidenceRefs:['cv-candidate','company-team'],reasoning:'Candidate and company evidence establish a comparable team-building situation.'};
+    expect(()=>validatePassages({passage},value)).not.toThrow();
+    value.claims[2].derivedFrom=['company-team'];
+    expect(()=>validateClaims(value.claims,[...sources,context])).toThrow('Relational claim needs');
+    value.claims[2].derivedFrom=['cv-candidate','company-team'];
+    value.claims[2].plane='CANDIDATE';
+    expect(()=>validateClaims(value.claims,[...sources,context])).toThrow('Candidate claim contaminated');
+  });
+  it('accepts an evidence-free context page without pressuring the model to invent claims', async()=>{
+    let calls=0;
+    const model={id:'empty-context-probe',version:'1',async generate(){calls++;return {claims:[]};}};
+    const context:EvidenceSource={...sources[0],id:'empty-context',plane:'CONTEXT',text:'Loading viewer...'};
+    expect(await extractValidatedSourceClaims(model,context,'CONTEXT-1-')).toEqual([]);
+    expect(calls).toBe(1);
+  });
   it('rejects circular derivations', () => {
     const value=research(); value.claims[2].derivedFrom.push('relation');
     expect(() => validateResearch(value,sources)).toThrow('Cyclic lineage');
   });
   it('does not promote inferred content to an explicit narrative statement', () => {
-    const value=composition(); value.executiveThesis={...value.executiveThesis,state:'EXPLICIT',kind:'CONCLUSION'};
-    expect(() => validateComposition(value,research())).toThrow('cannot become explicit');
+    const value=composition(); value.opportunityValue[0]={...value.opportunityValue[0],state:'EXPLICIT',kind:'CONCLUSION'};
+    expect(() => validateComposition(value,research())).toThrow('cannot be EXPLICIT');
   });
   it('rejects candidate-absence claims, recruiter perspective, and duplicated editorial work', () => {
     const value=composition();
     value.executiveThesis.text='The candidate lacks property-sales experience.';
     expect(()=>validateComposition(value,research())).toThrow('missing candidate evidence');
-    const employer=composition(); employer.openQuestions[0].text='Tell the recruiter to reject the candidate.';
+    const employer=composition(); employer.decisionConditions[0].question.text='Tell the recruiter to reject the candidate.';
     expect(()=>validateComposition(employer,research())).toThrow('candidate\'s executive adviser');
-    const duplicate=composition(); duplicate.roleInterest[0].text=duplicate.executiveThesis.text;
+    const duplicate=composition(); duplicate.opportunityValue[0].text=duplicate.executiveThesis.text;
     expect(()=>validateComposition(duplicate,research())).toThrow('repeats a passage');
   });
   it('requires actual hard-screen evidence for employer screening terminology', () => {
@@ -168,12 +206,12 @@ describe('Dossier evidence and field resolution', () => {
   });
   it('keeps candidate-side conditions out of employer screening language', () => {
     const value=composition();
-    value.decisionHinges.passIf[0].text='The stated compensation is a hard screening criterion.';
+    value.decisionConditions[0].consequence.text='The stated compensation is a hard screening criterion.';
     expect(()=>validateComposition(value,research())).toThrow('Candidate-side conditions cannot be described as employer screening criteria');
   });
   it('allows an empty child block to be omitted without manufacturing editorial filler', () => {
-    const value=composition(); value.conversationStrategy.interview=[];
-    expect(validateComposition(value,research()).conversationStrategy.interview).toEqual([]);
+    const value=composition(); value.approach.interview=[];
+    expect(validateComposition(value,research()).approach.interview).toEqual([]);
   });
   it('enforces meaningful requirement roles and screening viability', () => {
     const hardScreen=research();
@@ -225,32 +263,6 @@ describe('Dossier evidence and field resolution', () => {
   it('retains candidate conflicts as unresolved source differences', () => {
     const value=research(); value.candidateConflicts=[{topic:'Employment dates',sourceIds:['cv','cv2'],question:'Which end date is correct?'}];
     expect(validateResearch(value,[...sources,{...sources[1],id:'cv2',text:'Employment ended in June.'}]).candidateConflicts).toEqual(value.candidateConflicts);
-  });
-  it('calls acquisition, then research/planning, then prose against the same research', async () => {
-    const requests: unknown[]=[];
-    const stages: string[]=[];
-    let proseCall=0;
-    const r=research();
-    r.claims=[
-      {...r.claims[0],id:'JD-1-1'},
-      {...r.claims[1],id:'CANDIDATE-1-1'},
-      {...r.claims[2],derivedFrom:['JD-1-1','CANDIDATE-1-1']},
-    ];
-    r.evaluation.requirements[0].roleClaimIds=['JD-1-1']; r.evaluation.requirements[0].candidateClaimIds=['CANDIDATE-1-1'];
-    const output = await buildDossier({opportunity:{id:'1',company:'Example',title:'Sales Head'},candidate:{name:'Candidate'},sources},[{id:'test',async acquire(){stages.push('acquire');return {sources:[],attempts:[]};}}],{id:'test',version:'test',async generate(_instruction,input){
-      requests.push(input);
-      const request=input as {plane?:string; evidence?:unknown};
-      if(request.plane) return {claims:r.claims.filter(c=>c.plane===request.plane).map(c=>({...c,citations:c.citations.map(ref=>({sourceId:ref.sourceId,spanId:'s0'}))}))};
-      if(request.evidence) return {...r, claims:[r.claims[2]]};
-      return JSON.parse(JSON.stringify(composition()).replaceAll('relation', 'INFERRED-1').replaceAll('Distinct editorial purpose', `Distinct editorial purpose ${++proseCall}`));
-    }},s=>stages.push(s));
-    expect(requests.length).toBeGreaterThan(4);
-    expect((requests[3] as {research:Research}).research.narrativePlan.argument).toContain('domain stretch');
-    expect(output.conversationStrategy.linkedinStrategy).toHaveLength(1);
-    expect(output.evidence.relationalClaims[0].id).toBe('INFERRED-1');
-    expect(output.evidence.relationalClaims[0].id).not.toBe('relation');
-    expect(output.evidence.lineage).toEqual(sources);
-    expect(stages.indexOf('acquire')).toBeLessThan(stages.findIndex(s=>s.includes('Reasoning')));
   });
   it('failed context acquisition remains an acquisition attempt, not a negative company fact',async()=>{
     const provider=new CompanyWebsiteProvider([{url:'https://example.com/',title:'Company'}],async()=>new Response('',{status:503}));

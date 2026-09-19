@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { ModelProviderUnavailableError } from '../model/provider-unavailable';
 import { EvaluationWorker } from "./EvaluationWorker";
 import { RunReconciliationService } from "./RunReconciliationService";
 import type { DatabaseAdapter } from "@/data/database";
@@ -60,6 +61,12 @@ export class EvaluationDaemon {
         }
       } catch (err: any) {
         if (signal.aborted) return;
+
+        if (err instanceof ModelProviderUnavailableError) {
+          console.error(`[EvaluationDaemon] Model provider unavailable; claims paused for ${Math.ceil(err.retryAfterMs / 1000)} seconds: ${err.message}`);
+          setTimeout(loop, err.retryAfterMs);
+          return;
+        }
         
         // M5.4 Isolation semantics: Daemon survives worker exceptions and continues polling
         console.error(`[EvaluationDaemon] Orchestrator exception survived:`, err?.message || err);

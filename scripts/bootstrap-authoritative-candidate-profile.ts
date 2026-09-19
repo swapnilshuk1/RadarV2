@@ -1,11 +1,13 @@
 /**
  * Registers one user-approved candidate source set and creates a provenance-bound
- * profile projection. It never activates a serving plan or reads credentials.
+ * profile projection. It never activates a serving plan.
  */
 import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { ProjectionPipeline } from "../src/lib/intelligence/pipeline/ProjectionPipeline";
+import { loadUnifiedEnvironment } from '../src/lib/env';
+import { loadMantleCredentials } from '../src/lib/model/bedrock-credentials';
 
 function option(name: string): string {
   const value = process.argv.find((argument) => argument.startsWith(`${name}=`))?.slice(name.length + 1);
@@ -15,9 +17,8 @@ function option(name: string): string {
 
 const personId = option("--person-id");
 const sourcePath = resolve(option("--source"));
-if (!process.env.AWS_BEARER_TOKEN_BEDROCK?.trim() && !process.env.GROQ_API_KEY?.trim()) {
-  throw new Error("MODEL_EXTRACTION_AUTH_UNAVAILABLE");
-}
+loadUnifiedEnvironment();
+if (!process.env.GROQ_API_KEY?.trim()) loadMantleCredentials();
 
 const documentText = await readFile(sourcePath, "utf8");
 const documentHash = createHash("sha256").update(documentText, "utf8").digest("hex");

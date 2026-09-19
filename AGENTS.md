@@ -12,14 +12,26 @@ main
 Before changing intelligence, dossier, evaluation, enrichment, narrative, candidate matching, company context, or related UI code, read:
 
 ```text
-docs/rebuild/RADAR_REBUILD_MISSION.md
+docs/PRODUCT_MISSION.md
 ```
 
 That document is the detailed product contract. This file is the short operational contract.
 
-Legacy transition/gate documents are historical reference only unless the product owner explicitly revives them.
+Use `docs/README.md` as the documentation index and `docs/ARCHITECTURE.md`
+for the current implementation. The canonical checkout is
+`C:\Users\swapn\Downloads\Radar V2` on `main`; keep an active backfill on its
+pinned worktree until it finishes. Keep documentation focused on the current
+implementation and operating procedures. This does not change the product mission below.
 
 ---
+
+## Current presentation contract
+
+The product owner has selected Template B as the single executive memo layout.
+Preserve the substantive intelligence and evidence from both benchmarks, but do not
+maintain or generate Template A. Generate rich memos for PURSUE and CONSIDER only;
+retain PASS evaluations without composing a dossier. Judge the memo by coverage,
+clarity, distinct reasoning and source integrity, never exact benchmark wording.
 
 ## 1. THE MISSION
 
@@ -47,7 +59,7 @@ The dossier must be able to express, when relevant:
 - resume / LinkedIn positioning where useful;
 - evidence and claim lineage.
 
-The canonical intelligence must support both benchmark dossier layouts from the same underlying model.
+The canonical intelligence retains the unique substantive value of both benchmarks in the single Template B memo.
 
 ---
 
@@ -189,7 +201,7 @@ complete intelligence
     ↓
 complete DossierModel
     ↓
-Template A + Template B
+Template B executive memo
 ```
 
 Improve that vertical slice against the benchmark dossiers, then broaden.

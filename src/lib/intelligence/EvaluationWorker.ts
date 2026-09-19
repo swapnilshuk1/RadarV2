@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { ModelProviderUnavailableError } from '../model/provider-unavailable';
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
 import { AuthContext, authorizePersonScope } from "@/lib/security/auth";
 import { runEngineSingleIntrinsic } from "./engine";
@@ -19,9 +20,10 @@ import { createBedrockGlmResearchModel } from "@/lib/model/bedrock-glm-research-
 import { ProductionStagedEvaluationService } from "./staged/ProductionStagedEvaluationService";
 import { ProductionStagedDossierService } from './staged/ProductionStagedDossierService';
 import { StagedServingPublisher } from './staged/StagedServingPublisher';
-import { EmptySourceEvidenceError } from '@/dossier/pipeline';
+import { EmptySourceEvidenceError } from '@/dossier/evidence';
 import { DeterministicStagedInputUnavailableError } from "./staged/ProductionStagedInputAdapter";
 import { STAGED_POLICY_VERSION, SqliteStagedEvaluationStore, stagedUnavailableEvaluation } from "@/data/sqlite/repositories/SqliteStagedEvaluationStore";
+import {supportsStagedPolicy} from './staged/stagedPolicy';
 
 export interface WorkerOptions {
   adapter?: DatabaseAdapter;
@@ -246,16 +248,16 @@ export class EvaluationWorker {
         createdAt: ctxRow.created_at || new Date().toISOString(),
       };
 
-      if (context.policyVersion === STAGED_POLICY_VERSION && job.queueKind !== "staged") {
+      if (supportsStagedPolicy(context.policyVersion) && job.queueKind !== "staged") {
         throw new Error("STAGED_CONTEXT_REQUIRES_STAGED_QUEUE");
       }
-      if (context.policyVersion !== STAGED_POLICY_VERSION && job.queueKind === "staged") {
+      if (!supportsStagedPolicy(context.policyVersion) && job.queueKind === "staged") {
         throw new Error("LEGACY_CONTEXT_CANNOT_USE_STAGED_QUEUE");
       }
 
       // Policy dispatch keeps the durable worker spine shared while preserving
       // the legacy intrinsic path for existing immutable contexts.
-      if (context.policyVersion === STAGED_POLICY_VERSION) {
+      if (supportsStagedPolicy(context.policyVersion)) {
         const stagedStore = new SqliteStagedEvaluationStore(this.db);
         const identity = { tenantId: job.tenantId, personId: job.personId, canonicalJobId: job.canonicalJobId, opportunityVersion: job.opportunityVersion, evaluationContextFingerprint: job.evaluationContextFingerprint, profileVersion: context.profileVersion, policyVersion: context.policyVersion, ontologyVersion: context.ontologyVersion, ontologyFingerprint: context.ontologyFingerprint };
         if (!isAcquired || !isLifecycleActive) {
@@ -266,9 +268,9 @@ export class EvaluationWorker {
         try {
           const evaluated = await new ProductionStagedEvaluationService(this.db, createBedrockGlmResearchModel()).evaluate({ ...identity, context });
           const serving=await this.db.one<{context_fingerprint:string}>(`SELECT context_fingerprint FROM active_evaluation_contexts WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND context_fingerprint=?`,[job.tenantId,job.personId,job.searchPlanId,job.evaluationContextFingerprint]);
-          if(serving){
-            await new ProductionStagedDossierService(this.db,createBedrockGlmResearchModel()).compose(identity);
-            await new StagedServingPublisher(this.db).publish(identity);
+          if(serving&&evaluated.decision!=='PASS'){
+            await new ProductionStagedDossierService(this.db,createBedrockGlmResearchModel()).compose(identity,()=>{},{draftOnly:true});
+            await new StagedServingPublisher(this.db).publish(identity,{allowDraft:true});
           }
           return this.commitStagedCompletion(job, evaluated.decision);
         } catch (error) {
@@ -501,6 +503,13 @@ export class EvaluationWorker {
 
       return await this.commitEvaluationMaterialization(job, materialized, dossierPresentationV2);
     } catch (err: any) {
+      if (err instanceof ModelProviderUnavailableError) {
+        // Release only our lease. Keep the requirement READY and do not consume
+        // job attempts or classify provider access as a candidate/source failure.
+        await this.db.execute(`UPDATE evaluation_jobs SET status=?,last_error=?,next_attempt_at=datetime('now','+' || ? || ' seconds'),locked_by=NULL,lease_token=NULL,locked_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND locked_by=? AND lease_token=? AND status=?`,
+          [job.queueKind==='staged'?'staged_pending':'pending',err.message,Math.ceil(err.retryAfterMs/1000),job.id,this.workerId,job.leaseToken,job.queueKind==='staged'?'staged_processing':'processing']);
+        throw err;
+      }
       const errorMsg = err?.message || String(err);
       const nextAttemptNumber = job.attempts + 1;
       const processingStatus = job.queueKind === "staged" ? "staged_processing" : "processing";

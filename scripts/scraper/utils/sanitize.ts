@@ -1,5 +1,5 @@
 // Company-name recovery: keep sanitisation at the scraper boundary so downstream
-// enrichment can assume clean rows (per docs/scraper-quick-wins §3, §5).
+// enrichment can assume clean rows before canonical ingestion.
 
 const INVALID_WORDS = new Set([
   "linkedin", "indeed", "naukri", "guest", "area", "jobs", "job", "hiring",

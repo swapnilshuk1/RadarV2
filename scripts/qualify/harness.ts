@@ -3,7 +3,7 @@ import path from "path";
 import { execSync } from "child_process";
 import { getRepositories } from "../../src/data/sqlite/provider";
 
-const CERT_DIR = path.resolve(process.cwd(), "docs/Certification", new Date().toISOString().split("T")[0]);
+const CERT_DIR = path.resolve(process.cwd(), ".radar/certification", new Date().toISOString().split("T")[0]);
 
 interface CertificationReport {
   version: string;

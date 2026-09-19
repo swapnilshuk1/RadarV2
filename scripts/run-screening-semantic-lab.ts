@@ -1,4 +1,5 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { loadMantleCredentials } from '../src/lib/model/bedrock-credentials';
+import { mkdirSync, writeFileSync } from 'node:fs';
 
 import { createBedrockGlmResearchModel } from '../src/lib/model/bedrock-glm-research-model';
 import { runScreeningSemanticLabCase } from '../src/dossier/screening-semantic-lab';
@@ -11,19 +12,7 @@ function option(name: string): string | undefined {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
-function bearerToken(): string {
-  const token = process.env.AWS_BEARER_TOKEN_BEDROCK?.trim();
-  if (token) return token;
-
-  const lines = readFileSync('bedrock-long-term-api-key.csv', 'utf8').trim().split(/\r?\n/);
-  const headers = lines[0].split(',').map(value => value.trim().replace(/^"|"$/g, ''));
-  const values = lines[1].split(',').map(value => value.trim().replace(/^"|"$/g, ''));
-  const index = headers.findIndex(header => ['ServiceApiKeyValue', 'API key', 'API key value'].includes(header));
-  if (index < 0 || !values[index]) throw new Error('Bedrock API key is unavailable');
-  return values[index];
-}
-
-process.env.AWS_BEARER_TOKEN_BEDROCK = bearerToken();
+loadMantleCredentials();
 
 const repeats = Math.max(1, Number(option('--repeats') ?? '1'));
 const concurrency = Math.max(1, Math.min(8, Number(option('--concurrency') ?? '3')));

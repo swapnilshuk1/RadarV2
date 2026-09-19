@@ -6,7 +6,7 @@
  * this manifest rather than maintaining independent lists.
  */
 
-export const EXPECTED_CERTIFICATION_FILE_COUNT = 64;
+export const EXPECTED_CERTIFICATION_FILE_COUNT = 68;
 
 export const certificationManifest = [
   {
@@ -78,8 +78,7 @@ export const certificationManifest = [
   {
     id: "editorial-governance",
     name: "Editorial Governance & Verdict Contracts",
-    description:
-      "Rule 13 executive prose compliance, score resolution, and badge mappings",
+    description: "Rule 13 executive prose compliance, score resolution, and badge mappings",
     files: [
       "tests/editorial/career-value-integrity.test.ts",
       "tests/editorial/explanation-composition.test.ts",
@@ -106,9 +105,13 @@ export const certificationManifest = [
       "tests/security/decisions-account-isolation.test.ts",
       "tests/intelligence/staged-decision.test.ts",
       "tests/intelligence/staged-production-integration.test.ts",
+      "tests/intelligence/staged-context-input.test.ts",
       "tests/intelligence/staged-queue-lifecycle.test.ts",
       "tests/scraper/enrichment-payload-resolution.test.ts",
       "tests/intelligence/staged-composition.test.ts",
+      "tests/intelligence/dossier-review-queue.test.ts",
+      "tests/intelligence/gemini-context-cache.test.ts",
+      "tests/intelligence/memo-contract.test.ts",
       "tests/serving/staged-rich-serving.test.ts",
       "tests/intelligence/bedrock-converse-model.test.ts",
     ],
