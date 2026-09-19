@@ -23,7 +23,8 @@ task finish; a forced termination is recovered after its three-minute lease expi
 - `RADAR_FACTUAL_REVIEW_PROVIDER=gemini` (default and currently installed adapter).
 - `RADAR_FACTUAL_REVIEW_MODEL=gemini-3.8-flash` (default).
 - `GCP_PROJECT_ID` plus normal Google ADC for Gemini. Token refresh has a 30-second application deadline.
-- Existing Bedrock writer credentials for corrections, only when needed.
+- Bedrock Mantle writer credentials (`mantle.key` or `BEDROCK_MANTLE_API_KEY`) for
+  corrections. `BEDROCK_MANTLE_KEY_FILE` selects a different local key file.
 - `RADAR_GEMINI_CONTEXT_CACHE=off` disables explicit candidate-prefix caching.
 
 The queue accepts any injected `ReasoningModel`; a new provider needs one adapter

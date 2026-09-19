@@ -30,7 +30,7 @@ if (arg("env-file")) loadEnvFile(arg("env-file")!);
 process.env.RADAR_ENV = "test";
 process.env.RADAR_USE_TURSO = "false";
 process.env.GCP_PROJECT_ID = arg("project") || process.env.GCP_PROJECT_ID;
-if (arg("bedrock-key-file")) process.env.BEDROCK_API_KEY_FILE = arg("bedrock-key-file");
+if (arg("bedrock-key-file")) process.env.BEDROCK_MANTLE_KEY_FILE = arg("bedrock-key-file");
 fs.mkdirSync(root, { recursive: true });
 const local = path.join(root, "local.sqlite");
 if (!fs.existsSync(local)) {

@@ -19,7 +19,10 @@ that evidence before evaluation. V8 context identity includes the acquisition
 recipe. New context-aware work must not reuse historical v6/v7 identities.
 
 Bedrock evaluation/composition and Gemini factual review use the configured model
-factories. Google ADC uses standard credential discovery, including service-account
+factories. GLM-5 uses Bedrock Mantle, with `BEDROCK_MANTLE_API_KEY` or the local
+`mantle.key` file (`BEDROCK_MANTLE_KEY_FILE` overrides its location). The old
+Converse bearer/CSV is not a fallback. Restart workers after key rotation.
+Google ADC uses standard credential discovery, including service-account
 and workload credentials; the target runtime still needs working credentials,
 permissions and quota. Tavily configuration is required for current rollout.
 Successful NO_RESULTS acquisition differs from configuration/provider failure.

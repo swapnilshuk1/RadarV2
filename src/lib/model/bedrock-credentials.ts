@@ -2,6 +2,27 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { loadUnifiedEnvironment } from '../env';
 
+/** Accept the raw key or the console's labelled download, never guess between keys. */
+export function parseMantleKey(text: string): string {
+  const candidates = text.replace(/^\uFEFF/, '').split(/\r?\n/).map(line => line.trim())
+    .filter(line => /^[A-Za-z0-9+\/=_\-.]{40,}$/.test(line));
+  if (candidates.length !== 1) throw new Error('BEDROCK_MANTLE_CREDENTIAL_FILE_INVALID');
+  return candidates[0];
+}
+
+/** Dedicated Mantle credential; an old Converse bearer token cannot override it. */
+export function loadMantleCredentials(): void {
+  loadUnifiedEnvironment();
+  const configured = process.env.BEDROCK_MANTLE_API_KEY?.trim();
+  if (configured) {
+    if (/[\r\n]/.test(configured)) throw new Error('BEDROCK_MANTLE_CREDENTIAL_INVALID');
+    return;
+  }
+  const file = process.env.BEDROCK_MANTLE_KEY_FILE || path.resolve('mantle.key');
+  try { process.env.BEDROCK_MANTLE_API_KEY = parseMantleKey(fs.readFileSync(file, 'utf8')); }
+  catch { throw new Error('BEDROCK_MANTLE_CREDENTIAL_FILE_UNAVAILABLE_OR_INVALID'); }
+}
+
 /** AWS console CSV is a local credential source; never log its values. */
 export function loadBedrockCredentials(): void {
   loadUnifiedEnvironment();

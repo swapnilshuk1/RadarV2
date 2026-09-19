@@ -88,7 +88,7 @@ RADAR v2 Test Architecture
 | `tests/intelligence/semantic-evidence-integrity-regression.test.ts` | Dimension grounding prevents false evidence vetoes on rich executive postings. | **Stage 3** |
 | `tests/intelligence/staged-decision.test.ts` | Typed entry-selection adjudication, candidate mapping, gap classification, and decision-boundary invariants for staged intelligence. | **Stage 3** |
 | `tests/intelligence/staged-production-integration.test.ts` | Staged source identity, policy-context isolation, and persistence boundaries. | **Stage 3** |
-| `tests/intelligence/bedrock-converse-model.test.ts` | Bedrock provider request, schema, authentication-redaction, and bounded transport-retry contract. | **Stage 3** |
+| `tests/intelligence/bedrock-converse-model.test.ts` | Bedrock Mantle and Converse requests, schema, credential parsing/redaction, and provider failure handling. | **Stage 3** |
 | `tests/intelligence/bedrock-schema.test.ts` | Standards-compliant Bedrock JSON Schema projection for dossier contracts. | Full Suite |
 | `tests/intelligence/dossier-grounding.test.ts` | Evidence-plane, provenance, and grounded dossier validation invariants. | Full Suite |
 | `tests/intelligence/dossier-source-authority.test.ts` | Immutable source snapshot and source-authority boundary. | Full Suite |
@@ -304,7 +304,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/serving/staged-rich-serving.test.ts` | Serving & Pagination | **KEEP** | Stage 3 | 8 | 8 |
 | `tests/intelligence/staged-context-input.test.ts` | Context / Source Provenance | **KEEP** | Stage 3 | 6 | 6 |
 | `tests/intelligence/staged-production-integration.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 5 | 13 |
-| `tests/intelligence/bedrock-converse-model.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 7 | 7 |
+| `tests/intelligence/bedrock-converse-model.test.ts` | Bedrock transport / structured output | **KEEP** | Stage 3 | 20 | 20 |
 | `tests/intelligence/bedrock-schema.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 18 |
 | `tests/intelligence/dossier-grounding.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 16 | 68 |
 | `tests/intelligence/dossier-source-authority.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 21 |

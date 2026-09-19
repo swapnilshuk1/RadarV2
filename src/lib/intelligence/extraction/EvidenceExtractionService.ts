@@ -8,7 +8,7 @@ import type { JsonModel } from '../../model/json-model';
  */
 
 import type { EvidenceGraph, ExtractedFact, FactType } from "../../../domain/evidence";
-import { BedrockConverseJsonModel } from "../../model/bedrock-converse-model";
+import { BedrockMantleJsonModel } from "../../model/bedrock-mantle-model";
 import fs from "fs";
 import path from "path";
 
@@ -52,7 +52,7 @@ export class EvidenceExtractionService {
         }
       }
     }
-    this.bedrockToken = process.env.AWS_BEARER_TOKEN_BEDROCK?.trim() || "";
+    this.bedrockToken = process.env.BEDROCK_MANTLE_API_KEY?.trim() || "";
   }
 
   public async extract(input: EvidenceExtractionInput): Promise<EvidenceGraph> {
@@ -170,11 +170,11 @@ Return ONLY a JSON object formatted as:
   /**
    * The candidate pipeline predates the staged Bedrock model route. Keep Groq
    * as the primary legacy provider, while allowing a process-supplied Bedrock
-   * bearer token to provide the same factual-extraction contract. Credential
+   * Mantle key to provide the same factual-extraction contract. Credential
    * discovery remains outside this service.
    */
   private async bedrockExtract(input: EvidenceExtractionInput, graphId: string, now: string): Promise<EvidenceGraph> {
-    const model = this.model ?? new BedrockConverseJsonModel(
+    const model = this.model ?? new BedrockMantleJsonModel(
       "zai.glm-5",
       async () => this.bedrockToken,
       fetch,

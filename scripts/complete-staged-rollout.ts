@@ -3,7 +3,7 @@ import { selectStagedDossierWork } from '../src/lib/intelligence/staged/dossierB
 import { getDatabaseAdapter } from '../src/data/database';
 import { ModelProviderUnavailableError } from '../src/lib/model/provider-unavailable';
 import { getBlobStore } from '../src/lib/storage/blob-store';
-import { loadBedrockCredentials } from '../src/lib/model/bedrock-credentials';
+import { loadMantleCredentials } from '../src/lib/model/bedrock-credentials';
 import { createBedrockGlmResearchModel } from '../src/lib/model/bedrock-glm-research-model';
 import { RICH_DOSSIER_VERSION,RICH_DOSSIER_FAILURE_VERSION } from '../src/data/sqlite/repositories/SqliteRichDossierStore';
 import { ProductionStagedDossierService } from '../src/lib/intelligence/staged/ProductionStagedDossierService';
@@ -16,7 +16,7 @@ import { stagedRolloutReadiness,activateReadyStagedRollout } from '../src/lib/in
 const option=(name:string)=>process.argv.find(value=>value.startsWith(`--${name}=`))?.slice(name.length+3);
 const context=option('context'),expectedActive=option('expected-active');
 if(!context||!expectedActive)throw new Error('EXPLICIT_ROLLOUT_CONTEXTS_REQUIRED');
-loadBedrockCredentials();
+loadMantleCredentials();
 const db=getDatabaseAdapter();
 const contexts=await db.many<{tenant_id:string;person_id:string;search_plan_id:string;profile_version:string}>(`SELECT ecs.tenant_id,ecs.person_id,ecs.search_plan_id,ec.profile_version FROM evaluation_context_scopes ecs JOIN evaluation_contexts ec ON ec.context_fingerprint=ecs.context_fingerprint WHERE ecs.context_fingerprint=? AND ec.policy_version IN ('staged-v6','staged-v7','staged-v8')`,[context]);
 if(contexts.length!==1)throw new Error('ROLLOUT_SCOPE_MUST_BE_UNAMBIGUOUS');

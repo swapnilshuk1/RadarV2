@@ -1,12 +1,12 @@
 import { getDatabaseAdapter } from "../src/data/database";
-import { loadBedrockCredentials } from "../src/lib/model/bedrock-credentials";
+import { loadMantleCredentials } from "../src/lib/model/bedrock-credentials";
 import { createBedrockGlmResearchModel } from "../src/lib/model/bedrock-glm-research-model";
 import { createFactualReviewModel } from "../src/lib/model/factual-review-model";
 import { DossierReviewWorker } from "../src/lib/intelligence/staged/DossierReviewWorker";
 
 const db = getDatabaseAdapter();
 if (!await db.one("SELECT name FROM sqlite_master WHERE type='table' AND name='dossier_review_jobs'")) throw new Error('Apply migration 052 before starting the review worker');
-loadBedrockCredentials();
+loadMantleCredentials();
 const worker = new DossierReviewWorker(db, createBedrockGlmResearchModel, createFactualReviewModel);
 let stopping = false;
 process.on("SIGINT", () => {

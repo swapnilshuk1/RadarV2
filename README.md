@@ -32,6 +32,14 @@ Portal scrape -> preserved payload -> canonical opportunity/version
 The current release contracts are `staged-v8`, `staged-decision-v8`,
 `dossier-v4.1` and `memo-facts-v4`. Publication does not activate a context.
 
+GLM-5 evaluation and memo writing use **Bedrock Mantle Chat Completions** in
+`us-east-1`. Keep the local key in `mantle.key` in the repository root (a raw key or
+the console's labelled download). Alternatively set `BEDROCK_MANTLE_API_KEY`, or
+set `BEDROCK_MANTLE_KEY_FILE` to another key file. The environment key takes
+precedence. The old Converse CSV and `AWS_BEARER_TOKEN_BEDROCK` do not override
+Mantle credentials. Restart running workers after rotating the key; key files
+remain untracked. Gemini factual review retains its separate ADC configuration.
+
 PURSUE/CONSIDER drafts carry **AI draft · factual review pending**. Run
 `npm run worker:reviews` as a separate supervised process after migration 052.
 Gemini 3.8 Flash remains the default reviewer; model adapters are independent of

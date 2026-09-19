@@ -1,7 +1,7 @@
 /** Processes a bounded number of staged jobs; optional waiting drains delayed retries. */
 import crypto from "node:crypto";
 import { EvaluationWorker } from "../src/lib/intelligence/EvaluationWorker";
-import { loadBedrockCredentials } from '../src/lib/model/bedrock-credentials';
+import { loadMantleCredentials } from '../src/lib/model/bedrock-credentials';
 import { getDatabaseAdapter } from '../src/data/database';
 
 const argument = process.argv.find((value) => value.startsWith("--max-jobs="));
@@ -10,7 +10,7 @@ if(!Number.isSafeInteger(maxJobs)||maxJobs<1)throw new Error('MAX_JOBS_INVALID')
 const contextFingerprint = process.argv.find(value=>value.startsWith('--context='))?.slice('--context='.length);
 const watch=process.argv.includes('--watch');
 if(watch&&!contextFingerprint)throw new Error('WATCH_REQUIRES_EXPLICIT_CONTEXT');
-loadBedrockCredentials();
+loadMantleCredentials();
 
 const worker = new EvaluationWorker(`staged-backfill-${crypto.randomUUID().slice(0, 8)}`);
 const outcomes = [];

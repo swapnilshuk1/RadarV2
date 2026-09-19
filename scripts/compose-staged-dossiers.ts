@@ -1,7 +1,7 @@
 import {selectStagedDossierWork} from '../src/lib/intelligence/staged/dossierBackfillSelection';
 import { getDatabaseAdapter } from '../src/data/database';
 import { ModelProviderUnavailableError } from '../src/lib/model/provider-unavailable';
-import { loadBedrockCredentials } from '../src/lib/model/bedrock-credentials';
+import { loadMantleCredentials } from '../src/lib/model/bedrock-credentials';
 import { createBedrockGlmResearchModel } from '../src/lib/model/bedrock-glm-research-model';
 import { ProductionStagedDossierService } from '../src/lib/intelligence/staged/ProductionStagedDossierService';
 import { RICH_DOSSIER_VERSION } from '../src/data/sqlite/repositories/SqliteRichDossierStore';
@@ -17,7 +17,7 @@ if(!Number.isSafeInteger(shards)||shards<1||!Number.isSafeInteger(shard)||shard<
 const publishOnly=process.argv.includes('--publish-only');
 const publish=publishOnly||process.argv.includes('--publish');
 const job=option('job');
-if(!publishOnly)loadBedrockCredentials();
+if(!publishOnly)loadMantleCredentials();
 const db=getDatabaseAdapter();
 const rows=await selectStagedDossierWork(db,{context,limit,shards,shard,job,publish,publishOnly});
 const service=publishOnly?null:new ProductionStagedDossierService(db,createBedrockGlmResearchModel());

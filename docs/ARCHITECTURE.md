@@ -130,7 +130,15 @@ monolithic research runner.
 
 The canonical production presentation is `dossier-v4.1` / `staged-memo-v4.1`.
 The staged decision remains v8: editorial changes never rewrite its immutable trace.
-One Bedrock request writes the complete six-section memo and its narrative plan.
+One Bedrock Mantle request writes the complete six-section memo and its narrative plan.
+`createBedrockGlmResearchModel` returns `BedrockMantleJsonModel`, using GLM-5 through
+`https://bedrock-mantle.us-east-1.api.aws/v1/chat/completions`. Native JSON Schema
+output feeds the existing canonical validators; truncated/refused/invalid JSON is
+never accepted. Provider failures return to durable scheduling without immediate
+transport retries. The adapter normalizes token usage and binds transport, model,
+region and output settings into checkpoint identity. Converse checkpoints cannot
+be reused as Mantle responses. This transport change does not rewrite persisted
+evaluations or change the staged policy, prompts, candidate source or verdict rules.
 Its stable candidate packet contains all validated candidate facts and exact source
 bindings, separate from role and company context. Production extraction already
 caches candidate claims by source and model identity; no job-specific CV rewrite
