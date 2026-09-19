@@ -45,7 +45,8 @@ export function sourceSpans(source: EvidenceSource) {
 
 export function resolveSourceClaims(value: unknown, sources: EvidenceSource[]) {
   const result = sourceClaimsSchema.parse(value);
-  return result.claims.map((claim, index) => {
+  const issues: string[] = [];
+  const resolved = result.claims.map((claim, index) => {
     const citedSpans = claim.citations.map(ref => {
       const source = sources.find(candidate => candidate.id === ref.sourceId);
       if (!source) throw new Error(`Unknown source passage ${ref.sourceId}/${ref.spanId}`);
@@ -61,7 +62,7 @@ export function resolveSourceClaims(value: unknown, sources: EvidenceSource[]) {
     }
     for (const [sourceId, indices] of spansBySource) {
       indices.sort((left, right) => left - right);
-      if (indices.some((value, position) => position > 0 && value !== indices[position - 1] + 1)) throw new Error(`Claim citations from ${sourceId} must use contiguous source passages`);
+      if (indices.some((value, position) => position > 0 && value !== indices[position - 1] + 1)) issues.push(`${claim.id}: citations from ${sourceId} must use contiguous source passages; received ${indices.map(i => `s${i}`).join(', ')}`);
     }
     const prefixMatch = claim.id.match(/^([A-Z]+-\d+-)/);
     // The model selects evidence, not identifiers. Its repeated or malformed
@@ -79,4 +80,6 @@ export function resolveSourceClaims(value: unknown, sources: EvidenceSource[]) {
       }),
     };
   });
+  if (issues.length) throw new Error(`${issues.join('; ')}. Fix every listed claim: choose the minimal adjacent support or split independently supported assertions into separate claims. Do not bridge unrelated passages or duplicate a span.`);
+  return resolved;
 }

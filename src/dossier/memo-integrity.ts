@@ -1,3 +1,4 @@
+import { validateMemoCopy } from "./composition";
 import { isDeepStrictEqual } from "node:util";
 import { compositionSchema, type Dossier, type Research } from "./contracts";
 import type { StagedDecisionResult } from "./staged-decision-contract";
@@ -92,6 +93,17 @@ export function assertMemoIntegrity(dossier: Dossier) {
     ...dossier.evidence.contextualClaims,
     ...dossier.evidence.relationalClaims,
   ];
+  validateMemoCopy(
+    dossier,
+    {
+      claims,
+      narrativePlan: dossier.narrativePlan,
+      evaluation: dossier.verdict,
+      resolutions: dossier.resolutions,
+      candidateConflicts: dossier.candidateConflicts,
+    },
+    staged,
+  );
   validateMemoPlan({ claims, narrativePlan: dossier.narrativePlan }, staged);
   validateMemoSectionCoverage("candidateFit", dossier, dossier.narrativePlan, staged);
   validateMemoSectionCoverage("decisionConditions", dossier, dossier.narrativePlan, staged);

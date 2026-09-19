@@ -63,7 +63,7 @@ export class EvaluationDaemon {
         if (signal.aborted) return;
 
         if (err instanceof ModelProviderUnavailableError) {
-          console.error(`[EvaluationDaemon] Model provider unavailable; claims paused for 15 minutes: ${err.message}`);
+          console.error(`[EvaluationDaemon] Model provider unavailable; claims paused for ${Math.ceil(err.retryAfterMs / 1000)} seconds: ${err.message}`);
           setTimeout(loop, err.retryAfterMs);
           return;
         }

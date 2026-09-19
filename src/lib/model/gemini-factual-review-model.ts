@@ -8,7 +8,7 @@ export function createGeminiFactualReviewModel(options:{projectId?:string;token?
   if(!projectId)throw new ModelProviderUnavailableError('GEMINI_REVIEW_PROJECT_UNCONFIGURED');
   const model=new GeminiJsonModel(projectId,options.token??adcTokenProvider(),options.request??fetch,{
     model:'gemini-3.8-flash',location:'global',schemaFormat:'json-schema',
-    thinkingLevel:'MEDIUM',maxOutputTokens:16384,timeoutMs:120000,
+    thinkingLevel:'MEDIUM',maxOutputTokens:8192,timeoutMs:120000,
   });
   const generate=model.generate.bind(model);
   model.generate=async(instruction,input,schema)=>{

@@ -68,7 +68,7 @@ export async function selectRelevantContextSources(opportunity:SliceInput['oppor
 const verifiedProposals = new Map<string, unknown>();
 
 /** Keep the canonical Zod contract provider-neutral; project it only at the transport edge. */
-function outputSchemaFor(model: ReasoningModel, schema: z.ZodTypeAny): Record<string, unknown> {
+export function outputSchemaFor(model: ReasoningModel, schema: z.ZodTypeAny): Record<string, unknown> {
   return /bedrock/i.test(model.id) ? bedrockJsonSchema(schema) : modelSchema(schema);
 }
 
@@ -82,7 +82,7 @@ export async function propose<T>(model: ReasoningModel, instruction: string, inp
 
   if (verifiedProposals.has(key)) {
     try { return await validate(verifiedProposals.get(key)); }
-    catch { verifiedProposals.delete(key); }
+    catch (error) { if (error instanceof ModelProviderUnavailableError) throw error; verifiedProposals.delete(key); }
   }
 
   let previous: unknown;

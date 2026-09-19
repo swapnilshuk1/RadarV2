@@ -187,7 +187,7 @@ export function validatePassages(composition: unknown, research: Research): void
     p.evidenceRefs = p.evidenceRefs.map(resolveId);
     if (p.evidenceRefs.some(id => !claims.has(id))) throw new Error(`Narrative cites unknown claim: ${p.evidenceRefs.filter(id=>!claims.has(id)).join(', ')}. Use supplied claim IDs from research.claims, not requirement IDs or punctuation.`);
     if (screeningTerms.test(p.text) && !p.evidenceRefs.some(id => hasHardScreenLineage(id))) throw new Error(`Employer screening terminology needs actual hard-screen evidence. Passage: ${p.text}`);
-    if (p.state === 'EXPLICIT' && (p.kind !== 'CONCLUSION' || p.evidenceRefs.some(id => claims.get(id)!.state === 'INFERRED'))) throw new Error('Advice, questions and inference cannot become explicit fact');
+    if (p.state === 'EXPLICIT' && (p.kind !== 'CONCLUSION' || p.evidenceRefs.some(id => claims.get(id)!.state === 'INFERRED'))) throw new Error(`Passage ${p.kind}/${p.state} cannot be EXPLICIT: only conclusions supported entirely by explicit evidence qualify. Use INFERRED for advice, questions and derived conclusions. Passage: ${p.text}`);
     if (p.state === 'INFERRED' && !p.reasoning?.trim()) throw new Error('Narrative inference needs reasoning');
 
     const cited = p.evidenceRefs.map(id => claims.get(id)!);

@@ -1,3 +1,4 @@
+import type { JsonModel } from '../../model/json-model';
 /**
  * ProjectionPipeline.ts
  *
@@ -6,8 +7,8 @@
  * DOCUMENT_UPLOADED -> EVIDENCE_EXTRACTED -> NORMALIZED -> ONTOLOGY_RESOLVED -> PROJECTION_BUILT -> INFERENCE_COMPLETE -> (PROFILE_READY | EVALUATED) -> COMPLETED
  */
 
-import { getRepositories } from "../../../data/sqlite/provider";
-import { getDatabaseAdapter } from "../../../data/database";
+import { createRepositories, getRepositories } from "../../../data/sqlite/provider";
+import { getDatabaseAdapter, type DatabaseAdapter } from "../../../data/database";
 import { versionCandidateProjection } from "../../../data/sqlite/repositories/profile-projection-version";
 import type { CandidateDocumentRecord } from "../../../data/sqlite/repositories/SqliteDocumentStore";
 import { EvidenceExtractionService } from "../extraction/EvidenceExtractionService";
@@ -66,8 +67,14 @@ export function reuseEvidenceGraphForOwner(
 }
 
 export class ProjectionPipeline {
-  private repos = getRepositories();
-  private extractor = new EvidenceExtractionService();
+  private readonly db:DatabaseAdapter;
+  private readonly repos:ReturnType<typeof getRepositories>;
+  private readonly extractor:EvidenceExtractionService;
+  constructor(options:{db?:DatabaseAdapter;model?:JsonModel}={}){
+    this.db=options.db??getDatabaseAdapter();
+    this.repos=options.db?createRepositories(options.db):getRepositories();
+    this.extractor=new EvidenceExtractionService(options.model);
+  }
   private builder = new CandidateProjectionBuilderImpl();
 
   public async run(input: PipelineExecutionInput, startStage: PipelineStage = "DOCUMENT_REGISTERED"): Promise<{
@@ -199,7 +206,7 @@ export class ProjectionPipeline {
         finalProjection = versionCandidateProjection(OperatingLevelEngine.evaluate(baseProjection, rawText));
         await this.repos.people.saveProjection(personId, finalProjection);
         // A staged evaluation requires this exact profile-to-source binding; there is no latest-document fallback.
-        await getDatabaseAdapter().execute(
+        await this.db.execute(
           `INSERT INTO profile_projection_source_bindings (person_id, profile_version, document_id, evidence_graph_id, document_text_hash)
            VALUES (?, ?, ?, ?, ?)
            ON CONFLICT(person_id, profile_version, document_id) DO NOTHING`,

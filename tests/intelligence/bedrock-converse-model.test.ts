@@ -18,6 +18,12 @@ describe('Bedrock Converse JSON transport', () => {
     await expect(extractValidatedSourceClaims(model,{id:'provider-failure-jd',plane:'JD',title:'Role',locator:'test',text:'Lead growth.',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'},'JD-1-')).rejects.toBeInstanceOf(ModelProviderUnavailableError);
     expect(calls).toBe(1);
   });
+  it('does not spend semantic repairs on a malformed provider JSON response', async () => {
+    let calls=0;
+    const model=new BedrockConverseJsonModel('malformed-json-test',async()=>'secret',async()=>{calls++;return new Response(JSON.stringify({output:{message:{content:[{text:'{incomplete'}]}}}));});
+    await expect(extractValidatedSourceClaims(model,{id:'invalid-json-jd',plane:'JD',title:'Role',locator:'test',text:'Lead growth.',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'},'JD-1-')).rejects.toBeInstanceOf(ModelProviderUnavailableError);
+    expect(calls).toBe(1);
+  });
   it('reports empty source extraction distinctly after bounded local repairs', async () => {
     let attempts=0;
     const model:ReasoningModel={id:'empty-source-test',version:'1',async generate(){attempts++;return {claims:[]};}};

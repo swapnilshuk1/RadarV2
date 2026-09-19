@@ -95,8 +95,8 @@ provider failure is not a successful no-results search.
 
 ## Versions, recovery and serving
 
-Current contracts are `staged-v8`, `staged-decision-v8`, `dossier-v4.0` and
-`editorial-facts-v2`. Existing v6/v7 records and historical presentations retain
+Current contracts are `staged-v8`, `staged-decision-v8`, `dossier-v4.1` and
+`memo-facts-v4`. Existing v6/v7 records and historical presentations retain
 their own meaning. Fresh v7 acquisition/new v7 rollout is not an alternative to v8.
 
 Migration 050 stores frozen inputs; migration 051 stores durable dossier model
@@ -130,16 +130,42 @@ monolithic research runner.
 
 ## Executive memo generation
 
-The canonical production presentation is `dossier-v4.0` / `staged-memo-v4.0`.
+The canonical production presentation is `dossier-v4.1` / `staged-memo-v4.1`.
 The staged decision remains v8: editorial changes never rewrite its immutable trace.
-The composer writes six non-overlapping sections directly. The narrative plan
-assigns evidence-linked points to their primary section; every requirement and
-material decision hinge must be covered. Gemini reviews factual support and
-semantic point coverage, including duplication against earlier sections. Receipts
-bind both exact content and assigned points. Storage rechecks IDs and coverage.
-Word budgets trigger bounded rewrites, never truncation. All source evidence stays
-available in the reference drawer. Template B is the only renderer, with a
-section-bounded sticky rail (normal flow on mobile), bullets and evidence rows.
+One Bedrock request writes the complete six-section memo and its narrative plan.
+Its stable candidate packet contains all validated candidate facts and exact source
+bindings, separate from role and company context. Production extraction already
+caches candidate claims by source and model identity; no job-specific CV rewrite
+or second candidate truth store is introduced. Owner-authored factual scope notes
+in a bound candidate source are carried verbatim to the writer and reviewer, so
+summary extraction cannot silently discard tenure or commercial-amount qualifiers.
+A source amendment receives a new profile/source binding; completed evaluations
+continue using their original immutable profile.
+
+The writer targets 450-600 words, with a 650-word main-memo ceiling, short bullets,
+grouped fit arguments and one primary home per material point. Distinct preparation
+is optional and expandable. Full requirements, scope and source evidence remain in
+the reference. Section allocations guide the writer; the overall memo and preparation
+ceilings are enforced again at persistence/serving boundaries. Repairs return only
+affected blocks through a restricted schema; accepted blocks are preserved rather
+than rewritten. No text is truncated.
+
+One compact Gemini review checks factual support, material point coverage and
+consistency with the fixed action. It sees all candidate facts plus cited role and
+context evidence. It requires a source comparison for every passage, including first-person outreach,
+with explicit attention to duration, sector and projection qualifiers. It reports
+all factual and coverage defects together; minor
+stylistic suggestions do not block publication. Exact section receipts permit reuse
+of unchanged accepted sections during repair; durable request checkpoints preserve
+writer proposals and review responses across process restarts. Each request binds
+its own model configuration; changing the reviewer does not invalidate writer
+checkpoints. Formatting repair and factual repair have separate bounded budgets.
+Provider failures
+never consume semantic repairs or turn into accepted text.
+
+Template B is the only renderer: a single-column header, narrow section-bounded
+sticky rail (normal flow on mobile), short fit labels and compact question/impact
+pairs. Empty preparation channels are omitted.
 
 The shortlist displays screening viability and evidence coverage instead of a
 fabricated fit score. Viability is distinct from career fit and the pursuit verdict.

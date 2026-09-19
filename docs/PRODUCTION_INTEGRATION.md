@@ -9,8 +9,8 @@ and [deployment guide](../DEPLOYMENT.md).
 | Contract | Current value | Authority |
 | --- | --- | --- |
 | Staged policy / decision | `staged-v8` / `staged-decision-v8` | `src/lib/intelligence/staged/stagedPolicy.ts` |
-| Rich dossier | `dossier-v4.0` | `src/data/sqlite/repositories/SqliteRichDossierStore.ts` |
-| Factual review | `editorial-facts-v2` | `src/dossier/factual-review-integrity.ts` |
+| Rich dossier | `dossier-v4.1` | `src/data/sqlite/repositories/SqliteRichDossierStore.ts` |
+| Factual review | `memo-facts-v4` | `src/dossier/factual-review-integrity.ts` |
 | Frozen input / durable checkpoints | Migrations 050 / 051 | `src/data/sqlite/migrations/` |
 
 Production input binds exact JD and candidate source identities, acquires company

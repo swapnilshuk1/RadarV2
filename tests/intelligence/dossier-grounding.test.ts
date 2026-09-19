@@ -34,7 +34,7 @@ function composition(): Composition {
   let serial = 0;
   const distinct = () => ({...p,text:`${p.text} Distinct editorial purpose ${++serial}.`});
   const groups = (keys: string[]) => Object.fromEntries(keys.map(k => [k,[distinct()]]));
-  return {executiveThesis:distinct(),opportunityValue:[distinct()],mandate:{priorities:[distinct()],outcomes:[distinct()]},candidateFit:[{requirementIds:['REQ-001'],assessment:distinct()}],decisionConditions:[{requirementIds:[],resolutionFields:[],question:distinct(),consequence:distinct()}],approach:{nextSteps:[distinct()],opening:distinct(),resumeNarrative:[],linkedinStrategy:[],screening:[],interview:[]}};
+  return {executiveThesis:{...distinct(),kind:"CONCLUSION",state:"INFERRED"},opportunityValue:[distinct()],mandate:{priorities:[distinct()],outcomes:[distinct()]},candidateFit:[{label:'Team building',requirementIds:['REQ-001'],assessment:distinct()}],decisionConditions:[{requirementIds:[],resolutionFields:[],question:{...distinct(),kind:"QUESTION",state:"INFERRED"},consequence:{...distinct(),kind:"CONCLUSION",state:"INFERRED"}}],approach:{nextSteps:[distinct()],opening:distinct(),resumeNarrative:[],linkedinStrategy:[],screening:[],interview:[]}};
 
 }
 
@@ -89,6 +89,16 @@ describe('Dossier evidence and field resolution', () => {
     operatingShape.claims[2]={...operatingShape.claims[2],derivedFrom:['jd-operating-shape','cv-candidate']};
     Object.assign(operatingShape.evaluation.requirements[0],{requirement:'Individual contributor role',roleClaimIds:['jd-operating-shape']});
     expect(()=>validateResearch(operatingShape,[minified,candidate])).toThrow('explicit employer entry qualification');
+  });
+  it('reports all nonadjacent citation groups together without altering source text', () => {
+    const source = {...sources[1], text:'First fact. Second fact. Third fact. Fourth fact.'};
+    const claims = ['CANDIDATE-1-1','CANDIDATE-1-2'].map((id,i) => ({...research().claims[1],id,citations:[{sourceId:'cv',spanId:`s${i}`},{sourceId:'cv',spanId:`s${i+2}`}]}));
+    const result = () => resolveSourceClaims({claims},[source]);
+    expect(result).toThrow('CANDIDATE-1-1');
+    expect(result).toThrow('CANDIDATE-1-2');
+    expect(result).toThrow('s0, s2');
+    expect(result).toThrow('s1, s3');
+    expect(claims[0].citations).toHaveLength(2);
   });
   it('assigns source-scoped ordinals when the model repeats a source-claim ID', () => {
     const repeated={claims:[
@@ -173,8 +183,8 @@ describe('Dossier evidence and field resolution', () => {
     expect(() => validateResearch(value,sources)).toThrow('Cyclic lineage');
   });
   it('does not promote inferred content to an explicit narrative statement', () => {
-    const value=composition(); value.executiveThesis={...value.executiveThesis,state:'EXPLICIT',kind:'CONCLUSION'};
-    expect(() => validateComposition(value,research())).toThrow('cannot become explicit');
+    const value=composition(); value.opportunityValue[0]={...value.opportunityValue[0],state:'EXPLICIT',kind:'CONCLUSION'};
+    expect(() => validateComposition(value,research())).toThrow('cannot be EXPLICIT');
   });
   it('rejects candidate-absence claims, recruiter perspective, and duplicated editorial work', () => {
     const value=composition();

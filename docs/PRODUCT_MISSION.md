@@ -17,6 +17,11 @@ copy. PURSUE and CONSIDER receive memos; PASS keeps its canonical evaluation and
 is explicitly skipped for composition. This direction supersedes dual-template
 wording in the benchmark descriptions below.
 
+The main memo should usually read in 450-600 words, capped at 650, with each
+material argument developed once. Detailed scope, requirements, sources and optional
+preparation remain expandable. Crispness must come from whole-memo composition and
+evidence-backed prioritization, not post-generation truncation or invented caveats.
+
 ## 1. The Mission
 
 RADAR exists to turn a scraped executive job opportunity plus candidate evidence into a **rich, impressive, decision-useful executive dossier** at the quality level represented by the two approved benchmark dossier templates supplied by the product owner:

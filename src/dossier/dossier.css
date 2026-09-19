@@ -3,10 +3,10 @@
   background: var(--background);
   font-family: var(--font-sans);
   font-size: 0.94rem;
-  line-height: 1.85;
+  line-height: 1.55;
 }
 .dossier-body {
-  max-width: 74rem;
+  max-width: 60rem;
   margin: auto;
   padding: 0 var(--space-5);
 }
@@ -39,22 +39,22 @@
   letter-spacing: 0.08em;
 }
 .dossier-hero {
-  padding: var(--space-6) 0 var(--space-5);
+  padding: 2rem 0 1rem;
 }
 .dossier-kicker {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
-  margin-bottom: var(--space-4);
+  margin-bottom: 1rem;
 }
 .dossier h1 {
   font-family: var(--font-serif);
   font-weight: 400;
-  font-size: clamp(2.5rem, 4.5vw, 4.25rem);
+  font-size: clamp(2rem, 3.5vw, 3rem);
   line-height: 1.08;
   letter-spacing: -0.025em;
-  max-width: 22ch;
+  max-width: 36ch;
 }
 .dossier h1 em {
   display: block;
@@ -64,9 +64,9 @@
 .dossier h2 {
   font-family: var(--font-serif);
   font-weight: 400;
-  font-size: 2rem;
+  font-size: 1.65rem;
   line-height: 1.18;
-  margin-bottom: var(--space-4);
+  margin-bottom: 1rem;
 }
 .dossier h3 {
   font-family: var(--font-mono);
@@ -78,7 +78,7 @@
 }
 .dossier-identity {
   border-top: 1px solid var(--border);
-  margin-top: var(--space-5);
+  margin-top: 1.25rem;
   padding-top: var(--space-3);
   font-size: 0.75rem;
   color: var(--muted-foreground);
@@ -102,10 +102,10 @@
   color: var(--caution-foreground);
 }
 .dossier-thesis {
-  font-family: var(--font-serif);
-  font-size: 1.85rem;
-  line-height: 1.4;
-  padding: var(--space-3) 0;
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  padding: 0.5rem 0;
 }
 .dossier-thesis .label-mono {
   font-family: var(--font-mono);
@@ -143,9 +143,9 @@
 }
 .dossier-chapter {
   display: grid;
-  grid-template-columns: 10rem minmax(0, 1fr);
-  gap: var(--space-5);
-  padding: var(--space-5) 0 var(--space-6);
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 1.5rem;
+  padding: 1.75rem 0;
   border-top: 1px solid var(--border);
 }
 .dossier-chapter aside {
@@ -184,7 +184,7 @@
   font-size: 0.85rem;
 }
 .dossier-tabs {
-  margin-top: var(--space-5);
+  margin-top: 1.25rem;
   border-bottom: 1px solid var(--border);
 }
 .dossier-tabs button {
@@ -220,7 +220,7 @@
   letter-spacing: 0.08em;
 }
 .dossier-appendix > h3 {
-  margin-top: var(--space-5);
+  margin-top: 1.25rem;
 }
 .dossier-ledger-row {
   padding: var(--space-3) 0;
@@ -241,20 +241,14 @@
 }
 .dossier-template-b .dossier-hero {
   display: grid;
-  grid-template-columns: 1.3fr 1fr;
-  gap: var(--space-5);
-}
-.dossier-template-b h1 {
-  font-size: clamp(2.3rem, 3.5vw, 3.3rem);
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
 }
 .dossier-overview {
   background: var(--surface-raised);
   padding: var(--space-4);
   border: 1px solid var(--border);
   align-self: start;
-}
-.dossier-template-b .dossier-chapter {
-  grid-template-columns: 14rem minmax(0, 1fr);
 }
 .dossier-modal-backdrop {
   position: fixed;
@@ -275,7 +269,7 @@
 .dossier-close {
   display: block;
   margin-left: auto;
-  margin-bottom: var(--space-4);
+  margin-bottom: 1rem;
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: 0.8rem;
@@ -360,9 +354,6 @@
 }
 
 /* The rail is bounded by its own grid section, not a viewport overlay. */
-.dossier {
-  line-height: 1.65;
-}
 .dossier-chapter > .dossier-rail {
   position: sticky;
   top: 6rem;
@@ -374,29 +365,24 @@
 .dossier-bullets {
   list-style: disc;
   padding-left: 1.25rem;
-  margin: 1rem 0 1.5rem;
+  margin: 0.75rem 0 1.25rem;
 }
 .dossier-bullets li {
   padding-left: 0.35rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.65rem;
 }
 .dossier-bullets li::marker {
   color: var(--signal);
 }
-.dossier-thesis {
-  font-family: var(--font-sans);
-  font-size: 1.05rem;
-  line-height: 1.65;
-}
 .dossier-fit-row {
   display: grid;
-  grid-template-columns: minmax(10rem, 1fr) minmax(0, 2fr);
-  gap: 1.5rem;
-  padding: 1.25rem 0;
+  grid-template-columns: 1fr;
+  gap: 0.25rem;
+  padding: 0.8rem 0;
   border-bottom: 1px solid var(--border);
 }
 .dossier-fit-row h3 {
-  margin-top: 0.5rem;
+  margin-top: 0.15rem;
   text-transform: none;
   letter-spacing: 0;
   font-family: var(--font-sans);
@@ -404,10 +390,10 @@
 }
 .dossier-condition {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  gap: 0.3rem;
   border-bottom: 1px solid var(--border);
-  padding: 1.25rem 0;
+  padding: 0.8rem 0;
 }
 .dossier-opening {
   border-left: 2px solid var(--signal);
@@ -415,8 +401,15 @@
   background: var(--surface-raised);
 }
 .dossier-preparation {
-  margin-top: 2rem;
+  margin-top: 1.25rem;
 }
+.dossier-condition-question {
+  font-weight: 600;
+}
+.dossier-scope-reference {
+  margin-top: 1rem;
+}
+.dossier-scope-reference summary,
 .dossier-preparation summary {
   cursor: pointer;
   font-weight: 600;

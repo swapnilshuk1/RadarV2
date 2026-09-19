@@ -1,7 +1,7 @@
 import type { DatabaseAdapter } from '@/data/database';
 import { ModelProviderUnavailableError } from '../../model/provider-unavailable';
 import type { ReasoningModel } from '@/dossier/contracts';
-import {DOSSIER_COMPOSITION_RECIPE, FACTUAL_REVIEW_POLICY_VERSION} from '@/dossier/factual-review-integrity';
+import {DOSSIER_COMPOSITION_RECIPE} from '@/dossier/factual-review-integrity';
 import {durableDossierModel, checkpointHash} from './DurableDossierModel';
 import { composeStagedDossier } from '@/dossier/staged-composition';
 import {
@@ -35,7 +35,7 @@ export class ProductionStagedDossierService {
     if(frozen.fingerprint!==evaluation.inputFingerprint)throw new Error('DOSSIER_FROZEN_INPUT_MISMATCH');
     try {
       const reviewer=this.factualReviewer??createGeminiFactualReviewModel();
-      const scope=checkpointHash({tenantId:identity.tenantId,personId:identity.personId,canonicalJobId:identity.canonicalJobId,opportunityVersion:identity.opportunityVersion,evaluationFingerprint,recipe:DOSSIER_COMPOSITION_RECIPE,reviewPolicy:FACTUAL_REVIEW_POLICY_VERSION,composer:[this.model.id,this.model.version,this.model.configurationFingerprint],reviewer:[reviewer.id,reviewer.version,reviewer.configurationFingerprint]});
+      const scope=checkpointHash({tenantId:identity.tenantId,personId:identity.personId,canonicalJobId:identity.canonicalJobId,opportunityVersion:identity.opportunityVersion,evaluationFingerprint,recipe:DOSSIER_COMPOSITION_RECIPE});
       const composed=await composeStagedDossier(frozen,staged,durableDossierModel(this.db,scope,this.model),durableDossierModel(this.db,scope,reviewer),onStage);
       const dossier={
         ...composed,

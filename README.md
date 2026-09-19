@@ -7,7 +7,7 @@ Read [AGENTS.md](AGENTS.md) and the
 
 Start with the [documentation index](docs/README.md),
 [current architecture](docs/ARCHITECTURE.md),
-[backfill runbook](docs/operations/CONTEXT_REEVALUATION_DOSSIER_RUNBOOK.md) and
+[first-scrape runbook](docs/operations/CONTEXT_REEVALUATION_DOSSIER_RUNBOOK.md) and
 [deployment guide](DEPLOYMENT.md) for implementation and operational details.
 
 ## Workspace
@@ -29,7 +29,7 @@ Portal scrape -> preserved payload -> canonical opportunity/version
 ```
 
 The current release contracts are `staged-v8`, `staged-decision-v8`,
-`dossier-v4.0` and `editorial-facts-v2`. Publication does not activate a context.
+`dossier-v4.1` and `memo-facts-v4`. Publication does not activate a context.
 Historical persisted results remain readable; they are never relabelled as a
 new evaluation policy or used as substitute candidate evidence.
 
@@ -41,7 +41,7 @@ new evaluation policy or used as substitute candidate evidence.
 | Evidence extraction, conflicts and source fingerprints | `src/dossier/evidence.ts` |
 | Role requirements and mapping contracts | `src/dossier/staged-role.ts` |
 | Screening, decision policy and provenance validation | `src/dossier/staged-screening.ts`, `staged-decision.ts`, `staged-decision-contract.ts`, `staged-decision-integrity.ts` |
-| Section composition and independent factual review | `src/dossier/composition.ts`, `staged-composition.ts`, `factual-review-integrity.ts` |
+| Whole-memo composition and compact factual review | `src/dossier/composition.ts`, `staged-composition.ts`, `memo-review.ts`, `factual-review-integrity.ts` |
 | Canonical executive memo and Template B | `src/dossier/contracts.ts`, `DossierView.tsx` |
 | Persistence, migrations and serving queries | `src/data/` |
 | Application routes and shared interface | `src/routes/`, `src/components/` |

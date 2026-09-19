@@ -5,7 +5,7 @@ import { assertFactualReviewProvenance } from "@/dossier/factual-review-integrit
 import { validateComposition } from "@/dossier/grounding";
 import type { DossierPresentationIdentity } from "./SqliteDossierPresentationStore";
 
-export const RICH_DOSSIER_VERSION = "dossier-v4.0";
+export const RICH_DOSSIER_VERSION = "dossier-v4.1";
 export const RICH_DOSSIER_FAILURE_VERSION = `${RICH_DOSSIER_VERSION}-unavailable`;
 export class SqliteRichDossierStore {
   constructor(private readonly db: DatabaseAdapter) {}

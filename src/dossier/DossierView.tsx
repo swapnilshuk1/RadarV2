@@ -8,6 +8,10 @@ export function DossierView({ dossier: d }: { dossier: Dossier }) {
   const [workspace, setWorkspace] = useState<
     "resumeNarrative" | "linkedinStrategy" | "screening" | "interview"
   >("resumeNarrative");
+  const preparationKeys = (
+    ["resumeNarrative", "linkedinStrategy", "screening", "interview"] as const
+  ).filter((key) => d.approach[key].length > 0);
+  const activeWorkspace = preparationKeys.includes(workspace) ? workspace : preparationKeys[0];
   const claims = [
     ...d.evidence.roleClaims,
     ...d.evidence.candidateClaims,
@@ -165,15 +169,18 @@ export function DossierView({ dossier: d }: { dossier: Dossier }) {
           "Mandate & authority",
           "What you would own",
           <>
-            <dl className="dossier-scope">
-              {d.resolutions
-                .filter((r) => Object.keys(fieldLabels).includes(r.field))
-                .map(resolution)}
-            </dl>
             <h3>Priorities and milestones</h3>
             {list(d.mandate.priorities)}
             <h3>Outcomes that matter</h3>
             {list(d.mandate.outcomes)}
+            <details className="dossier-scope-reference">
+              <summary>Scope, authority and economics</summary>
+              <dl className="dossier-scope">
+                {d.resolutions
+                  .filter((r) => Object.keys(fieldLabels).includes(r.field))
+                  .map(resolution)}
+              </dl>
+            </details>
           </>,
         )}
         {chapter(
@@ -185,12 +192,7 @@ export function DossierView({ dossier: d }: { dossier: Dossier }) {
               <div className="dossier-fit-row" key={i}>
                 <div>
                   <span className="label-mono">{fitLabel(row.requirementIds)}</span>
-                  <h3>
-                    {row.requirementIds
-                      .map((id) => trace?.requirements?.find((r) => r.id === id)?.requirement)
-                      .filter(Boolean)
-                      .join(" / ") || "Relevant evidence"}
-                  </h3>
+                  <h3>{row.label}</h3>
                 </div>
                 <p>{passage(row.assessment)}</p>
               </div>
@@ -204,14 +206,8 @@ export function DossierView({ dossier: d }: { dossier: Dossier }) {
           <div className="dossier-conditions">
             {d.decisionConditions.map((row, i) => (
               <div className="dossier-condition" key={i}>
-                <div>
-                  <h3>Establish</h3>
-                  <p>{passage(row.question)}</p>
-                </div>
-                <div>
-                  <h3>Why it changes the call</h3>
-                  <p>{passage(row.consequence)}</p>
-                </div>
+                <p className="dossier-condition-question">{passage(row.question)}</p>
+                <p>{passage(row.consequence)}</p>
               </div>
             ))}
           </div>,
@@ -225,37 +221,33 @@ export function DossierView({ dossier: d }: { dossier: Dossier }) {
               {list(d.approach.nextSteps)}
               <h3>Suggested opening</h3>
               <blockquote className="dossier-opening">{passage(d.approach.opening)}</blockquote>
-              <details className="dossier-preparation">
-                <summary>Prepare for the conversation</summary>
-                <div className="dossier-tabs" role="tablist" aria-label="Positioning workspace">
-                  {(["resumeNarrative", "linkedinStrategy", "screening", "interview"] as const).map(
-                    (key) => (
+              {activeWorkspace && (
+                <details className="dossier-preparation">
+                  <summary>Prepare for the conversation</summary>
+                  <div className="dossier-tabs" role="tablist" aria-label="Positioning workspace">
+                    {preparationKeys.map((key) => (
                       <button
                         key={key}
                         role="tab"
-                        aria-selected={workspace === key}
+                        aria-selected={activeWorkspace === key}
                         aria-controls="positioning-content"
                         id={`tab-${key}`}
                         onClick={() => setWorkspace(key)}
                       >
                         {workspaceLabels[key]}
                       </button>
-                    ),
-                  )}
-                </div>
-                <div
-                  className="dossier-workspace"
-                  role="tabpanel"
-                  id="positioning-content"
-                  aria-labelledby={`tab-${workspace}`}
-                >
-                  {d.approach[workspace].length ? (
-                    list(d.approach[workspace])
-                  ) : (
-                    <p>No additional preparation identified for this channel.</p>
-                  )}
-                </div>
-              </details>
+                    ))}
+                  </div>
+                  <div
+                    className="dossier-workspace"
+                    role="tabpanel"
+                    id="positioning-content"
+                    aria-labelledby={`tab-${activeWorkspace}`}
+                  >
+                    {list(d.approach[activeWorkspace])}
+                  </div>
+                </details>
+              )}
             </>,
           )}
         </div>

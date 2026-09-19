@@ -1,7 +1,7 @@
 # First scrape and executive memo readiness
 
 Use the canonical `Radar V2` checkout. The production path is staged-v8 evaluation
-followed by dossier-v4.0 memo composition. Template B is the sole layout. Historical
+followed by dossier-v4.1 memo composition. Template B is the sole layout. Historical
 population backfill is outside the current scope; do not run population recovery
 or `complete-staged-rollout.ts` to prepare the first fresh scrape.
 
@@ -40,8 +40,10 @@ The existing acquisition/enrichment/scheduler path feeds EvaluationWorker. For a
 active staged context, PURSUE/CONSIDER results proceed to durable memo composition
 and publication; PASS completes without a dossier. Provider failures preserve
 checkpoints and remain visible as pending/attention work, not fabricated results.
-Rate limits and server-capacity failures use a 30-second durable delay unless the
-provider supplies a retry hint; Google RetryInfo and Retry-After are preserved.
+Gemini sends one wire request per attempt. Consecutive rate-limit/capacity failures
+use a 30/60/120-second backoff with small jitter; Google RetryInfo and Retry-After
+are honored when longer. The next eligible time is persisted by the worker; the
+consecutive-failure counter resets on provider success or process restart.
 Authentication/configuration failures retain a longer pause. The worker and daemon
 use the same delay, without spending semantic job attempts on provider failures.
 

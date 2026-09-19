@@ -48,7 +48,7 @@ export class BedrockConverseJsonModel implements JsonModel {
         const content = payload.output?.message?.content?.map(block => block.text ?? '').join('');
         if (!content) throw new Error('Bedrock provider returned no JSON content');
         this.lastUsage = payload.usage;
-        try { return JSON.parse(content); } catch { throw new Error('Bedrock provider returned invalid JSON'); }
+        try { return JSON.parse(content); } catch { throw new ModelProviderUnavailableError('Bedrock provider returned invalid JSON; no proposal accepted',undefined,30_000); }
       } catch (error) {
         if (error instanceof ModelProviderUnavailableError) throw error;
         failure = error;

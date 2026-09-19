@@ -3,7 +3,6 @@ import { describe, it, expect } from "vitest";
 import { dossier, stagedEvaluation } from "../fixtures/staged-rich-dossier";
 import { assertMemoIntegrity, validateMemoPlan } from "../../src/dossier/memo-integrity";
 import { assertFactualReviewProvenance } from "../../src/dossier/factual-review-integrity";
-import { reviewStagedEditorialFacts } from "../../src/dossier/staged-composition";
 
 describe("executive memo coverage", () => {
   it("constrains reference fields to the supplied catalog without constraining prose", () => {
@@ -29,7 +28,14 @@ describe("executive memo coverage", () => {
   });
   it("retains distinct precedents without inventing a requirement association", () => {
     const value = dossier();
-    value.candidateFit.push({ requirementIds: [], assessment: value.candidateFit[0].assessment });
+    value.candidateFit.push({
+      label: "Related precedent",
+      requirementIds: [],
+      assessment: {
+        ...value.candidateFit[0].assessment,
+        text: "Establish your operating ownership.",
+      },
+    });
     expect(() => assertMemoIntegrity(value)).not.toThrow();
   });
   it("binds the visible scope table to the immutable decision trace", () => {
@@ -62,44 +68,5 @@ describe("executive memo coverage", () => {
     const value = dossier();
     value.narrativePlan.memoPoints![0].point = "A different argument";
     expect(() => assertFactualReviewProvenance(value)).toThrow("MEMO_COVERAGE_REVIEW_REQUIRED");
-  });
-  it("repairs semantically omitted points even when the facts are supported", async () => {
-    const value = dossier();
-    const frozen: any = {
-      fingerprint: "input",
-      sources: value.evidence.lineage,
-      evidence: value.evidence.roleClaims,
-      candidateConflicts: [],
-    };
-    const reviewer = {
-      id: "review",
-      version: "1",
-      async generate(_instruction: string, input: any) {
-        return {
-          reviews: input.factualReview.passages.map((p: any) => ({
-            passageId: p.passageId,
-            externalComparison: "NONE",
-            candidateAbsence: "NONE",
-            factualAssessment: "Supported",
-            supported: true,
-            issue: "",
-          })),
-          coveredPointIds: [],
-          editorialIssues: [],
-        };
-      },
-    };
-    await expect(
-      reviewStagedEditorialFacts(
-        reviewer,
-        frozen,
-        "candidateFit",
-        { candidateFit: value.candidateFit },
-        {
-          points: value.narrativePlan.memoPoints!.filter((p) => p.section === "candidateFit"),
-          prior: {},
-        },
-      ),
-    ).rejects.toThrow("MEMO_EDITORIAL_REPAIR");
   });
 });

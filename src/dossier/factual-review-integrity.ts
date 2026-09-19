@@ -7,8 +7,8 @@ import {
 } from "./contracts";
 import { allPassages } from "./grounding";
 
-export const FACTUAL_REVIEW_POLICY_VERSION = "editorial-facts-v2";
-export const DOSSIER_COMPOSITION_RECIPE = "staged-memo-v4.0";
+export const FACTUAL_REVIEW_POLICY_VERSION = "memo-facts-v4";
+export const DOSSIER_COMPOSITION_RECIPE = "staged-memo-v4.1";
 export function reviewFingerprint(value: unknown): string {
   return createHash("sha256")
     .update(
