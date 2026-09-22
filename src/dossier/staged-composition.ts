@@ -14,7 +14,11 @@ import {
 import type { StagedResearchInput } from "./staged-role";
 import type { StagedDecisionResult } from "./staged-decision-contract";
 import { validateClaims } from "./grounding";
-import { validateMemoPlan, validateMemoSectionCoverage } from "./memo-integrity";
+import {
+  MemoPlanRepair,
+  validateMemoPlan,
+  validateMemoSectionCoverage,
+} from "./memo-integrity";
 import {
   memoWritingInstruction,
   memoInputPacket,
@@ -204,6 +208,9 @@ function inspectDraft(
     validateMemoPlan(research, staged);
   } catch (error) {
     editorial = true;
+    if (error instanceof MemoPlanRepair) {
+      error.sections.forEach((section) => sections.add(section as MemoSection));
+    }
     issues.push(String(error));
   }
   let memo = draft.memo;
