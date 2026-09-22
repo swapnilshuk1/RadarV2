@@ -1608,4 +1608,94 @@ describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AP)
     expect(detail.failureClass).toBeUndefined();
   });
 
+
+  // --------------------------------------------------------------------------
+  // Scenario AU: Real SQLite writer lock is retried at whole-operation boundary
+  // --------------------------------------------------------------------------
+  it("Scenario AU: persistence coordinator recovers from a real SQLITE_BUSY writer lock", async () => {
+    const dbPath = path.join(tmpDir, "busy-retry.sqlite");
+    const holder = new Database(dbPath);
+    const writer = new Database(dbPath);
+
+    try {
+      holder.exec("CREATE TABLE busy_test (id INTEGER PRIMARY KEY, value TEXT NOT NULL)");
+      holder.pragma("busy_timeout = 1");
+      writer.pragma("busy_timeout = 1");
+      holder.exec("BEGIN IMMEDIATE");
+
+      let released = false;
+      let attempts = 0;
+      const coordinator = new PersistenceWriteCoordinator({
+        maxAttempts: 3,
+        baseDelayMs: 1,
+        maxDelayMs: 1,
+        jitter: () => 0,
+        sleep: async () => {
+          if (!released) {
+            holder.exec("COMMIT");
+            released = true;
+          }
+        },
+      });
+
+      await coordinator.run("real-sqlite-lock", async () => {
+        attempts += 1;
+        writer.prepare("INSERT INTO busy_test (value) VALUES (?)").run("accepted");
+      });
+
+      expect(attempts).toBe(2);
+      const rows = writer.prepare("SELECT value FROM busy_test").all() as Array<{ value: string }>;
+      expect(rows).toEqual([{ value: "accepted" }]);
+    } finally {
+      if (holder.inTransaction) holder.exec("ROLLBACK");
+      holder.close();
+      writer.close();
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AV: A tripped persistence circuit prevents new source work
+  // --------------------------------------------------------------------------
+  it("Scenario AV: processUnit fails before portal discovery when persistence is already unavailable", async () => {
+    const mgr = new RunController();
+    mgr.init({
+      keywords: ["VP Growth"],
+      portals: ["LinkedIn"],
+      maxPages: 1,
+      maxCardsPerPage: 1,
+      resume: false,
+    });
+
+    const unit = mgr.manifest.units[0];
+    const listCards = vi.fn().mockResolvedValue([]);
+    const handler: any = {
+      buildSearchUrl: vi.fn().mockReturnValue("https://www.linkedin.com/jobs/search"),
+      listCards,
+    };
+
+    const outcome = await processUnit(
+      mgr,
+      handler,
+      unit,
+      {} as any,
+      {} as any,
+      new Set(),
+      new Set(),
+      new Set(),
+      new Set(),
+      () => {},
+      1,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { unavailable: true, error: "simulated exhausted lock retry" },
+    );
+
+    expect(outcome.status).toBe("failed");
+    expect(outcome.warnings.join(" ")).toContain("PERSISTENCE_UNAVAILABLE");
+    expect(listCards).not.toHaveBeenCalled();
+    expect(mgr.manifest.units.find((candidate) => candidate.id === unit.id)?.status).toBe("failed");
+  });
+
 });
