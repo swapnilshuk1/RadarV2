@@ -228,6 +228,24 @@ describe("rich staged serving activation", () => {
         createElement(DossierView, { dossier: pending, reviewState: "pending" }),
       ),
     ).toContain("factual review pending");
+
+    await db.execute(
+      "UPDATE dossier_review_jobs SET status='needs_attention',last_error='reviewer unavailable'",
+    );
+    expect(await read()).toMatchObject({
+      memoReviewState: "review_attention",
+      decision: "PURSUE",
+      richDossier: { executiveThesis: pending.executiveThesis },
+    });
+    expect(
+      renderToStaticMarkup(
+        createElement(DossierView, { dossier: pending, reviewState: "attention" }),
+      ),
+    ).toContain("factual review needs attention");
+    await db.execute(
+      "UPDATE dossier_review_jobs SET status='pending',next_attempt_at=0,last_error=NULL",
+    );
+
     const model = () => ({ id: "test", version: "1", generate: vi.fn() });
     const worker = new DossierReviewWorker(db, model, model);
     const compose = vi.spyOn(ProductionStagedDossierService.prototype, "compose");
