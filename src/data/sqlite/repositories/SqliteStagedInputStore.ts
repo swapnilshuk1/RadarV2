@@ -33,7 +33,7 @@ export class SqliteStagedInputStore {
   constructor(private readonly db:DatabaseAdapter){}
   private key(i:ProductionStagedIdentity){return [i.tenantId,i.personId,i.canonicalJobId,i.opportunityVersion,i.evaluationContextFingerprint];}
   async get(i:ProductionStagedIdentity,binding:string,model:{id:string;version:string;configurationFingerprint?:string}):Promise<StagedResearchInput|undefined>{
-    const row=await this.db.one<{source_binding_fingerprint:string;model_id:string;model_version:string;model_configuration_fingerprint:string;input_fingerprint:string;input_json:string}>(`SELECT * FROM staged_frozen_inputs WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=?`,this.key(i));
+    const row=await this.db.one<{source_binding_fingerprint:string;model_id:string;model_version:string;model_configuration_fingerprint:string;input_fingerprint:string;input_json:string}>(`SELECT * FROM staged_frozen_inputs WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=? AND model_configuration_fingerprint=?`,[...this.key(i),model.configurationFingerprint??"unconfigured"]);
     if(!row)return undefined;
     if(row.source_binding_fingerprint!==binding||row.model_id!==model.id||row.model_version!==model.version||row.model_configuration_fingerprint!==(model.configurationFingerprint??"unconfigured"))throw new Error('STAGED_INPUT_SNAPSHOT_BINDING_MISMATCH');
     const input=validateSnapshot(JSON.parse(row.input_json));
