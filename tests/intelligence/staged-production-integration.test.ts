@@ -62,7 +62,26 @@ describe('staged production persistence boundary', () => {
       opportunityVersion:'version',
       evaluationContextFingerprint:'context',
     });
+    const invocationId='invocation-1';
     await sink({
+      invocationId,
+      provider:'bedrock-mantle',
+      modelId:'bedrock-mantle',
+      modelVersion:'zai.glm-5',
+      modelConfigurationFingerprint:'config',
+      requestFingerprint:'request',
+      stage:'decision',
+      attempt:1,
+      maxOutputTokens:4096,
+      startedAt:1000,
+      status:'running',
+    });
+    expect(await db.one<any>('SELECT status,completed_at FROM model_invocations')).toEqual({
+      status:'running',
+      completed_at:null,
+    });
+    await sink({
+      invocationId,
       provider:'bedrock-mantle',
       modelId:'bedrock-mantle',
       modelVersion:'zai.glm-5',

@@ -67,8 +67,10 @@ describe('Bedrock Mantle JSON transport',()=>{
       model.generate('Decision instruction',{frozen:true},undefined,{stage:'decision',attempt:2}),
     ).resolves.toEqual({ok:true});
     expect(body.max_tokens).toBe(4096);
-    expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({
+    expect(events).toHaveLength(2);
+    expect(events[0]).toMatchObject({ status:'running', stage:'decision', attempt:2 });
+    expect(events[0].completedAt).toBeUndefined();
+    expect(events[1]).toMatchObject({
       provider:'bedrock-mantle',
       modelId:'bedrock-mantle',
       modelVersion:'zai.glm-5',
@@ -84,8 +86,9 @@ describe('Bedrock Mantle JSON transport',()=>{
         totalTokens:125,
       },
     });
-    expect(events[0].requestFingerprint).toMatch(/^[a-f0-9]{64}$/);
-    expect(events[0].completedAt).toBeGreaterThanOrEqual(events[0].startedAt);
+    expect(events[1].requestFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(events[1].invocationId).toBe(events[0].invocationId);
+    expect(events[1].completedAt).toBeGreaterThanOrEqual(events[1].startedAt);
   });
 
   it('enforces one provider-wide call budget across concurrent model instances',async()=>{
@@ -130,8 +133,9 @@ describe('Bedrock Mantle JSON transport',()=>{
     const failure=await model.generate('Instruction',{}).catch(e=>e);
     expect(failure).toBeInstanceOf(ModelInvalidOutputError);
     expect(failure.retryAfterMs).toBe(2000);
-    expect(events).toHaveLength(1);
-    expect(events[0].status).toBe('invalid_output');
+    expect(events).toHaveLength(2);
+    expect(events.map(event=>event.status)).toEqual(['running','invalid_output']);
+    expect(events[1].invocationId).toBe(events[0].invocationId);
   });
   it('uses the stage timeout rather than the old four-minute Mantle ceiling',async()=>{
     const model=new BedrockMantleJsonModel(

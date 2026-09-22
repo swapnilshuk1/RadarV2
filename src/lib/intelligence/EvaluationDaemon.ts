@@ -2,12 +2,15 @@ import crypto from "crypto";
 import { ModelProviderUnavailableError } from "../model/provider-unavailable";
 import { EvaluationWorker } from "./EvaluationWorker";
 import { RunReconciliationService } from "./RunReconciliationService";
-import type { DatabaseAdapter } from "@/data/database";
+import { getDatabaseAdapter, type DatabaseAdapter } from "@/data/database";
+import { EvaluationRuntimeControl } from "./EvaluationRuntimeControl";
 
 export class EvaluationDaemon {
   private readonly workers: EvaluationWorker[];
   private readonly reconciler: RunReconciliationService;
+  private readonly runtimeControl: EvaluationRuntimeControl;
   private isRunning = false;
+  private lastObservedControlState: "RUNNING" | "PAUSED" | "STOPPED" | null = null;
   private abortController: AbortController | null = null;
   private readonly pollIntervalMs: number;
   private lastGlobalReconcileAt = 0;
@@ -28,7 +31,9 @@ export class EvaluationDaemon {
       (_value, index) =>
         new EvaluationWorker(`${id}_slot${index + 1}`, { adapter: options?.adapter }),
     );
-    this.reconciler = new RunReconciliationService(options?.adapter);
+    const adapter = options?.adapter ?? getDatabaseAdapter();
+    this.reconciler = new RunReconciliationService(adapter);
+    this.runtimeControl = new EvaluationRuntimeControl(adapter);
     this.pollIntervalMs = pollIntervalMs;
   }
 
@@ -45,6 +50,22 @@ export class EvaluationDaemon {
     const loop = async (worker: EvaluationWorker, slot: number) => {
       if (signal.aborted) return;
       try {
+        const control = await this.runtimeControl.get();
+        if (control.desiredState !== this.lastObservedControlState) {
+          this.lastObservedControlState = control.desiredState;
+          console.log(
+            `[EvaluationDaemon] Runtime control -> ${control.desiredState} (updated by ${control.updatedBy ?? "unknown"})`,
+          );
+        }
+        if (control.desiredState === "STOPPED") {
+          this.stop();
+          return;
+        }
+        if (control.desiredState === "PAUSED") {
+          setTimeout(() => void loop(worker, slot), this.pollIntervalMs);
+          return;
+        }
+
         const result = await worker.pollAndProcessNext();
         if (signal.aborted) return;
 
@@ -131,5 +152,23 @@ export class EvaluationDaemon {
     const daemon = EvaluationDaemon.getGlobalDaemon(pollIntervalMs, options);
     if (!daemon.isDaemonRunning) daemon.start();
     return daemon;
+  }
+
+  public static stopGlobalDaemon(): void {
+    const g = globalThis as any;
+    const daemon = g.__RADAR_EVALUATION_DAEMON__ as EvaluationDaemon | undefined;
+    daemon?.stop();
+  }
+
+  public static getGlobalDaemonRuntimeStatus(): {
+    exists: boolean;
+    running: boolean;
+  } {
+    const g = globalThis as any;
+    const daemon = g.__RADAR_EVALUATION_DAEMON__ as EvaluationDaemon | undefined;
+    return {
+      exists: Boolean(daemon),
+      running: Boolean(daemon?.isDaemonRunning),
+    };
   }
 }

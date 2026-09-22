@@ -29,6 +29,7 @@ import { EmptySourceEvidenceError } from '@/dossier/evidence';
 import { DeterministicStagedInputUnavailableError } from "./staged/ProductionStagedInputAdapter";
 import { STAGED_POLICY_VERSION, SqliteStagedEvaluationStore, stagedUnavailableEvaluation } from "@/data/sqlite/repositories/SqliteStagedEvaluationStore";
 import {supportsStagedPolicy} from './staged/stagedPolicy';
+import { EvaluationRuntimeControl } from "./EvaluationRuntimeControl";
 
 export interface WorkerOptions {
   adapter?: DatabaseAdapter;
@@ -59,6 +60,7 @@ export interface WorkerProcessingResult {
 export class EvaluationWorker {
   public workerId: string;
   private db: DatabaseAdapter;
+  private runtimeControl: EvaluationRuntimeControl;
 
   constructor(workerIdOrDb?: string | DatabaseAdapter, optionsOrWorkerId?: WorkerOptions | string) {
     if (typeof workerIdOrDb === "string") {
@@ -71,9 +73,13 @@ export class EvaluationWorker {
       this.workerId = `worker_${crypto.randomUUID().slice(0, 8)}`;
       this.db = getDatabaseAdapter();
     }
+    this.runtimeControl = new EvaluationRuntimeControl(this.db);
   }
 
   public async claimNextJob(queueKind?: ClaimedJob["queueKind"], contextFingerprint?: string): Promise<ClaimedJob | null> {
+    const runtime = await this.runtimeControl.get();
+    if (runtime.desiredState !== "RUNNING") return null;
+
     const queueFilter = queueKind === "staged"
       ? "AND ej.status IN ('staged_pending', 'staged_processing')"
       : queueKind === "legacy"

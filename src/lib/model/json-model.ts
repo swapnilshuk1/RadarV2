@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   modelRequestFingerprint,
   withProviderConcurrency,
@@ -90,6 +90,7 @@ export class GeminiJsonModel implements JsonModel {
     const host =
       location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
     const maxOutputTokens = metadata?.maxOutputTokens ?? this.options.maxOutputTokens ?? 8192;
+    const invocationId = randomUUID();
     const startedAt = Date.now();
     const requestFingerprint = modelRequestFingerprint(instruction, input, responseSchema, {
       ...metadata,
@@ -99,10 +100,11 @@ export class GeminiJsonModel implements JsonModel {
     let finishReason: string | undefined;
 
     const record = async (
-      status: "completed" | "provider_error" | "transport_error" | "invalid_output",
+      status: "running" | "completed" | "provider_error" | "transport_error" | "invalid_output",
       errorCode?: string,
     ) => {
       await this.options.invocationSink?.({
+        invocationId,
         provider: "vertex-gemini",
         modelId: this.id,
         modelVersion: this.version,
@@ -112,13 +114,15 @@ export class GeminiJsonModel implements JsonModel {
         attempt: metadata?.attempt ?? 1,
         maxOutputTokens,
         startedAt,
-        completedAt: Date.now(),
+        completedAt: status === "running" ? undefined : Date.now(),
         finishReason,
         status,
         errorCode,
         usage,
       });
     };
+
+    await record("running");
 
     try {
       const response = await withProviderConcurrency(

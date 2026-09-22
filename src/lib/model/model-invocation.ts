@@ -30,6 +30,7 @@ export interface ModelUsage {
 }
 
 export interface ModelInvocationEvent {
+  invocationId: string;
   provider: string;
   modelId: string;
   modelVersion: string;
@@ -39,9 +40,9 @@ export interface ModelInvocationEvent {
   attempt: number;
   maxOutputTokens?: number;
   startedAt: number;
-  completedAt: number;
+  completedAt?: number;
   finishReason?: string;
-  status: "completed" | "provider_error" | "transport_error" | "invalid_output";
+  status: "running" | "completed" | "provider_error" | "transport_error" | "invalid_output";
   errorCode?: string;
   usage?: ModelUsage;
 }
@@ -74,6 +75,12 @@ export function createSqliteModelInvocationSink(
 ): ModelInvocationSink {
   return async (event) => {
     try {
+      const completedAt = event.completedAt ?? null;
+      const latencyMs =
+        event.completedAt === undefined
+          ? null
+          : Math.max(0, event.completedAt - event.startedAt);
+
       await db.execute(
         `INSERT INTO model_invocations(
           id,evaluation_job_id,dossier_composition_job_id,review_job_id,
@@ -82,9 +89,20 @@ export function createSqliteModelInvocationSink(
           request_fingerprint,max_output_tokens,started_at,completed_at,latency_ms,
           input_tokens,cached_input_tokens,output_tokens,reasoning_tokens,total_tokens,
           finish_reason,status,error_code
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(id) DO UPDATE SET
+          completed_at=excluded.completed_at,
+          latency_ms=excluded.latency_ms,
+          input_tokens=excluded.input_tokens,
+          cached_input_tokens=excluded.cached_input_tokens,
+          output_tokens=excluded.output_tokens,
+          reasoning_tokens=excluded.reasoning_tokens,
+          total_tokens=excluded.total_tokens,
+          finish_reason=excluded.finish_reason,
+          status=excluded.status,
+          error_code=excluded.error_code`,
         [
-          randomUUID(),
+          event.invocationId,
           context.evaluationJobId ?? null,
           context.dossierCompositionJobId ?? null,
           context.reviewJobId ?? null,
@@ -103,8 +121,8 @@ export function createSqliteModelInvocationSink(
           event.requestFingerprint,
           event.maxOutputTokens ?? null,
           event.startedAt,
-          event.completedAt,
-          Math.max(0, event.completedAt - event.startedAt),
+          completedAt,
+          latencyMs,
           event.usage?.inputTokens ?? null,
           event.usage?.cachedInputTokens ?? null,
           event.usage?.outputTokens ?? null,
@@ -115,9 +133,24 @@ export function createSqliteModelInvocationSink(
           event.errorCode ?? null,
         ],
       );
+
+      const jobId =
+        context.evaluationJobId ??
+        context.dossierCompositionJobId ??
+        context.reviewJobId ??
+        "unscoped";
+      if (event.status === "running") {
+        console.log(
+          `[MODEL_START] pipeline=${context.pipeline} job=${jobId} stage=${event.stage} attempt=${event.attempt} model=${event.modelVersion}`,
+        );
+      } else {
+        console.log(
+          `[MODEL_END] pipeline=${context.pipeline} job=${jobId} stage=${event.stage} status=${event.status} latency_ms=${latencyMs ?? 0} total_tokens=${event.usage?.totalTokens ?? "unknown"}`,
+        );
+      }
     } catch (error) {
       // Never repeat an expensive provider request because observability storage
-      // failed after the provider already answered.
+      // failed before or after the provider call.
       console.warn(
         "[ModelInvocation] Durable telemetry write failed:",
         error instanceof Error ? error.message : String(error),
