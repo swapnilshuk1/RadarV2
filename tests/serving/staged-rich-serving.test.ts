@@ -272,8 +272,11 @@ describe("rich staged serving activation", () => {
       expect(await worker.pollOnce()).toMatchObject({ status: "completed" });
       expect(await read()).toMatchObject({ memoReviewState: "reviewed", decision: "PURSUE" });
       expect(await db.one("SELECT COUNT(*) n FROM canonical_decisions")).toEqual({ n: 0 });
-      expect(await db.one("SELECT status FROM dossier_review_jobs")).toEqual({
+      expect(
+        await db.one("SELECT status,reviewed_at FROM dossier_review_jobs"),
+      ).toMatchObject({
         status: "completed",
+        reviewed_at: expect.any(Number),
       });
     } finally {
       compose.mockRestore();
