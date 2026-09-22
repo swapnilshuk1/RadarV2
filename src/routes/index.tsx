@@ -535,9 +535,9 @@ function Shortlist() {
               Active plan unavailable: {searchPlanPreview.error}
             </p>
           )}
-        </details>
 
-        <EvaluatorControlPanel />
+          <EvaluatorControlPanel embedded />
+        </details>
       </main>
 
       {/* ────────────────────────────────────────────────────────────────────────
