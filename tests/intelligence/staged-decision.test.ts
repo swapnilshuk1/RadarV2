@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { contextFields, scopeFields, type Claim, type EvidenceSource, type ReasoningModel } from '../../src/dossier/contracts';
-import { runStagedFrozenDecisionDetailed } from '../../src/dossier/staged-decision';
+import { chunkStagedDecisionItems, runStagedFrozenDecisionDetailed, STAGED_DECISION_BATCH_SIZE } from '../../src/dossier/staged-decision';
 import { materializeStagedScreeningAdjudication } from '../../src/dossier/staged-screening';
 import {
   screeningConstraintForDrivers,
@@ -375,6 +375,14 @@ describe('staged production decision boundary', () => {
     expect(result.decision).not.toHaveProperty('narrativePlan');
     expect(result.decision.careerCapital).toEqual(noCareerCapital);
     expect(result.decision.decisionHinges[0]).not.toHaveProperty('statement');
+  });
+
+  it('caps staged batch repair blast radius at ten requirements', () => {
+    const items=Array.from({length:23},(_,index)=>index+1);
+    const chunks=chunkStagedDecisionItems(items);
+    expect(STAGED_DECISION_BATCH_SIZE).toBe(10);
+    expect(chunks.map(chunk=>chunk.length)).toEqual([10,10,3]);
+    expect(chunks.flat()).toEqual(items);
   });
 
   it('batches screening, mapping and gap transport without collapsing their semantic validators', async () => {
