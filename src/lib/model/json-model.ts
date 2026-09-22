@@ -100,7 +100,7 @@ export class GeminiJsonModel implements JsonModel {
     let finishReason: string | undefined;
 
     const record = async (
-      status: "completed" | "provider_error" | "transport_error" | "invalid_output",
+      status: "running" | "completed" | "provider_error" | "transport_error" | "invalid_output",
       errorCode?: string,
     ) => {
       await this.options.invocationSink?.({
@@ -114,7 +114,7 @@ export class GeminiJsonModel implements JsonModel {
         attempt: metadata?.attempt ?? 1,
         maxOutputTokens,
         startedAt,
-        completedAt: Date.now(),
+        completedAt: status === "running" ? undefined : Date.now(),
         finishReason,
         status,
         errorCode,
