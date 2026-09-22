@@ -139,7 +139,13 @@ export function OpportunityBriefView() {
         </div>
         <DossierView
           dossier={o.richDossier}
-          reviewState={o.memoReviewState === "reviewed" ? "reviewed" : "pending"}
+          reviewState={
+            o.memoReviewState === "reviewed"
+              ? "reviewed"
+              : o.memoReviewState === "review_attention"
+                ? "attention"
+                : "pending"
+          }
         />
       </>
     );
