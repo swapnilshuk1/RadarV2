@@ -156,7 +156,7 @@ export type EvaluatedOpportunity = {
   dossierPresentation?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV1;
   dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
   richDossier?: import('@/dossier/contracts').Dossier;
-  memoReviewState?: 'preparing' | 'preparation_attention' | 'pending' | 'reviewed' | 'withheld';
+  memoReviewState?: 'preparing' | 'preparation_attention' | 'pending' | 'review_attention' | 'reviewed' | 'withheld';
 };
 
 export interface ApplicationAction {
