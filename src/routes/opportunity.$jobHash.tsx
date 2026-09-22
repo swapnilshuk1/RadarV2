@@ -291,3 +291,84 @@ export function OpportunityBriefView() {
             dossierState={dossierState}
             decide={decide}
             neighbors={neighbors}
+            currentIndex={currentIndex}
+            totalCount={totalCount}
+            jobProj={presentation.jobProjection}
+            executionPkg={presentation.executionPackage}
+            whyRoleExists={presentation.whyRoleExists}
+          />
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <main className="memo-container py-10 space-y-8">
+      <header className="border-b border-border pb-6">
+        <p className="label-mono text-muted-foreground">Canonical evaluation dossier</p>
+        <h1 className="mt-2 font-serif text-4xl text-foreground">{evalOpp.role}</h1>
+        <p className="mt-2 text-muted-foreground">
+          {evalOpp.company} · {evalOpp.location}
+        </p>
+      </header>
+
+      <section className="memo-card space-y-3" aria-label="Canonical recommendation">
+        <p className="label-mono text-muted-foreground">Engine recommendation</p>
+        <p className="text-2xl font-serif text-foreground">
+          {dossierState.engineVerdict ?? "Recommendation unavailable"}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Fit index: {evalOpp.engineRecommendation?.qualityScore ?? "Unknown"}
+        </p>
+        <p className="text-xs font-mono text-muted-foreground">
+          Evaluation: {dossierState.evaluationFingerprint ?? "Unknown"}
+        </p>
+        <p className="text-xs font-mono text-muted-foreground">
+          Review state: {evalOpp.reviewState}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Detailed dossier not materialized for this evaluation.
+        </p>
+      </section>
+
+      <section className="memo-card space-y-3" aria-label="Your decision">
+        <p className="label-mono text-muted-foreground">Your decision</p>
+        <p className="text-sm text-muted-foreground">
+          {dossierState.userDecision ?? "No user decision recorded"}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(["PURSUE", "CONSIDER", "PASS"] as DecisionVerb[]).map((verb) => (
+            <button
+              key={verb}
+              type="button"
+              onClick={() => decide(verb)}
+              className="memo-badge border border-border text-foreground hover:bg-surface-raised"
+            >
+              {verb}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <nav className="flex justify-between text-sm">
+        {neighbors?.prev ? (
+          <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.prev }}>
+            Previous
+          </Link>
+        ) : (
+          <span />
+        )}
+        <span className="text-muted-foreground">
+          {currentIndex} of {totalCount}
+        </span>
+        {neighbors?.next ? (
+          <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.next }}>
+            Next
+          </Link>
+        ) : (
+          <span />
+        )}
+      </nav>
+    </main>
+  );
+}
