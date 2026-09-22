@@ -14,8 +14,8 @@ import {
   SqliteDossierReviewQueue,
   DRAFT_DOSSIER_VERSION,
 } from "@/data/sqlite/repositories/SqliteDossierReviewQueue";
+import { PREPARING_DOSSIER_VERSION } from "@/data/sqlite/repositories/SqliteDossierCompositionQueue";
 
-export const PREPARING_DOSSIER_VERSION = "dossier-preparing-v1";
 
 function presentationRank(value: unknown): number {
   if (value === RICH_DOSSIER_VERSION) return 3;
