@@ -288,9 +288,9 @@ export class EvaluationWorker {
           ).evaluate({ ...identity, context });
           await this.db.execute(
             `UPDATE evaluation_jobs
-             SET evaluation_persisted_at=COALESCE(evaluation_persisted_at,CURRENT_TIMESTAMP)
+             SET evaluation_persisted_at=COALESCE(evaluation_persisted_at,?)
              WHERE id=? AND locked_by=? AND lease_token=? AND status='staged_processing'`,
-            [job.id,this.workerId,job.leaseToken],
+            [evaluated.evaluatedAt,job.id,this.workerId,job.leaseToken],
           );
 
           const serving=await this.db.one<{context_fingerprint:string}>(
@@ -305,15 +305,15 @@ export class EvaluationWorker {
               inputFingerprint:evaluated.inputFingerprint,
               evaluation:staged,
             });
-            await new SqliteDossierCompositionQueue(this.db).enqueue(
-              identity,
-              evaluationFingerprint,
-            );
+            const compositionQueue=new SqliteDossierCompositionQueue(this.db);
+            await compositionQueue.enqueue(identity,evaluationFingerprint);
+            const compositionJob=await compositionQueue.find(identity,evaluationFingerprint);
+            if(!compositionJob) throw new Error("DOSSIER_COMPOSITION_JOB_NOT_PERSISTED");
             await this.db.execute(
               `UPDATE evaluation_jobs
-               SET dossier_queued_at=COALESCE(dossier_queued_at,CURRENT_TIMESTAMP)
+               SET dossier_queued_at=COALESCE(dossier_queued_at,?)
                WHERE id=? AND locked_by=? AND lease_token=? AND status='staged_processing'`,
-              [job.id,this.workerId,job.leaseToken],
+              [new Date(compositionJob.created_at).toISOString(),job.id,this.workerId,job.leaseToken],
             );
             await new StagedServingPublisher(this.db).publish(identity,{allowPreparing:true});
           }
