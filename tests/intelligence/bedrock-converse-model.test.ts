@@ -37,6 +37,57 @@ describe('Bedrock Mantle JSON transport',()=>{
     expect(body.messages[1].content).toBe('{"frozen":true}');
     expect(model.lastUsage).toMatchObject({inputTokens:13,outputTokens:2,totalTokens:15});
   });
+  it('persists per-call stage metadata, exact usage and the stage-specific output ceiling',async()=>{
+    let body:any;
+    const events:any[]=[];
+    const model=new BedrockMantleJsonModel(
+      'zai.glm-5',
+      async()=>'test-secret',
+      async(_url,init)=>{
+        body=JSON.parse(String(init?.body));
+        return new Response(JSON.stringify({
+          choices:[{finish_reason:'stop',message:{content:'{"ok":true}'}}],
+          usage:{
+            prompt_tokens:100,
+            completion_tokens:25,
+            total_tokens:125,
+            prompt_tokens_details:{cached_tokens:40},
+            completion_tokens_details:{reasoning_tokens:7},
+          },
+        }));
+      },
+      {
+        maxOutputTokens:12288,
+        stageOutputTokens:{decision:4096},
+        invocationSink:async(event)=>{events.push(event);},
+        providerConcurrencyLimit:1,
+      },
+    );
+    await expect(
+      model.generate('Decision instruction',{frozen:true},undefined,{stage:'decision',attempt:2}),
+    ).resolves.toEqual({ok:true});
+    expect(body.max_tokens).toBe(4096);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      provider:'bedrock-mantle',
+      modelId:'bedrock-mantle',
+      modelVersion:'zai.glm-5',
+      stage:'decision',
+      attempt:2,
+      maxOutputTokens:4096,
+      status:'completed',
+      usage:{
+        inputTokens:100,
+        cachedInputTokens:40,
+        outputTokens:25,
+        reasoningTokens:7,
+        totalTokens:125,
+      },
+    });
+    expect(events[0].requestFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(events[0].completedAt).toBeGreaterThanOrEqual(events[0].startedAt);
+  });
+
   it.each([400,401,403,429,503])('defers HTTP %s to the durable scheduler without immediate retries',async(status)=>{
     let calls=0;
     const model=new BedrockMantleJsonModel('zai.glm-5',async()=>'secret',async()=>{calls++;return new Response('private body',{status,headers:{'retry-after':'42'}});});
