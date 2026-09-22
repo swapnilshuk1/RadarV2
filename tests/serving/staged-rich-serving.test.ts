@@ -33,8 +33,9 @@ import { stagedEvaluation, evaluationFingerprint, dossier } from "../fixtures/st
 import { selectStagedDossierWork } from "../../src/lib/intelligence/staged/dossierBackfillSelection";
 import { RICH_DOSSIER_VERSION } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";
 import { SqliteDossierReviewQueue } from "../../src/data/sqlite/repositories/SqliteDossierReviewQueue";
-import { PREPARING_DOSSIER_VERSION } from "../../src/data/sqlite/repositories/SqliteDossierCompositionQueue";
+import { PREPARING_DOSSIER_VERSION, SqliteDossierCompositionQueue } from "../../src/data/sqlite/repositories/SqliteDossierCompositionQueue";
 import { DossierReviewWorker } from "../../src/lib/intelligence/staged/DossierReviewWorker";
+import { DossierCompositionWorker } from "../../src/lib/intelligence/staged/DossierCompositionWorker";
 import { ProductionStagedDossierService } from "../../src/lib/intelligence/staged/ProductionStagedDossierService";
 import { ModelProviderUnavailableError } from "../../src/lib/model/provider-unavailable";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -167,6 +168,33 @@ describe("rich staged serving activation", () => {
         ))!.evaluation_json,
       ).presentationVersion,
     ).toBe(RICH_DOSSIER_VERSION);
+  });
+
+  it("leases composition independently and records draft persistence before publication", async () => {
+    const queue=new SqliteDossierCompositionQueue(db);
+    await queue.enqueue(identity,evaluationFingerprint);
+    const compose=vi.spyOn(ProductionStagedDossierService.prototype,"compose").mockResolvedValue(dossier());
+    const publish=vi.spyOn(StagedServingPublisher.prototype,"publish").mockResolvedValue(undefined);
+    try{
+      const worker=new DossierCompositionWorker(db,()=>({
+        id:"test-writer",
+        version:"1",
+        async generate(){return {};},
+      }));
+      expect(await worker.pollOnce()).toMatchObject({status:"completed"});
+      expect(compose).toHaveBeenCalledTimes(1);
+      expect(publish).toHaveBeenCalledWith(identity,{allowDraft:true});
+      const row=await db.one<any>("SELECT * FROM dossier_composition_jobs");
+      expect(row).toMatchObject({status:"completed",attempts:0});
+      expect(row.draft_persisted_at).toEqual(expect.any(Number));
+      expect(row.published_at).toEqual(expect.any(Number));
+      expect(row.published_at).toBeGreaterThanOrEqual(row.draft_persisted_at);
+      expect(row.lease_token).toBeNull();
+      expect(row.lease_until).toBeNull();
+    }finally{
+      compose.mockRestore();
+      publish.mockRestore();
+    }
   });
 
   it("serves labelled drafts through 429, withholds defects and atomically promotes reviewed output", async () => {
