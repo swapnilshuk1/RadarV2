@@ -6,6 +6,7 @@ import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
 import { hydrateVirtualizedList } from "../utils/scroll";
 import { normalizePostingDate } from "../utils/date";
+import { load as loadHtml } from "cheerio";
 
 export interface NaukriListTelemetry {
   apiPagesExpected: number[];
@@ -559,7 +560,6 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       // 1. Check Primary Job Description Containers
       let jdHtml = null;
       let fullJdText = "";
-      const cheerio = require("cheerio");
 
       // METHOD 1: Clean Next.js State Extraction
       ctx.logger(`[${ctx.portal}] Attempting extraction via __NEXT_DATA__ JSON payload`);
@@ -584,7 +584,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       if (!jdHtml) {
           ctx.logger(`[${ctx.portal}] Falling back to DOM selector extraction`);
           const htmlContent = await targetPage.content();
-          const cheerioApi = cheerio.load(htmlContent);
+          const cheerioApi = loadHtml(htmlContent);
           
           const primaryContainers = [
               "#jobs-desc [class*='components_jd']",
@@ -606,7 +606,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
           for (const sel of primaryContainers) {
               const elements = cheerioApi(sel);
               if (elements.length > 0) {
-                  const clone = cheerio.load(elements.first().html() || "");
+                  const clone = loadHtml(elements.first().html() || "");
                   clone('br, p, div, li, h1, h2, h3, h4, h5, h6').append('\n');
                   const txt = clone.text().replace(/[ \t]+/g, ' ').replace(/\n\s*\n/g, '\n').trim();
                   if (txt.length >= 50) {
@@ -641,7 +641,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       }
 
       if (jdHtml) {
-          const jdDom = cheerio.load(jdHtml);
+          const jdDom = loadHtml(jdHtml);
           jdDom('br, p, div, li, h1, h2, h3, h4, h5, h6').append('\n');
           
           let rawText = jdDom.text();
@@ -772,5 +772,4 @@ export function classifyNaukriHtml(html: string, title: string): { state: string
   
   return { state: "UNKNOWN" };
 }
-
 

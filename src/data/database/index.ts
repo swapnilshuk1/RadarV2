@@ -7,6 +7,7 @@ import fs from "fs";
 import { createHash } from "crypto";
 import { createRequire } from "module";
 import { loadUnifiedEnvironment } from "../../lib/env";
+import { DiagnosticDatabaseAdapter } from "./diagnostics";
 
 export type RadarEnvironment = "dev" | "test" | "staging" | "production";
 
@@ -203,10 +204,7 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
     }
     let adapter: DatabaseAdapter = new TursoAdapter(tursoUrl, tursoToken);
     if (process.env.RADAR_FORENSICS === "1") {
-      try {
-        const { DiagnosticDatabaseAdapter } = require("./diagnostics");
-        adapter = new DiagnosticDatabaseAdapter(adapter);
-      } catch {}
+      adapter = new DiagnosticDatabaseAdapter(adapter);
     }
     _cachedAdapter = adapter;
     return _cachedAdapter;

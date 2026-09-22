@@ -21,6 +21,7 @@ export interface QueryRunRecord {
   ledgerKnown: number;
   hardFiltered: number;
   identityFailed: number;
+  integrityFailed?: number;
   novelAccepted: number;
   novelAcquired: number;
   noveltyRate: number; // 0.0 to 1.0 (novelAccepted / cardsParsed)
