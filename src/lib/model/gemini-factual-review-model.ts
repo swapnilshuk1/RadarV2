@@ -2,6 +2,7 @@ import { geminiContextCacheRequest } from "./gemini-context-cache";
 import { adcTokenProvider } from "./google-adc";
 import { GeminiJsonModel } from "./json-model";
 import { ModelProviderUnavailableError } from "./provider-unavailable";
+import type { ModelInvocationSink } from "./model-invocation";
 
 /** Explicit independent dossier reviewer; never substitutes for the staged evaluator. */
 export function createGeminiFactualReviewModel(
@@ -11,6 +12,8 @@ export function createGeminiFactualReviewModel(
     request?: typeof fetch;
     contextCache?: boolean;
     model?: string;
+    invocationSink?: ModelInvocationSink;
+    providerConcurrencyLimit?: number;
   } = {},
 ) {
   const projectId = (options.projectId ?? process.env.GCP_PROJECT_ID)?.trim();
@@ -30,12 +33,14 @@ export function createGeminiFactualReviewModel(
       // medium reasoning and the required per-passage structured assessment.
       maxOutputTokens: 16384,
       timeoutMs: 120000,
+      invocationSink: options.invocationSink,
+      providerConcurrencyLimit: options.providerConcurrencyLimit,
     },
   );
   const generate = model.generate.bind(model);
-  model.generate = async (instruction, input, schema) => {
+  model.generate = async (instruction, input, schema, metadata) => {
     try {
-      return await generate(instruction, input, schema);
+      return await generate(instruction, input, schema, metadata);
     } catch (error) {
       // Infrastructure failures must pause durable work, not consume semantic repair attempts.
       if (
