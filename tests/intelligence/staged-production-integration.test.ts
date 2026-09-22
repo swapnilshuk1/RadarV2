@@ -5,6 +5,7 @@ import { SqliteStagedEvaluationStore, STAGED_CONTRACT_VERSION, STAGED_POLICY_VER
 import { assertCanonicalJdContentHash, DeterministicStagedInputUnavailableError } from '../../src/lib/intelligence/staged/ProductionStagedInputAdapter';
 import { computeContentHash } from '../../src/lib/domain/canonical_identity';
 import {stagedEvaluation} from '../fixtures/staged-rich-dossier';
+import { durableStagedModel } from '../../src/lib/intelligence/staged/DurableStagedModel';
 
 describe('staged production persistence boundary', () => {
   it('uses a fresh staged policy and contract identity for post-fix evaluations', () => {
@@ -23,11 +24,31 @@ describe('staged production persistence boundary', () => {
     const read=await store.get(identity); expect(read?.decision).toBe('PURSUE'); expect(read?.evaluationState).toBe('COMPLETED');
     const legacy=await db.one<{count:number}>('SELECT COUNT(*) AS count FROM materialized_evaluations'); expect(legacy?.count).toBe(0);
   });
-  it('keys cached source evidence by immutable fingerprint and extraction model identity', async () => {
+  it('keys cached source evidence by immutable fingerprint and exact model configuration identity', async () => {
     const db=getDatabaseAdapter(':memory:'); await runMigrations(db); const store=new SqliteStagedEvaluationStore(db);
-    await store.cacheClaims({sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5'},{id:'jd-a'},[{id:'JD-1-1'}]);
-    expect(await store.cachedClaims({sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5'})).toEqual([{id:'JD-1-1'}]);
-    expect(await store.cachedClaims({sourceFingerprint:'content-b',modelId:'bedrock-converse',modelVersion:'zai.glm-5'})).toBeUndefined();
+    await store.cacheClaims({sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'},{id:'jd-a'},[{id:'JD-1-1'}]);
+    expect(await store.cachedClaims({sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'})).toEqual([{id:'JD-1-1'}]);
+    expect(await store.cachedClaims({sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-b'})).toBeUndefined();
+    expect(await store.cachedClaims({sourceFingerprint:'content-b',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'})).toBeUndefined();
+  });
+  it('reuses validated semantic checkpoints across worker restarts but not across model configurations', async () => {
+    const db=getDatabaseAdapter(':memory:'); await runMigrations(db);
+    let calls=0;
+    const makeModel=(configurationFingerprint:string)=>({
+      id:'bedrock-mantle',
+      version:'zai.glm-5',
+      configurationFingerprint,
+      async generate(){calls++;return {value:'accepted'};},
+    });
+    const first=durableStagedModel(db,'scope',makeModel('config-a'));
+    expect(await first.generate('stage instruction',{stable:true},undefined,{stage:'decision',attempt:1})).toEqual({value:'accepted'});
+    expect(calls).toBe(1);
+    const restarted=durableStagedModel(db,'scope',makeModel('config-a'));
+    expect(await restarted.generate('stage instruction',{stable:true},undefined,{stage:'decision',attempt:1})).toEqual({value:'accepted'});
+    expect(calls).toBe(1);
+    const reconfigured=durableStagedModel(db,'scope',makeModel('config-b'));
+    expect(await reconfigured.generate('stage instruction',{stable:true},undefined,{stage:'decision',attempt:1})).toEqual({value:'accepted'});
+    expect(calls).toBe(2);
   });
   it('records input-unavailable state without pretending to produce a decision', () => {
     const row=stagedUnavailableEvaluation({tenantId:'t',personId:'p',canonicalJobId:'j',opportunityVersion:'v',evaluationContextFingerprint:'c',profileVersion:'pv',policyVersion:STAGED_POLICY_VERSION,ontologyVersion:'o',ontologyFingerprint:'oh'},'PROFILE_SOURCE_PROVENANCE_MISSING');
