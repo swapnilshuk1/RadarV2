@@ -6,6 +6,7 @@ import { useDecisions } from "../lib/decisions-store";
 import { getOpportunitiesFn, getOpportunityDetailsFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
 import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn, getScrapePlanPreviewFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
+import { EvaluatorControlPanel } from "../components/radar/EvaluatorControlPanel";
 import { logTelemetry } from "../lib/telemetry";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 
@@ -535,6 +536,8 @@ function Shortlist() {
             </p>
           )}
         </details>
+
+        <EvaluatorControlPanel />
       </main>
 
       {/* ────────────────────────────────────────────────────────────────────────
