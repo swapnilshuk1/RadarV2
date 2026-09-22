@@ -4,7 +4,7 @@ import { extractValidatedSourceClaims, EmptySourceEvidenceError } from '../../sr
 import { bedrockJsonSchema } from '../../src/dossier/bedrock-schema';
 import { stagedScreeningAdjudicationSchema } from '../../src/dossier/staged-screening';
 import type { ReasoningModel } from '../../src/dossier/contracts';
-import { ModelProviderUnavailableError } from '../../src/lib/model/provider-unavailable';
+import { ModelInvalidOutputError, ModelProviderUnavailableError } from '../../src/lib/model/provider-unavailable';
 import { BedrockMantleJsonModel } from '../../src/lib/model/bedrock-mantle-model';
 import { parseMantleKey } from '../../src/lib/model/bedrock-credentials';
 import { createBedrockGlmResearchModel } from '../../src/lib/model/bedrock-glm-research-model';
@@ -108,15 +108,44 @@ describe('Bedrock Mantle JSON transport',()=>{
 
   it.each([400,401,403,429,503])('defers HTTP %s to the durable scheduler without immediate retries',async(status)=>{
     let calls=0;
-    const model=new BedrockMantleJsonModel('zai.glm-5',async()=>'secret',async()=>{calls++;return new Response('private body',{status,headers:{'retry-after':'42'}});});
+    const model=new BedrockMantleJsonModel(`zai.glm-5-http-${status}`,async()=>'secret',async()=>{calls++;return new Response('private body',{status,headers:{'retry-after':'42'}});},{random:()=>0});
     const failure=await model.generate('Instruction',{}).catch(e=>e);
     expect(failure).toBeInstanceOf(ModelProviderUnavailableError);expect(failure.httpStatus).toBe(status);
     expect(failure.message).not.toMatch(/secret|private/);expect(calls).toBe(1);
     if(status===429||status===503)expect(failure.retryAfterMs).toBe(42000);
   });
-  it.each([['{"ok":true}','length'],['broken','stop'],['','stop']])('rejects incomplete or malformed output even if it parses',async(text,finish)=>{
-    const model=new BedrockMantleJsonModel('zai.glm-5',async()=>'secret',async()=>reply(text,finish));
-    await expect(model.generate('Instruction',{})).rejects.toBeInstanceOf(ModelProviderUnavailableError);
+  it('uses exponential jitter-ready backoff for repeated transient Mantle failures',async()=>{
+    const model=new BedrockMantleJsonModel('zai.glm-5-backoff',async()=>'secret',async()=>new Response('',{status:503}),{random:()=>0});
+    const delays:number[]=[];
+    for(let i=0;i<4;i++){
+      const failure=await model.generate('Instruction',{}).catch(e=>e);
+      expect(failure).toBeInstanceOf(ModelProviderUnavailableError);
+      delays.push(failure.retryAfterMs);
+    }
+    expect(delays).toEqual([30000,60000,120000,120000]);
+  });
+  it.each([['{"ok":true}','length'],['broken','stop'],['','stop']])('classifies incomplete or malformed output as a short invalid-output retry',async(text,finish)=>{
+    const events:any[]=[];
+    const model=new BedrockMantleJsonModel('zai.glm-5-invalid',async()=>'secret',async()=>reply(text,finish),{invocationSink:async event=>{events.push(event);}});
+    const failure=await model.generate('Instruction',{}).catch(e=>e);
+    expect(failure).toBeInstanceOf(ModelInvalidOutputError);
+    expect(failure.retryAfterMs).toBe(2000);
+    expect(events).toHaveLength(1);
+    expect(events[0].status).toBe('invalid_output');
+  });
+  it('uses the stage timeout rather than the old four-minute Mantle ceiling',async()=>{
+    const model=new BedrockMantleJsonModel(
+      'zai.glm-5-timeout',
+      async()=>'secret',
+      async(_url,init)=>new Promise((_resolve,reject)=>{
+        init?.signal?.addEventListener('abort',()=>reject(init.signal?.reason),{once:true});
+      }),
+      {timeoutMs:50,stageTimeoutMs:{decision:5},random:()=>0},
+    );
+    const started=Date.now();
+    const failure=await model.generate('Instruction',{},undefined,{stage:'decision'}).catch(e=>e);
+    expect(failure).toBeInstanceOf(ModelProviderUnavailableError);
+    expect(Date.now()-started).toBeLessThan(500);
   });
   it('clears previous usage when the next request fails',async()=>{
     let calls=0;
