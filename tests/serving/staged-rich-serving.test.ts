@@ -33,6 +33,7 @@ import { stagedEvaluation, evaluationFingerprint, dossier } from "../fixtures/st
 import { selectStagedDossierWork } from "../../src/lib/intelligence/staged/dossierBackfillSelection";
 import { RICH_DOSSIER_VERSION } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";
 import { SqliteDossierReviewQueue } from "../../src/data/sqlite/repositories/SqliteDossierReviewQueue";
+import { PREPARING_DOSSIER_VERSION } from "../../src/data/sqlite/repositories/SqliteDossierCompositionQueue";
 import { DossierReviewWorker } from "../../src/lib/intelligence/staged/DossierReviewWorker";
 import { ProductionStagedDossierService } from "../../src/lib/intelligence/staged/ProductionStagedDossierService";
 import { ModelProviderUnavailableError } from "../../src/lib/model/provider-unavailable";
@@ -120,6 +121,54 @@ describe("rich staged serving activation", () => {
       n: 0,
     });
   });
+  it("serves the decision immediately while the memo is preparing and advances presentation monotonically", async () => {
+    const publisher = new StagedServingPublisher(db);
+    await publisher.publish(identity, { allowPreparing: true });
+    await db.execute(
+      `UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`,
+    );
+    const { scope } = await resolveServingScope("person_A", "tenant_A", db);
+    const queries = new SqliteOpportunityQueries(db);
+    expect(await queries.getDossier(scope, "source-job")).toMatchObject({
+      memoReviewState: "preparing",
+      decision: "PURSUE",
+      recommendation: "Memo being prepared.",
+    });
+    expect(
+      JSON.parse(
+        (await db.one<{ evaluation_json: string }>(
+          "SELECT evaluation_json FROM materialized_evaluations WHERE canonical_job_id='job'",
+        ))!.evaluation_json,
+      ).presentationVersion,
+    ).toBe(PREPARING_DOSSIER_VERSION);
+
+    const pending = dossier();
+    delete pending.generation.factualReviewer;
+    delete pending.generation.factualReviews;
+    await new SqliteDossierReviewQueue(db).enqueue(identity, evaluationFingerprint, pending);
+    await publisher.publish(identity, { allowDraft: true });
+    expect(await queries.getDossier(scope, "source-job")).toMatchObject({
+      memoReviewState: "pending",
+      decision: "PURSUE",
+    });
+
+    await new SqliteRichDossierStore(db).save(identity, evaluationFingerprint, dossier());
+    await publisher.publish(identity);
+    expect(await queries.getDossier(scope, "source-job")).toMatchObject({
+      memoReviewState: "reviewed",
+      decision: "PURSUE",
+    });
+
+    await publisher.publish(identity, { allowPreparing: true });
+    expect(
+      JSON.parse(
+        (await db.one<{ evaluation_json: string }>(
+          "SELECT evaluation_json FROM materialized_evaluations WHERE canonical_job_id='job'",
+        ))!.evaluation_json,
+      ).presentationVersion,
+    ).toBe(RICH_DOSSIER_VERSION);
+  });
+
   it("serves labelled drafts through 429, withholds defects and atomically promotes reviewed output", async () => {
     const pending = dossier();
     delete pending.generation.factualReviewer;
