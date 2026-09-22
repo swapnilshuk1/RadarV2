@@ -162,14 +162,25 @@ export class SqliteDossierCompositionQueue {
     if (!updated.rowsAffected) throw new Error("DOSSIER_COMPOSITION_LEASE_LOST");
   }
 
+  async markDraftPersisted(job: DossierCompositionJob): Promise<void> {
+    const now = this.now();
+    const updated = await this.db.execute(
+      `UPDATE dossier_composition_jobs
+       SET draft_persisted_at=COALESCE(draft_persisted_at,?),updated_at=?
+       WHERE id=? AND status='processing' AND lease_token=? AND lease_until>?`,
+      [now, now, job.id, job.lease_token, now],
+    );
+    if (!updated.rowsAffected) throw new Error("DOSSIER_COMPOSITION_LEASE_LOST");
+  }
+
   async finish(job: DossierCompositionJob): Promise<void> {
     const now = this.now();
     const updated = await this.db.execute(
       `UPDATE dossier_composition_jobs
        SET status='completed',lease_token=NULL,lease_until=NULL,last_error=NULL,
-           draft_persisted_at=COALESCE(draft_persisted_at,?),published_at=?,updated_at=?
+           published_at=?,updated_at=?
        WHERE id=? AND status='processing' AND lease_token=? AND lease_until>?`,
-      [now, now, now, job.id, job.lease_token, now],
+      [now, now, job.id, job.lease_token, now],
     );
     if (!updated.rowsAffected) throw new Error("DOSSIER_COMPOSITION_LEASE_LOST");
   }
