@@ -97,7 +97,7 @@ export class SqliteDossierCompositionQueue {
   }
 
   async find(
-    identity: ProductionStagedIdentity,
+    identity: Omit<ProductionStagedIdentity, "profileVersion">,
     evaluationFingerprint: string,
   ): Promise<DossierCompositionJob | null> {
     return this.db.one<DossierCompositionJob>(
