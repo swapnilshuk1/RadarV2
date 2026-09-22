@@ -74,6 +74,7 @@ import {
 import { SqliteDossierPresentationStore } from "./SqliteDossierPresentationStore";
 import { SqliteRichDossierStore } from "./SqliteRichDossierStore";
 import { DRAFT_DOSSIER_VERSION, SqliteDossierReviewQueue } from "./SqliteDossierReviewQueue";
+import { PREPARING_DOSSIER_VERSION } from "./SqliteDossierCompositionQueue";
 import { SqliteStagedEvaluationStore } from "./SqliteStagedEvaluationStore";
 import {
   parseCanonicalStagedDecisionResult,
@@ -1223,6 +1224,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         staged.verdict === row.engine_decision;
       const fp =
         typeof staged.evaluationFingerprint === "string" ? staged.evaluationFingerprint : "";
+      const preparing =
+        validPublication && staged.presentationVersion === PREPARING_DOSSIER_VERSION;
       const pending = validPublication && staged.presentationVersion === DRAFT_DOSSIER_VERSION;
       const queue = new SqliteDossierReviewQueue(this.db);
       const reviewed = validPublication
@@ -1242,6 +1245,49 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         reviewedFingerprint: row.reviewed_fingerprint,
         qualityScore: row.quality_score,
       });
+      if (preparing && readModel.evaluationState === "EVALUATED") {
+        const record = await new SqliteStagedEvaluationStore(this.db).get(presentationIdentity);
+        if (record?.evaluationState === "COMPLETED") {
+          const canonical = parseCanonicalStagedDecisionResult(record.evaluation);
+          if (
+            createStagedEvaluationFingerprint({
+              evaluationContextFingerprint: record.evaluationContextFingerprint,
+              inputFingerprint: record.inputFingerprint,
+              evaluation: canonical,
+            }) === fp &&
+            canonical.decision.verdict === row.engine_decision
+          ) {
+            return {
+              evaluationState: "EVALUATED",
+              ...oppSource,
+              postedRelative: formatPostedRelative(row.posted_at || undefined),
+              decision: canonical.decision.verdict,
+              recommendation: "Memo being prepared.",
+              primaryConcern: null,
+              positioning: [],
+              headspace: [],
+              dimensions: [],
+              hiringRisk: "",
+              memoReviewState: "preparing",
+              userDecision: userState,
+              effectiveDecision: readModel.effectiveDecision,
+              reviewState: readModel.reviewState,
+              evaluationContextFingerprint: row.evaluation_context_fingerprint,
+              evaluationFingerprint: fp,
+              engineRecommendation: {
+                jobHash: row.source_job_id,
+                evaluationFingerprint: fp,
+                engineVerdict: canonical.decision.verdict,
+                vetoed: false,
+                qualityScore: null,
+                screeningViability: canonical.decision.screeningViability,
+                evaluatedAt: record.evaluatedAt,
+              },
+            };
+          }
+        }
+      }
+
       if (
         dossier &&
         dossier.verdict.verdict === row.engine_decision &&
