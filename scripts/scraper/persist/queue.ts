@@ -503,6 +503,101 @@ export class EnrichmentQueue {
   }
 
   /**
+   * Explicitly retries a failed capture batch without resurrecting unrelated
+   * evaluation work.  Terminal dependencies failed solely because enrichment
+   * failed are returned to their waiting state in the same transaction; a
+   * later successful enrichment then releases them through markCompleted().
+   */
+  public async retryFailedForRun(runId: string): Promise<number> {
+    const retried = await this.db.transaction(async (tx) => {
+      const jobs = await tx.many<{
+        id: string;
+        canonical_job_id: string | null;
+        opportunity_version: string | null;
+        pipeline_version: string | null;
+      }>(
+        `SELECT id, canonical_job_id, opportunity_version, pipeline_version
+         FROM enrichment_jobs
+         WHERE run_id = ? AND status = 'FAILED'`,
+        [runId],
+      );
+      if (jobs.length === 0) return [];
+
+      await tx.execute(
+        `UPDATE enrichment_jobs
+         SET status = 'PENDING', attempts = 0, completed_at = NULL,
+             failure_type = NULL, last_error = NULL, lease_owner = NULL,
+             lease_expires_at = NULL, next_retry_at = NULL
+         WHERE run_id = ? AND status = 'FAILED'`,
+        [runId],
+      );
+
+      for (const job of jobs) {
+        if (!job.canonical_job_id || !job.opportunity_version || !job.pipeline_version) continue;
+
+        const requirements = await tx.many<{
+          tenant_id: string;
+          person_id: string;
+          search_plan_id: string;
+          canonical_job_id: string;
+          opportunity_version: string;
+          evaluation_context_fingerprint: string;
+        }>(
+          `SELECT tenant_id, person_id, search_plan_id, canonical_job_id,
+                  opportunity_version, evaluation_context_fingerprint
+           FROM evaluation_requirements
+           WHERE canonical_job_id = ?
+             AND opportunity_version = ?
+             AND required_enrichment_pipeline_version = ?
+             AND status = 'FAILED'
+             AND blocked_reason = 'ENRICHMENT_FAILED'`,
+          [job.canonical_job_id, job.opportunity_version, job.pipeline_version],
+        );
+
+        await tx.execute(
+          `UPDATE evaluation_requirements
+           SET status = 'WAITING_ENRICHMENT', blocked_reason = NULL,
+               ready_at = NULL, satisfied_at = NULL
+           WHERE canonical_job_id = ?
+             AND opportunity_version = ?
+             AND required_enrichment_pipeline_version = ?
+             AND status = 'FAILED'
+             AND blocked_reason = 'ENRICHMENT_FAILED'`,
+          [job.canonical_job_id, job.opportunity_version, job.pipeline_version],
+        );
+
+        for (const requirement of requirements) {
+          await tx.execute(
+            `UPDATE evaluation_jobs
+             SET status = CASE WHEN status = 'staged_dead_letter' THEN 'staged_waiting_enrichment' ELSE 'waiting_enrichment' END,
+                 attempts = 0, last_error = NULL, completed_at = NULL,
+                 locked_by = NULL, lease_token = NULL, locked_at = NULL,
+                 next_attempt_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+             WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?
+               AND canonical_job_id = ? AND opportunity_version = ?
+               AND evaluation_context_fingerprint = ?
+               AND status IN ('dead_letter', 'staged_dead_letter')`,
+            [
+              requirement.tenant_id,
+              requirement.person_id,
+              requirement.search_plan_id,
+              requirement.canonical_job_id,
+              requirement.opportunity_version,
+              requirement.evaluation_context_fingerprint,
+            ],
+          );
+        }
+      }
+      return jobs;
+    });
+
+    for (const job of retried) {
+      await this.logEvent(job.id, 'MANUAL_RETRY', JSON.stringify({ runId }));
+    }
+    return retried.length;
+  }
+
+  /**
    * Only terminal jobs whose payload is not shared by active work are eligible
    * for retention cleanup. This prevents a filesystem cleanup from breaking a
    * pending, leased, running, or retrying enrichment job.

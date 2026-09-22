@@ -550,7 +550,42 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-Site": "same-origin",
       }).catch(() => {});
-      await targetPage.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
+      // Do not suppress navigation failures. Continuing after a timed-out
+      // navigation turns a useful transport signal into a later, opaque
+      // UNKNOWN_FAILURE during DOM extraction.
+      const response = await targetPage.goto(url, {
+        waitUntil: "domcontentloaded",
+        timeout: CONFIG.detailTimeoutMs,
+      });
+      const httpStatus = response?.status();
+
+      if (httpStatus === 404) {
+        return {
+          fetched: false,
+          fetchError: "Job no longer available (404)",
+          fetchDurationMs: Date.now() - t0,
+          httpStatus,
+          failureClass: "REMOVED_404" as FailureClass,
+        };
+      }
+      if (httpStatus === 429) {
+        return {
+          fetched: false,
+          fetchError: "Rate limited (429)",
+          fetchDurationMs: Date.now() - t0,
+          httpStatus,
+          failureClass: "RATE_LIMIT_429" as FailureClass,
+        };
+      }
+      if (httpStatus !== undefined && httpStatus >= 500) {
+        return {
+          fetched: false,
+          fetchError: `Server error (${httpStatus})`,
+          fetchDurationMs: Date.now() - t0,
+          httpStatus,
+          failureClass: "HTTP_SERVER_ERROR" as FailureClass,
+        };
+      }
       
       await jitter(400, 900);
       await targetPage.waitForSelector(browserContentSelectors, { timeout: 6000 }).catch(() => {});
@@ -716,6 +751,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         rawHtml,
         rawText: trimmedText,
         fetchDurationMs: Date.now() - t0,
+        httpStatus,
         quality: isSparse ? ("SPARSE" as const) : ("VALID" as const),
         extractedTitle,
       };
@@ -733,6 +769,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       else if (isTimeout) failureClass = "NAVIGATION_TIMEOUT";
       else if (is404) failureClass = "REMOVED_404";
       else if (isConn) failureClass = "CONNECTION_ERROR";
+
+      ctx.logger(`[${ctx.portal}] Detail navigation/extraction failed (${failureClass}): ${msg}`);
 
       return {
         fetched: false,

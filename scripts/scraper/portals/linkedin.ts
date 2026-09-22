@@ -25,6 +25,21 @@ export type LinkedInSessionState =
   | "EMPTY_RESULT";
 
 export async function checkLinkedInSessionState(ctx: PortalContext): Promise<LinkedInSessionState> {
+  const page = ctx.activePage;
+
+  // The persistent context starts with about:blank. Always take the visible
+  // search worker to LinkedIn before inspecting cookies so a missing session
+  // presents LinkedIn's normal sign-in page instead of an unexplained blank
+  // browser tab for manual recovery.
+  if (page && !page.isClosed?.() && page.url() === "about:blank") {
+    await page.goto("https://www.linkedin.com/feed/", {
+      waitUntil: "domcontentloaded",
+      timeout: CONFIG.navTimeoutMs,
+    }).catch((err: any) => {
+      ctx.logger(`[LinkedIn Session] Could not open LinkedIn entry point: ${err?.message || String(err)}`);
+    });
+  }
+
   const cookies = await ctx.browserContext.cookies().catch(() => []);
   const liAtCookie = cookies.find((c: any) => c.name === "li_at" && c.value && c.value.trim().length > 10);
 
@@ -33,7 +48,6 @@ export async function checkLinkedInSessionState(ctx: PortalContext): Promise<Lin
     return "AUTH_MISSING";
   }
 
-  const page = ctx.activePage;
   const currentUrl = page ? page.url() : "";
   const title = page ? ((await page.title().catch(() => "")) || "") : "";
 

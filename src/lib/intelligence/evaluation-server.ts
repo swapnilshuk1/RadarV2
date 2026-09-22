@@ -17,13 +17,20 @@ export interface EvaluatorTelemetrySnapshot {
   };
   queue: {
     pending: number;
+    /** Rows marked processing in durable storage, whether or not a worker is live. */
     processing: number;
+    /** A fresh worker lease with a currently-running model invocation. */
+    liveModelCalls: number;
+    /** A fresh worker lease which has not begun a model invocation yet. */
+    claimedWithoutModelCall: number;
+    /** A processing row which can be reclaimed by a worker. */
+    reclaimableProcessing: number;
     completed: number;
     failed: number;
     deadLetter: number;
   };
   latestCompletedAt: string | null;
-  activeJobs: Array<{
+  processingStateJobs: Array<{
     id: string;
     canonicalJobId: string;
     attempts: number;
@@ -37,6 +44,7 @@ export interface EvaluatorTelemetrySnapshot {
     modelVersion: string | null;
     invocationAttempt: number | null;
     totalTokens: number;
+    telemetryState: "live_model_call" | "claimed_without_model_call" | "reclaimable";
   }>;
   recentInvocations: Array<{
     id: string;
@@ -57,9 +65,28 @@ export interface EvaluatorTelemetrySnapshot {
   }>;
 }
 
+async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getDatabaseAdapter>) {
+  const { scope } = await resolveServingScope(userId, undefined, db);
+  const membership = await db.one<{ role: string }>(
+    `SELECT role
+     FROM memberships
+     WHERE user_id=? AND tenant_id=? AND status='active' AND revoked_at IS NULL`,
+    [userId, scope.tenantId],
+  );
+
+  if (!membership) {
+    throw new Error("FORBIDDEN: Active tenant membership required");
+  }
+
+  // This controls a process-global daemon. Keep the operator boundary strict,
+  // but source it from the active tenant membership rather than the profile
+  // role cached in the browser session.
+  return { scope, canControl: membership.role === "admin" };
+}
+
 async function snapshotForUser(user: { id: string; role?: string }): Promise<EvaluatorTelemetrySnapshot> {
   const db = getDatabaseAdapter();
-  const { scope } = await resolveServingScope(user.id, undefined, db);
+  const { scope, canControl } = await resolveEvaluatorAccess(user.id, db);
   const runtime = await new EvaluationRuntimeControl(db).get();
   const { EvaluationDaemon } = await import("./EvaluationDaemon");
   const local = EvaluationDaemon.getGlobalDaemonRuntimeStatus();
@@ -88,15 +115,22 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
     first_claimed_at: string | null;
     locked_at: string | null;
     locked_by: string | null;
+    reclaimable: number;
   }>(
-    `SELECT id,canonical_job_id,attempts,max_attempts,first_claimed_at,locked_at,locked_by
+    `SELECT id,canonical_job_id,attempts,max_attempts,first_claimed_at,locked_at,locked_by,
+            CASE
+              WHEN first_claimed_at IS NULL
+                OR locked_at IS NULL
+                OR locked_at < datetime('now', '-300 seconds')
+              THEN 1 ELSE 0
+            END AS reclaimable
      FROM evaluation_jobs
      WHERE tenant_id=? AND person_id=? AND status IN ('processing','staged_processing')
      ORDER BY COALESCE(first_claimed_at,created_at),created_at`,
     [scope.tenantId, scope.personId],
   );
 
-  const activeJobs = await Promise.all(
+  const processingStateJobs = await Promise.all(
     activeRows.map(async (job) => {
       const [latestInvocation, tokenRow] = await Promise.all([
         db.one<{
@@ -108,7 +142,7 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
         }>(
           `SELECT stage,status,started_at,model_version,attempt
            FROM model_invocations
-           WHERE evaluation_job_id=?
+           WHERE evaluation_job_id=? AND status='running'
            ORDER BY started_at DESC
            LIMIT 1`,
           [job.id],
@@ -120,6 +154,7 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
           [job.id],
         ),
       ]);
+      const hasLiveModelCall = Boolean(latestInvocation) && Number(job.reclaimable) === 0;
       return {
         id: job.id,
         canonicalJobId: job.canonical_job_id,
@@ -134,9 +169,19 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
         modelVersion: latestInvocation?.model_version ?? null,
         invocationAttempt: latestInvocation ? Number(latestInvocation.attempt) : null,
         totalTokens: Number(tokenRow?.total_tokens ?? 0),
+        telemetryState: Number(job.reclaimable) === 1
+          ? "reclaimable"
+          : hasLiveModelCall
+            ? "live_model_call"
+            : "claimed_without_model_call",
       };
     }),
   );
+  const liveModelCalls = processingStateJobs.filter((job) => job.telemetryState === "live_model_call").length;
+  const claimedWithoutModelCall = processingStateJobs.filter(
+    (job) => job.telemetryState === "claimed_without_model_call",
+  ).length;
+  const reclaimableProcessing = processingStateJobs.filter((job) => job.telemetryState === "reclaimable").length;
 
   const recentRows = await db.many<{
     id: string;
@@ -170,17 +215,20 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
       updatedAt: runtime.updatedAt,
       updatedBy: runtime.updatedBy,
       localDaemonRunning: local.running,
-      canControl: user.role === "admin",
+      canControl,
     },
     queue: {
       pending: Number(counts.staged_pending ?? 0) + Number(counts.pending ?? 0),
       processing: Number(counts.staged_processing ?? 0) + Number(counts.processing ?? 0),
+      liveModelCalls,
+      claimedWithoutModelCall,
+      reclaimableProcessing,
       completed: Number(counts.completed ?? 0),
       failed: Number(counts.failed ?? 0),
       deadLetter: Number(counts.dead_letter ?? 0),
     },
     latestCompletedAt: latest?.completed_at ?? null,
-    activeJobs,
+    processingStateJobs,
     recentInvocations: recentRows.map((row) => ({
       id: row.id,
       evaluationJobId: row.evaluation_job_id,
@@ -210,8 +258,12 @@ export const getEvaluatorTelemetryFn = createServerFn({ method: "GET" })
 export const controlEvaluatorFn = createServerFn({ method: "POST" })
   .validator((data: { action: "start" | "pause" | "resume" | "stop" }) => data)
   .handler(async ({ data }) => {
-    const user = await requireAuthUser({ requireAdmin: true });
+    const user = await requireAuthUser();
     const db = getDatabaseAdapter();
+    const { canControl } = await resolveEvaluatorAccess(user.id, db);
+    if (!canControl) {
+      throw new Error("FORBIDDEN: Active tenant administrator privileges required");
+    }
     const control = new EvaluationRuntimeControl(db);
 
     if (data.action === "pause") {

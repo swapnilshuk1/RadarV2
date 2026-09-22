@@ -304,6 +304,68 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
     expect(globalStats.pending).toBe(1);
   });
 
+  it("retries a failed run while atomically restoring only enrichment-blocked evaluation dependencies", async () => {
+    const runId = "run_manual_retry";
+    const provenance = {
+      runId,
+      executionPlanId: "plan_retry",
+      definitionId: "def_retry",
+      familyId: "family_retry",
+      portal: "Indeed",
+      page: 1,
+      catalogVersion: "1.0",
+      plannerVersion: "1.0",
+      ruleVersion: "1.0",
+      searchQuery: "Chief Operating Officer",
+    };
+    await queue.enqueue(
+      "enrich_manual_retry",
+      "hash_manual_retry",
+      "snapshots/manual-retry.json",
+      "1.0.0",
+      provenance,
+      0,
+      0,
+      "snapshots/manual-retry.json",
+      "canonical_manual_retry",
+      "version_manual_retry",
+    );
+    // This queue-unit test exercises only the enrichment/evaluation dependency
+    // transition; its fixture does not need the full canonical-plan graph.
+    await adapter.execute("PRAGMA foreign_keys = OFF");
+    await adapter.execute(
+      `INSERT INTO evaluation_requirements (
+         id, tenant_id, person_id, search_plan_id, canonical_job_id,
+         opportunity_version, evaluation_context_fingerprint, status,
+         required_enrichment_pipeline_version
+       ) VALUES ('req_manual_retry', 'tenant_retry', 'person_retry', 'plan_retry',
+         'canonical_manual_retry', 'version_manual_retry', 'context_retry',
+         'WAITING_ENRICHMENT', '1.0.0')`,
+    );
+    await adapter.execute(
+      `INSERT INTO evaluation_jobs (
+         id, tenant_id, person_id, search_plan_id, canonical_job_id,
+         opportunity_version, evaluation_context_fingerprint, status
+       ) VALUES ('eval_manual_retry', 'tenant_retry', 'person_retry', 'plan_retry',
+         'canonical_manual_retry', 'version_manual_retry', 'context_retry',
+         'staged_waiting_enrichment')`,
+    );
+
+    await queue.markFailed("enrich_manual_retry", "UNKNOWN", "permanent extraction failure");
+    expect(await adapter.one<{ status: string }>("SELECT status FROM evaluation_requirements WHERE id = 'req_manual_retry'"))
+      .toEqual({ status: "FAILED" });
+    expect(await adapter.one<{ status: string }>("SELECT status FROM evaluation_jobs WHERE id = 'eval_manual_retry'"))
+      .toEqual({ status: "staged_dead_letter" });
+
+    expect(await queue.retryFailedForRun(runId)).toBe(1);
+    expect(await adapter.one<{ status: string; attempts: number }>("SELECT status, attempts FROM enrichment_jobs WHERE id = 'enrich_manual_retry'"))
+      .toEqual({ status: "PENDING", attempts: 0 });
+    expect(await adapter.one<{ status: string; blocked_reason: string | null }>("SELECT status, blocked_reason FROM evaluation_requirements WHERE id = 'req_manual_retry'"))
+      .toEqual({ status: "WAITING_ENRICHMENT", blocked_reason: null });
+    expect(await adapter.one<{ status: string; last_error: string | null }>("SELECT status, last_error FROM evaluation_jobs WHERE id = 'eval_manual_retry'"))
+      .toEqual({ status: "staged_waiting_enrichment", last_error: null });
+  });
+
   it("Invariant 7: Mechanical Enforcement — No production code opens .radar/queue.db or imports better-sqlite3 in queue", async () => {
     // The afterEach check verifies no legacy queue file was created or changed.
     // Assert the queue cannot directly open a local database.

@@ -4,7 +4,7 @@ import { type DecisionVerb, type EvaluatedOpportunity, type ServedOpportunity, i
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
 import { getOpportunitiesFn, getOpportunityDetailsFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
-import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn, getScrapePlanPreviewFn } from "../lib/intelligence/scrape-server";
+import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn, getScrapePlanPreviewFn, getCapturedEnrichmentRunsFn, startCapturedEnrichmentFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
 import { EvaluatorControlPanel } from "../components/radar/EvaluatorControlPanel";
 import { logTelemetry } from "../lib/telemetry";
@@ -46,15 +46,17 @@ export const Route = createFileRoute("/")({
   }),
   staleTime: 0,
   loader: async () => {
-    const [opportunitiesList, metrics, searchPlanPreview] = await Promise.all([
+    const [opportunitiesList, metrics, searchPlanPreview, capturedEnrichmentRuns] = await Promise.all([
       getOpportunitiesFn(),
       getShortlistMetricsFn(),
       getScrapePlanPreviewFn(),
+      getCapturedEnrichmentRunsFn(),
     ]);
     return {
       opportunitiesList,
       metrics,
       searchPlanPreview,
+      capturedEnrichmentRuns,
     };
   },
   component: Shortlist,
@@ -75,7 +77,7 @@ export function isCurrentDossierResponse(
 }
 
 function Shortlist() {
-  const { opportunitiesList, metrics, searchPlanPreview } = Route.useLoaderData();
+  const { opportunitiesList, metrics, searchPlanPreview, capturedEnrichmentRuns } = Route.useLoaderData();
   const { decide: recordDecision } = useDecisions();
   const { progress, markArrivalSeen } = useOnboarding();
   const [open, setOpen] = useState<string | null>(null);
@@ -84,11 +86,34 @@ function Shortlist() {
   const [categoryOps, setCategoryOps] = useState<ServedOpportunity[] | null>(null);
   const [dossierByJobHash, setDossierByJobHash] = useState<Record<string, ServedOpportunity | null | undefined>>({});
   const [isLoadingCategory, setIsLoadingCategory] = useState(false);
+  const [pendingCaptureRuns, setPendingCaptureRuns] = useState(capturedEnrichmentRuns);
+  const [startingEnrichmentRunId, setStartingEnrichmentRunId] = useState<string | null>(null);
+  const [enrichmentStartError, setEnrichmentStartError] = useState<string | null>(null);
   const categoryCacheRef = useRef<Map<string, ServedOpportunity[]>>(new Map());
 
   useEffect(() => {
     categoryCacheRef.current.clear();
   }, [opportunitiesList]);
+
+  useEffect(() => {
+    setPendingCaptureRuns(capturedEnrichmentRuns);
+  }, [capturedEnrichmentRuns]);
+
+  useEffect(() => {
+    if (!startingEnrichmentRunId) return;
+    const refresh = () => getCapturedEnrichmentRunsFn()
+      .then(setPendingCaptureRuns)
+      .catch((error) => console.error("Failed to refresh captured-job enrichment status:", error));
+    refresh();
+    const timer = window.setInterval(refresh, 3000);
+    return () => window.clearInterval(timer);
+  }, [startingEnrichmentRunId]);
+
+  useEffect(() => {
+    if (startingEnrichmentRunId && !pendingCaptureRuns.some((run) => run.runId === startingEnrichmentRunId)) {
+      setStartingEnrichmentRunId(null);
+    }
+  }, [pendingCaptureRuns, startingEnrichmentRunId]);
 
   useEffect(() => {
     if (selectedCategoryId === "all") {
@@ -213,6 +238,20 @@ function Shortlist() {
   const { runState, startScrape, isStarting, restore } = useScrapeProgress();
   const totalScraped = totalScreenedCount;
 
+  const startCapturedEnrichment = async (runId: string) => {
+    if (startingEnrichmentRunId) return;
+    setStartingEnrichmentRunId(runId);
+    setEnrichmentStartError(null);
+    try {
+      await startCapturedEnrichmentFn({ data: { runId } });
+      const runs = await getCapturedEnrichmentRunsFn();
+      setPendingCaptureRuns(runs);
+    } catch (error: any) {
+      setEnrichmentStartError(error?.message || "Could not start captured-job enrichment.");
+      setStartingEnrichmentRunId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
       <main className="mx-auto max-w-[1180px] px-5 sm:px-8 pt-4">
@@ -280,6 +319,36 @@ function Shortlist() {
             </div>
           </dl>
         </section>
+
+        {pendingCaptureRuns.length > 0 && (
+          <section className="mt-6 rounded-xl border border-sky-500/30 bg-sky-500/5 p-5 sm:p-6">
+            {pendingCaptureRuns.map((run) => {
+              const isStartingThisRun = startingEnrichmentRunId === run.runId;
+              const active = isStartingThisRun || run.processing > 0;
+              const actionableCount = run.pending + run.processing;
+              const visibleCount = actionableCount + run.failed;
+              return (
+                <div key={run.runId} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="label-mono text-[11px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Captured jobs ready for analysis</p>
+                    <h2 className="mt-1 font-display text-2xl tracking-tight text-foreground">{visibleCount} unique listings are ready for enrichment.</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">These are preserved canonical job documents from your scan. This runs only this capture batch; it does not scrape again.</p>
+                    {run.failed > 0 && <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{run.failed} prior enrichment {run.failed === 1 ? "attempt" : "attempts"} failed. Retry will reset only this batch.</p>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void startCapturedEnrichment(run.runId)}
+                    disabled={Boolean(startingEnrichmentRunId) || (run.pending === 0 && run.processing === 0 && run.failed === 0)}
+                    className="shrink-0 rounded-full bg-foreground px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {active ? `Enriching ${run.processing}/${run.total}` : actionableCount > 0 ? `Enrich ${actionableCount} captured jobs` : `Retry ${run.failed} captured jobs`}
+                  </button>
+                </div>
+              );
+            })}
+            {enrichmentStartError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{enrichmentStartError}</p>}
+          </section>
+        )}
 
         {/* ────────────────────────────────────────────────────────────────────────
             EXECUTIVE RECOMMENDATION ARRIVAL BANNER (ONBOARDING STAGE 5)
@@ -529,6 +598,7 @@ function Shortlist() {
                   ))}
                 </ul>
               </div>
+
             </>
           ) : (
             <p className="mt-space-3 border-t border-border pt-space-3 text-sm text-caution">

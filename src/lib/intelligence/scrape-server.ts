@@ -4,6 +4,7 @@ import fs from "fs";
 import { ARTIFACTS_DIR } from "../../../scripts/scraper/config";
 import { requireAuthUser } from "../auth/guard";
 import { getRepositories } from "../../data/sqlite/provider";
+import { getDatabaseAdapter } from "../../data/database";
 
 let rebuildTimeout: NodeJS.Timeout | null = null;
 
@@ -75,6 +76,93 @@ export async function startRuntimeWorkers(): Promise<void> {
 }
 
 let activeScrapeRunLock: { runId: string; startedAt: number } | null = null;
+const activeManualEnrichmentRuns = new Map<string, Promise<void>>();
+
+export interface CapturedEnrichmentRun {
+  runId: string;
+  runStatus: string;
+  total: number;
+  pending: number;
+  processing: number;
+  completed: number;
+  failed: number;
+}
+
+/** Captures are shown separately from the shortlist until their enrichment produces an evaluation. */
+export const getCapturedEnrichmentRunsFn = createServerFn({ method: "GET" })
+  .handler(async (): Promise<CapturedEnrichmentRun[]> => {
+    const user = await requireAuthUser();
+    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { scope } = await resolveServingScope(user.id);
+    const db = getDatabaseAdapter();
+    const rows = await db.many<any>(
+      `SELECT r.id AS run_id, r.status AS run_status,
+              COUNT(e.id) AS total,
+              SUM(CASE WHEN e.status IN ('PENDING', 'RETRY') THEN 1 ELSE 0 END) AS pending,
+              SUM(CASE WHEN e.status IN ('LEASED', 'RUNNING') THEN 1 ELSE 0 END) AS processing,
+              SUM(CASE WHEN e.status = 'COMPLETE' THEN 1 ELSE 0 END) AS completed,
+              SUM(CASE WHEN e.status = 'FAILED' THEN 1 ELSE 0 END) AS failed
+       FROM scrape_runs r
+       JOIN scrape_run_enrichment_requirements req ON req.run_id = r.id
+       JOIN enrichment_jobs e ON e.id = req.enrichment_job_id
+       WHERE r.tenant_id = ? AND r.person_id = ?
+       GROUP BY r.id, r.status
+       HAVING SUM(CASE WHEN e.status IN ('PENDING', 'RETRY', 'LEASED', 'RUNNING', 'FAILED') THEN 1 ELSE 0 END) > 0
+       ORDER BY r.created_at DESC`,
+      [scope.tenantId, scope.personId],
+    );
+    return rows.map((row) => ({
+      runId: row.run_id,
+      runStatus: row.run_status,
+      total: Number(row.total || 0),
+      pending: Number(row.pending || 0),
+      processing: Number(row.processing || 0),
+      completed: Number(row.completed || 0),
+      failed: Number(row.failed || 0),
+    }));
+  });
+
+/** Starts a local, run-scoped worker. The user invokes this explicitly from the shortlist. */
+export const startCapturedEnrichmentFn = createServerFn({ method: "POST" })
+  .validator((data: { runId: string }) => data)
+  .handler(async ({ data }) => {
+    const user = await requireAuthUser();
+    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { scope } = await resolveServingScope(user.id);
+    const run = await getRepositories().scrapeRuns.getRun(scope, data.runId);
+    if (!run) {
+      const { TenantIsolationError } = await import("../security/auth");
+      throw new TenantIsolationError(`Scrape run '${data.runId}' not found or unauthorized for current tenant/person.`);
+    }
+
+    const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
+    const queue = new EnrichmentQueue();
+    if (activeManualEnrichmentRuns.has(data.runId)) {
+      return { started: false, reason: "ALREADY_RUNNING" };
+    }
+
+    let stats = await queue.getRunStats(data.runId);
+    // A deliberate retry from the shortlist is scoped to this authorized run.
+    // It is the recovery path for a repaired worker or transient fatal state;
+    // no unrelated queue item is reset.
+    if (stats.pending === 0 && stats.processing === 0 && stats.failed > 0) {
+      await queue.retryFailedForRun(data.runId);
+      stats = await queue.getRunStats(data.runId);
+    }
+    if (stats.pending === 0 && stats.processing === 0) {
+      return { started: false, reason: "NO_PENDING_CAPTURED_JOBS" };
+    }
+
+    const worker = (async () => {
+      const { enrichJobsForRun } = await import("../../../scripts/enrich");
+      await enrichJobsForRun(data.runId, { queue, allowTerminalRun: true });
+      triggerDebouncedRebuild();
+    })().finally(() => activeManualEnrichmentRuns.delete(data.runId));
+    activeManualEnrichmentRuns.set(data.runId, worker);
+    void worker.catch((error) => console.error(`[Server] Run-scoped enrichment failed for ${data.runId}:`, error));
+
+    return { started: true, pending: stats.pending, processing: stats.processing };
+  });
 
 /**
  * Read-only execution preview for the shortlist. It deliberately resolves and

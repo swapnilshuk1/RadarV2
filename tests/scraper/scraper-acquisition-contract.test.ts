@@ -205,6 +205,33 @@ describe("Slice B: Acquisition Efficiency & Failure Truth Contracts", () => {
       }
     });
 
+    it("preserves Naukri navigation timeouts for the retry policy instead of collapsing them into UNKNOWN_FAILURE", async () => {
+      const timeout = Object.assign(new Error("page.goto: Timeout 15000ms exceeded"), {
+        name: "TimeoutError",
+      });
+      const mockPage: any = {
+        setExtraHTTPHeaders: vi.fn(async () => {}),
+        goto: vi.fn(async () => { throw timeout; }),
+      };
+      const mockCtx: any = {
+        portal: "Naukri",
+        activePage: mockPage,
+        logger: vi.fn(),
+      };
+
+      const originalStrategy = naukriHandler.detailStrategy;
+      try {
+        naukriHandler.detailStrategy = "playwright";
+        const detail = await naukriHandler.fetchDetail(mockCtx, "https://www.naukri.com/job-listings-timeout");
+        expect(detail.fetched).toBe(false);
+        expect(detail.failureClass).toBe("NAVIGATION_TIMEOUT");
+        expect(detail.fetchError).toContain("Timeout");
+        expect(mockCtx.logger).toHaveBeenCalledWith(expect.stringContaining("NAVIGATION_TIMEOUT"));
+      } finally {
+        naukriHandler.detailStrategy = originalStrategy;
+      }
+    });
+
     it("rejects truly empty description (0 chars) with fetched=false across portals", async () => {
       const mockPage: any = {
         goto: vi.fn(async () => ({ status: () => 200 })),

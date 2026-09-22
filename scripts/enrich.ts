@@ -576,6 +576,8 @@ export async function enrichJobsForRun(
     queue?: EnrichmentQueue;
     repos?: import("../src/domain/repositories").StorageProvider;
     pipelineVersion?: string;
+    /** Explicit operator action may enrich captures from a stopped scrape. */
+    allowTerminalRun?: boolean;
   }
 ) {
   const queue = deps?.queue ?? new EnrichmentQueue();
@@ -589,7 +591,7 @@ export async function enrichJobsForRun(
       const manifestPath = path.join(process.cwd(), ".scraper-artifacts", "runs", runId, "manifest.json");
       if (fs.existsSync(manifestPath)) {
         const m = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-        if (["stopping", "stopped", "aborted"].includes(m.status)) {
+        if (!deps?.allowTerminalRun && ["stopping", "stopped", "aborted"].includes(m.status)) {
           log(`[Enrich] Cancellation requested for run ${runId}. Halting enrichment loop.`, "warn");
           break;
         }

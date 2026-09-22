@@ -29,18 +29,21 @@ export function evaluatorStatusLabel(snapshot: EvaluatorTelemetrySnapshot | null
   if (!snapshot) return "Loading";
   const { desiredState, localDaemonRunning } = snapshot.control;
   if (desiredState === "PAUSED")
-    return snapshot.queue.processing > 0 ? "Pausing" : "Paused";
+    return snapshot.queue.liveModelCalls > 0 ? "Pausing" : "Paused";
   if (desiredState === "STOPPED")
-    return snapshot.queue.processing > 0 ? "Stopping" : "Stopped";
-  return localDaemonRunning ? "Running" : "Ready";
+    return snapshot.queue.liveModelCalls > 0 ? "Stopping" : "Stopped";
+  return localDaemonRunning ? "Running" : "Ready / not running";
 }
 
 export function evaluatorQueueSummary(snapshot: EvaluatorTelemetrySnapshot | null): string {
   if (!snapshot) return "Loading evaluator state…";
-  const processing = snapshot.queue.processing;
-  const pending = snapshot.queue.pending;
-  const processingLabel = processing === 1 ? "1 listing is" : `${processing} listings are`;
-  return `${processingLabel} being evaluated; ${pending} waiting. This resumes evaluation only; it does not scrape or enrich again.`;
+  const { pending, processing, liveModelCalls } = snapshot.queue;
+  const processingLabel = processing === 1 ? "1 processing-state job" : `${processing} processing-state jobs`;
+  const callLabel = liveModelCalls === 1 ? "1 live model call" : `${liveModelCalls} live model calls`;
+  if (!snapshot.control.localDaemonRunning) {
+    return `Evaluator is ready but not running. ${pending} pending; ${processingLabel}; ${callLabel}.`;
+  }
+  return `Evaluator is running. ${pending} pending; ${processingLabel}; ${callLabel}. This resumes evaluation only; it does not scrape or enrich again.`;
 }
 
 interface EvaluatorControlPanelProps {
@@ -133,14 +136,28 @@ export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPane
         </button>
       )}
     </div>
+  ) : snapshot ? (
+    <p className="text-xs text-muted-foreground" data-testid="evaluator-control-restricted">
+      Evaluator controls require an active tenant administrator.
+    </p>
   ) : null;
+
+  const liveJobs = snapshot?.processingStateJobs.filter(
+    (job) => job.telemetryState === "live_model_call",
+  ) ?? [];
+  const nonLiveProcessingJobs = snapshot?.processingStateJobs.filter(
+    (job) => job.telemetryState !== "live_model_call",
+  ) ?? [];
 
   const telemetry = snapshot ? (
     <div className="space-y-space-4">
-      <dl className="grid gap-space-2 sm:grid-cols-3 lg:grid-cols-6">
+      <dl className="grid gap-space-2 sm:grid-cols-3 lg:grid-cols-4">
         {[
           ["Pending", snapshot.queue.pending],
-          ["Processing", snapshot.queue.processing],
+          ["Processing state", snapshot.queue.processing],
+          ["Live model calls", snapshot.queue.liveModelCalls],
+          ["Worker claims", snapshot.queue.claimedWithoutModelCall],
+          ["Reclaimable", snapshot.queue.reclaimableProcessing],
           ["Completed", snapshot.queue.completed],
           ["Failed", snapshot.queue.failed],
           ["Dead letter", snapshot.queue.deadLetter],
@@ -156,10 +173,10 @@ export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPane
         ))}
       </dl>
 
-      {snapshot.activeJobs.length > 0 ? (
+      {liveJobs.length > 0 ? (
         <div className="space-y-space-2">
-          <p className="label-mono text-muted-foreground">Active evaluation</p>
-          {snapshot.activeJobs.map((job) => (
+          <p className="label-mono text-muted-foreground">Live model calls</p>
+          {liveJobs.map((job) => (
             <div
               key={job.id}
               className="grid gap-3 rounded-lg border border-border/70 bg-muted/20 p-3 sm:grid-cols-2 lg:grid-cols-6"
@@ -199,8 +216,39 @@ export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPane
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
-          No evaluation job is currently processing.
+          No live model call is currently recorded.
         </p>
+      )}
+
+      {nonLiveProcessingJobs.length > 0 && (
+        <div className="space-y-space-2">
+          <p className="label-mono text-muted-foreground">Processing-state jobs</p>
+          {nonLiveProcessingJobs.map((job) => (
+            <div
+              key={job.id}
+              className="grid gap-3 rounded-lg border border-border/70 bg-muted/20 p-3 sm:grid-cols-2 lg:grid-cols-4"
+            >
+              <div>
+                <span className="label-mono text-muted-foreground">Job</span>
+                <p className="truncate text-sm font-medium" title={job.id}>{job.id}</p>
+              </div>
+              <div>
+                <span className="label-mono text-muted-foreground">State</span>
+                <p className="text-sm font-medium">
+                  {job.telemetryState === "reclaimable" ? "Reclaimable / no live lease" : "Claimed / preparing input"}
+                </p>
+              </div>
+              <div>
+                <span className="label-mono text-muted-foreground">First claimed</span>
+                <p className="text-sm font-medium">{job.firstClaimedAt ? formatUtc(job.firstClaimedAt) : "—"}</p>
+              </div>
+              <div>
+                <span className="label-mono text-muted-foreground">Lease updated</span>
+                <p className="text-sm font-medium">{job.lockedAt ? formatUtc(job.lockedAt) : "—"}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       <div>
