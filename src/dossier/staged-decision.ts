@@ -169,6 +169,16 @@ const gapBatchSchema = z.object({
   }).strict()),
 }).strict();
 
+export const STAGED_DECISION_BATCH_SIZE = 10;
+
+function chunked<T>(items: readonly T[], size = STAGED_DECISION_BATCH_SIZE): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    result.push(items.slice(index, index + size));
+  }
+  return result;
+}
+
 function exactBatch<T extends { requirementId: string }>(
   rows: T[],
   ids: string[],
@@ -284,62 +294,74 @@ export async function runStagedFrozenDecisionDetailed(
       buildScreeningQuoteCatalog(requirement, roleClaimById, jdSourceIds),
     ]),
   );
-  const requirementIds = role.requirements.map(requirement => requirement.id);
-  const [screeningResults, mappingResults] = await Promise.all([
-    proposeStage(
-      'Adjudicating screening requirements',
-      model,
-      stagedDecisionScreeningInstruction +
-        '\nBATCH MODE: adjudicate every supplied requirement exactly once. Return JSON {results:[{requirementId,adjudication:{screeningFunction,gateBasis,supportQuoteIds,reasoning}}]}. requirementId is application-owned and must be copied exactly.',
-      {
-        requirements: role.requirements.map(requirement => ({
-          requirementId: requirement.id,
-          requirement: {
-            requirement: requirement.requirement,
-            strength: requirement.strength,
-            roleImportance: requirement.roleImportance,
+  const requirementChunks = chunked(role.requirements);
+  const [screeningChunks, mappingChunks] = await Promise.all([
+    Promise.all(
+      requirementChunks.map((requirements, chunkIndex) => {
+        const ids = requirements.map(requirement => requirement.id);
+        return proposeStage(
+          `Adjudicating screening requirements — chunk ${chunkIndex + 1}/${requirementChunks.length}`,
+          model,
+          stagedDecisionScreeningInstruction +
+            '\nBATCH MODE: adjudicate every supplied requirement exactly once. Return JSON {results:[{requirementId,adjudication:{screeningFunction,gateBasis,supportQuoteIds,reasoning}}]}. requirementId is application-owned and must be copied exactly.',
+          {
+            requirements: requirements.map(requirement => ({
+              requirementId: requirement.id,
+              requirement: {
+                requirement: requirement.requirement,
+                strength: requirement.strength,
+                roleImportance: requirement.roleImportance,
+              },
+              quoteCatalog: quoteCatalogs.get(requirement.id),
+            })),
           },
-          quoteCatalog: quoteCatalogs.get(requirement.id),
-        })),
-      },
-      screeningBatchSchema,
-      value => {
-        const parsed = screeningBatchSchema.parse(value);
-        const byId = exactBatch(parsed.results, requirementIds, 'screening');
-        return role.requirements.map(requirement =>
-          materializeStagedScreeningAdjudication(
-            byId.get(requirement.id)!.adjudication,
-            requirement,
-            quoteCatalogs.get(requirement.id)!,
-          ),
+          screeningBatchSchema,
+          value => {
+            const parsed = screeningBatchSchema.parse(value);
+            const byId = exactBatch(parsed.results, ids, 'screening');
+            return requirements.map(requirement =>
+              materializeStagedScreeningAdjudication(
+                byId.get(requirement.id)!.adjudication,
+                requirement,
+                quoteCatalogs.get(requirement.id)!,
+              ),
+            );
+          },
+          onStage,
+          'screening-batch',
         );
-      },
-      onStage,
-      'screening-batch',
+      }),
     ),
-    proposeStage(
-      'Mapping candidate evidence to requirements',
-      model,
-      stagedDecisionMappingInstruction +
-        '\nBATCH MODE: map every supplied requirement exactly once. Return JSON {results:[{requirementId,mapping:{status,candidateClaimIds,unsupportedAspects,reasoning}}]}. Do not allow evidence for one requirement to satisfy another unless the supplied claims genuinely support both.',
-      {
-        opportunity: frozen.opportunity,
-        requirements: role.requirements,
-        candidateClaims,
-        candidateConflicts: frozen.candidateConflicts,
-      },
-      mappingBatchSchema,
-      value => {
-        const parsed = mappingBatchSchema.parse(value);
-        const byId = exactBatch(parsed.results, requirementIds, 'mapping');
-        return role.requirements.map(requirement =>
-          validateMapping(byId.get(requirement.id)!.mapping, candidateClaims),
+    Promise.all(
+      requirementChunks.map((requirements, chunkIndex) => {
+        const ids = requirements.map(requirement => requirement.id);
+        return proposeStage(
+          `Mapping candidate evidence to requirements — chunk ${chunkIndex + 1}/${requirementChunks.length}`,
+          model,
+          stagedDecisionMappingInstruction +
+            '\nBATCH MODE: map every supplied requirement exactly once. Return JSON {results:[{requirementId,mapping:{status,candidateClaimIds,unsupportedAspects,reasoning}}]}. Do not allow evidence for one requirement to satisfy another unless the supplied claims genuinely support both.',
+          {
+            opportunity: frozen.opportunity,
+            requirements,
+            candidateClaims,
+            candidateConflicts: frozen.candidateConflicts,
+          },
+          mappingBatchSchema,
+          value => {
+            const parsed = mappingBatchSchema.parse(value);
+            const byId = exactBatch(parsed.results, ids, 'mapping');
+            return requirements.map(requirement =>
+              validateMapping(byId.get(requirement.id)!.mapping, candidateClaims),
+            );
+          },
+          onStage,
+          'candidate-mapping-batch',
         );
-      },
-      onStage,
-      'candidate-mapping-batch',
+      }),
     ),
   ]);
+  const screeningResults = screeningChunks.flat();
+  const mappingResults = mappingChunks.flat();
 
   const requirements: StagedMappedRequirement[] = role.requirements.map((requirement, index) => ({
     ...requirement,
@@ -375,47 +397,56 @@ export async function runStagedFrozenDecisionDetailed(
 
   const unresolvedGates = eligibleScreeningDrivers(requirements);
   const modelGates = unresolvedGates.filter(requirement => requirement.status !== 'CONTRADICTED');
-  const modelGapResults = modelGates.length
-    ? await proposeStage(
-        'Classifying screening gaps',
-        model,
-        stagedDecisionGapInstruction +
-          '\nBATCH MODE: classify every supplied immutable screening gap exactly once. Return JSON {results:[{requirementId,gap:{gapNature,reasoning}}]}. Do not reopen screening or mapping judgments.',
-        {
-          opportunity: frozen.opportunity,
-          requirements: modelGates.map(requirement => ({
-            requirementId: requirement.id,
-            requirement: {
-              id: requirement.id,
-              requirement: requirement.requirement,
-              strength: requirement.strength,
-              roleImportance: requirement.roleImportance,
-              screeningGate: requirement.screeningGate,
-              screeningReasoning: requirement.screeningReasoning,
-            },
-            immutableMapping: {
-              status: requirement.status,
-              candidateClaimIds: requirement.candidateClaimIds,
-              unsupportedAspects: requirement.unsupportedAspects,
-              mappingReasoning: requirement.mappingReasoning,
-            },
-          })),
-        },
-        gapBatchSchema,
-        value => {
-          const parsed = gapBatchSchema.parse(value);
-          const byId = exactBatch(parsed.results, modelGates.map(gate => gate.id), 'gap');
-          return new Map(
-            modelGates.map(requirement => [
-              requirement.id,
-              validateStagedGap(byId.get(requirement.id)!.gap, requirement),
-            ]),
-          );
-        },
-        onStage,
-        'gap-classification-batch',
-      )
-    : new Map<string, z.infer<typeof stagedGapResponseSchema>>();
+  const modelGapResults = new Map<string, z.infer<typeof stagedGapResponseSchema>>();
+  if (modelGates.length) {
+    const gateChunks = chunked(modelGates);
+    const entries = await Promise.all(
+      gateChunks.map((requirements, chunkIndex) =>
+        proposeStage(
+          `Classifying screening gaps — chunk ${chunkIndex + 1}/${gateChunks.length}`,
+          model,
+          stagedDecisionGapInstruction +
+            '\nBATCH MODE: classify every supplied immutable screening gap exactly once. Return JSON {results:[{requirementId,gap:{gapNature,reasoning}}]}. Do not reopen screening or mapping judgments.',
+          {
+            opportunity: frozen.opportunity,
+            requirements: requirements.map(requirement => ({
+              requirementId: requirement.id,
+              requirement: {
+                id: requirement.id,
+                requirement: requirement.requirement,
+                strength: requirement.strength,
+                roleImportance: requirement.roleImportance,
+                screeningGate: requirement.screeningGate,
+                screeningReasoning: requirement.screeningReasoning,
+              },
+              immutableMapping: {
+                status: requirement.status,
+                candidateClaimIds: requirement.candidateClaimIds,
+                unsupportedAspects: requirement.unsupportedAspects,
+                mappingReasoning: requirement.mappingReasoning,
+              },
+            })),
+          },
+          gapBatchSchema,
+          value => {
+            const parsed = gapBatchSchema.parse(value);
+            const byId = exactBatch(parsed.results, requirements.map(gate => gate.id), 'gap');
+            return requirements.map(
+              requirement =>
+                [
+                  requirement.id,
+                  validateStagedGap(byId.get(requirement.id)!.gap, requirement),
+                ] as const,
+            );
+          },
+          onStage,
+          'gap-classification-batch',
+        ),
+      ),
+    );
+    for (const [id, gap] of entries.flat()) modelGapResults.set(id, gap);
+  }
+
   const gapResults = unresolvedGates.map(requirement =>
     requirement.status === 'CONTRADICTED'
       ? {
