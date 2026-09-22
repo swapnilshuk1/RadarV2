@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { JsonModel } from "./json-model";
 import {
   modelRequestFingerprint,
@@ -87,6 +87,7 @@ export class BedrockMantleJsonModel implements JsonModel {
       this.options.timeoutMs ??
       120_000;
     const backoffKey = `bedrock-mantle:${this.configurationFingerprint}`;
+    const invocationId = randomUUID();
     const startedAt = Date.now();
     const requestFingerprint = modelRequestFingerprint(instruction, input, responseSchema, {
       ...metadata,
@@ -101,6 +102,7 @@ export class BedrockMantleJsonModel implements JsonModel {
       errorCode?: string,
     ) => {
       await this.options.invocationSink?.({
+        invocationId,
         provider: "bedrock-mantle",
         modelId: this.id,
         modelVersion: this.version,
@@ -117,6 +119,8 @@ export class BedrockMantleJsonModel implements JsonModel {
         usage,
       });
     };
+
+    await record("running");
 
     try {
       const response = await withProviderConcurrency(
