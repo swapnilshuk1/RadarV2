@@ -764,6 +764,70 @@ describe("staged dossier editorial boundary", () => {
     ).rejects.toThrow("Unavailable");
     expect(writer.generate).toHaveBeenCalledTimes(1);
   });
+  it("repairs missing career-capital plan coverage together with the affected memo sections", async () => {
+    const material = {
+      material: true,
+      candidateClaimIds: [],
+      operatingConditionIds: [],
+      resolutionFields: ["reportingLine"],
+    };
+    const stagedWithCareer = structuredClone(stagedEvaluation) as any;
+    stagedWithCareer.decision.careerCapital.authority = material;
+    stagedWithCareer.trace.decision.careerCapital.authority = material;
+
+    const initial = draft();
+    const repaired = draft();
+    repaired.narrativePlan.memoPoints!.push({
+      id: "career-reporting-line",
+      section: "opportunityValue",
+      point: "Clarify reporting line before judging the authority step-up.",
+      claimIds: ["JD-1-1"],
+      requirementIds: [],
+      resolutionFields: ["reportingLine"],
+    });
+    repaired.memo.opportunityValue = repaired.memo.opportunityValue.map((passage, index) =>
+      index === 0
+        ? { ...passage, text: "The reporting line determines whether the role creates a meaningful authority step-up." }
+        : passage,
+    );
+
+    let calls = 0;
+    const writer = {
+      id: "career-coverage-repair",
+      version: "1",
+      async generate(_instruction: string, input: any) {
+        calls++;
+        if (calls === 1) return initial;
+        expect(input.repair).toContain("MEMO_PLAN_CAREER_COVERAGE");
+        expect(input.repairSections).toEqual(
+          expect.arrayContaining(["opportunityValue", "decisionConditions"]),
+        );
+        expect(input.repairEditorial).toBe(true);
+        return {
+          rationale: repaired.rationale,
+          narrativePlan: repaired.narrativePlan,
+          memo: {
+            opportunityValue: repaired.memo.opportunityValue,
+            decisionConditions: repaired.memo.decisionConditions,
+          },
+        };
+      },
+    };
+
+    const result = await composeStagedDraft(frozen, stagedWithCareer, writer);
+    expect(calls).toBe(2);
+    expect(result.narrativePlan.memoPoints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "career-reporting-line",
+          section: "opportunityValue",
+          resolutionFields: ["reportingLine"],
+        }),
+      ]),
+    );
+    expect(result.opportunityValue[0].text).toContain("reporting line");
+  });
+
   it("returns plan and copy defects together before paying for review", async () => {
     const invalid = draft();
     invalid.narrativePlan.memoPoints = invalid.narrativePlan.memoPoints!.filter(
