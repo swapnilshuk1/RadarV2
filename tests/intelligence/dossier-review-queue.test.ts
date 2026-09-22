@@ -98,6 +98,8 @@ describe("durable factual review lane", () => {
     await queue.fail(job, { provider: true, code: "429" });
     expect(await queue.find(identity, evaluationFingerprint)).toMatchObject({
       status: "needs_attention",
+      withheld: 0,
     });
+    expect(await queue.getDraft(identity, evaluationFingerprint)).toBeTruthy();
   });
 });
