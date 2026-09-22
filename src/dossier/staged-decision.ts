@@ -171,7 +171,10 @@ const gapBatchSchema = z.object({
 
 export const STAGED_DECISION_BATCH_SIZE = 10;
 
-function chunked<T>(items: readonly T[], size = STAGED_DECISION_BATCH_SIZE): T[][] {
+export function chunkStagedDecisionItems<T>(
+  items: readonly T[],
+  size = STAGED_DECISION_BATCH_SIZE,
+): T[][] {
   const result: T[][] = [];
   for (let index = 0; index < items.length; index += size) {
     result.push(items.slice(index, index + size));
@@ -294,7 +297,7 @@ export async function runStagedFrozenDecisionDetailed(
       buildScreeningQuoteCatalog(requirement, roleClaimById, jdSourceIds),
     ]),
   );
-  const requirementChunks = chunked(role.requirements);
+  const requirementChunks = chunkStagedDecisionItems(role.requirements);
   const [screeningChunks, mappingChunks] = await Promise.all([
     Promise.all(
       requirementChunks.map((requirements, chunkIndex) => {
@@ -399,7 +402,7 @@ export async function runStagedFrozenDecisionDetailed(
   const modelGates = unresolvedGates.filter(requirement => requirement.status !== 'CONTRADICTED');
   const modelGapResults = new Map<string, z.infer<typeof stagedGapResponseSchema>>();
   if (modelGates.length) {
-    const gateChunks = chunked(modelGates);
+    const gateChunks = chunkStagedDecisionItems(modelGates);
     const entries = await Promise.all(
       gateChunks.map((requirements, chunkIndex) =>
         proposeStage(
