@@ -72,6 +72,7 @@ export class DossierCompositionWorker {
         () => {},
         { draftOnly: true },
       );
+      await queue.markDraftPersisted(job);
       await new StagedServingPublisher(this.db).publish(identity, { allowDraft: true });
       await stopHeartbeat();
       await queue.finish(job);
