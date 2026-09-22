@@ -3,6 +3,8 @@ import type { DatabaseAdapter } from "@/data/database";
 import { DOSSIER_COMPOSITION_RECIPE } from "@/dossier/factual-review-integrity";
 import type { ProductionStagedIdentity } from "@/lib/intelligence/staged/ProductionStagedInputAdapter";
 
+export const PREPARING_DOSSIER_VERSION = "dossier-preparing-v1";
+
 export interface DossierCompositionJob {
   id: string;
   tenant_id: string;
