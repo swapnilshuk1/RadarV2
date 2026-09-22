@@ -11,8 +11,38 @@ ALTER TABLE staged_evaluations
 
 ALTER TABLE dossier_review_jobs ADD COLUMN reviewed_at INTEGER;
 
-ALTER TABLE staged_frozen_inputs
-  ADD COLUMN model_configuration_fingerprint TEXT NOT NULL DEFAULT 'legacy';
+-- Frozen inputs contain model-produced evidence/relevance decisions, so model
+-- configuration is part of their immutable identity. Rebuild the pre-production
+-- table rather than leaving configuration outside the primary key.
+ALTER TABLE staged_frozen_inputs RENAME TO staged_frozen_inputs_legacy_053;
+CREATE TABLE staged_frozen_inputs (
+  tenant_id TEXT NOT NULL,
+  person_id TEXT NOT NULL,
+  canonical_job_id TEXT NOT NULL,
+  opportunity_version TEXT NOT NULL,
+  evaluation_context_fingerprint TEXT NOT NULL,
+  source_binding_fingerprint TEXT NOT NULL,
+  model_id TEXT NOT NULL,
+  model_version TEXT NOT NULL,
+  model_configuration_fingerprint TEXT NOT NULL,
+  input_fingerprint TEXT NOT NULL,
+  input_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (
+    tenant_id,person_id,canonical_job_id,opportunity_version,
+    evaluation_context_fingerprint,model_configuration_fingerprint
+  )
+);
+INSERT INTO staged_frozen_inputs(
+  tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,
+  source_binding_fingerprint,model_id,model_version,model_configuration_fingerprint,
+  input_fingerprint,input_json,created_at
+)
+SELECT tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,
+       source_binding_fingerprint,model_id,model_version,'legacy',
+       input_fingerprint,input_json,created_at
+FROM staged_frozen_inputs_legacy_053;
+DROP TABLE staged_frozen_inputs_legacy_053;
 
 -- Configuration changes are semantic generation identity. Rebuild the source cache
 -- so two configurations of the same provider/model can coexist safely.
