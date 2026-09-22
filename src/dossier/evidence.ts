@@ -112,6 +112,7 @@ export async function propose<T>(model: ReasoningModel, instruction: string, inp
 
     } catch (error) {
       if (error instanceof ModelProviderUnavailableError) throw error;
+      await model.discardResponse?.(previous);
       lastError = error;
 
       issue = error instanceof Error ? error.message : 'Invalid response';
