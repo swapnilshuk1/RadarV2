@@ -98,28 +98,57 @@ class ScriptedModel implements ReasoningModel {
       };
     }
     if (instruction.includes('screening adjudicator')) {
-      return actual.requirement.strength === 'REQUIRED'
-        ? {
-            screeningFunction: 'ENTRY_QUALIFICATION',
-            gateBasis: 'PRIOR_RELEVANT_EXPERIENCE',
-            reasoning: 'The exact JD says candidates must have the prior experience.',
-            supportQuoteIds: [actual.quoteCatalog[0].id],
-          }
-        : {
-            screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT',
-            gateBasis: 'NONE',
-            reasoning: 'The exact JD marks this preferred and not mandatory.',
-            supportQuoteIds: [actual.quoteCatalog[0].id],
-          };
+      const adjudicate = (item: any) =>
+        item.requirement.strength === 'REQUIRED'
+          ? {
+              screeningFunction: 'ENTRY_QUALIFICATION',
+              gateBasis: 'PRIOR_RELEVANT_EXPERIENCE',
+              reasoning: 'The exact JD says candidates must have the prior experience.',
+              supportQuoteIds: [item.quoteCatalog[0].id],
+            }
+          : {
+              screeningFunction: 'ROLE_PERFORMANCE_REQUIREMENT',
+              gateBasis: 'NONE',
+              reasoning: 'The exact JD marks this preferred and not mandatory.',
+              supportQuoteIds: [item.quoteCatalog[0].id],
+            };
+      if (Array.isArray(actual.requirements)) {
+        return {
+          results: actual.requirements.map((item: any) => ({
+            requirementId: item.requirementId,
+            adjudication: adjudicate(item),
+          })),
+        };
+      }
+      return adjudicate(actual);
     }
     if (instruction.includes('candidate-to-requirement mapper')) {
-      return actual.requirement.strength === 'REQUIRED'
-        ? { status: 'NOT_EVIDENCED', candidateClaimIds: [], unsupportedAspects: ['Relevant Operations experience'], reasoning: 'Relevant Operations experience is not evidenced in the supplied candidate sources.' }
-        : { status: 'NOT_EVIDENCED', candidateClaimIds: [], unsupportedAspects: ['Hindi fluency'], reasoning: 'Hindi fluency is not evidenced in the supplied candidate sources.' };
+      const mapRequirement = (requirement: any) =>
+        requirement.strength === 'REQUIRED'
+          ? { status: 'NOT_EVIDENCED', candidateClaimIds: [], unsupportedAspects: ['Relevant Operations experience'], reasoning: 'Relevant Operations experience is not evidenced in the supplied candidate sources.' }
+          : { status: 'NOT_EVIDENCED', candidateClaimIds: [], unsupportedAspects: ['Hindi fluency'], reasoning: 'Hindi fluency is not evidenced in the supplied candidate sources.' };
+      if (Array.isArray(actual.requirements)) {
+        return {
+          results: actual.requirements.map((requirement: any) => ({
+            requirementId: requirement.id,
+            mapping: mapRequirement(requirement),
+          })),
+        };
+      }
+      return mapRequirement(actual.requirement);
     }
     if (instruction.startsWith('Resolve only RADAR')) return { resolutions: openResolutions };
     if (instruction.includes('screening-gap classifier')) {
-      return { gapNature: 'MISSING_EXPERIENCE', reasoning: 'The unresolved gate is substantive prior experience, not a missing proof artifact.' };
+      const gap = { gapNature: 'MISSING_EXPERIENCE', reasoning: 'The unresolved gate is substantive prior experience, not a missing proof artifact.' };
+      if (Array.isArray(actual.requirements)) {
+        return {
+          results: actual.requirements.map((item: any) => ({
+            requirementId: item.requirementId,
+            gap,
+          })),
+        };
+      }
+      return gap;
     }
     if (instruction.includes('career-capital adjudicator')) return noCareerCapital;
     if (instruction.includes('executive decision reasoner')) {
