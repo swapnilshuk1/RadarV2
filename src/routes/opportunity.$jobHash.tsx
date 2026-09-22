@@ -64,7 +64,10 @@ export function OpportunityBriefView() {
   const { decisions, decide: recordDecision } = useDecisions();
   const router = useRouter();
   const waitingForReview =
-    isEvaluated(o) && (o.memoReviewState === "pending" || o.memoReviewState === "withheld");
+    isEvaluated(o) &&
+    (o.memoReviewState === "preparing" ||
+      o.memoReviewState === "pending" ||
+      o.memoReviewState === "withheld");
   useEffect(() => {
     if (!waitingForReview) return;
     let busy = false;
@@ -139,6 +142,38 @@ export function OpportunityBriefView() {
           reviewState={o.memoReviewState === "reviewed" ? "reviewed" : "pending"}
         />
       </>
+    );
+  }
+
+  if (isEvaluated(o) && o.memoReviewState === "preparing") {
+    return (
+      <div className="memo-container py-16">
+        <Link to="/">Return to Shortlist</Link>
+        <h1 className="font-serif text-3xl mt-6">{o.role}</h1>
+        <p>
+          {o.company} · {o.decision}
+        </p>
+        <p role="status" className="mt-6">
+          Evaluation complete. Your memo is being prepared.
+        </p>
+        <div className="flex gap-2 mt-6" aria-label="Your decision">
+          {(["PURSUE", "CONSIDER", "PASS"] as const).map((verb) => (
+            <button
+              key={verb}
+              className="rounded border px-3 py-2"
+              aria-pressed={dossierState.selectedActionForControls === verb}
+              onClick={() => decide(verb)}
+            >
+              {verb}
+            </button>
+          ))}
+        </div>
+        {isExternalPostingUrl(o.applyUrl) && (
+          <a href={o.applyUrl} target="_blank" rel="noopener noreferrer">
+            View job posting
+          </a>
+        )}
+      </div>
     );
   }
 
