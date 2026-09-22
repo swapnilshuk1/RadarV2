@@ -1,7 +1,7 @@
 import { geminiContextCacheRequest } from "./gemini-context-cache";
 import { adcTokenProvider } from "./google-adc";
 import { GeminiJsonModel } from "./json-model";
-import { ModelProviderUnavailableError } from "./provider-unavailable";
+import { ModelInvalidOutputError, ModelProviderUnavailableError } from "./provider-unavailable";
 import type { ModelInvocationSink } from "./model-invocation";
 
 /** Explicit independent dossier reviewer; never substitutes for the staged evaluator. */
@@ -44,13 +44,18 @@ export function createGeminiFactualReviewModel(
     } catch (error) {
       // Infrastructure failures must pause durable work, not consume semantic repair attempts.
       if (
+        error instanceof ModelInvalidOutputError ||
         error instanceof SyntaxError ||
         (error instanceof Error && error.message.startsWith("Model output incomplete:"))
       )
         throw new ModelProviderUnavailableError(
-          `GEMINI_REVIEW_OUTPUT_INCOMPLETE: ${error instanceof SyntaxError ? "invalid JSON" : error.message.replace("Model output incomplete: ", "")}; no factual assessment was accepted`,
+          `GEMINI_REVIEW_OUTPUT_INCOMPLETE: ${
+            error instanceof SyntaxError
+              ? "invalid JSON"
+              : error.message.replace("Model output incomplete: ", "")
+          }; no factual assessment was accepted`,
           undefined,
-          30_000,
+          error instanceof ModelInvalidOutputError ? error.retryAfterMs : 2_000,
         );
       const httpStatus =
         error instanceof ModelProviderUnavailableError

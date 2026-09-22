@@ -7,7 +7,7 @@ import {
   validateDraft,
 } from "@/data/sqlite/repositories/SqliteDossierReviewQueue";
 import { SqliteRichDossierStore } from "@/data/sqlite/repositories/SqliteRichDossierStore";
-import { ModelProviderUnavailableError } from "@/lib/model/provider-unavailable";
+import { ModelInvalidOutputError, ModelProviderUnavailableError } from "@/lib/model/provider-unavailable";
 import type { ModelInvocationContext } from "@/lib/model/model-invocation";
 import { ProductionStagedDossierService } from "./ProductionStagedDossierService";
 import { StagedServingPublisher } from "./StagedServingPublisher";
@@ -90,10 +90,12 @@ export class DossierReviewWorker {
     } catch (error) {
       clearInterval(timer);
       await heartbeat;
-      const provider = error instanceof ModelProviderUnavailableError;
+      const retryableModelError =
+        error instanceof ModelProviderUnavailableError ||
+        error instanceof ModelInvalidOutputError;
       const status = await queue.fail(job, {
-        provider,
-        delay: provider ? error.retryAfterMs : undefined,
+        provider: retryableModelError,
+        delay: retryableModelError ? error.retryAfterMs : undefined,
         code: error instanceof Error ? error.message.slice(0,2000) : 'REVIEW_REQUIRES_ATTENTION',
       });
       return { id: job.id, status };

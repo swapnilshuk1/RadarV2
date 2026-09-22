@@ -6,9 +6,13 @@ import {
   type ModelInvocationSink,
   type ModelUsage,
 } from "./model-invocation";
-import { ModelProviderUnavailableError, providerRetryAfterMs } from "./provider-unavailable";
-
-const providerFailures = new Map<string, number>();
+import {
+  ModelInvalidOutputError,
+  ModelProviderUnavailableError,
+  clearTransientProviderBackoff,
+  nextTransientProviderBackoff,
+  providerRetryAfterMs,
+} from "./provider-unavailable";
 
 /** Model transport is injectable: extraction/narration do not depend on one vendor. */
 export interface JsonModel {
@@ -156,25 +160,19 @@ export class GeminiJsonModel implements JsonModel {
           ),
       );
 
+      const backoffKey = `vertex-gemini:${this.configurationFingerprint}`;
       const delay = !response.ok ? await providerRetryAfterMs(response) : undefined;
       if (!response.ok) {
         const transient = response.status === 429 || response.status >= 500;
-        const failures = transient
-          ? (providerFailures.get(this.configurationFingerprint) ?? 0) + 1
-          : 0;
-        if (transient) providerFailures.set(this.configurationFingerprint, failures);
-        const backoff = transient
-          ? Math.min(120_000, 30_000 * 2 ** Math.min(failures - 1, 2)) +
-            Math.floor(Math.random() * 3000)
-          : undefined;
+        if (!transient) clearTransientProviderBackoff(backoffKey);
         throw new ModelProviderUnavailableError(
           `Model provider HTTP ${response.status}`,
           response.status,
-          delay === undefined ? backoff : Math.max(delay, backoff ?? 0),
+          transient ? nextTransientProviderBackoff(backoffKey, delay) : delay,
         );
       }
 
-      providerFailures.delete(this.configurationFingerprint);
+      clearTransientProviderBackoff(backoffKey);
       const payload = (await response.json()) as {
         usageMetadata?: GeminiJsonModel["lastUsage"];
         candidates?: Array<{
@@ -194,8 +192,13 @@ export class GeminiJsonModel implements JsonModel {
         : undefined;
       const candidate = payload.candidates?.[0];
       finishReason = candidate?.finishReason;
-      if (candidate?.finishReason !== "STOP")
-        throw new Error(`Model output incomplete: ${candidate?.finishReason ?? "EMPTY"}`);
+      if (candidate?.finishReason !== "STOP") {
+        const error = new ModelInvalidOutputError(
+          `Model output incomplete: ${candidate?.finishReason ?? "EMPTY"}`,
+        );
+        await record("invalid_output", error.message);
+        throw error;
+      }
 
       const raw =
         candidate.content?.parts
@@ -205,20 +208,17 @@ export class GeminiJsonModel implements JsonModel {
       let parsed: unknown;
       try {
         parsed = JSON.parse(raw);
-      } catch (error) {
+      } catch {
+        const error = new ModelInvalidOutputError("Model returned invalid JSON");
         await record("invalid_output", "INVALID_JSON");
         throw error;
       }
       await record("completed");
       return parsed;
     } catch (error) {
-      if (error instanceof SyntaxError) throw error;
+      if (error instanceof ModelInvalidOutputError) throw error;
       if (error instanceof ModelProviderUnavailableError) {
         await record("provider_error", error.message);
-        throw error;
-      }
-      if (error instanceof Error && error.message.startsWith("Model output incomplete:")) {
-        await record("invalid_output", error.message);
         throw error;
       }
       await record("transport_error", error instanceof Error ? error.message : String(error));

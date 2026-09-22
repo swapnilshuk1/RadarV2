@@ -5,7 +5,7 @@ import {
   compositionJobIdentity,
   type DossierCompositionJob,
 } from "@/data/sqlite/repositories/SqliteDossierCompositionQueue";
-import { ModelProviderUnavailableError } from "@/lib/model/provider-unavailable";
+import { ModelInvalidOutputError, ModelProviderUnavailableError } from "@/lib/model/provider-unavailable";
 import {
   createSqliteModelInvocationSink,
   type ModelInvocationContext,
@@ -80,10 +80,12 @@ export class DossierCompositionWorker {
     } catch (error) {
       clearInterval(timer);
       await heartbeat;
-      const provider = error instanceof ModelProviderUnavailableError;
+      const retryableModelError =
+        error instanceof ModelProviderUnavailableError ||
+        error instanceof ModelInvalidOutputError;
       const status = await queue.fail(job, {
-        provider,
-        delay: provider ? error.retryAfterMs : undefined,
+        provider: retryableModelError,
+        delay: retryableModelError ? error.retryAfterMs : undefined,
         code:
           error instanceof Error
             ? error.message.slice(0, 2000)

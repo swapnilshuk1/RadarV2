@@ -1,3 +1,34 @@
+const transientFailures = new Map<string, number>();
+
+/** Formatting/structured-output failure: retry briefly without treating it as provider overload. */
+export class ModelInvalidOutputError extends Error {
+  readonly retryAfterMs: number;
+  constructor(message: string, retryAfterMs = 2_000) {
+    super(message);
+    this.name = "ModelInvalidOutputError";
+    this.retryAfterMs = Math.max(1_000, Math.ceil(retryAfterMs));
+  }
+}
+
+/** Shared provider-overload backoff: 30s, 60s, 120s cap + <=3s jitter.
+ * Retry-After always wins when the provider asks for longer. */
+export function nextTransientProviderBackoff(
+  key: string,
+  providerDelay?: number,
+  random: () => number = Math.random,
+): number {
+  const failures = (transientFailures.get(key) ?? 0) + 1;
+  transientFailures.set(key, failures);
+  const exponential =
+    Math.min(120_000, 30_000 * 2 ** Math.min(failures - 1, 2)) +
+    Math.floor(Math.max(0, Math.min(1, random())) * 3_000);
+  return Math.max(providerDelay ?? 0, exponential);
+}
+
+export function clearTransientProviderBackoff(key: string): void {
+  transientFailures.delete(key);
+}
+
 /** Operational model failure: never spend semantic repair/job attempts on it. */
 export class ModelProviderUnavailableError extends Error {
   readonly retryAfterMs: number;
