@@ -7,7 +7,13 @@ import {
   type ModelInvocationSink,
   type ModelUsage,
 } from "./model-invocation";
-import { ModelProviderUnavailableError, providerRetryAfterMs } from "./provider-unavailable";
+import {
+  ModelInvalidOutputError,
+  ModelProviderUnavailableError,
+  clearTransientProviderBackoff,
+  nextTransientProviderBackoff,
+  providerRetryAfterMs,
+} from "./provider-unavailable";
 
 /** Bedrock Mantle Chat Completions adapter. Domain schemas/validators stay authoritative. */
 export class BedrockMantleJsonModel implements JsonModel {
@@ -31,10 +37,12 @@ export class BedrockMantleJsonModel implements JsonModel {
     private readonly options: {
       region?: string;
       timeoutMs?: number;
+      stageTimeoutMs?: Readonly<Record<string, number>>;
       maxOutputTokens?: number;
       stageOutputTokens?: Readonly<Record<string, number>>;
       invocationSink?: ModelInvocationSink;
       providerConcurrencyLimit?: number;
+      random?: () => number;
     } = {},
   ) {
     this.configurationFingerprint = createHash("sha256")
@@ -43,6 +51,12 @@ export class BedrockMantleJsonModel implements JsonModel {
           transport: "bedrock-mantle-chat-v1",
           model: version,
           region: options.region ?? "us-east-1",
+          timeoutMs: options.timeoutMs ?? 120_000,
+          stageTimeoutMs: Object.fromEntries(
+            Object.entries(options.stageTimeoutMs ?? {}).sort(([a], [b]) =>
+              a.localeCompare(b),
+            ),
+          ),
           maxOutputTokens: options.maxOutputTokens ?? 12288,
           stageOutputTokens: Object.fromEntries(
             Object.entries(options.stageOutputTokens ?? {}).sort(([a], [b]) =>
@@ -68,6 +82,11 @@ export class BedrockMantleJsonModel implements JsonModel {
       this.options.stageOutputTokens?.[stage] ??
       this.options.maxOutputTokens ??
       12288;
+    const timeoutMs =
+      this.options.stageTimeoutMs?.[stage] ??
+      this.options.timeoutMs ??
+      120_000;
+    const backoffKey = `bedrock-mantle:${this.configurationFingerprint}`;
     const startedAt = Date.now();
     const requestFingerprint = modelRequestFingerprint(instruction, input, responseSchema, {
       ...metadata,
@@ -109,7 +128,7 @@ export class BedrockMantleJsonModel implements JsonModel {
             `https://bedrock-mantle.${this.options.region ?? "us-east-1"}.api.aws/v1/chat/completions`,
             {
               method: "POST",
-              signal: AbortSignal.timeout(this.options.timeoutMs ?? 240_000),
+              signal: AbortSignal.timeout(timeoutMs),
               headers: {
                 Authorization: `Bearer ${await this.apiKey()}`,
                 "Content-Type": "application/json",
@@ -138,17 +157,19 @@ export class BedrockMantleJsonModel implements JsonModel {
       );
 
       if (!response.ok) {
-        const retry =
-          response.status === 429 || response.status >= 500
-            ? await providerRetryAfterMs(response)
-            : undefined;
+        const transient = response.status === 429 || response.status >= 500;
+        const retry = transient ? await providerRetryAfterMs(response) : undefined;
+        if (!transient) clearTransientProviderBackoff(backoffKey);
         throw new ModelProviderUnavailableError(
           `Bedrock Mantle provider HTTP ${response.status}`,
           response.status,
-          retry,
+          transient
+            ? nextTransientProviderBackoff(backoffKey, retry, this.options.random)
+            : retry,
         );
       }
 
+      clearTransientProviderBackoff(backoffKey);
       const payload = (await response.json()) as {
         choices?: Array<{
           finish_reason?: string;
@@ -187,32 +208,29 @@ export class BedrockMantleJsonModel implements JsonModel {
         typeof choice.message?.content !== "string" ||
         !choice.message.content.trim()
       ) {
-        throw new ModelProviderUnavailableError(
+        const error = new ModelInvalidOutputError(
           "Bedrock Mantle output incomplete or refused; no proposal accepted",
-          undefined,
-          30_000,
         );
+        await record("invalid_output", error.message);
+        throw error;
       }
 
       let parsed: unknown;
       try {
         parsed = JSON.parse(choice.message.content);
       } catch {
-        await record("invalid_output", "INVALID_JSON");
-        throw new ModelProviderUnavailableError(
+        const error = new ModelInvalidOutputError(
           "Bedrock Mantle returned invalid JSON; no proposal accepted",
-          undefined,
-          30_000,
         );
+        await record("invalid_output", "INVALID_JSON");
+        throw error;
       }
       await record("completed");
       return parsed;
     } catch (error) {
+      if (error instanceof ModelInvalidOutputError) throw error;
       if (error instanceof ModelProviderUnavailableError) {
-        // Invalid JSON has already been recorded at the exact parse boundary.
-        if (!/returned invalid JSON/.test(error.message)) {
-          await record("provider_error", error.message);
-        }
+        await record("provider_error", error.message);
         throw error;
       }
       const credential =
@@ -221,12 +239,16 @@ export class BedrockMantleJsonModel implements JsonModel {
         "transport_error",
         credential ? "BEDROCK_MANTLE_CREDENTIAL_UNAVAILABLE" : "BEDROCK_MANTLE_TRANSPORT_FAILURE",
       );
+      if (credential) {
+        clearTransientProviderBackoff(backoffKey);
+        throw new ModelProviderUnavailableError(
+          "Bedrock Mantle credential unavailable",
+        );
+      }
       throw new ModelProviderUnavailableError(
-        credential
-          ? "Bedrock Mantle credential unavailable"
-          : "Bedrock Mantle transport failure",
+        "Bedrock Mantle transport failure",
         undefined,
-        credential ? undefined : 30_000,
+        nextTransientProviderBackoff(backoffKey, undefined, this.options.random),
       );
     }
   }
