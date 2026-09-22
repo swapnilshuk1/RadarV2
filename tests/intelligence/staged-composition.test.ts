@@ -293,11 +293,14 @@ describe("staged dossier editorial boundary", () => {
     await expect(propose(model, "compose", {}, validate)).rejects.toThrow("Invalid proposal");
     expect(
       (await db.one<{ n: number }>("SELECT COUNT(*) n FROM dossier_model_checkpoints"))!.n,
-    ).toBeGreaterThan(0);
+    ).toBe(0);
     const beforeResume = calls;
     valid = true;
     expect(await propose(model, "compose", {}, validate)).toEqual({ valid: true });
     expect(calls).toBe(beforeResume + 1);
+    expect(
+      (await db.one<{ n: number }>("SELECT COUNT(*) n FROM dossier_model_checkpoints"))!.n,
+    ).toBe(1);
   });
   it("pauses on reviewer infrastructure failure without exposing provider bodies", async () => {
     const reviewer = createGeminiFactualReviewModel({

@@ -22,8 +22,8 @@ export function durableDossierModel(db:DatabaseAdapter, scope:string, model:Reas
       await db.execute('DELETE FROM dossier_model_checkpoints WHERE scope_fingerprint=? AND request_fingerprint=? AND response_fingerprint=?',[scope,entry.key,entry.fingerprint]);
       responses.delete(response);
     },
-    async generate(instruction,input,schema) {
-      const key=checkpointHash({model:[model.id,model.version,model.configurationFingerprint],instruction,input,schema});
+    async generate(instruction,input,schema,metadata) {
+      const key=checkpointHash({model:[model.id,model.version,model.configurationFingerprint],stage:metadata?.stage??"unspecified",instruction,input,schema,maxOutputTokens:metadata?.maxOutputTokens??null});
       const read=async()=>db.one<{response_json:string;response_fingerprint:string}>(
         'SELECT response_json,response_fingerprint FROM dossier_model_checkpoints WHERE scope_fingerprint=? AND request_fingerprint=?',[scope,key]);
       const parse=(row:{response_json:string;response_fingerprint:string})=>{
@@ -34,7 +34,7 @@ export function durableDossierModel(db:DatabaseAdapter, scope:string, model:Reas
         return value;
       };
       const existing=await read();if(existing)return parse(existing);
-      const response=await model.generate(instruction,input,schema);
+      const response=await model.generate(instruction,input,schema,metadata);
       await db.execute('INSERT INTO dossier_model_checkpoints(scope_fingerprint,request_fingerprint,response_json,response_fingerprint) VALUES(?,?,?,?) ON CONFLICT(scope_fingerprint,request_fingerprint) DO NOTHING',
         [scope,key,JSON.stringify(response),checkpointHash(response)]);
       const saved=await read();if(!saved)throw new Error('DOSSIER_CHECKPOINT_NOT_PERSISTED');

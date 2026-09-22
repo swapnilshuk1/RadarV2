@@ -54,6 +54,7 @@ function stageKey(model: ReasoningModel, instruction: string, input: unknown, sc
     .update(JSON.stringify([
       model.id,
       model.version,
+      model.configurationFingerprint ?? "unconfigured",
       instruction,
       input,
       schemaForModel(model, schema),
@@ -69,6 +70,7 @@ async function proposeStage<T>(
   schema: z.ZodTypeAny,
   validate: (value: unknown) => T,
   onStage: (stage: string) => void,
+  callStage = label,
 ): Promise<T> {
   const key = stageKey(model, instruction, input, schema);
   if (verifiedStageResults.has(key)) {
@@ -90,6 +92,7 @@ async function proposeStage<T>(
             }
           : input,
         schemaForModel(model, schema),
+        { stage: callStage, attempt: attempt + 1 },
       );
       const result = validate(previous);
       if (verifiedStageResults.size >= 256) {
@@ -99,6 +102,7 @@ async function proposeStage<T>(
       return result;
     } catch (error) {
       if (error instanceof ModelProviderUnavailableError) throw error;
+      await model.discardResponse?.(previous);
       issue = error instanceof Error ? error.message : 'Invalid stage response';
     }
   }
@@ -142,6 +146,47 @@ function validateMapping(value: unknown, candidateClaims: Claim[]) {
     throw new Error('Direct fit mapping cannot contain unsupported requirement aspects');
   }
   return parsed;
+}
+
+const screeningBatchSchema = z.object({
+  results: z.array(z.object({
+    requirementId: z.string().min(1),
+    adjudication: stagedScreeningAdjudicationSchema,
+  }).strict()),
+}).strict();
+
+const mappingBatchSchema = z.object({
+  results: z.array(z.object({
+    requirementId: z.string().min(1),
+    mapping: stagedMappingResponseSchema,
+  }).strict()),
+}).strict();
+
+const gapBatchSchema = z.object({
+  results: z.array(z.object({
+    requirementId: z.string().min(1),
+    gap: stagedGapResponseSchema,
+  }).strict()),
+}).strict();
+
+function exactBatch<T extends { requirementId: string }>(
+  rows: T[],
+  ids: string[],
+  label: string,
+): Map<string, T> {
+  const expected = new Set(ids);
+  const result = new Map<string, T>();
+  for (const row of rows) {
+    if (!expected.has(row.requirementId) || result.has(row.requirementId)) {
+      throw new Error(`Invalid or duplicate ${label} requirement: ${row.requirementId}`);
+    }
+    result.set(row.requirementId, row);
+  }
+  if (result.size !== expected.size) {
+    const missing = ids.filter(id => !result.has(id));
+    throw new Error(`Missing ${label} requirements: ${missing.join(', ')}`);
+  }
+  return result;
 }
 
 function validateResolutions(value: unknown, frozen: StagedResearchInput) {
@@ -207,24 +252,6 @@ function validateResolutions(value: unknown, frozen: StagedResearchInput) {
   return parsed;
 }
 
-async function mapConcurrent<T, R>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T, index: number) => Promise<R>,
-): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let next = 0;
-  const worker = async () => {
-    while (true) {
-      const index = next++;
-      if (index >= items.length) return;
-      results[index] = await fn(items[index], index);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
-  return results;
-}
-
 export async function runStagedFrozenDecisionDetailed(
   frozen: StagedResearchInput,
   model: ReasoningModel,
@@ -245,45 +272,73 @@ export async function runStagedFrozenDecisionDetailed(
     stagedRoleAnalysisSchema,
     value => materializeStagedRoleAnalysis(value, roleClaims),
     onStage,
+    'role-interpretation',
   );
 
   const roleClaimById = new Map(roleClaims.map(claim => [claim.id, claim]));
   const jdSourceIds = new Set(frozen.sources.filter(source => source.plane === 'JD').map(source => source.id));
 
+  const quoteCatalogs = new Map(
+    role.requirements.map(requirement => [
+      requirement.id,
+      buildScreeningQuoteCatalog(requirement, roleClaimById, jdSourceIds),
+    ]),
+  );
+  const requirementIds = role.requirements.map(requirement => requirement.id);
   const [screeningResults, mappingResults] = await Promise.all([
-    mapConcurrent(role.requirements, 3, requirement => {
-      const quoteCatalog = buildScreeningQuoteCatalog(requirement, roleClaimById, jdSourceIds);
-      return proposeStage(
-        `Adjudicating screening: ${requirement.id}`,
-        model,
-        stagedDecisionScreeningInstruction,
-        {
+    proposeStage(
+      'Adjudicating screening requirements',
+      model,
+      stagedDecisionScreeningInstruction +
+        '\nBATCH MODE: adjudicate every supplied requirement exactly once. Return JSON {results:[{requirementId,adjudication:{screeningFunction,gateBasis,supportQuoteIds,reasoning}}]}. requirementId is application-owned and must be copied exactly.',
+      {
+        requirements: role.requirements.map(requirement => ({
+          requirementId: requirement.id,
           requirement: {
             requirement: requirement.requirement,
             strength: requirement.strength,
             roleImportance: requirement.roleImportance,
           },
-          quoteCatalog,
-        },
-        stagedScreeningAdjudicationSchema,
-        value => materializeStagedScreeningAdjudication(value, requirement, quoteCatalog),
-        onStage,
-      );
-    }),
-    mapConcurrent(role.requirements, 3, requirement => proposeStage(
-      `Mapping candidate evidence: ${requirement.id}`,
+          quoteCatalog: quoteCatalogs.get(requirement.id),
+        })),
+      },
+      screeningBatchSchema,
+      value => {
+        const parsed = screeningBatchSchema.parse(value);
+        const byId = exactBatch(parsed.results, requirementIds, 'screening');
+        return role.requirements.map(requirement =>
+          materializeStagedScreeningAdjudication(
+            byId.get(requirement.id)!.adjudication,
+            requirement,
+            quoteCatalogs.get(requirement.id)!,
+          ),
+        );
+      },
+      onStage,
+      'screening-batch',
+    ),
+    proposeStage(
+      'Mapping candidate evidence to requirements',
       model,
-      stagedDecisionMappingInstruction,
+      stagedDecisionMappingInstruction +
+        '\nBATCH MODE: map every supplied requirement exactly once. Return JSON {results:[{requirementId,mapping:{status,candidateClaimIds,unsupportedAspects,reasoning}}]}. Do not allow evidence for one requirement to satisfy another unless the supplied claims genuinely support both.',
       {
         opportunity: frozen.opportunity,
-        requirement,
+        requirements: role.requirements,
         candidateClaims,
         candidateConflicts: frozen.candidateConflicts,
       },
-      stagedMappingResponseSchema,
-      value => validateMapping(value, candidateClaims),
+      mappingBatchSchema,
+      value => {
+        const parsed = mappingBatchSchema.parse(value);
+        const byId = exactBatch(parsed.results, requirementIds, 'mapping');
+        return role.requirements.map(requirement =>
+          validateMapping(byId.get(requirement.id)!.mapping, candidateClaims),
+        );
+      },
       onStage,
-    )),
+      'candidate-mapping-batch',
+    ),
   ]);
 
   const requirements: StagedMappedRequirement[] = role.requirements.map((requirement, index) => ({
@@ -315,42 +370,60 @@ export async function runStagedFrozenDecisionDetailed(
     stagedDecisionResolutionResponseSchema,
     value => validateResolutions(value, frozen),
     onStage,
+    'context-resolution',
   );
 
   const unresolvedGates = eligibleScreeningDrivers(requirements);
-  const gapResults = await mapConcurrent(unresolvedGates, 3, requirement => {
-    if (requirement.status === 'CONTRADICTED') {
-      return Promise.resolve({
-        gapNature: 'AFFIRMATIVE_CONFLICT' as const,
-        reasoning: 'The immutable candidate mapping contains affirmative conflicting evidence.',
-      });
-    }
-    return proposeStage(
-      `Classifying screening gap: ${requirement.id}`,
-      model,
-      stagedDecisionGapInstruction,
-      {
-        opportunity: frozen.opportunity,
-        requirement: {
-          id: requirement.id,
-          requirement: requirement.requirement,
-          strength: requirement.strength,
-          roleImportance: requirement.roleImportance,
-          screeningGate: requirement.screeningGate,
-          screeningReasoning: requirement.screeningReasoning,
+  const modelGates = unresolvedGates.filter(requirement => requirement.status !== 'CONTRADICTED');
+  const modelGapResults = modelGates.length
+    ? await proposeStage(
+        'Classifying screening gaps',
+        model,
+        stagedDecisionGapInstruction +
+          '\nBATCH MODE: classify every supplied immutable screening gap exactly once. Return JSON {results:[{requirementId,gap:{gapNature,reasoning}}]}. Do not reopen screening or mapping judgments.',
+        {
+          opportunity: frozen.opportunity,
+          requirements: modelGates.map(requirement => ({
+            requirementId: requirement.id,
+            requirement: {
+              id: requirement.id,
+              requirement: requirement.requirement,
+              strength: requirement.strength,
+              roleImportance: requirement.roleImportance,
+              screeningGate: requirement.screeningGate,
+              screeningReasoning: requirement.screeningReasoning,
+            },
+            immutableMapping: {
+              status: requirement.status,
+              candidateClaimIds: requirement.candidateClaimIds,
+              unsupportedAspects: requirement.unsupportedAspects,
+              mappingReasoning: requirement.mappingReasoning,
+            },
+          })),
         },
-        immutableMapping: {
-          status: requirement.status,
-          candidateClaimIds: requirement.candidateClaimIds,
-          unsupportedAspects: requirement.unsupportedAspects,
-          mappingReasoning: requirement.mappingReasoning,
+        gapBatchSchema,
+        value => {
+          const parsed = gapBatchSchema.parse(value);
+          const byId = exactBatch(parsed.results, modelGates.map(gate => gate.id), 'gap');
+          return new Map(
+            modelGates.map(requirement => [
+              requirement.id,
+              validateStagedGap(byId.get(requirement.id)!.gap, requirement),
+            ]),
+          );
         },
-      },
-      stagedGapResponseSchema,
-      value => validateStagedGap(value, requirement),
-      onStage,
-    );
-  });
+        onStage,
+        'gap-classification-batch',
+      )
+    : new Map<string, z.infer<typeof stagedGapResponseSchema>>();
+  const gapResults = unresolvedGates.map(requirement =>
+    requirement.status === 'CONTRADICTED'
+      ? {
+          gapNature: 'AFFIRMATIVE_CONFLICT' as const,
+          reasoning: 'The immutable candidate mapping contains affirmative conflicting evidence.',
+        }
+      : modelGapResults.get(requirement.id)!,
+  );
 
   const drivers: StagedScreeningDriver[] = unresolvedGates.map((requirement, index) => ({
     ...requirement,
@@ -373,6 +446,7 @@ export async function runStagedFrozenDecisionDetailed(
     stagedCareerCapitalSchema,
     value => validateStagedCareerCapital(value, role, resolutions, candidateClaims, (options.policyVersion === 'staged-v7' || options.policyVersion === 'staged-v8')),
     onStage,
+    'career-capital',
   );
 
   const immutableRequirements = requirements.map(requirement => ({
@@ -414,6 +488,7 @@ export async function runStagedFrozenDecisionDetailed(
     stagedDecisionProposalSchema,
     value => validateStagedDecisionModel(value, requirements, drivers, role, resolutions, careerCapital),
     onStage,
+    'decision',
   );
 
   return {

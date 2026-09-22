@@ -33,7 +33,9 @@ import { stagedEvaluation, evaluationFingerprint, dossier } from "../fixtures/st
 import { selectStagedDossierWork } from "../../src/lib/intelligence/staged/dossierBackfillSelection";
 import { RICH_DOSSIER_VERSION } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";
 import { SqliteDossierReviewQueue } from "../../src/data/sqlite/repositories/SqliteDossierReviewQueue";
+import { PREPARING_DOSSIER_VERSION, SqliteDossierCompositionQueue } from "../../src/data/sqlite/repositories/SqliteDossierCompositionQueue";
 import { DossierReviewWorker } from "../../src/lib/intelligence/staged/DossierReviewWorker";
+import { DossierCompositionWorker } from "../../src/lib/intelligence/staged/DossierCompositionWorker";
 import { ProductionStagedDossierService } from "../../src/lib/intelligence/staged/ProductionStagedDossierService";
 import { ModelProviderUnavailableError } from "../../src/lib/model/provider-unavailable";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -120,6 +122,92 @@ describe("rich staged serving activation", () => {
       n: 0,
     });
   });
+  it("serves the decision immediately while the memo is preparing and advances presentation monotonically", async () => {
+    const publisher = new StagedServingPublisher(db);
+    await publisher.publish(identity, { allowPreparing: true });
+    await db.execute(
+      `UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`,
+    );
+    const { scope } = await resolveServingScope("person_A", "tenant_A", db);
+    const queries = new SqliteOpportunityQueries(db);
+    expect(await queries.getDossier(scope, "source-job")).toMatchObject({
+      memoReviewState: "preparing",
+      decision: "PURSUE",
+      recommendation: "Memo being prepared.",
+    });
+    expect(
+      JSON.parse(
+        (await db.one<{ evaluation_json: string }>(
+          "SELECT evaluation_json FROM materialized_evaluations WHERE canonical_job_id='job'",
+        ))!.evaluation_json,
+      ).presentationVersion,
+    ).toBe(PREPARING_DOSSIER_VERSION);
+
+    const compositionQueue = new SqliteDossierCompositionQueue(db);
+    await compositionQueue.enqueue(identity, evaluationFingerprint);
+    await db.execute(
+      "UPDATE dossier_composition_jobs SET status='needs_attention',last_error='test terminal composition failure'",
+    );
+    expect(await queries.getDossier(scope, "source-job")).toMatchObject({
+      memoReviewState: "preparation_attention",
+      decision: "PURSUE",
+      recommendation: "Evaluation complete. Memo preparation needs attention.",
+    });
+
+    const pending = dossier();
+    delete pending.generation.factualReviewer;
+    delete pending.generation.factualReviews;
+    await new SqliteDossierReviewQueue(db).enqueue(identity, evaluationFingerprint, pending);
+    await publisher.publish(identity, { allowDraft: true });
+    expect(await queries.getDossier(scope, "source-job")).toMatchObject({
+      memoReviewState: "pending",
+      decision: "PURSUE",
+    });
+
+    await new SqliteRichDossierStore(db).save(identity, evaluationFingerprint, dossier());
+    await publisher.publish(identity);
+    expect(await queries.getDossier(scope, "source-job")).toMatchObject({
+      memoReviewState: "reviewed",
+      decision: "PURSUE",
+    });
+
+    await publisher.publish(identity, { allowPreparing: true });
+    expect(
+      JSON.parse(
+        (await db.one<{ evaluation_json: string }>(
+          "SELECT evaluation_json FROM materialized_evaluations WHERE canonical_job_id='job'",
+        ))!.evaluation_json,
+      ).presentationVersion,
+    ).toBe(RICH_DOSSIER_VERSION);
+  });
+
+  it("leases composition independently and records draft persistence before publication", async () => {
+    const queue=new SqliteDossierCompositionQueue(db);
+    await queue.enqueue(identity,evaluationFingerprint);
+    const compose=vi.spyOn(ProductionStagedDossierService.prototype,"compose").mockResolvedValue(dossier());
+    const publish=vi.spyOn(StagedServingPublisher.prototype,"publish").mockResolvedValue(undefined);
+    try{
+      const worker=new DossierCompositionWorker(db,()=>({
+        id:"test-writer",
+        version:"1",
+        async generate(){return {};},
+      }));
+      expect(await worker.pollOnce()).toMatchObject({status:"completed"});
+      expect(compose).toHaveBeenCalledTimes(1);
+      expect(publish).toHaveBeenCalledWith(identity,{allowDraft:true});
+      const row=await db.one<any>("SELECT * FROM dossier_composition_jobs");
+      expect(row).toMatchObject({status:"completed",attempts:0});
+      expect(row.draft_persisted_at).toEqual(expect.any(Number));
+      expect(row.published_at).toEqual(expect.any(Number));
+      expect(row.published_at).toBeGreaterThanOrEqual(row.draft_persisted_at);
+      expect(row.lease_token).toBeNull();
+      expect(row.lease_until).toBeNull();
+    }finally{
+      compose.mockRestore();
+      publish.mockRestore();
+    }
+  });
+
   it("serves labelled drafts through 429, withholds defects and atomically promotes reviewed output", async () => {
     const pending = dossier();
     delete pending.generation.factualReviewer;
@@ -140,6 +228,24 @@ describe("rich staged serving activation", () => {
         createElement(DossierView, { dossier: pending, reviewState: "pending" }),
       ),
     ).toContain("factual review pending");
+
+    await db.execute(
+      "UPDATE dossier_review_jobs SET status='needs_attention',last_error='reviewer unavailable'",
+    );
+    expect(await read()).toMatchObject({
+      memoReviewState: "review_attention",
+      decision: "PURSUE",
+      richDossier: { executiveThesis: pending.executiveThesis },
+    });
+    expect(
+      renderToStaticMarkup(
+        createElement(DossierView, { dossier: pending, reviewState: "attention" }),
+      ),
+    ).toContain("factual review needs attention");
+    await db.execute(
+      "UPDATE dossier_review_jobs SET status='pending',next_attempt_at=0,last_error=NULL",
+    );
+
     const model = () => ({ id: "test", version: "1", generate: vi.fn() });
     const worker = new DossierReviewWorker(db, model, model);
     const compose = vi.spyOn(ProductionStagedDossierService.prototype, "compose");
@@ -166,8 +272,11 @@ describe("rich staged serving activation", () => {
       expect(await worker.pollOnce()).toMatchObject({ status: "completed" });
       expect(await read()).toMatchObject({ memoReviewState: "reviewed", decision: "PURSUE" });
       expect(await db.one("SELECT COUNT(*) n FROM canonical_decisions")).toEqual({ n: 0 });
-      expect(await db.one("SELECT status FROM dossier_review_jobs")).toEqual({
+      expect(
+        await db.one("SELECT status,reviewed_at FROM dossier_review_jobs"),
+      ).toMatchObject({
         status: "completed",
+        reviewed_at: expect.any(Number),
       });
     } finally {
       compose.mockRestore();

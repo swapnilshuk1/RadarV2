@@ -299,6 +299,9 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           created_at DATETIME,
           updated_at DATETIME,
           completed_at DATETIME,
+          first_claimed_at DATETIME,
+          evaluation_persisted_at DATETIME,
+          dossier_queued_at DATETIME,
           UNIQUE(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
         );
 

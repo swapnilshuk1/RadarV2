@@ -54,6 +54,19 @@ describe('context-aware immutable production input',()=>{
   const refreshed=await new ProductionStagedInputAdapter(db,undefined,[changed]).build(other,reasoning);
   expect(refreshed.fingerprint).not.toBe(first.fingerprint);expect(await adapter.build(identity,reasoning)).toEqual(first);
  });
+ it('keeps frozen inputs distinct across model configuration changes',async()=>{
+  const acquisition=provider();
+  const firstModel={...model(),configurationFingerprint:'config-a'};
+  const secondModel={...model(),configurationFingerprint:'config-b'};
+  const adapter=new ProductionStagedInputAdapter(db,undefined,[acquisition]);
+  const first=await adapter.build(identity,firstModel);
+  const second=await adapter.build(identity,secondModel);
+  expect(first.fingerprint).toBe(second.fingerprint);
+  expect(await db.one('SELECT COUNT(*) n FROM staged_frozen_inputs')).toEqual({n:2});
+  expect(acquisition.acquire).toHaveBeenCalledTimes(2);
+  expect(await adapter.build(identity,firstModel)).toEqual(first);
+  expect(acquisition.acquire).toHaveBeenCalledTimes(2);
+ });
  it('rejects a corrupted input snapshot before model or network work',async()=>{
   const acquisition=provider(),reasoning=model();const adapter=new ProductionStagedInputAdapter(db,undefined,[acquisition]);
   await adapter.build(identity,reasoning);

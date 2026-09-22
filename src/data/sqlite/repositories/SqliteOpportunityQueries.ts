@@ -74,6 +74,7 @@ import {
 import { SqliteDossierPresentationStore } from "./SqliteDossierPresentationStore";
 import { SqliteRichDossierStore } from "./SqliteRichDossierStore";
 import { DRAFT_DOSSIER_VERSION, SqliteDossierReviewQueue } from "./SqliteDossierReviewQueue";
+import { PREPARING_DOSSIER_VERSION, SqliteDossierCompositionQueue } from "./SqliteDossierCompositionQueue";
 import { SqliteStagedEvaluationStore } from "./SqliteStagedEvaluationStore";
 import {
   parseCanonicalStagedDecisionResult,
@@ -1223,6 +1224,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         staged.verdict === row.engine_decision;
       const fp =
         typeof staged.evaluationFingerprint === "string" ? staged.evaluationFingerprint : "";
+      const preparing =
+        validPublication && staged.presentationVersion === PREPARING_DOSSIER_VERSION;
       const pending = validPublication && staged.presentationVersion === DRAFT_DOSSIER_VERSION;
       const queue = new SqliteDossierReviewQueue(this.db);
       const reviewed = validPublication
@@ -1232,6 +1235,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
             typeof staged.presentationVersion === "string" ? staged.presentationVersion : undefined,
           )
         : null;
+      const reviewJob = pending ? await queue.find(presentationIdentity, fp) : null;
       const dossier = reviewed ?? (pending ? await queue.getDraft(presentationIdentity, fp) : null);
       const readModel = resolveCanonicalServingReadModel({
         evaluationState: "STAGED_EVALUATED",
@@ -1242,6 +1246,55 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         reviewedFingerprint: row.reviewed_fingerprint,
         qualityScore: row.quality_score,
       });
+      if (preparing && readModel.evaluationState === "EVALUATED") {
+        const [record, compositionJob] = await Promise.all([
+          new SqliteStagedEvaluationStore(this.db).get(presentationIdentity),
+          new SqliteDossierCompositionQueue(this.db).find(presentationIdentity, fp),
+        ]);
+        if (record?.evaluationState === "COMPLETED") {
+          const canonical = parseCanonicalStagedDecisionResult(record.evaluation);
+          if (
+            createStagedEvaluationFingerprint({
+              evaluationContextFingerprint: record.evaluationContextFingerprint,
+              inputFingerprint: record.inputFingerprint,
+              evaluation: canonical,
+            }) === fp &&
+            canonical.decision.verdict === row.engine_decision
+          ) {
+            const needsAttention = compositionJob?.status === "needs_attention";
+            return {
+              evaluationState: "EVALUATED",
+              ...oppSource,
+              postedRelative: formatPostedRelative(row.posted_at || undefined),
+              decision: canonical.decision.verdict,
+              recommendation: needsAttention
+                ? "Evaluation complete. Memo preparation needs attention."
+                : "Memo being prepared.",
+              primaryConcern: null,
+              positioning: [],
+              headspace: [],
+              dimensions: [],
+              hiringRisk: "",
+              memoReviewState: needsAttention ? "preparation_attention" : "preparing",
+              userDecision: userState,
+              effectiveDecision: readModel.effectiveDecision,
+              reviewState: readModel.reviewState,
+              evaluationContextFingerprint: row.evaluation_context_fingerprint,
+              evaluationFingerprint: fp,
+              engineRecommendation: {
+                jobHash: row.source_job_id,
+                evaluationFingerprint: fp,
+                engineVerdict: canonical.decision.verdict,
+                vetoed: false,
+                qualityScore: null,
+                screeningViability: canonical.decision.screeningViability,
+                evaluatedAt: record.evaluatedAt,
+              },
+            };
+          }
+        }
+      }
+
       if (
         dossier &&
         dossier.verdict.verdict === row.engine_decision &&
@@ -1260,7 +1313,11 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
           dimensions: [],
           hiringRisk: dossier.decisionConditions.map((p) => p.question.text).join(" "),
           richDossier: dossier,
-          memoReviewState: reviewed ? "reviewed" : "pending",
+          memoReviewState: reviewed
+            ? "reviewed"
+            : reviewJob?.status === "needs_attention"
+              ? "review_attention"
+              : "pending",
           engineRecommendation: {
             jobHash: row.source_job_id,
             evaluationFingerprint: row.evaluation_fingerprint!,

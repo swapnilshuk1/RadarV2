@@ -32,17 +32,17 @@ export function validateSnapshot(value:unknown):StagedResearchInput {
 export class SqliteStagedInputStore {
   constructor(private readonly db:DatabaseAdapter){}
   private key(i:ProductionStagedIdentity){return [i.tenantId,i.personId,i.canonicalJobId,i.opportunityVersion,i.evaluationContextFingerprint];}
-  async get(i:ProductionStagedIdentity,binding:string,model:{id:string;version:string}):Promise<StagedResearchInput|undefined>{
-    const row=await this.db.one<{source_binding_fingerprint:string;model_id:string;model_version:string;input_fingerprint:string;input_json:string}>(`SELECT * FROM staged_frozen_inputs WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=?`,this.key(i));
+  async get(i:ProductionStagedIdentity,binding:string,model:{id:string;version:string;configurationFingerprint?:string}):Promise<StagedResearchInput|undefined>{
+    const row=await this.db.one<{source_binding_fingerprint:string;model_id:string;model_version:string;model_configuration_fingerprint:string;input_fingerprint:string;input_json:string}>(`SELECT * FROM staged_frozen_inputs WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=? AND model_configuration_fingerprint=?`,[...this.key(i),model.configurationFingerprint??"unconfigured"]);
     if(!row)return undefined;
-    if(row.source_binding_fingerprint!==binding||row.model_id!==model.id||row.model_version!==model.version)throw new Error('STAGED_INPUT_SNAPSHOT_BINDING_MISMATCH');
+    if(row.source_binding_fingerprint!==binding||row.model_id!==model.id||row.model_version!==model.version||row.model_configuration_fingerprint!==(model.configurationFingerprint??"unconfigured"))throw new Error('STAGED_INPUT_SNAPSHOT_BINDING_MISMATCH');
     const input=validateSnapshot(JSON.parse(row.input_json));
     if(input.fingerprint!==row.input_fingerprint||input.opportunity.id!==i.canonicalJobId)throw new Error('STAGED_INPUT_SNAPSHOT_IDENTITY_MISMATCH');
     return input;
   }
-  async save(i:ProductionStagedIdentity,binding:string,model:{id:string;version:string},input:StagedResearchInput):Promise<StagedResearchInput>{
+  async save(i:ProductionStagedIdentity,binding:string,model:{id:string;version:string;configurationFingerprint?:string},input:StagedResearchInput):Promise<StagedResearchInput>{
     validateSnapshot(input);
-    await this.db.execute(`INSERT INTO staged_frozen_inputs(tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,source_binding_fingerprint,model_id,model_version,input_fingerprint,input_json) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint) DO NOTHING`,[...this.key(i),binding,model.id,model.version,input.fingerprint,JSON.stringify(input)]);
+    await this.db.execute(`INSERT INTO staged_frozen_inputs(tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,source_binding_fingerprint,model_id,model_version,model_configuration_fingerprint,input_fingerprint,input_json) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,model_configuration_fingerprint) DO NOTHING`,[...this.key(i),binding,model.id,model.version,model.configurationFingerprint??"unconfigured",input.fingerprint,JSON.stringify(input)]);
     // Concurrent evaluations must both use the winning immutable snapshot.
     const saved=await this.get(i,binding,model);if(!saved)throw new Error('STAGED_INPUT_SNAPSHOT_NOT_PERSISTED');return saved;
   }
