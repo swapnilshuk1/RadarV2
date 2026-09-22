@@ -1785,6 +1785,7 @@ export async function processUnit(
 
       let reservedCanonicalUrl: string | null = null;
       let reservedCanonicalJobId: string | null = null;
+      let canonicalIngestionResult: CanonicalIngestionResult | undefined;
 
       const recordLineage = async (
         ledgerId: string,
@@ -1922,7 +1923,6 @@ export async function processUnit(
         const nominalSnapshotPath = path.join(SNAPSHOT_DIR, `${feedCard.cardHash}.json`);
         const isHistoricallyNew = !priorLedgerItem && !fs.existsSync(nominalSnapshotPath);
         let detailedCard: import("./scraper/types").DetailedCard | null = null;
-        let canonicalIngestionResult: CanonicalIngestionResult | undefined;
         let writtenSnapshotPath: string | null = null;
         let boundSnapshotPath: string | null = null;
         let snapshot = readSnapshotIfFresh(feedCard.cardHash, CONFIG.snapshotFreshHours);
