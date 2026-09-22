@@ -88,6 +88,24 @@ describe('Bedrock Mantle JSON transport',()=>{
     expect(events[0].completedAt).toBeGreaterThanOrEqual(events[0].startedAt);
   });
 
+  it('enforces one provider-wide call budget across concurrent model instances',async()=>{
+    let active=0,maxActive=0;
+    const request=async()=>{
+      active++;
+      maxActive=Math.max(maxActive,active);
+      await new Promise(resolve=>setTimeout(resolve,5));
+      active--;
+      return reply('{"ok":true}');
+    };
+    const first=new BedrockMantleJsonModel('zai.glm-5',async()=>'key',request as typeof fetch,{providerConcurrencyLimit:1});
+    const second=new BedrockMantleJsonModel('zai.glm-5',async()=>'key',request as typeof fetch,{providerConcurrencyLimit:1});
+    await Promise.all([
+      first.generate('one',{},undefined,{stage:'decision'}),
+      second.generate('two',{},undefined,{stage:'decision'}),
+    ]);
+    expect(maxActive).toBe(1);
+  });
+
   it.each([400,401,403,429,503])('defers HTTP %s to the durable scheduler without immediate retries',async(status)=>{
     let calls=0;
     const model=new BedrockMantleJsonModel('zai.glm-5',async()=>'secret',async()=>{calls++;return new Response('private body',{status,headers:{'retry-after':'42'}});});
