@@ -42,7 +42,7 @@ export class SqliteStagedInputStore {
   }
   async save(i:ProductionStagedIdentity,binding:string,model:{id:string;version:string;configurationFingerprint?:string},input:StagedResearchInput):Promise<StagedResearchInput>{
     validateSnapshot(input);
-    await this.db.execute(`INSERT INTO staged_frozen_inputs(tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,source_binding_fingerprint,model_id,model_version,model_configuration_fingerprint,input_fingerprint,input_json) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint) DO NOTHING`,[...this.key(i),binding,model.id,model.version,model.configurationFingerprint??"unconfigured",input.fingerprint,JSON.stringify(input)]);
+    await this.db.execute(`INSERT INTO staged_frozen_inputs(tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,source_binding_fingerprint,model_id,model_version,model_configuration_fingerprint,input_fingerprint,input_json) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,model_configuration_fingerprint) DO NOTHING`,[...this.key(i),binding,model.id,model.version,model.configurationFingerprint??"unconfigured",input.fingerprint,JSON.stringify(input)]);
     // Concurrent evaluations must both use the winning immutable snapshot.
     const saved=await this.get(i,binding,model);if(!saved)throw new Error('STAGED_INPUT_SNAPSHOT_NOT_PERSISTED');return saved;
   }
