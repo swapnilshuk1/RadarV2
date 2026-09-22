@@ -6,6 +6,7 @@ import { assertCanonicalJdContentHash, DeterministicStagedInputUnavailableError 
 import { computeContentHash } from '../../src/lib/domain/canonical_identity';
 import {stagedEvaluation} from '../fixtures/staged-rich-dossier';
 import { durableStagedModel } from '../../src/lib/intelligence/staged/DurableStagedModel';
+import { createSqliteModelInvocationSink } from '../../src/lib/model/model-invocation';
 
 describe('staged production persistence boundary', () => {
   it('uses a fresh staged policy and contract identity for post-fix evaluations', () => {
@@ -50,6 +51,61 @@ describe('staged production persistence boundary', () => {
     expect(await reconfigured.generate('stage instruction',{stable:true},undefined,{stage:'decision',attempt:1})).toEqual({value:'accepted'});
     expect(calls).toBe(2);
   });
+  it('persists exact per-request usage and latency against the owning evaluation job', async () => {
+    const db=getDatabaseAdapter(':memory:'); await runMigrations(db);
+    const sink=createSqliteModelInvocationSink(db,{
+      pipeline:'evaluation',
+      evaluationJobId:'eval-job',
+      tenantId:'tenant',
+      personId:'person',
+      canonicalJobId:'job',
+      opportunityVersion:'version',
+      evaluationContextFingerprint:'context',
+    });
+    await sink({
+      provider:'bedrock-mantle',
+      modelId:'bedrock-mantle',
+      modelVersion:'zai.glm-5',
+      modelConfigurationFingerprint:'config',
+      requestFingerprint:'request',
+      stage:'decision',
+      attempt:1,
+      maxOutputTokens:4096,
+      startedAt:1000,
+      completedAt:1125,
+      finishReason:'stop',
+      status:'completed',
+      usage:{
+        inputTokens:100,
+        cachedInputTokens:40,
+        outputTokens:25,
+        reasoningTokens:7,
+        totalTokens:125,
+      },
+    });
+    const row=await db.one<any>('SELECT * FROM model_invocations');
+    expect(row).toMatchObject({
+      evaluation_job_id:'eval-job',
+      pipeline:'evaluation',
+      stage:'decision',
+      attempt:1,
+      provider:'bedrock-mantle',
+      model_version:'zai.glm-5',
+      model_configuration_fingerprint:'config',
+      request_fingerprint:'request',
+      max_output_tokens:4096,
+      started_at:1000,
+      completed_at:1125,
+      latency_ms:125,
+      input_tokens:100,
+      cached_input_tokens:40,
+      output_tokens:25,
+      reasoning_tokens:7,
+      total_tokens:125,
+      status:'completed',
+    });
+  });
+
   it('records input-unavailable state without pretending to produce a decision', () => {
     const row=stagedUnavailableEvaluation({tenantId:'t',personId:'p',canonicalJobId:'j',opportunityVersion:'v',evaluationContextFingerprint:'c',profileVersion:'pv',policyVersion:STAGED_POLICY_VERSION,ontologyVersion:'o',ontologyFingerprint:'oh'},'PROFILE_SOURCE_PROVENANCE_MISSING');
     expect(row.evaluationState).toBe('INPUT_UNAVAILABLE'); expect(row.decision).toBeUndefined(); expect(row.blockedReason).toBe('PROFILE_SOURCE_PROVENANCE_MISSING');
