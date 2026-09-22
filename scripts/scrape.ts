@@ -1175,7 +1175,16 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         log(`CERTIFICATION FAILED: Incomplete work units detected (${runningUnits.length} running, ${pendingUnits.length} pending)!`, "error");
         mgr.manifest.status = "failed";
         mgr.finalize("failed");
-        if (runScope) await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "failed", `Certification failed: ${runningUnits.length} units running, ${pendingUnits.length} units pending.`);
+        if (runScope) {
+          await withPersistenceBoundary("scrape run certification failure terminalization", () =>
+            getRepositories().scrapeRuns.updateRunStatus(
+              runScope,
+              mgr.runId,
+              "failed",
+              `Certification failed: ${runningUnits.length} units running, ${pendingUnits.length} units pending.`,
+            ),
+          );
+        }
         return { success: false, count: ingestedCount, runId: mgr.runId };
       }
 
@@ -1197,16 +1206,20 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         mgr.finalize("failed");
         if (runScope) {
           const repos = getRepositories();
-          await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
-            totalDiscovered: mgr.manifest.cards.length,
-            totalEnqueued: ingestedCount,
-            metrics: tm as any,
-          });
-          await repos.scrapeRuns.updateRunStatus(
-            runScope,
-            mgr.runId,
-            "failed",
-            `Acquisition failed: ${failedUnits.length} unit(s) failed, ${integrityFailures} integrity failure(s)`
+          await withPersistenceBoundary("failed scrape run metrics", () =>
+            repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
+              totalDiscovered: mgr.manifest.cards.length,
+              totalEnqueued: ingestedCount,
+              metrics: tm as any,
+            }),
+          );
+          await withPersistenceBoundary("failed scrape run terminalization", () =>
+            repos.scrapeRuns.updateRunStatus(
+              runScope,
+              mgr.runId,
+              "failed",
+              `Acquisition failed: ${failedUnits.length} unit(s) failed, ${integrityFailures} integrity failure(s)`,
+            ),
           );
         }
         printAcquisitionTelemetry(mgr);
@@ -1216,12 +1229,19 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       if (runScope && capabilities.enrichmentDispatchEnabled) {
         mgr.transitionTo("enriching");
         const repos = getRepositories();
-        await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
-          totalDiscovered: mgr.manifest.cards.length,
-          totalEnqueued: ingestedCount,
-          metrics: tm as any,
+        await withPersistenceBoundary("enriching scrape run metrics", () =>
+          repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
+            totalDiscovered: mgr.manifest.cards.length,
+            totalEnqueued: ingestedCount,
+            metrics: tm as any,
+          }),
+        );
+        const transitioned = await withPersistenceBoundary("running to enriching transition", async () => {
+          const changed = await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "enriching");
+          if (changed) return true;
+          const durable = await repos.scrapeRuns.getRun(runScope, mgr.runId);
+          return durable?.status === "enriching";
         });
-        const transitioned = await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "enriching");
         if (!transitioned) {
           throw new Error(
             `Failed durable running->enriching transition for ${mgr.runId}`
@@ -1281,8 +1301,15 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
       mgr.finalize("failed");
       if (runScope) {
         try {
-          await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "failed", err.message);
-        } catch {}
+          await withPersistenceBoundary("fatal scrape run terminalization", () =>
+            getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "failed", err.message),
+          );
+        } catch (terminalErr: any) {
+          log(
+            `[PERSISTENCE_TERMINALIZATION_WARN] Could not persist failed status for ${mgr.runId}: ${terminalErr?.message || terminalErr}`,
+            "warn",
+          );
+        }
       }
       return { success: false, count: 0, runId: mgr.runId };
     } finally {
