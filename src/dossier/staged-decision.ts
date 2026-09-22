@@ -102,6 +102,7 @@ async function proposeStage<T>(
       return result;
     } catch (error) {
       if (error instanceof ModelProviderUnavailableError) throw error;
+      await model.discardResponse?.(previous);
       issue = error instanceof Error ? error.message : 'Invalid stage response';
     }
   }
