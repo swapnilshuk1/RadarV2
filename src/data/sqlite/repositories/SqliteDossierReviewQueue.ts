@@ -167,8 +167,8 @@ export class SqliteDossierReviewQueue {
   async finish(job: ReviewJob, save: (tx: DatabaseAdapter) => Promise<void>) {
     await this.db.transaction(async (tx) => {
       const guard = await tx.execute(
-        `UPDATE dossier_review_jobs SET status='completed',lease_token=NULL,lease_until=NULL,last_error=NULL,updated_at=? WHERE id=? AND status='processing' AND lease_token=? AND lease_until>?`,
-        [this.now(), job.id, job.lease_token, this.now()],
+        `UPDATE dossier_review_jobs SET status='completed',lease_token=NULL,lease_until=NULL,last_error=NULL,reviewed_at=COALESCE(reviewed_at,?),updated_at=? WHERE id=? AND status='processing' AND lease_token=? AND lease_until>?`,
+        [this.now(), this.now(), job.id, job.lease_token, this.now()],
       );
       if (!guard.rowsAffected) throw new Error("REVIEW_LEASE_LOST");
       const lane = await tx.execute(
