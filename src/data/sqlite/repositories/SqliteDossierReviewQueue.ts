@@ -92,8 +92,7 @@ export class SqliteDossierReviewQueue {
   }
   async getDraft(identity: DossierPresentationIdentity, fp: string): Promise<Dossier | null> {
     const row = await this.find(identity, fp);
-    if (!row || row.withheld || row.status === "completed" || row.status === "needs_attention")
-      return null;
+    if (!row || row.withheld || row.status === "completed") return null;
     try {
       const value = JSON.parse(row.draft_json);
       if (reviewFingerprint(value) !== row.draft_fingerprint) return null;
@@ -197,10 +196,9 @@ export class SqliteDossierReviewQueue {
       );
       const terminal = !error.provider || this.now() - job.created_at > 24 * 3600_000;
       await tx.execute(
-        `UPDATE dossier_review_jobs SET status=?,withheld=CASE WHEN ? THEN 1 ELSE withheld END,attempts=attempts+1,next_attempt_at=?,lease_token=NULL,lease_until=NULL,last_error=?,updated_at=? WHERE id=? AND lease_token=?`,
+        `UPDATE dossier_review_jobs SET status=?,attempts=attempts+1,next_attempt_at=?,lease_token=NULL,lease_until=NULL,last_error=?,updated_at=? WHERE id=? AND lease_token=?`,
         [
           terminal ? "needs_attention" : "retry",
-          terminal ? 1 : 0,
           this.now() + delay,
           error.code,
           this.now(),
