@@ -74,7 +74,7 @@ import {
 import { SqliteDossierPresentationStore } from "./SqliteDossierPresentationStore";
 import { SqliteRichDossierStore } from "./SqliteRichDossierStore";
 import { DRAFT_DOSSIER_VERSION, SqliteDossierReviewQueue } from "./SqliteDossierReviewQueue";
-import { PREPARING_DOSSIER_VERSION } from "./SqliteDossierCompositionQueue";
+import { PREPARING_DOSSIER_VERSION, SqliteDossierCompositionQueue } from "./SqliteDossierCompositionQueue";
 import { SqliteStagedEvaluationStore } from "./SqliteStagedEvaluationStore";
 import {
   parseCanonicalStagedDecisionResult,
@@ -1246,7 +1246,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         qualityScore: row.quality_score,
       });
       if (preparing && readModel.evaluationState === "EVALUATED") {
-        const record = await new SqliteStagedEvaluationStore(this.db).get(presentationIdentity);
+        const [record, compositionJob] = await Promise.all([
+          new SqliteStagedEvaluationStore(this.db).get(presentationIdentity),
+          new SqliteDossierCompositionQueue(this.db).find(presentationIdentity, fp),
+        ]);
         if (record?.evaluationState === "COMPLETED") {
           const canonical = parseCanonicalStagedDecisionResult(record.evaluation);
           if (
@@ -1257,18 +1260,21 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
             }) === fp &&
             canonical.decision.verdict === row.engine_decision
           ) {
+            const needsAttention = compositionJob?.status === "needs_attention";
             return {
               evaluationState: "EVALUATED",
               ...oppSource,
               postedRelative: formatPostedRelative(row.posted_at || undefined),
               decision: canonical.decision.verdict,
-              recommendation: "Memo being prepared.",
+              recommendation: needsAttention
+                ? "Evaluation complete. Memo preparation needs attention."
+                : "Memo being prepared.",
               primaryConcern: null,
               positioning: [],
               headspace: [],
               dimensions: [],
               hiringRisk: "",
-              memoReviewState: "preparing",
+              memoReviewState: needsAttention ? "preparation_attention" : "preparing",
               userDecision: userState,
               effectiveDecision: readModel.effectiveDecision,
               reviewState: readModel.reviewState,
