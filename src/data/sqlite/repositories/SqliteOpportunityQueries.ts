@@ -1235,6 +1235,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
             typeof staged.presentationVersion === "string" ? staged.presentationVersion : undefined,
           )
         : null;
+      const reviewJob = pending ? await queue.find(presentationIdentity, fp) : null;
       const dossier = reviewed ?? (pending ? await queue.getDraft(presentationIdentity, fp) : null);
       const readModel = resolveCanonicalServingReadModel({
         evaluationState: "STAGED_EVALUATED",
@@ -1312,7 +1313,11 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
           dimensions: [],
           hiringRisk: dossier.decisionConditions.map((p) => p.question.text).join(" "),
           richDossier: dossier,
-          memoReviewState: reviewed ? "reviewed" : "pending",
+          memoReviewState: reviewed
+            ? "reviewed"
+            : reviewJob?.status === "needs_attention"
+              ? "review_attention"
+              : "pending",
           engineRecommendation: {
             jobHash: row.source_job_id,
             evaluationFingerprint: row.evaluation_fingerprint!,
