@@ -1,8 +1,20 @@
 import { validateMemoCopy } from "./composition";
 import { isDeepStrictEqual } from "node:util";
-import { compositionSchema, type Dossier, type Research } from "./contracts";
+import { compositionSchema, memoSections, type Dossier, type Research } from "./contracts";
 import type { StagedDecisionResult } from "./staged-decision-contract";
 import { parseCanonicalStagedDecisionResult } from "./staged-decision-integrity";
+
+type MemoPlanSection = (typeof memoSections)[number];
+
+export class MemoPlanRepair extends Error {
+  constructor(
+    readonly sections: MemoPlanSection[],
+    message: string,
+  ) {
+    super(message);
+    this.name = "MemoPlanRepair";
+  }
+}
 
 export function validateMemoPlan(
   research: Pick<Research, "claims" | "narrativePlan">,
@@ -26,7 +38,7 @@ export function validateMemoPlan(
       (id) => !points.some((p) => p.section === "candidateFit" && p.requirementIds.includes(id)),
     )
   )
-    throw new Error("MEMO_PLAN_REQUIREMENT_COVERAGE");
+    throw new MemoPlanRepair(["candidateFit"], "MEMO_PLAN_REQUIREMENT_COVERAGE");
   const conditions = points.filter((p) => p.section === "decisionConditions");
   const requiredFields = staged.decision.decisionHinges.flatMap((h) => h.resolutionFields);
   const requiredIds = [
@@ -40,7 +52,8 @@ export function validateMemoPlan(
     (id) => !conditions.some((p) => p.requirementIds.includes(id)),
   );
   if (missingFields.length || missingIds.length)
-    throw new Error(
+    throw new MemoPlanRepair(
+      ["decisionConditions"],
       `MEMO_PLAN_DECISION_COVERAGE: decisionConditions missing fields ${missingFields.join(", ")}; requirements ${missingIds.join(", ")}`,
     );
   const materialFields = Object.values(staged.decision.careerCapital)
@@ -55,7 +68,8 @@ export function validateMemoPlan(
       ),
   );
   if (missingCareer.length)
-    throw new Error(
+    throw new MemoPlanRepair(
+      ["opportunityValue", "decisionConditions"],
       `MEMO_PLAN_CAREER_COVERAGE: opportunityValue or decisionConditions missing ${missingCareer.join(", ")}`,
     );
 }
