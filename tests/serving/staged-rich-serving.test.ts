@@ -143,6 +143,17 @@ describe("rich staged serving activation", () => {
       ).presentationVersion,
     ).toBe(PREPARING_DOSSIER_VERSION);
 
+    const compositionQueue = new SqliteDossierCompositionQueue(db);
+    await compositionQueue.enqueue(identity, evaluationFingerprint);
+    await db.execute(
+      "UPDATE dossier_composition_jobs SET status='needs_attention',last_error='test terminal composition failure'",
+    );
+    expect(await queries.getDossier(scope, "source-job")).toMatchObject({
+      memoReviewState: "preparation_attention",
+      decision: "PURSUE",
+      recommendation: "Evaluation complete. Memo preparation needs attention.",
+    });
+
     const pending = dossier();
     delete pending.generation.factualReviewer;
     delete pending.generation.factualReviews;
