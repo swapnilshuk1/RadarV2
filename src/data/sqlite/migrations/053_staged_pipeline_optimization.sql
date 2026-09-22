@@ -9,6 +9,8 @@ ALTER TABLE evaluation_jobs ADD COLUMN dossier_queued_at DATETIME;
 ALTER TABLE staged_evaluations
   ADD COLUMN model_configuration_fingerprint TEXT NOT NULL DEFAULT 'legacy';
 
+ALTER TABLE dossier_review_jobs ADD COLUMN reviewed_at INTEGER;
+
 ALTER TABLE staged_frozen_inputs
   ADD COLUMN model_configuration_fingerprint TEXT NOT NULL DEFAULT 'legacy';
 
