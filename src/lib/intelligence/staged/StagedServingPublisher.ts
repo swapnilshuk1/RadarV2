@@ -117,10 +117,10 @@ export class StagedServingPublisher {
         JSON.stringify(payload),
         dossier?.generatedAt ?? new Date().toISOString(),
         PREPARING_DOSSIER_VERSION,
-        PREPARING_DOSSIER_VERSION,
+        DRAFT_DOSSIER_VERSION,
         DRAFT_DOSSIER_VERSION,
         RICH_DOSSIER_VERSION,
-        DRAFT_DOSSIER_VERSION,
+        RICH_DOSSIER_VERSION,
         RICH_DOSSIER_VERSION,
       ],
     );
