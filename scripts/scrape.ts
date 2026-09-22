@@ -2372,6 +2372,12 @@ export async function processUnit(
                 detail.finalUrl,
               );
             } catch (lineageErr: any) {
+              if (
+                lineageErr instanceof PersistenceUnavailableError ||
+                lineageErr?.code === "PERSISTENCE_UNAVAILABLE"
+              ) {
+                throw lineageErr;
+              }
               log(`[M10_LINEAGE_WARN] Failed to record validation failure lineage: ${lineageErr.message}`, "warn");
             }
           }
@@ -2452,6 +2458,12 @@ export async function processUnit(
                   detail.finalUrl,
                 );
               } catch (lineageErr: any) {
+                if (
+                  lineageErr instanceof PersistenceUnavailableError ||
+                  lineageErr?.code === "PERSISTENCE_UNAVAILABLE"
+                ) {
+                  throw lineageErr;
+                }
                 log(`[M10_LINEAGE_WARN] Failed to record unresolved identity lineage: ${lineageErr.message}`, "warn");
               }
             }
@@ -2710,6 +2722,13 @@ export async function processUnit(
                 detail.finalUrl,
               );
             } catch (err: any) {
+              // Once canonical admission succeeded, a later lineage write failure
+              // must not be reframed as a canonical-ingest failure or replaced
+              // with contradictory failure provenance for the same card attempt.
+              if (canonicalIngestionResult) {
+                throw err;
+              }
+
               log(`[M10_CANONICAL_INGEST_WARN] Canonical acquisition error for ${feedCard.cardHash}: ${err.message}`, "warn");
               mgr.recordTelemetry("canonicalIngestFailure");
               if (lineageScope) {
@@ -2724,6 +2743,12 @@ export async function processUnit(
                     detail.finalUrl,
                   );
                 } catch (lineageErr: any) {
+                  if (
+                    lineageErr instanceof PersistenceUnavailableError ||
+                    lineageErr?.code === "PERSISTENCE_UNAVAILABLE"
+                  ) {
+                    throw lineageErr;
+                  }
                   log(`[M10_LINEAGE_WARN] Failed to record error lineage for ${feedCard.cardHash}: ${lineageErr.message}`, "warn");
                 }
               }
@@ -2763,7 +2788,11 @@ export async function processUnit(
           persistenceState.error = err.message;
         }
 
-        if (isIntegrityFailure) {
+        // Release the in-run reservation only when this card never completed
+        // canonical admission. If canonical truth already committed, keep the
+        // reservation so a lineage/telemetry failure cannot cause duplicate
+        // work later in the same run.
+        if (isIntegrityFailure && !canonicalIngestionResult) {
           if (reservedCanonicalUrl) seenUrls.delete(reservedCanonicalUrl);
           if (reservedCanonicalJobId) seenCanonicalIds.delete(reservedCanonicalJobId);
         }
@@ -2856,7 +2885,7 @@ export async function processUnit(
     const classified = canonicalDuplicates + ledgerKnown + hardFiltered + identityFailed + integrityFailed + validationFailed + canonicalIngestFailed + novelAccepted + cancelledOrPruned;
     
     if (classified !== cardsParsed) {
-      log(`[AccountingInvariantViolation] cardsParsed=${cardsParsed}, classified=${classified} (Duplicates=${canonicalDuplicates}, Ledger=${ledgerKnown}, HardFiltered=${hardFiltered}, IdentityFailed=${identityFailed}, ValidationFailed=${validationFailed}, CanonicalIngestFailed=${canonicalIngestFailed}, NovelAccepted=${novelAccepted}, CancelledPruned=${cancelledOrPruned})`, "warn");
+      log(`[AccountingInvariantViolation] cardsParsed=${cardsParsed}, classified=${classified} (Duplicates=${canonicalDuplicates}, Ledger=${ledgerKnown}, HardFiltered=${hardFiltered}, IdentityFailed=${identityFailed}, IntegrityFailed=${integrityFailed}, ValidationFailed=${validationFailed}, CanonicalIngestFailed=${canonicalIngestFailed}, NovelAccepted=${novelAccepted}, CancelledPruned=${cancelledOrPruned})`, "warn");
     }
     if (novelAcquired > novelAccepted) {
       log(`[AccountingInvariantViolation] novelAcquired (${novelAcquired}) > novelAccepted (${novelAccepted})`, "warn");
