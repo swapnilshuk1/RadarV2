@@ -78,6 +78,23 @@ describe('staged enrichment dependency lifecycle', () => {
         }),{allowPreparing:true});
       }
       expect(await state()).toMatchObject({status:'staged_completed',requirement:'SATISFIED'});
+      const timing=await db.one<{
+        firstClaimed:number;
+        evaluationPersisted:number;
+        dossierQueued:number;
+        completed:number;
+      }>(`SELECT
+          first_claimed_at IS NOT NULL AS firstClaimed,
+          evaluation_persisted_at IS NOT NULL AS evaluationPersisted,
+          dossier_queued_at IS NOT NULL AS dossierQueued,
+          completed_at IS NOT NULL AS completed
+        FROM evaluation_jobs`);
+      expect(timing).toEqual({
+        firstClaimed:1,
+        evaluationPersisted:1,
+        dossierQueued:decision==='PASS'?0:1,
+        completed:1,
+      });
     }finally{evaluate.mockRestore();publish.mockRestore();}
   });
   it.each([[403,900_000],[429,45_000]])('releases the owned lease with provider-specific delay for HTTP %s without spending attempts',async(httpStatus,retryAfterMs)=>{
