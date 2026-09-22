@@ -377,6 +377,24 @@ describe('staged production decision boundary', () => {
     expect(result.decision.decisionHinges[0]).not.toHaveProperty('statement');
   });
 
+  it('batches screening, mapping and gap transport without collapsing their semantic validators', async () => {
+    class CountingBatchModel extends ScriptedModel {
+      override readonly id='counting-batch-model';
+      readonly instructions:string[]=[];
+      override async generate(instruction:string,input:any):Promise<unknown>{
+        this.instructions.push(instruction);
+        return super.generate(instruction,input);
+      }
+    }
+    const model=new CountingBatchModel();
+    const result=await runStagedFrozenDecisionDetailed(frozen,model);
+    expect(result.decision.verdict).toBe('PASS');
+    expect(model.instructions.filter(value=>value.includes('screening adjudicator'))).toHaveLength(1);
+    expect(model.instructions.filter(value=>value.includes('candidate-to-requirement mapper'))).toHaveLength(1);
+    expect(model.instructions.filter(value=>value.includes('screening-gap classifier'))).toHaveLength(1);
+    expect(model.instructions).toHaveLength(7);
+  });
+
   it('supplies career evidence and explicit pursuit actions only to the v7 decision stage', async()=>{
     for(const policyVersion of ['staged-v6','staged-v7'] as const){
       let request:any,wording='';
