@@ -9,6 +9,9 @@ ALTER TABLE evaluation_jobs ADD COLUMN dossier_queued_at DATETIME;
 ALTER TABLE staged_evaluations
   ADD COLUMN model_configuration_fingerprint TEXT NOT NULL DEFAULT 'legacy';
 
+ALTER TABLE staged_frozen_inputs
+  ADD COLUMN model_configuration_fingerprint TEXT NOT NULL DEFAULT 'legacy';
+
 -- Configuration changes are semantic generation identity. Rebuild the source cache
 -- so two configurations of the same provider/model can coexist safely.
 ALTER TABLE staged_source_evidence_cache RENAME TO staged_source_evidence_cache_legacy_053;
