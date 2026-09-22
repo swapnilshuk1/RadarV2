@@ -309,13 +309,13 @@ export class EvaluationWorker {
               identity,
               evaluationFingerprint,
             );
-            await new StagedServingPublisher(this.db).publish(identity,{allowPreparing:true});
             await this.db.execute(
               `UPDATE evaluation_jobs
                SET dossier_queued_at=COALESCE(dossier_queued_at,CURRENT_TIMESTAMP)
                WHERE id=? AND locked_by=? AND lease_token=? AND status='staged_processing'`,
               [job.id,this.workerId,job.leaseToken],
             );
+            await new StagedServingPublisher(this.db).publish(identity,{allowPreparing:true});
           }
           return this.commitStagedCompletion(job, evaluated.decision);
         } catch (error) {
