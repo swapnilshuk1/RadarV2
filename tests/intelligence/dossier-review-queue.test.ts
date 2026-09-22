@@ -26,6 +26,7 @@ describe("durable factual review lane", () => {
     db = new SqliteAdapter(raw);
     now = 1_000_000;
     raw.exec(readFileSync("src/data/sqlite/migrations/052_dossier_review_queue.sql", "utf8"));
+    raw.exec("ALTER TABLE dossier_review_jobs ADD COLUMN reviewed_at INTEGER");
     queue = new SqliteDossierReviewQueue(db, () => now);
   });
   afterEach(() => raw.close());
