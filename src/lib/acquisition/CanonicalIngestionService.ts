@@ -330,6 +330,12 @@ export class CanonicalIngestionService {
       snapshot.canonicalJobId = canonicalJobId;
       snapshot.opportunityVersion = versionId;
       const enrichmentPayloadKey = `acquisition/${canonicalJobId}/${versionId}/snapshot.json`;
+      // The immutable enrichment snapshot is also the durable raw-JD/source
+      // payload for text acquisitions.  Keep its key on the canonical version
+      // so a restored database can resolve the source independently of a
+      // worker-local snapshot path.
+      sourcePayloadKey = enrichmentPayloadKey;
+      sourceMediaType = "application/json";
       snapshot.evaluationEvidence = {
         canonicalJobId,
         opportunityVersion: versionId,

@@ -21,6 +21,14 @@ export class AcquisitionIngressError extends Error {
   constructor(readonly status: number, message: string) { super(message); this.name = "AcquisitionIngressError"; }
 }
 
+/** Constant-time check kept separate so deployment checks can exercise auth without DB writes. */
+export function isValidAcquisitionIngressSecret(configured: string | undefined, supplied: string | null): boolean {
+  return Boolean(
+    configured && supplied && supplied.length === configured.length
+    && crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(configured)),
+  );
+}
+
 export function parseAcquisitionEnvelope(value: unknown): AcquisitionEnvelope {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new AcquisitionIngressError(400, "MALFORMED_ENVELOPE");
   const input = value as Record<string, unknown>;
@@ -73,7 +81,9 @@ export class AcquisitionIngressService {
       const plan = await this.db.one<{ id: string }>("SELECT id FROM search_plans WHERE id = ? AND tenant_id = ? AND person_id = ?", [envelope.searchPlanId, envelope.tenantId, envelope.personId]);
       if (!plan) throw new AcquisitionIngressError(403, "INGRESS_SEARCH_PLAN_SCOPE_REJECTED");
     }
+    await this.ensureRemoteRun(envelope);
     const result = await this.ingestion.ingestOpportunity(envelope.payload, { scope: { mode: "SCOPED", tenantId: envelope.tenantId, personId: envelope.personId, searchPlanId: envelope.searchPlanId ?? null, runId: envelope.runId } });
+    await this.recordCanonicalLineage(envelope, result);
     try {
       await this.db.execute(
         `INSERT INTO acquisition_ingress_submissions (submission_id, tenant_id, person_id, search_plan_id, run_id, content_hash, canonical_job_id, opportunity_version, response_json)
@@ -87,13 +97,94 @@ export class AcquisitionIngressService {
       throw error;
     }
   }
+
+  /**
+   * The laptop owns browser state but not canonical persistence.  It therefore
+   * supplies a run id; Oracle creates and owns the scoped durable run before
+   * canonical admission.  This also makes the run_id used by queue bindings a
+   * real foreign-key target rather than a client-side fiction.
+   */
+  private async ensureRemoteRun(envelope: AcquisitionEnvelope): Promise<void> {
+    await this.db.execute(
+      `INSERT INTO scrape_runs (
+         id, tenant_id, person_id, search_plan_id, status, portal_targets,
+         config_json, metrics_json, total_discovered, total_enqueued,
+         created_at, started_at, updated_at
+       ) VALUES (?, ?, ?, ?, 'running', ?, ?, '{}', 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ON CONFLICT(id) DO NOTHING`,
+      [
+        envelope.runId,
+        envelope.tenantId,
+        envelope.personId,
+        envelope.searchPlanId ?? null,
+        JSON.stringify([envelope.payload.sourcePortal]),
+        JSON.stringify({ acquisitionBoundary: "localhost_to_oracle", envelopeVersion: envelope.schemaVersion }),
+      ],
+    );
+    const run = await this.db.one<{ id: string; status: string }>(
+      `SELECT id, status FROM scrape_runs
+       WHERE id = ? AND tenant_id = ? AND person_id = ?
+         AND ((search_plan_id = ?) OR (search_plan_id IS NULL AND ? IS NULL))`,
+      [envelope.runId, envelope.tenantId, envelope.personId, envelope.searchPlanId ?? null, envelope.searchPlanId ?? null],
+    );
+    if (!run) throw new AcquisitionIngressError(409, "INGRESS_RUN_SCOPE_CONFLICT");
+    if (run.status !== "running") throw new AcquisitionIngressError(409, "INGRESS_RUN_NOT_RUNNING");
+  }
+
+  /** Persist one Oracle-side source-to-canonical binding for this submission. */
+  private async recordCanonicalLineage(envelope: AcquisitionEnvelope, result: CanonicalIngestionResult): Promise<void> {
+    const ledgerId = `ingress_ledger_${crypto.createHash("sha256").update(`${envelope.payload.sourcePortal}:${result.canonicalJobId}`).digest("hex").slice(0, 24)}`;
+    const lineageId = `ingress_lineage_${crypto.createHash("sha256").update(envelope.submissionId).digest("hex").slice(0, 24)}`;
+    const now = new Date().toISOString();
+    await this.db.transaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO acquisition_ledger (
+           id, canonical_job_id, source_portal, source_job_id, canonical_url,
+           title, company_name, location, state, first_seen_at, last_seen_at,
+           last_acquired_at, freshness_state, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'VALIDATED', ?, ?, ?, 'FRESH', ?, ?)
+         ON CONFLICT(source_portal, canonical_job_id) DO UPDATE SET
+           last_seen_at = excluded.last_seen_at, last_acquired_at = excluded.last_acquired_at,
+           title = excluded.title, company_name = excluded.company_name,
+           location = COALESCE(excluded.location, acquisition_ledger.location), updated_at = excluded.updated_at`,
+        [ledgerId, result.canonicalJobId, envelope.payload.sourcePortal, envelope.payload.sourceJobId,
+          envelope.payload.canonicalUrl, envelope.payload.jobTitle, envelope.payload.companyName || "Unknown",
+          envelope.payload.location || null, now, now, now, now, now],
+      );
+      const ledger = await tx.one<{ id: string }>(
+        "SELECT id FROM acquisition_ledger WHERE source_portal = ? AND canonical_job_id = ?",
+        [envelope.payload.sourcePortal, result.canonicalJobId],
+      );
+      if (!ledger) throw new AcquisitionIngressError(500, "INGRESS_LEDGER_RESOLUTION_FAILED");
+      await tx.execute(
+        `INSERT INTO acquisition_ingestion_lineage (
+           id, scrape_run_id, tenant_id, person_id, acquisition_ledger_id,
+           card_id, ingestion_attempt, source_portal, source_job_id, source_url,
+           resolved_url, capture_state, document_state, content_hash,
+           canonical_job_id, opportunity_version
+         ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 'RECEIVED', 'CANONICAL_ADMITTED', ?, ?, ?)
+         ON CONFLICT(scrape_run_id, card_id, ingestion_attempt) DO NOTHING`,
+        [lineageId, envelope.runId, envelope.tenantId, envelope.personId, ledger.id,
+          `ingress:${envelope.submissionId}`, envelope.payload.sourcePortal,
+          envelope.payload.sourceJobId, envelope.payload.canonicalUrl,
+          envelope.payload.finalUrl || null, result.contentHash, result.canonicalJobId, result.opportunityVersion],
+      );
+      await tx.execute(
+        `UPDATE scrape_runs
+         SET total_discovered = total_discovered + 1,
+             total_enqueued = total_enqueued + ?, updated_at = ?
+         WHERE id = ?`,
+        [result.isNewEnrichmentJob ? 1 : 0, now, envelope.runId],
+      );
+    });
+  }
 }
 
 export async function handleAcquisitionIngress(request: Request): Promise<Response> {
   if (request.method !== "POST") return new Response(JSON.stringify({ error: "Method Not Allowed" }), { status: 405, headers: { allow: "POST", "content-type": "application/json" } });
   const secret = process.env.RADAR_ACQUISITION_INGRESS_SECRET;
   const supplied = request.headers.get("x-radar-acquisition-key");
-  if (!secret || !supplied || supplied.length !== secret.length || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(secret))) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "content-type": "application/json" } });
+  if (!isValidAcquisitionIngressSecret(secret, supplied)) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "content-type": "application/json" } });
   const length = Number(request.headers.get("content-length") || 0);
   if (length > MAX_ACQUISITION_ENVELOPE_BYTES) return new Response(JSON.stringify({ error: "Payload Too Large" }), { status: 413, headers: { "content-type": "application/json" } });
   try {
