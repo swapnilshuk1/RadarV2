@@ -97,7 +97,7 @@ import {
   PersistenceUnavailableError,
   withPersistenceBoundary,
 } from "./scraper/persist/coordinator";
-import { submitToOracleIngress } from "./scraper/persist/oracle-ingress";
+import { submitToOracleIngress, terminalizeOracleIngressRun } from "./scraper/persist/oracle-ingress";
 
 export { withPersistenceBoundary };
 
@@ -1315,6 +1315,14 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
       }
       return { success: false, count: 0, runId: mgr.runId };
     } finally {
+      const terminalStatus = mgr.manifest.status === "failed" ? "failed" : mgr.manifest.status === "aborted" ? "aborted" : null;
+      if (terminalStatus && process.env.RADAR_ACQUISITION_INGRESS_URL) {
+        try {
+          await terminalizeOracleIngressRun(mgr.runId, terminalStatus);
+        } catch (terminalizationError: any) {
+          log(`[Ingress] Failed to terminalize remote run ${mgr.runId}: ${terminalizationError?.message || terminalizationError}`, "warn");
+        }
+      }
       for (const session of runtime.authSessions.values()) {
         session.dispose();
       }

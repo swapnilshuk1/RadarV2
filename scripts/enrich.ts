@@ -533,14 +533,42 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
   await printDashboard(queue, workerStats);
 
   let idleCount = 0;
+  const inFlight = new Set<Promise<void>>();
+
+  const recordResult = (result: Awaited<ReturnType<typeof processJob>>) => {
+    workerStats.llmMs += result.llmMs;
+    workerStats.busyMs += result.busyMs;
+    if (result.dimensions) {
+      workerStats.dimensions.extracted += result.dimensions.extracted;
+      workerStats.dimensions.missing += result.dimensions.missing;
+      workerStats.dimensions.malformed += result.dimensions.malformed;
+      workerStats.dimensions.schemaErrors += result.dimensions.schemaErrors;
+    }
+  };
   
   while (true) {
-    // Attempt to lease up to CONFIG.llmConcurrency jobs matching this worker's pipeline version
-    const tPoll = Date.now();
-    const jobs = await queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency, 300, EXTRACTOR_VERSION); // 5 min lease
-    workerStats.pollingMs += (Date.now() - tPoll);
-    
-    if (jobs.length === 0) {
+    // Lease one replacement as each slot becomes free.  Do not wait for the
+    // slowest member of an earlier batch before filling an available slot.
+    let leasedAny = false;
+    while (inFlight.size < CONFIG.llmConcurrency) {
+      const tPoll = Date.now();
+      const jobs = await queue.leaseJobs(WORKER_ID, 1, 300, EXTRACTOR_VERSION); // 5 min lease
+      workerStats.pollingMs += (Date.now() - tPoll);
+      const job = jobs[0];
+      if (!job) break;
+      leasedAny = true;
+      idleCount = 0;
+      workerStats.status = "Processing";
+      workerStats.leaseCount++;
+      log(`Leased ${job.id}, processing in slot ${inFlight.size + 1}/${CONFIG.llmConcurrency}...`);
+      let task: Promise<void>;
+      task = processJob(queue, job)
+        .then(recordResult)
+        .finally(() => inFlight.delete(task));
+      inFlight.add(task);
+    }
+
+    if (inFlight.size === 0) {
       idleCount++;
       // leaseJobs is the indexed source of truth for due work. Do not run the
       // dashboard's historical aggregates on every idle poll.
@@ -555,34 +583,11 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
       await new Promise(r => setTimeout(r, 5000));
       continue;
     }
-    
-    idleCount = 0;
-    workerStats.status = "Processing";
-    workerStats.leaseCount += jobs.length;
-    log(`Leased ${jobs.length} jobs, processing...`);
-    
-    // Process leased jobs concurrently
-    const results = await Promise.all(jobs.map(job => processJob(queue, job)));
-    
-    // Aggregate times (note: concurrent processing means sum(llmMs) can exceed wall clock. 
-    // We average it out per job or just cap it at wall clock).
-    let batchLlmMs = 0;
-    let batchBusyMs = 0;
-    for (const r of results) {
-      batchLlmMs += r.llmMs;
-      batchBusyMs += r.busyMs;
-      if (r.dimensions) {
-        workerStats.dimensions.extracted += r.dimensions.extracted;
-        workerStats.dimensions.missing += r.dimensions.missing;
-        workerStats.dimensions.malformed += r.dimensions.malformed;
-        workerStats.dimensions.schemaErrors += r.dimensions.schemaErrors;
-      }
-    }
-    // Average across concurrency
-    workerStats.llmMs += (batchLlmMs / Math.max(1, jobs.length));
-    workerStats.busyMs += (batchBusyMs / Math.max(1, jobs.length));
-    
-    await printDashboard(queue, workerStats);
+
+    // A completed slot wakes the leasing loop immediately; a newly leased slot
+    // does not have to wait for its older peer to finish.
+    await Promise.race(inFlight);
+    if (leasedAny || inFlight.size === 0) await printDashboard(queue, workerStats);
   }
 }
 

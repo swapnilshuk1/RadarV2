@@ -4,6 +4,7 @@ import { CanonicalIngestionService, computeContentHash, type CanonicalIngestionR
 
 export const ACQUISITION_ENVELOPE_VERSION = "1";
 export const ACQUISITION_INGRESS_PATH = "/api/acquisition/ingress";
+export const ACQUISITION_INGRESS_RUN_PATH = "/api/acquisition/ingress/run";
 export const MAX_ACQUISITION_ENVELOPE_BYTES = 2 * 1024 * 1024;
 
 export interface AcquisitionEnvelope {
@@ -201,6 +202,39 @@ export async function handleAcquisitionIngress(request: Request): Promise<Respon
       console.error("[AcquisitionIngress] unexpected submission failure", { message });
     }
     const known = error instanceof AcquisitionIngressError ? error : new AcquisitionIngressError(422, "ACQUISITION_REJECTED");
+    return new Response(JSON.stringify({ error: known.message }), { status: known.status, headers: { "content-type": "application/json" } });
+  }
+}
+
+/**
+ * The browser-owning producer has no database credentials. It must still be
+ * able to close a failed or aborted server-owned run so an abandoned local
+ * process cannot hold the single-active-run guard indefinitely.
+ */
+export async function handleAcquisitionIngressRunTerminalization(request: Request): Promise<Response> {
+  if (request.method !== "POST") return new Response(JSON.stringify({ error: "Method Not Allowed" }), { status: 405, headers: { allow: "POST", "content-type": "application/json" } });
+  if (!isValidAcquisitionIngressSecret(process.env.RADAR_ACQUISITION_INGRESS_SECRET, request.headers.get("x-radar-acquisition-key"))) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "content-type": "application/json" } });
+  }
+  try {
+    const input = await request.json() as Record<string, unknown>;
+    const text = (key: string) => {
+      const value = input[key];
+      if (typeof value !== "string" || !value.trim() || value.length > 160) throw new AcquisitionIngressError(400, `INVALID_${key.toUpperCase()}`);
+      return value.trim();
+    };
+    const status = text("status");
+    if (status !== "failed" && status !== "aborted") throw new AcquisitionIngressError(400, "INVALID_TERMINAL_STATUS");
+    const changed = await getDatabaseAdapter().execute(
+      `UPDATE scrape_runs SET status=?, finished_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP
+       WHERE id=? AND tenant_id=? AND person_id=?
+         AND ((search_plan_id=?) OR (search_plan_id IS NULL AND ? IS NULL))
+         AND status IN ('queued','initializing','running','waiting_for_confirmation','stopping')`,
+      [status, text("runId"), text("tenantId"), text("personId"), input.searchPlanId ?? null, input.searchPlanId ?? null],
+    );
+    return new Response(JSON.stringify({ terminalized: changed.rowsAffected > 0 }), { status: 200, headers: { "content-type": "application/json" } });
+  } catch (error) {
+    const known = error instanceof AcquisitionIngressError ? error : new AcquisitionIngressError(422, "RUN_TERMINALIZATION_REJECTED");
     return new Response(JSON.stringify({ error: known.message }), { status: known.status, headers: { "content-type": "application/json" } });
   }
 }

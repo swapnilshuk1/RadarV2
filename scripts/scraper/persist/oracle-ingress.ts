@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import type { CanonicalIngestionResult, IngestOpportunityPayload } from "../../../src/lib/acquisition/CanonicalIngestionService";
 import { computeContentHash } from "../../../src/lib/acquisition/CanonicalIngestionService";
-import { ACQUISITION_ENVELOPE_VERSION, ACQUISITION_INGRESS_PATH, type AcquisitionEnvelope } from "../../../src/lib/acquisition/ingress";
+import { ACQUISITION_ENVELOPE_VERSION, ACQUISITION_INGRESS_PATH, ACQUISITION_INGRESS_RUN_PATH, type AcquisitionEnvelope } from "../../../src/lib/acquisition/ingress";
 
 export interface OracleIngressScope { tenantId: string; personId: string; searchPlanId?: string | null; }
 
@@ -32,4 +32,17 @@ export async function submitToOracleIngress(payload: IngestOpportunityPayload, r
   const parsed = await response.json().catch(() => null) as { error?: string; result?: CanonicalIngestionResult } | null;
   if (!response.ok || !parsed?.result) throw new Error(`ORACLE_INGRESS_REJECTED: ${parsed?.error || response.status}`);
   return parsed.result;
+}
+
+export async function terminalizeOracleIngressRun(runId: string, status: "failed" | "aborted", scope?: OracleIngressScope): Promise<void> {
+  const baseUrl = process.env.RADAR_ACQUISITION_INGRESS_URL;
+  const secret = process.env.RADAR_ACQUISITION_INGRESS_SECRET;
+  if (!baseUrl || !secret) return;
+  const effectiveScope = configuredScope(scope);
+  const response = await fetch(new URL(ACQUISITION_INGRESS_RUN_PATH, baseUrl).toString(), {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-radar-acquisition-key": secret },
+    body: JSON.stringify({ runId, status, ...effectiveScope }),
+  });
+  if (!response.ok) throw new Error(`ORACLE_INGRESS_RUN_TERMINALIZATION_REJECTED: ${response.status}`);
 }
