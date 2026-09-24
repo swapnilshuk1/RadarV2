@@ -205,10 +205,14 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
     sqliteDb.pragma("foreign_keys = ON");
     sqliteDb.pragma("busy_timeout = 10000");
     sqliteDb.pragma("synchronous = FULL");
-    if (journalMode !== "wal") {
+    const foreignKeys = Number(sqliteDb.pragma("foreign_keys", { simple: true }));
+    const busyTimeout = Number(sqliteDb.pragma("busy_timeout", { simple: true }));
+    // SQLite returns numeric synchronous levels: FULL is 2.
+    const synchronous = Number(sqliteDb.pragma("synchronous", { simple: true }));
+    if (journalMode !== "wal" || foreignKeys !== 1 || busyTimeout !== 10_000 || synchronous !== 2) {
       sqliteDb.close();
       throw new Error(
-        `[DatabaseAdapter] SQLITE_CANDIDATE_WAL_REQUIRED: requested WAL but SQLite reported ${journalMode}.`,
+        `[DatabaseAdapter] SQLITE_CANDIDATE_PRAGMA_INVALID: journal_mode=${journalMode}, foreign_keys=${foreignKeys}, busy_timeout=${busyTimeout}, synchronous=${synchronous}.`,
       );
     }
 

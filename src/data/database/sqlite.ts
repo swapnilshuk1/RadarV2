@@ -10,7 +10,8 @@ import type Database from "better-sqlite3";
  * BEGIN on the same connection.
  */
 export class SqliteAdapter implements DatabaseAdapter {
-  private operationTail: Promise<void> = Promise.resolve();
+  private transactionTail: Promise<void> = Promise.resolve();
+  private activeTransactionCompletion: Promise<void> | null = null;
   private readonly transactionContext = new AsyncLocalStorage<symbol>();
   private activeTransactionOwner: symbol | null = null;
 
@@ -23,42 +24,42 @@ export class SqliteAdapter implements DatabaseAdapter {
     }
   }
 
-  private async runExclusive<T>(fn: () => T | Promise<T>): Promise<T> {
+  /**
+   * A better-sqlite3 operation is synchronous, so normal operations cannot
+   * interleave with one another. They only need a barrier while an awaited
+   * transaction owns the connection. Do not serialize all normal reads: that
+   * would turn an otherwise local serving path into a needless promise queue.
+   */
+  private async runOperation<T>(fn: () => T | Promise<T>): Promise<T> {
     const owner = this.transactionContext.getStore();
     if (owner && owner === this.activeTransactionOwner) {
       return await fn();
     }
 
-    const previous = this.operationTail;
-    let release!: () => void;
-    this.operationTail = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-
-    await previous;
-    try {
-      return await fn();
-    } finally {
-      release();
+    // A new transaction can start while a prior one releases its barrier, so
+    // re-check after every await before touching the connection.
+    while (this.activeTransactionCompletion) {
+      await this.activeTransactionCompletion;
     }
+    return await fn();
   }
 
   async one<T>(sql: string, params: QueryParams = []): Promise<T | null> {
-    return this.runExclusive(() => {
+    return this.runOperation(() => {
       const row = this.db.prepare(sql).get(...(params as any[]));
       return (row as T) || null;
     });
   }
 
   async many<T>(sql: string, params: QueryParams = []): Promise<T[]> {
-    return this.runExclusive(() => {
+    return this.runOperation(() => {
       const rows = this.db.prepare(sql).all(...(params as any[]));
       return (rows as T[]) || [];
     });
   }
 
   async execute(sql: string, params: QueryParams = []): Promise<{ rowsAffected: number; lastInsertRowid?: any }> {
-    return this.runExclusive(() => {
+    return this.runOperation(() => {
       const info = this.db.prepare(sql).run(...(params as any[]));
       return {
         rowsAffected: info.changes,
@@ -75,32 +76,37 @@ export class SqliteAdapter implements DatabaseAdapter {
       return await fn(this);
     }
 
-    return this.runExclusive(async () => {
-      const transactionOwner = Symbol("sqlite-transaction");
+    const previous = this.transactionTail;
+    let releaseTransaction!: () => void;
+    this.transactionTail = new Promise<void>((resolve) => { releaseTransaction = resolve; });
+    await previous;
+
+    const transactionOwner = Symbol("sqlite-transaction");
+    let releaseActive!: () => void;
+    this.activeTransactionCompletion = new Promise<void>((resolve) => { releaseActive = resolve; });
+    try {
       this.db.exec("BEGIN IMMEDIATE");
       this.activeTransactionOwner = transactionOwner;
-
-      try {
-        return await this.transactionContext.run(transactionOwner, async () => {
-          try {
-            const result = await fn(this);
-            this.db.exec("COMMIT");
-            return result;
-          } catch (err) {
-            if (this.db.inTransaction) {
-              this.db.exec("ROLLBACK");
-            }
-            throw err;
-          }
-        });
-      } finally {
-        this.activeTransactionOwner = null;
-      }
-    });
+      return await this.transactionContext.run(transactionOwner, async () => {
+        try {
+          const result = await fn(this);
+          this.db.exec("COMMIT");
+          return result;
+        } catch (err) {
+          if (this.db.inTransaction) this.db.exec("ROLLBACK");
+          throw err;
+        }
+      });
+    } finally {
+      this.activeTransactionOwner = null;
+      this.activeTransactionCompletion = null;
+      releaseActive();
+      releaseTransaction();
+    }
   }
 
   async executeMigration(statements: readonly string[], options?: { disableForeignKeys?: boolean }): Promise<void> {
-    await this.runExclusive(async () => {
+    await this.transaction(async () => {
       const disableFk = options?.disableForeignKeys ?? false;
       if (disableFk) {
         this.db.pragma("foreign_keys = OFF");
