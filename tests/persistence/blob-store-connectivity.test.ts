@@ -51,6 +51,22 @@ describe("Phase 4C: BlobStore Connectivity & Backend Protocol Verification", () 
     } as NodeJS.ProcessEnv)).toThrow(/must be below/);
   });
 
+  it("0d. requires a distinct explicit remote bucket for a SQLite candidate", () => {
+    const candidate = {
+      RADAR_ENV: "staging", RADAR_DATABASE_TARGET: "sqlite-candidate",
+      BLOB_STORAGE_ENDPOINT: "https://objects.example", BLOB_STORAGE_BUCKET: "radar-production",
+      RADAR_CANDIDATE_BLOB_STORAGE_BUCKET: "radar-candidate",
+    } as NodeJS.ProcessEnv;
+    expect(describeBlobStoreConfiguration(candidate)).toMatchObject({ artifactBackend: "s3_compatible", remoteBucket: "radar-candidate" });
+    expect(() => describeBlobStoreConfiguration({ ...candidate, RADAR_CANDIDATE_BLOB_STORAGE_BUCKET: "radar-production" })).toThrow(
+      "SQLite candidate blob bucket must differ from the normal deployment bucket.",
+    );
+    expect(() => describeBlobStoreConfiguration({
+      RADAR_ENV: "staging", RADAR_DATABASE_TARGET: "sqlite-candidate",
+      BLOB_STORAGE_ENDPOINT: "https://objects.example", BLOB_STORAGE_BUCKET: "radar-production",
+    } as NodeJS.ProcessEnv)).toThrow(/RADAR_CANDIDATE_BLOB_STORAGE_BUCKET/);
+  });
+
   it("1. MemoryBlobStore roundtrip & health check", async () => {
     const memStore = new MemoryBlobStore();
     const check = await memStore.healthCheck();

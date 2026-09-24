@@ -342,6 +342,17 @@ export function describeBlobStoreConfiguration(env: NodeJS.ProcessEnv = process.
   const remoteBucket = isSqliteCandidate ? candidateRemoteBucket : env.BLOB_STORAGE_BUCKET;
   const hasRemoteConfiguration = Boolean(env.BLOB_STORAGE_ENDPOINT && remoteBucket);
 
+  if (
+    isSqliteCandidate &&
+    candidateRemoteBucket &&
+    env.BLOB_STORAGE_BUCKET &&
+    candidateRemoteBucket === env.BLOB_STORAGE_BUCKET
+  ) {
+    throw new BlobStoreConfigurationError(
+      "SQLite candidate blob bucket must differ from the normal deployment bucket.",
+    );
+  }
+
   if (isSqliteCandidate && !hasRemoteConfiguration) {
     if (!configuredLocalRoot || !path.isAbsolute(configuredLocalRoot)) {
       throw new BlobStoreConfigurationError(
