@@ -90,12 +90,14 @@ import type { AuthContext } from "../src/lib/security/auth";
 import {
   CanonicalIngestionService,
   type CanonicalIngestionResult,
+  type IngestOpportunityPayload,
   AcquisitionIntegrityError,
 } from "../src/lib/acquisition/CanonicalIngestionService";
 import {
   PersistenceUnavailableError,
   withPersistenceBoundary,
 } from "./scraper/persist/coordinator";
+import { submitToOracleIngress } from "./scraper/persist/oracle-ingress";
 
 export { withPersistenceBoundary };
 
@@ -2652,15 +2654,15 @@ export async function processUnit(
           }
 
           // [M10.1] Canonical Acquisition Interceptor: Global Identity, Versioning, Attention Gate & Queue
-          const canonicalPersistenceEnabled = runSession?.capabilities
+          const oracleIngressEnabled = Boolean(process.env.RADAR_ACQUISITION_INGRESS_URL);
+          const canonicalPersistenceEnabled = oracleIngressEnabled || (runSession?.capabilities
             ? runSession.capabilities.canonicalPersistenceEnabled
-            : isDbAvailable;
+            : isDbAvailable);
           if (!canonicalPersistenceEnabled) {
             log(`[LocalOnly] Skipping CanonicalIngestionService for card ${feedCard.cardHash} (canonicalPersistenceEnabled=false)`, "info");
           } else {
             try {
-              const canonicalIngest = new CanonicalIngestionService();
-              const ingestRes = await withPersistenceBoundary("canonical ingestion", () => canonicalIngest.ingestOpportunity({
+              const admissionPayload: IngestOpportunityPayload = {
                 sourcePortal: unit.portal,
                 sourceJobId: resolvedIdentity.sourceJobId,
                 canonicalUrl: resolvedIdentity.canonicalUrl,
@@ -2692,7 +2694,10 @@ export async function processUnit(
                   executionPriority: 0,
                   snapshotPath: writtenSnapshotPath || null,
                 },
-              }, lineageScope ? {
+              };
+              const ingestRes = await withPersistenceBoundary("canonical ingestion", () => oracleIngressEnabled
+                ? submitToOracleIngress(admissionPayload, mgr.runId, lineageScope)
+                : new CanonicalIngestionService().ingestOpportunity(admissionPayload, lineageScope ? {
                 mode: "SCOPED" as const,
                 tenantId: lineageScope.tenantId,
                 personId: lineageScope.personId,

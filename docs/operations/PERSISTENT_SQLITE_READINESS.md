@@ -107,3 +107,14 @@ and active evaluation-context pointers before declaring the backup proof passed.
 Only mark **CODE READY FOR ORACLE PROOF** after targeted tests, TypeScript and
 the build pass. Persistent SQLite is not production-ready until the Oracle
 proof, crash recovery, integrity/FK checks and backup/restore boot all pass.
+# Localhost acquisition boundary
+
+Portal browsing, portal cookies, and CAPTCHA clearance are localhost-only. The
+scraper submits an authenticated immutable acquisition envelope to Oracle; Oracle
+persists canonical data and its source payload through the configured durable
+BlobStore. The candidate must use the same durable blob/object-store backend as
+the Turso control where possible; SQLite changes the database backend only.
+
+Never pass a laptop filesystem path as source provenance. Oracle assigns and
+stores the stable `sourcePayloadKey`, which must remain retrievable by
+enrichment, restore verification, and a restored-stack boot.

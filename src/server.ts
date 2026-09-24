@@ -4,6 +4,7 @@ import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
 import { handleGoogleOAuthCallback, handleGoogleOAuthInitiation } from "./lib/auth/oauth-http-routes";
+import { ACQUISITION_INGRESS_PATH, handleAcquisitionIngress } from "./lib/acquisition/ingress";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -56,6 +57,9 @@ export default {
     }
     if (url.pathname === "/api/auth/callback") {
       return handleGoogleOAuthCallback(request);
+    }
+    if (url.pathname === ACQUISITION_INGRESS_PATH) {
+      return handleAcquisitionIngress(request);
     }
 
     // Invariant: Privileged webhooks are completely eliminated from the runtime.
