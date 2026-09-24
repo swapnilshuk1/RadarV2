@@ -5,6 +5,9 @@ import { RunReconciliationService } from "./RunReconciliationService";
 import { getDatabaseAdapter, type DatabaseAdapter } from "@/data/database";
 import { EvaluationRuntimeControl } from "./EvaluationRuntimeControl";
 
+/** A global repair is crash recovery, not a per-poll health check. */
+export const GLOBAL_RECONCILIATION_INTERVAL_MS = 5 * 60_000;
+
 export class EvaluationDaemon {
   private readonly workers: EvaluationWorker[];
   private readonly reconciler: RunReconciliationService;
@@ -14,6 +17,7 @@ export class EvaluationDaemon {
   private abortController: AbortController | null = null;
   private readonly pollIntervalMs: number;
   private lastGlobalReconcileAt = 0;
+  private reconciliationInFlight: Promise<void> | null = null;
 
   constructor(
     workerId?: string,
@@ -69,18 +73,10 @@ export class EvaluationDaemon {
         const result = await worker.pollAndProcessNext();
         if (signal.aborted) return;
 
-        const now = Date.now();
-        if (now - this.lastGlobalReconcileAt >= 10_000) {
-          this.lastGlobalReconcileAt = now;
-          try {
-            await this.reconciler.reconcileActiveRuns();
-          } catch (recErr: any) {
-            console.warn(
-              "[EvaluationDaemon] Periodic active run reconciliation error:",
-              recErr?.message || recErr,
-            );
-          }
-        }
+        // Job transitions reconcile their own runs. A full system scan is only
+        // a slow crash-recovery safety net.
+        if (Date.now() - this.lastGlobalReconcileAt >= GLOBAL_RECONCILIATION_INTERVAL_MS)
+          void this.reconcileActiveRuns("safety");
 
         if (result) {
           console.log(
@@ -112,9 +108,32 @@ export class EvaluationDaemon {
       }
     };
 
-    this.workers.forEach((worker, index) => {
-      void loop(worker, index + 1);
+    // Repair dangling work once before accepting normal work. This preserves
+    // crash recovery without making every daemon poll scan every active run.
+    void this.reconcileActiveRuns("startup").finally(() => {
+      if (!signal.aborted)
+        this.workers.forEach((worker, index) => {
+          void loop(worker, index + 1);
+        });
     });
+  }
+
+  private reconcileActiveRuns(reason: "startup" | "safety"): Promise<void> {
+    if (this.reconciliationInFlight) return this.reconciliationInFlight;
+
+    this.lastGlobalReconcileAt = Date.now();
+    this.reconciliationInFlight = this.reconciler
+      .reconcileActiveRuns()
+      .catch((recErr: any) => {
+        console.warn(
+          `[EvaluationDaemon] ${reason === "startup" ? "Startup" : "Safety"} active-run reconciliation error:`,
+          recErr?.message || recErr,
+        );
+      })
+      .finally(() => {
+        this.reconciliationInFlight = null;
+      });
+    return this.reconciliationInFlight;
   }
 
   public stop(): void {
