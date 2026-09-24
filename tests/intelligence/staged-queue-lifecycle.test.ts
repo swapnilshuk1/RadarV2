@@ -2,8 +2,9 @@ import Database from 'better-sqlite3';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelProviderUnavailableError } from '../../src/lib/model/provider-unavailable';
 import { ProductionStagedEvaluationService } from '../../src/lib/intelligence/staged/ProductionStagedEvaluationService';
-import { ProductionStagedDossierService } from '../../src/lib/intelligence/staged/ProductionStagedDossierService';
 import { StagedServingPublisher } from '../../src/lib/intelligence/staged/StagedServingPublisher';
+import { SqliteDossierCompositionQueue } from '../../src/data/sqlite/repositories/SqliteDossierCompositionQueue';
+import { stagedEvaluation } from '../fixtures/staged-rich-dossier';
 import {recoverStagedProviderFailures} from '../../src/lib/intelligence/staged/StagedProviderRecovery';
 import { SqliteAdapter } from '../../src/data/database/sqlite';
 import { setupLineageTestFixture } from '../persistence/lineage_fixture';
@@ -39,15 +40,62 @@ describe('staged enrichment dependency lifecycle', () => {
     await db.execute(`INSERT OR IGNORE INTO evaluation_context_scopes(context_fingerprint,tenant_id,person_id,search_plan_id) VALUES('staged-context','tenant_A','person_A','plan_A')`);
     await db.execute(`INSERT INTO active_evaluation_contexts(tenant_id,person_id,search_plan_id,context_fingerprint,activated_by) VALUES('tenant_A','person_A','plan_A','staged-context','test-fixture')`);
     const worker=new EvaluationWorker(db);const job=await worker.claimNextJob('staged');
-    const evaluate=vi.spyOn(ProductionStagedEvaluationService.prototype,'evaluate').mockResolvedValue({decision} as any);
-    const compose=vi.spyOn(ProductionStagedDossierService.prototype,'compose').mockResolvedValue({} as any);
+    const evaluation=structuredClone(stagedEvaluation);
+    evaluation.decision.verdict=decision;
+    evaluation.trace.decision.verdict=decision;
+    const evaluate=vi.spyOn(ProductionStagedEvaluationService.prototype,'evaluate').mockResolvedValue({
+      ...identity,
+      profileVersion:'profile',
+      policyVersion:'staged-v6',
+      ontologyVersion:'v1',
+      ontologyFingerprint:'hash_ontology',
+      jobHash:'job',
+      inputFingerprint:'input',
+      sourceFingerprints:['jd'],
+      modelId:'test',
+      modelVersion:'test',
+      modelConfigurationFingerprint:'test-config',
+      contractVersion:'staged-decision-v6',
+      evaluationState:'COMPLETED',
+      decision,
+      screeningViability:evaluation.decision.screeningViability,
+      evaluation,
+      evaluatedAt:'2026-09-22T00:00:00.000Z',
+    } as any);
     const publish=vi.spyOn(StagedServingPublisher.prototype,'publish').mockResolvedValue(undefined as any);
     try{
       expect(await worker.processJob(job!)).toMatchObject({status:'completed',decision});
-      expect(compose).toHaveBeenCalledTimes(decision==='PASS'?0:1);
       expect(publish).toHaveBeenCalledTimes(decision==='PASS'?0:1);
+      if(decision==='PASS'){
+        expect(await db.one('SELECT COUNT(*) n FROM dossier_composition_jobs')).toEqual({n:0});
+      }else{
+        expect(await db.one('SELECT COUNT(*) n FROM dossier_composition_jobs')).toEqual({n:1});
+        const queued=await db.one<{status:string}>('SELECT status FROM dossier_composition_jobs');
+        expect(queued).toEqual({status:'pending'});
+        expect(publish).toHaveBeenCalledWith(expect.objectContaining({
+          canonicalJobId:'job',
+          evaluationContextFingerprint:'staged-context',
+        }),{allowPreparing:true});
+      }
       expect(await state()).toMatchObject({status:'staged_completed',requirement:'SATISFIED'});
-    }finally{evaluate.mockRestore();compose.mockRestore();publish.mockRestore();}
+      const timing=await db.one<{
+        firstClaimed:number;
+        evaluationPersisted:number;
+        dossierQueued:number;
+        completed:number;
+      }>(`SELECT
+          first_claimed_at IS NOT NULL AS firstClaimed,
+          evaluation_persisted_at IS NOT NULL AS evaluationPersisted,
+          dossier_queued_at IS NOT NULL AS dossierQueued,
+          completed_at IS NOT NULL AS completed
+        FROM evaluation_jobs`);
+      expect(timing).toEqual({
+        firstClaimed:1,
+        evaluationPersisted:1,
+        dossierQueued:decision==='PASS'?0:1,
+        completed:1,
+      });
+    }finally{evaluate.mockRestore();publish.mockRestore();}
   });
   it.each([[403,900_000],[429,45_000]])('releases the owned lease with provider-specific delay for HTTP %s without spending attempts',async(httpStatus,retryAfterMs)=>{
     await db.execute(`UPDATE opportunity_versions SET acquisition_status='ACQUIRED',lifecycle_state='ACTIVE'`);

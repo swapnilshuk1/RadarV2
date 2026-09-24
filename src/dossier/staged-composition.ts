@@ -14,7 +14,11 @@ import {
 import type { StagedResearchInput } from "./staged-role";
 import type { StagedDecisionResult } from "./staged-decision-contract";
 import { validateClaims } from "./grounding";
-import { validateMemoPlan, validateMemoSectionCoverage } from "./memo-integrity";
+import {
+  MemoPlanRepair,
+  validateMemoPlan,
+  validateMemoSectionCoverage,
+} from "./memo-integrity";
 import {
   memoWritingInstruction,
   memoInputPacket,
@@ -89,6 +93,83 @@ type Draft = z.infer<typeof memoDraftSchema>;
 type Repair = { sections: MemoSection[]; editorial: boolean; issue: string };
 const sectionKeys = Object.keys(compositionSchema.shape) as MemoSection[];
 
+function compactMemoRepairInput(
+  packet: ReturnType<typeof memoInputPacket>,
+  previous: Draft | undefined,
+  repair: Repair,
+  frozen: StagedResearchInput,
+  staged: StagedDecisionResult,
+) {
+  if (repair.editorial || !previous || !repair.sections.length) {
+    return {
+      input: packet,
+      previous,
+      repair: repair.issue,
+      repairSections: repair.sections,
+      repairEditorial: repair.editorial,
+    };
+  }
+
+  const points = (previous.narrativePlan.memoPoints ?? []).filter((point) =>
+    repair.sections.includes(point.section as MemoSection),
+  );
+  const requirementIds = new Set(points.flatMap((point) => point.requirementIds));
+  const resolutionFields = new Set(points.flatMap((point) => point.resolutionFields));
+  const claimIds = new Set(points.flatMap((point) => point.claimIds));
+  const byId = new Map(frozen.evidence.map((claim) => [claim.id, claim]));
+  const includeClaim = (id: string) => {
+    if (claimIds.has(id)) {
+      byId.get(id)?.derivedFrom.forEach((parent) => {
+        if (!claimIds.has(parent)) {
+          claimIds.add(parent);
+          includeClaim(parent);
+        }
+      });
+    }
+  };
+  [...claimIds].forEach(includeClaim);
+
+  const filterClaims = <T extends { id: string }>(claims: T[]) =>
+    claims.filter((claim) => claimIds.has(claim.id));
+  const priorMemo = Object.fromEntries(
+    repair.sections.map((section) => [section, previous.memo[section]]),
+  );
+
+  return {
+    input: {
+      candidateEvidence: {
+        ...packet.candidateEvidence,
+        facts: filterClaims(packet.candidateEvidence.facts),
+      },
+      opportunity: packet.opportunity,
+      roleEvidence: filterClaims(packet.roleEvidence),
+      contextEvidence: filterClaims(packet.contextEvidence),
+      relationalEvidence: filterClaims(packet.relationalEvidence),
+      fixedDecision: packet.fixedDecision,
+      requirements: staged.trace.requirements.filter((requirement) =>
+        requirementIds.has(requirement.id),
+      ),
+      operatingConditions: staged.trace.role.operatingConditions,
+      referenceScope: staged.trace.resolutions.filter((resolution) =>
+        resolutionFields.has(resolution.field),
+      ),
+      assignedMemoPoints: points,
+      budgets: packet.budgets,
+    },
+    previous: {
+      rationale: previous.rationale,
+      narrativePlan: {
+        ...previous.narrativePlan,
+        memoPoints: points,
+      },
+      memo: priorMemo,
+    },
+    repair: repair.issue,
+    repairSections: repair.sections,
+    repairEditorial: false,
+  };
+}
+
 /** Validate all independent boundaries together so a repair sees every defect. */
 function inspectDraft(
   value: unknown,
@@ -127,6 +208,9 @@ function inspectDraft(
     validateMemoPlan(research, staged);
   } catch (error) {
     editorial = true;
+    if (error instanceof MemoPlanRepair) {
+      error.sections.forEach((section) => sections.add(section as MemoSection));
+    }
     issues.push(String(error));
   }
   let memo = draft.memo;
@@ -185,15 +269,16 @@ async function writeMemo(
     const response = await writer.generate(
       instruction,
       repair
-        ? {
-            input: packet,
-            previous: value,
-            repair: repair.issue,
-            repairSections: repair.sections,
-            repairEditorial: repair.editorial,
-          }
+        ? compactMemoRepairInput(
+            packet as ReturnType<typeof memoInputPacket>,
+            value as Draft | undefined,
+            repair,
+            frozen,
+            staged,
+          )
         : packet,
       outputSchemaFor(writer, schema),
+      { stage: repair ? "memo-repair" : "memo-draft", attempt: attempt + 1 },
     );
     lastResponse = response;
     if (repair) {
@@ -234,8 +319,13 @@ function memoWriter(
     configurationFingerprint: model.configurationFingerprint,
     schemaFormat: model.schemaFormat,
     discardResponse: model.discardResponse?.bind(model),
-    generate: (instruction, input, schema) =>
-      model.generate(instruction, input, schema ? bindMemoReferences(schema, catalog) : schema),
+    generate: (instruction, input, schema, metadata) =>
+      model.generate(
+        instruction,
+        input,
+        schema ? bindMemoReferences(schema, catalog) : schema,
+        metadata,
+      ),
   };
 }
 

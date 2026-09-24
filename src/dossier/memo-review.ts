@@ -157,6 +157,7 @@ export async function reviewMemo(
       model.schemaFormat === "json-schema" || /bedrock/i.test(model.id)
         ? bedrockJsonSchema(memoReviewSchema)
         : modelSchema(memoReviewSchema),
+      { stage: "factual-review", attempt: attempt + 1 },
     );
     try {
       const parsed = memoReviewSchema.parse(response);

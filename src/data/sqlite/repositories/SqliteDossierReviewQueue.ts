@@ -92,8 +92,7 @@ export class SqliteDossierReviewQueue {
   }
   async getDraft(identity: DossierPresentationIdentity, fp: string): Promise<Dossier | null> {
     const row = await this.find(identity, fp);
-    if (!row || row.withheld || row.status === "completed" || row.status === "needs_attention")
-      return null;
+    if (!row || row.withheld || row.status === "completed") return null;
     try {
       const value = JSON.parse(row.draft_json);
       if (reviewFingerprint(value) !== row.draft_fingerprint) return null;
@@ -168,8 +167,8 @@ export class SqliteDossierReviewQueue {
   async finish(job: ReviewJob, save: (tx: DatabaseAdapter) => Promise<void>) {
     await this.db.transaction(async (tx) => {
       const guard = await tx.execute(
-        `UPDATE dossier_review_jobs SET status='completed',lease_token=NULL,lease_until=NULL,last_error=NULL,updated_at=? WHERE id=? AND status='processing' AND lease_token=? AND lease_until>?`,
-        [this.now(), job.id, job.lease_token, this.now()],
+        `UPDATE dossier_review_jobs SET status='completed',lease_token=NULL,lease_until=NULL,last_error=NULL,reviewed_at=COALESCE(reviewed_at,?),updated_at=? WHERE id=? AND status='processing' AND lease_token=? AND lease_until>?`,
+        [this.now(), this.now(), job.id, job.lease_token, this.now()],
       );
       if (!guard.rowsAffected) throw new Error("REVIEW_LEASE_LOST");
       const lane = await tx.execute(
@@ -197,10 +196,9 @@ export class SqliteDossierReviewQueue {
       );
       const terminal = !error.provider || this.now() - job.created_at > 24 * 3600_000;
       await tx.execute(
-        `UPDATE dossier_review_jobs SET status=?,withheld=CASE WHEN ? THEN 1 ELSE withheld END,attempts=attempts+1,next_attempt_at=?,lease_token=NULL,lease_until=NULL,last_error=?,updated_at=? WHERE id=? AND lease_token=?`,
+        `UPDATE dossier_review_jobs SET status=?,attempts=attempts+1,next_attempt_at=?,lease_token=NULL,lease_until=NULL,last_error=?,updated_at=? WHERE id=? AND lease_token=?`,
         [
           terminal ? "needs_attention" : "retry",
-          terminal ? 1 : 0,
           this.now() + delay,
           error.code,
           this.now(),

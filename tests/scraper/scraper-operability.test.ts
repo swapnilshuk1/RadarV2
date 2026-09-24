@@ -40,7 +40,14 @@ import {
   processUnit,
   startRun,
   CredentialBroker,
+  finalizeUnitOutcome,
 } from "../../scripts/scrape";
+import {
+  PersistenceUnavailableError,
+  PersistenceWriteCoordinator,
+  isTransientPersistenceContention,
+} from "../../scripts/scraper/persist/coordinator";
+import { naukriHandler } from "../../scripts/scraper/portals/naukri";
 import { RunController } from "../../scripts/scraper/run/manager";
 import {
   EXTRACTOR_VERSION,
@@ -1446,5 +1453,249 @@ describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AP)
       activeRunSessions.delete(runId);
     }
   });
-});
 
+  // --------------------------------------------------------------------------
+  // Scenario AQ: Persistence coordinator serializes durable writes
+  // --------------------------------------------------------------------------
+  it("Scenario AQ: persistence coordinator serializes durable writes while callers remain concurrent", async () => {
+    const coordinator = new PersistenceWriteCoordinator({
+      maxAttempts: 1,
+      sleep: async () => {},
+      jitter: () => 0,
+    });
+    let active = 0;
+    let maxActive = 0;
+
+    const results = await Promise.all(
+      [1, 2, 3, 4].map((value) =>
+        coordinator.run(`write-${value}`, async () => {
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          active -= 1;
+          return value;
+        }),
+      ),
+    );
+
+    expect(results).toEqual([1, 2, 3, 4]);
+    expect(maxActive).toBe(1);
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AR: SQLITE_BUSY retries whole operation and exhausts truthfully
+  // --------------------------------------------------------------------------
+  it("Scenario AR: persistence coordinator retries transient SQLITE_BUSY and emits PERSISTENCE_UNAVAILABLE after exhaustion", async () => {
+    const sleeps: number[] = [];
+    const coordinator = new PersistenceWriteCoordinator({
+      maxAttempts: 3,
+      baseDelayMs: 10,
+      maxDelayMs: 40,
+      jitter: () => 0.5,
+      sleep: async (ms) => { sleeps.push(ms); },
+    });
+
+    let attempts = 0;
+    const recovered = await coordinator.run("busy-then-success", async () => {
+      attempts += 1;
+      if (attempts < 3) {
+        const err: any = new Error("SQLITE_BUSY: database is locked");
+        err.code = "SQLITE_BUSY";
+        throw err;
+      }
+      return "ok";
+    });
+
+    expect(recovered).toBe("ok");
+    expect(attempts).toBe(3);
+    expect(sleeps).toHaveLength(2);
+
+    const wrapped: any = new Error("outer acquisition wrapper");
+    wrapped.cause = Object.assign(new Error("database is locked"), { code: "SQLITE_BUSY" });
+    expect(isTransientPersistenceContention(wrapped)).toBe(true);
+
+    const exhausted = new PersistenceWriteCoordinator({
+      maxAttempts: 2,
+      baseDelayMs: 1,
+      maxDelayMs: 1,
+      jitter: () => 0,
+      sleep: async () => {},
+    });
+
+    await expect(
+      exhausted.run("always-busy", async () => {
+        const err: any = new Error("SQLITE_BUSY: database is locked");
+        err.code = "SQLITE_BUSY";
+        throw err;
+      }),
+    ).rejects.toBeInstanceOf(PersistenceUnavailableError);
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AS: Pre-detail persistence integrity failures fail the unit
+  // --------------------------------------------------------------------------
+  it("Scenario AS: finalizeUnitOutcome treats pre-detail persistence integrity failures as fatal", () => {
+    const result = finalizeUnitOutcome({
+      cardsCount: 1,
+      initialStatus: "completed",
+      manifestCards: [{
+        id: "unit#card",
+        parentUnitId: "unit",
+        cardHash: "card",
+        status: "failed",
+        attempts: 1,
+        failureKind: "INTEGRITY_FAILURE",
+        detailAttempted: false,
+        usableDetailDocument: false,
+      }],
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.warnings.join(" ")).toContain("integrity=1");
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AT: Naukri detail fallback is ESM-safe
+  // --------------------------------------------------------------------------
+  it("Scenario AT: Naukri browser detail fallback parses HTML without CommonJS require", async () => {
+    const jdText = "Own global commercial strategy, revenue growth, CRM transformation, executive stakeholder leadership, organizational scale, and multi-market operating cadence. ".repeat(4);
+    const html = `<html><body><h1>Chief Marketing Officer</h1><div id="jobs-desc"><div class="components_jd">${jdText}</div></div></body></html>`;
+
+    const emptyLocator = () => {
+      const locator: any = {
+        first: () => locator,
+        textContent: vi.fn().mockResolvedValue(""),
+        innerHTML: vi.fn().mockResolvedValue(""),
+      };
+      return locator;
+    };
+    const titleLocator = () => {
+      const locator: any = {
+        first: () => locator,
+        textContent: vi.fn().mockResolvedValue("Chief Marketing Officer"),
+        innerHTML: vi.fn().mockResolvedValue("<h1>Chief Marketing Officer</h1>"),
+      };
+      return locator;
+    };
+
+    const page: any = {
+      setExtraHTTPHeaders: vi.fn().mockResolvedValue(undefined),
+      goto: vi.fn().mockResolvedValue(undefined),
+      waitForSelector: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn().mockResolvedValue(null),
+      content: vi.fn().mockResolvedValue(html),
+      locator: vi.fn((selector: string) =>
+        selector.startsWith("h1,") ? titleLocator() : emptyLocator()
+      ),
+    };
+
+    const detail = await naukriHandler.fetchDetail!(
+      {
+        portal: "Naukri",
+        keyword: "CMO",
+        page: 1,
+        searchUrl: "https://www.naukri.com/cmo-jobs-in-india",
+        activePage: page,
+        detailPage: page,
+        logger: vi.fn(),
+        isHttpDisabled: () => true,
+      } as any,
+      "https://www.naukri.com/job-listings-chief-marketing-officer-1234567890",
+    );
+
+    expect(detail.fetched).toBe(true);
+    expect(detail.rawText).toContain("Own global commercial strategy");
+    expect(detail.failureClass).toBeUndefined();
+  });
+
+
+  // --------------------------------------------------------------------------
+  // Scenario AU: Real SQLite writer lock is retried at whole-operation boundary
+  // --------------------------------------------------------------------------
+  it("Scenario AU: persistence coordinator recovers from a real SQLITE_BUSY writer lock", async () => {
+    const dbPath = path.join(tmpDir, "busy-retry.sqlite");
+    const holder = new Database(dbPath);
+    const writer = new Database(dbPath);
+
+    try {
+      holder.exec("CREATE TABLE busy_test (id INTEGER PRIMARY KEY, value TEXT NOT NULL)");
+      holder.pragma("busy_timeout = 1");
+      writer.pragma("busy_timeout = 1");
+      holder.exec("BEGIN IMMEDIATE");
+
+      let released = false;
+      let attempts = 0;
+      const coordinator = new PersistenceWriteCoordinator({
+        maxAttempts: 3,
+        baseDelayMs: 1,
+        maxDelayMs: 1,
+        jitter: () => 0,
+        sleep: async () => {
+          if (!released) {
+            holder.exec("COMMIT");
+            released = true;
+          }
+        },
+      });
+
+      await coordinator.run("real-sqlite-lock", async () => {
+        attempts += 1;
+        writer.prepare("INSERT INTO busy_test (value) VALUES (?)").run("accepted");
+      });
+
+      expect(attempts).toBe(2);
+      const rows = writer.prepare("SELECT value FROM busy_test").all() as Array<{ value: string }>;
+      expect(rows).toEqual([{ value: "accepted" }]);
+    } finally {
+      if (holder.inTransaction) holder.exec("ROLLBACK");
+      holder.close();
+      writer.close();
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AV: A tripped persistence circuit prevents new source work
+  // --------------------------------------------------------------------------
+  it("Scenario AV: processUnit fails before portal discovery when persistence is already unavailable", async () => {
+    const mgr = new RunController();
+    mgr.init({
+      keywords: ["VP Growth"],
+      portals: ["LinkedIn"],
+      maxPages: 1,
+      maxCardsPerPage: 1,
+      resume: false,
+    });
+
+    const unit = mgr.manifest.units[0];
+    const listCards = vi.fn().mockResolvedValue([]);
+    const handler: any = {
+      buildSearchUrl: vi.fn().mockReturnValue("https://www.linkedin.com/jobs/search"),
+      listCards,
+    };
+
+    const outcome = await processUnit(
+      mgr,
+      handler,
+      unit,
+      {} as any,
+      {} as any,
+      new Set(),
+      new Set(),
+      new Set(),
+      new Set(),
+      () => {},
+      1,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { unavailable: true, error: "simulated exhausted lock retry" },
+    );
+
+    expect(outcome.status).toBe("failed");
+    expect(outcome.warnings.join(" ")).toContain("PERSISTENCE_UNAVAILABLE");
+    expect(listCards).not.toHaveBeenCalled();
+    expect(mgr.manifest.units.find((candidate) => candidate.id === unit.id)?.status).toBe("failed");
+  });
+
+});

@@ -7,16 +7,19 @@ import {
   validateDraft,
 } from "@/data/sqlite/repositories/SqliteDossierReviewQueue";
 import { SqliteRichDossierStore } from "@/data/sqlite/repositories/SqliteRichDossierStore";
-import { ModelProviderUnavailableError } from "@/lib/model/provider-unavailable";
+import { ModelInvalidOutputError, ModelProviderUnavailableError } from "@/lib/model/provider-unavailable";
+import type { ModelInvocationContext } from "@/lib/model/model-invocation";
 import { ProductionStagedDossierService } from "./ProductionStagedDossierService";
 import { StagedServingPublisher } from "./StagedServingPublisher";
+
+export type ReviewModelFactory = (context: ModelInvocationContext) => ReasoningModel;
 
 /** Provider-neutral review lane. Scraping/evaluation never wait for this worker. */
 export class DossierReviewWorker {
   constructor(
     private readonly db: DatabaseAdapter,
-    private readonly writer: () => ReasoningModel,
-    private readonly reviewer: () => ReasoningModel,
+    private readonly writer: ReviewModelFactory,
+    private readonly reviewer: ReviewModelFactory,
   ) {}
   async pollOnce() {
     const queue = new SqliteDossierReviewQueue(this.db),
@@ -46,10 +49,19 @@ export class DossierReviewWorker {
       if (reviewFingerprint(raw) !== job.draft_fingerprint)
         throw new Error("DRAFT_CONTENT_MISMATCH");
       const draft = validateDraft(raw, identity, job.evaluation_fingerprint);
+      const invocationContext: ModelInvocationContext = {
+        pipeline: "factual_review",
+        reviewJobId: job.id,
+        tenantId: job.tenant_id,
+        personId: job.person_id,
+        canonicalJobId: job.canonical_job_id,
+        opportunityVersion: job.opportunity_version,
+        evaluationContextFingerprint: job.evaluation_context_fingerprint,
+      };
       const dossier = await new ProductionStagedDossierService(
         this.db,
-        this.writer(),
-        this.reviewer(),
+        this.writer(invocationContext),
+        this.reviewer(invocationContext),
       ).compose(identity, () => {}, {
         initialDraft: draft,
         onDefect: () => queue.withhold(job),
@@ -78,10 +90,12 @@ export class DossierReviewWorker {
     } catch (error) {
       clearInterval(timer);
       await heartbeat;
-      const provider = error instanceof ModelProviderUnavailableError;
+      const retryableModelError =
+        error instanceof ModelProviderUnavailableError ||
+        error instanceof ModelInvalidOutputError;
       const status = await queue.fail(job, {
-        provider,
-        delay: provider ? error.retryAfterMs : undefined,
+        provider: retryableModelError,
+        delay: retryableModelError ? error.retryAfterMs : undefined,
         code: error instanceof Error ? error.message.slice(0,2000) : 'REVIEW_REQUIRES_ATTENTION',
       });
       return { id: job.id, status };

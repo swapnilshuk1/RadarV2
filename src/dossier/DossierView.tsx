@@ -7,10 +7,11 @@ export function DossierView({
   reviewState,
 }: {
   dossier: Dossier;
-  reviewState?: "pending" | "reviewed";
+  reviewState?: "pending" | "attention" | "reviewed";
 }) {
   const reviewed =
     reviewState === "reviewed" || (!reviewState && Boolean(d.generation.factualReviews?.length));
+  const reviewNeedsAttention = reviewState === "attention";
   const [selected, setSelected] = useState<Passage | null>(null);
   const [selectedPlaneLabel, setSelectedPlaneLabel] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<
@@ -133,7 +134,11 @@ export function DossierView({
       <div className="dossier-body">
         <div className={`dossier-review-status ${reviewed ? "reviewed" : "pending"}`} role="status">
           <strong>
-            {reviewed ? "Factual review completed" : "AI draft · factual review pending"}
+            {reviewed
+              ? "Factual review completed"
+              : reviewNeedsAttention
+                ? "AI draft · factual review needs attention"
+                : "AI draft · factual review pending"}
           </strong>
           {!reviewed && (
             <p>

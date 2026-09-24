@@ -38,7 +38,9 @@ module.exports = {
     },
     {
       name: 'radar-enrich',
-      script: 'node_modules/.bin/tsx',
+      // Invoke the package entry point directly. Some production npm installs
+      // omit .bin shims even when tsx itself is present.
+      script: 'node_modules/tsx/dist/cli.mjs',
       args: 'scripts/enrich.ts',
       cwd: __dirname,
       restart_delay: 5000,
@@ -49,7 +51,8 @@ module.exports = {
     },
     {
       name: 'radar-evaluate',
-      script: 'node_modules/.bin/tsx',
+      // See radar-enrich: this remains valid without npm's .bin symlink farm.
+      script: 'node_modules/tsx/dist/cli.mjs',
       args: 'scripts/run-evaluation-worker.ts',
       cwd: __dirname,
       restart_delay: 5000,

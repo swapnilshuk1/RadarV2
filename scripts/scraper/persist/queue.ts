@@ -503,6 +503,101 @@ export class EnrichmentQueue {
   }
 
   /**
+   * Explicitly retries a failed capture batch without resurrecting unrelated
+   * evaluation work.  Terminal dependencies failed solely because enrichment
+   * failed are returned to their waiting state in the same transaction; a
+   * later successful enrichment then releases them through markCompleted().
+   */
+  public async retryFailedForRun(runId: string): Promise<number> {
+    const retried = await this.db.transaction(async (tx) => {
+      const jobs = await tx.many<{
+        id: string;
+        canonical_job_id: string | null;
+        opportunity_version: string | null;
+        pipeline_version: string | null;
+      }>(
+        `SELECT id, canonical_job_id, opportunity_version, pipeline_version
+         FROM enrichment_jobs
+         WHERE run_id = ? AND status = 'FAILED'`,
+        [runId],
+      );
+      if (jobs.length === 0) return [];
+
+      await tx.execute(
+        `UPDATE enrichment_jobs
+         SET status = 'PENDING', attempts = 0, completed_at = NULL,
+             failure_type = NULL, last_error = NULL, lease_owner = NULL,
+             lease_expires_at = NULL, next_retry_at = NULL
+         WHERE run_id = ? AND status = 'FAILED'`,
+        [runId],
+      );
+
+      for (const job of jobs) {
+        if (!job.canonical_job_id || !job.opportunity_version || !job.pipeline_version) continue;
+
+        const requirements = await tx.many<{
+          tenant_id: string;
+          person_id: string;
+          search_plan_id: string;
+          canonical_job_id: string;
+          opportunity_version: string;
+          evaluation_context_fingerprint: string;
+        }>(
+          `SELECT tenant_id, person_id, search_plan_id, canonical_job_id,
+                  opportunity_version, evaluation_context_fingerprint
+           FROM evaluation_requirements
+           WHERE canonical_job_id = ?
+             AND opportunity_version = ?
+             AND required_enrichment_pipeline_version = ?
+             AND status = 'FAILED'
+             AND blocked_reason = 'ENRICHMENT_FAILED'`,
+          [job.canonical_job_id, job.opportunity_version, job.pipeline_version],
+        );
+
+        await tx.execute(
+          `UPDATE evaluation_requirements
+           SET status = 'WAITING_ENRICHMENT', blocked_reason = NULL,
+               ready_at = NULL, satisfied_at = NULL
+           WHERE canonical_job_id = ?
+             AND opportunity_version = ?
+             AND required_enrichment_pipeline_version = ?
+             AND status = 'FAILED'
+             AND blocked_reason = 'ENRICHMENT_FAILED'`,
+          [job.canonical_job_id, job.opportunity_version, job.pipeline_version],
+        );
+
+        for (const requirement of requirements) {
+          await tx.execute(
+            `UPDATE evaluation_jobs
+             SET status = CASE WHEN status = 'staged_dead_letter' THEN 'staged_waiting_enrichment' ELSE 'waiting_enrichment' END,
+                 attempts = 0, last_error = NULL, completed_at = NULL,
+                 locked_by = NULL, lease_token = NULL, locked_at = NULL,
+                 next_attempt_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+             WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?
+               AND canonical_job_id = ? AND opportunity_version = ?
+               AND evaluation_context_fingerprint = ?
+               AND status IN ('dead_letter', 'staged_dead_letter')`,
+            [
+              requirement.tenant_id,
+              requirement.person_id,
+              requirement.search_plan_id,
+              requirement.canonical_job_id,
+              requirement.opportunity_version,
+              requirement.evaluation_context_fingerprint,
+            ],
+          );
+        }
+      }
+      return jobs;
+    });
+
+    for (const job of retried) {
+      await this.logEvent(job.id, 'MANUAL_RETRY', JSON.stringify({ runId }));
+    }
+    return retried.length;
+  }
+
+  /**
    * Only terminal jobs whose payload is not shared by active work are eligible
    * for retention cleanup. This prevents a filesystem cleanup from breaking a
    * pending, leased, running, or retrying enrichment job.
@@ -612,59 +707,41 @@ export class EnrichmentQueue {
     pending: number;
     latestJobs: any[];
   }> {
-    const [total, completed, failed, processing, pending, latestJobs] = await Promise.all([
-      this.db.one<{ count: number }>(
-        `SELECT COUNT(DISTINCT ej.id) as count 
-         FROM enrichment_jobs ej 
-         LEFT JOIN scrape_run_enrichment_requirements r ON r.enrichment_job_id = ej.id 
-         WHERE ej.run_id = ? OR r.run_id = ?`,
-        [runId, runId]
-      ),
-      this.db.one<{ count: number }>(
-        `SELECT COUNT(DISTINCT ej.id) as count 
-         FROM enrichment_jobs ej 
-         LEFT JOIN scrape_run_enrichment_requirements r ON r.enrichment_job_id = ej.id 
-         WHERE (ej.run_id = ? OR r.run_id = ?) AND ej.status = 'COMPLETE'`,
-        [runId, runId]
-      ),
-      this.db.one<{ count: number }>(
-        `SELECT COUNT(DISTINCT ej.id) as count 
-         FROM enrichment_jobs ej 
-         LEFT JOIN scrape_run_enrichment_requirements r ON r.enrichment_job_id = ej.id 
-         WHERE (ej.run_id = ? OR r.run_id = ?) AND ej.status = 'FAILED'`,
-        [runId, runId]
-      ),
-      this.db.one<{ count: number }>(
-        `SELECT COUNT(DISTINCT ej.id) as count 
-         FROM enrichment_jobs ej 
-         LEFT JOIN scrape_run_enrichment_requirements r ON r.enrichment_job_id = ej.id 
-         WHERE (ej.run_id = ? OR r.run_id = ?) AND ej.status IN ('LEASED', 'RUNNING')`,
-        [runId, runId]
-      ),
-      this.db.one<{ count: number }>(
-        `SELECT COUNT(DISTINCT ej.id) as count 
-         FROM enrichment_jobs ej 
-         LEFT JOIN scrape_run_enrichment_requirements r ON r.enrichment_job_id = ej.id 
-         WHERE (ej.run_id = ? OR r.run_id = ?) AND ej.status IN ('PENDING', 'RETRY')`,
-        [runId, runId]
+    const runJobs = `
+      SELECT id, snapshot_path, status, last_error, completed_at, created_at
+      FROM enrichment_jobs WHERE run_id = ?
+      UNION
+      SELECT ej.id, ej.snapshot_path, ej.status, ej.last_error, ej.completed_at, ej.created_at
+      FROM scrape_run_enrichment_requirements r
+      JOIN enrichment_jobs ej ON ej.id = r.enrichment_job_id
+      WHERE r.run_id = ?`;
+    const [counts, latestJobs] = await Promise.all([
+      this.db.one<{ total: number; completed: number; failed: number; processing: number; pending: number }>(
+        `WITH run_jobs AS (${runJobs})
+         SELECT COUNT(*) AS total,
+                SUM(CASE WHEN status='COMPLETE' THEN 1 ELSE 0 END) AS completed,
+                SUM(CASE WHEN status='FAILED' THEN 1 ELSE 0 END) AS failed,
+                SUM(CASE WHEN status IN ('LEASED','RUNNING') THEN 1 ELSE 0 END) AS processing,
+                SUM(CASE WHEN status IN ('PENDING','RETRY') THEN 1 ELSE 0 END) AS pending
+         FROM run_jobs`,
+        [runId, runId],
       ),
       this.db.many<any>(
-        `SELECT DISTINCT ej.id, ej.snapshot_path, ej.status, ej.last_error, ej.completed_at, ej.created_at
-         FROM enrichment_jobs ej
-         LEFT JOIN scrape_run_enrichment_requirements r ON r.enrichment_job_id = ej.id
-         WHERE ej.run_id = ? OR r.run_id = ?
-         ORDER BY ej.completed_at DESC, ej.created_at DESC
+        `WITH run_jobs AS (${runJobs})
+         SELECT id, snapshot_path, status, last_error, completed_at, created_at
+         FROM run_jobs
+         ORDER BY completed_at DESC, created_at DESC
          LIMIT 3`,
-        [runId, runId]
+        [runId, runId],
       ),
     ]);
 
     return {
-      total: total?.count || 0,
-      completed: completed?.count || 0,
-      failed: failed?.count || 0,
-      processing: processing?.count || 0,
-      pending: pending?.count || 0,
+      total: counts?.total || 0,
+      completed: counts?.completed || 0,
+      failed: counts?.failed || 0,
+      processing: counts?.processing || 0,
+      pending: counts?.pending || 0,
       latestJobs: latestJobs || [],
     };
   }

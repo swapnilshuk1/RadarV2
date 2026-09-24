@@ -45,6 +45,7 @@
     "worker:documents": "tsx scripts/process-document-jobs.ts",
     "worker:enrichment": "tsx scripts/enrich.ts",
     "worker:evaluations": "tsx scripts/run-evaluation-worker.ts",
+    "worker:dossiers": "tsx scripts/run-dossier-composition-worker.ts",
     "worker:reviews": "tsx scripts/run-dossier-review-worker.ts"
   },
   "dependencies": {

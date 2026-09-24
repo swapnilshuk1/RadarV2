@@ -98,6 +98,23 @@ describe("Phase 6: Acquisition Evidence Reliability & Payload Resolution", () =>
     if(!matches)expect(job?.last_error).toContain('ENRICHMENT_CANONICAL_ADMISSION_MISMATCH');
   });
 
+  it('accepts a persisted blob binding that omits the non-authoritative state marker', async () => {
+    const canonicalId='canonical-blob-only',version='canonical-blob-only-version';
+    await db.execute(`INSERT INTO canonical_opportunities(id,source,source_job_id,canonical_url) VALUES (?,'LinkedIn','canonical-source','https://example.com/blob-job')`,[canonicalId]);
+    await db.execute(`INSERT INTO opportunity_versions(id,canonical_job_id,content_hash,job_title,raw_content) VALUES (?,?,'blob-hash','VP Test','A real immutable job description')`,[version,canonicalId]);
+    await memStore.put('payloads/canonical-blob-only.json',JSON.stringify({
+      portal:'LinkedIn',title:'VP Test',company:'Test Company',cardHash:'canonical-source',canonicalJobId:canonicalId,
+      detailUrl:'https://example.com/blob-job',detail:{fetched:true,rawText:'A real immutable job description'},
+      evaluationEvidence:{canonicalJobId:canonicalId,opportunityVersion:version,contentHash:'blob-hash'}
+    }));
+    await queue.enqueue('canonical-blob-only-enrichment','canonical-source','payloads/canonical-blob-only.json',EXTRACTOR_VERSION,provenance,0,0,'payloads/canonical-blob-only.json',canonicalId,version);
+    const {enrichJobsForRun}=await import('../../scripts/enrich');
+    await enrichJobsForRun('run-regression',{queue,repos});
+    const job=await db.one<{status:string}>(`SELECT status FROM enrichment_jobs WHERE id='canonical-blob-only-enrichment'`);
+    expect(job?.status).toBe('COMPLETE');
+    expect(await db.many<{id:string}>('SELECT id FROM opportunities')).toEqual([{id:canonicalId}]);
+  });
+
   it("1. proves that a valid payload resolves and becomes a persisted document", async () => {
     await repos.opportunities.mergeOpportunity({
       id: "linkedin:test-opp-1",

@@ -18,12 +18,18 @@ import { resolveExactCandidateProjectionForScope } from "@/data/sqlite/repositor
 import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
 import { createBedrockGlmResearchModel } from "@/lib/model/bedrock-glm-research-model";
 import { ProductionStagedEvaluationService } from "./staged/ProductionStagedEvaluationService";
-import { ProductionStagedDossierService } from './staged/ProductionStagedDossierService';
 import { StagedServingPublisher } from './staged/StagedServingPublisher';
+import { SqliteDossierCompositionQueue } from "@/data/sqlite/repositories/SqliteDossierCompositionQueue";
+import {
+  createStagedEvaluationFingerprint,
+  parseCanonicalStagedDecisionResult,
+} from "@/dossier/staged-decision-integrity";
+import { createSqliteModelInvocationSink } from "@/lib/model/model-invocation";
 import { EmptySourceEvidenceError } from '@/dossier/evidence';
 import { DeterministicStagedInputUnavailableError } from "./staged/ProductionStagedInputAdapter";
 import { STAGED_POLICY_VERSION, SqliteStagedEvaluationStore, stagedUnavailableEvaluation } from "@/data/sqlite/repositories/SqliteStagedEvaluationStore";
 import {supportsStagedPolicy} from './staged/stagedPolicy';
+import { EvaluationRuntimeControl } from "./EvaluationRuntimeControl";
 
 export interface WorkerOptions {
   adapter?: DatabaseAdapter;
@@ -54,6 +60,7 @@ export interface WorkerProcessingResult {
 export class EvaluationWorker {
   public workerId: string;
   private db: DatabaseAdapter;
+  private runtimeControl: EvaluationRuntimeControl;
 
   constructor(workerIdOrDb?: string | DatabaseAdapter, optionsOrWorkerId?: WorkerOptions | string) {
     if (typeof workerIdOrDb === "string") {
@@ -66,9 +73,13 @@ export class EvaluationWorker {
       this.workerId = `worker_${crypto.randomUUID().slice(0, 8)}`;
       this.db = getDatabaseAdapter();
     }
+    this.runtimeControl = new EvaluationRuntimeControl(this.db);
   }
 
   public async claimNextJob(queueKind?: ClaimedJob["queueKind"], contextFingerprint?: string): Promise<ClaimedJob | null> {
+    const runtime = await this.runtimeControl.get();
+    if (runtime.desiredState !== "RUNNING") return null;
+
     const queueFilter = queueKind === "staged"
       ? "AND ej.status IN ('staged_pending', 'staged_processing')"
       : queueKind === "legacy"
@@ -118,7 +129,8 @@ export class EvaluationWorker {
        SET status = CASE WHEN status LIKE 'staged_%' THEN 'staged_processing' ELSE 'processing' END,
            locked_by = ?,
            lease_token = ?,
-           locked_at = CURRENT_TIMESTAMP
+           locked_at = CURRENT_TIMESTAMP,
+           first_claimed_at = COALESCE(first_claimed_at, CURRENT_TIMESTAMP)
        WHERE id = ? AND (
          (status IN ('pending', 'staged_pending') AND next_attempt_at <= CURRENT_TIMESTAMP) OR 
          (status IN ('processing', 'staged_processing') AND locked_at < datetime('now', '-300 seconds'))
@@ -266,11 +278,50 @@ export class EvaluationWorker {
           return this.commitDeterministicStagedFailure(job, unavailable.blockedReason!);
         }
         try {
-          const evaluated = await new ProductionStagedEvaluationService(this.db, createBedrockGlmResearchModel()).evaluate({ ...identity, context });
-          const serving=await this.db.one<{context_fingerprint:string}>(`SELECT context_fingerprint FROM active_evaluation_contexts WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND context_fingerprint=?`,[job.tenantId,job.personId,job.searchPlanId,job.evaluationContextFingerprint]);
+          const invocationSink=createSqliteModelInvocationSink(this.db,{
+            pipeline:"evaluation",
+            evaluationJobId:job.id,
+            tenantId:job.tenantId,
+            personId:job.personId,
+            canonicalJobId:job.canonicalJobId,
+            opportunityVersion:job.opportunityVersion,
+            evaluationContextFingerprint:job.evaluationContextFingerprint,
+          });
+          const evaluationModel=createBedrockGlmResearchModel({invocationSink});
+          const evaluated = await new ProductionStagedEvaluationService(
+            this.db,
+            evaluationModel,
+          ).evaluate({ ...identity, context });
+          await this.db.execute(
+            `UPDATE evaluation_jobs
+             SET evaluation_persisted_at=COALESCE(evaluation_persisted_at,?)
+             WHERE id=? AND locked_by=? AND lease_token=? AND status='staged_processing'`,
+            [evaluated.evaluatedAt,job.id,this.workerId,job.leaseToken],
+          );
+
+          const serving=await this.db.one<{context_fingerprint:string}>(
+            `SELECT context_fingerprint FROM active_evaluation_contexts
+             WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND context_fingerprint=?`,
+            [job.tenantId,job.personId,job.searchPlanId,job.evaluationContextFingerprint],
+          );
           if(serving&&evaluated.decision!=='PASS'){
-            await new ProductionStagedDossierService(this.db,createBedrockGlmResearchModel()).compose(identity,()=>{},{draftOnly:true});
-            await new StagedServingPublisher(this.db).publish(identity,{allowDraft:true});
+            const staged=parseCanonicalStagedDecisionResult(evaluated.evaluation);
+            const evaluationFingerprint=createStagedEvaluationFingerprint({
+              evaluationContextFingerprint:evaluated.evaluationContextFingerprint,
+              inputFingerprint:evaluated.inputFingerprint,
+              evaluation:staged,
+            });
+            const compositionQueue=new SqliteDossierCompositionQueue(this.db);
+            await compositionQueue.enqueue(identity,evaluationFingerprint);
+            const compositionJob=await compositionQueue.find(identity,evaluationFingerprint);
+            if(!compositionJob) throw new Error("DOSSIER_COMPOSITION_JOB_NOT_PERSISTED");
+            await this.db.execute(
+              `UPDATE evaluation_jobs
+               SET dossier_queued_at=COALESCE(dossier_queued_at,?)
+               WHERE id=? AND locked_by=? AND lease_token=? AND status='staged_processing'`,
+              [new Date(compositionJob.created_at).toISOString(),job.id,this.workerId,job.leaseToken],
+            );
+            await new StagedServingPublisher(this.db).publish(identity,{allowPreparing:true});
           }
           return this.commitStagedCompletion(job, evaluated.decision);
         } catch (error) {
@@ -797,4 +848,3 @@ export class EvaluationWorker {
     return { processed, completed, failed };
   }
 }
-

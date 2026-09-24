@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ModelCallMetadata } from "../lib/model/model-invocation";
 
 export type JsonValue =
   string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -323,6 +324,7 @@ export interface ReasoningModel {
     instruction: string,
     input: unknown,
     responseSchema?: Record<string, unknown>,
+    metadata?: ModelCallMetadata,
   ): Promise<unknown>;
   /** Discard an invalid transport/coverage response, never an accepted review. */
   discardResponse?(response: unknown): Promise<void>;

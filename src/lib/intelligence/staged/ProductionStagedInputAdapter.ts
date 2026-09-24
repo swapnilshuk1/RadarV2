@@ -93,49 +93,108 @@ export class ProductionStagedInputAdapter {
     const jdSource:EvidenceSource={id:stableSourceId('JD',version.content_hash||createHash('sha256').update(jdText).digest('hex')),plane:'JD',title:version.job_title||'Opportunity description',locator:`opportunity-version:${identity.canonicalJobId}:${identity.opportunityVersion}`,text:jdText,capturedAt:new Date(0).toISOString(),attribution:'JOB_POST'};
     const candidateSources:EvidenceSource[]=bindings.map((row)=>({id:stableSourceId('CANDIDATE',context.policy_version!=='staged-v6'?createHash('sha256').update(`${row.document_id}:${row.document_text_hash}`).digest('hex'):row.document_text_hash),plane:'CANDIDATE',title:`Candidate document ${row.document_id}`,locator:`candidate-document:${row.document_id}:evidence:${row.evidence_graph_id}`,text:row.raw_text, capturedAt:new Date(0).toISOString(),attribution:'CANDIDATE_SUPPLIED'}));
     if(context.policy_version!=='staged-v6')return this.buildContextInput(identity,model,jdSource,candidateSources,onStage,context.policy_version,computeEvaluationContextFingerprint({tenantId:identity.tenantId,personId:identity.personId,searchPlanSnapshotId:context.search_plan_snapshot_id,ontologyVersion:context.ontology_version,ontologyFingerprint:context.ontology_fingerprint,policyVersion:context.policy_version,profileVersion:context.profile_version}));
-    const sources=[jdSource,...candidateSources]; const evidence:Claim[]=[];
-    for(const source of sources) { const ordinal=source.plane==='JD'?1:candidateSources.findIndex(item=>item.id===source.id)+1; const key={sourceFingerprint:sourceFingerprint([source]),modelId:model.id,modelVersion:model.version}; let cached=await this.cache.cachedClaims(key); if(!cached){onStage(`Extracting immutable ${source.plane} source evidence`); cached=await extractValidatedSourceClaims(model,source,`${source.plane}-1-`,onStage); await this.cache.cacheClaims(key,source,cached);} evidence.push(...rebaseClaims(cached,source.plane,ordinal)); }
+    const sources=[jdSource,...candidateSources];
+    const evidence=(await Promise.all(sources.map(async source=>{
+      const ordinal=source.plane==='JD'?1:candidateSources.findIndex(item=>item.id===source.id)+1;
+      const key={sourceFingerprint:sourceFingerprint([source]),modelId:model.id,modelVersion:model.version,modelConfigurationFingerprint:model.configurationFingerprint??"unconfigured"};
+      let cached=await this.cache.cachedClaims(key);
+      if(!cached){
+        onStage(`Extracting immutable ${source.plane} source evidence`);
+        cached=await extractValidatedSourceClaims(model,source,`${source.plane}-1-`,onStage);
+        await this.cache.cacheClaims(key,source,cached);
+      }
+      return rebaseClaims(cached,source.plane,ordinal);
+    }))).flat();
     const candidate=await this.db.one<{email:string}>(`SELECT email FROM people WHERE id=? AND tenant_id=?`,[identity.personId,identity.tenantId]);
     const frozenBase={opportunity:{id:identity.canonicalJobId,company:version.company_name||'Unknown company',title:version.job_title||'Unknown role'},candidate:{name:candidate?.email||'Candidate'},sources,evidence,candidateSourceRefs:candidateSources.map(source=>({id:source.id,title:source.title})),candidateConflicts:[],acquisition:[],validEvidenceClaimIds:evidence.map(claim=>claim.id),fields:[...contextFields,...scopeFields]};
     const fingerprint=createHash('sha256').update(JSON.stringify({opportunity:frozenBase.opportunity,candidate:frozenBase.candidate,candidateSources:frozenBase.candidateSourceRefs,candidateConflicts:[],evidence,validEvidenceClaimIds:frozenBase.validEvidenceClaimIds,acquisition:[],fields:frozenBase.fields})).digest('hex');
     return {...frozenBase,fingerprint} as StagedResearchInput;
   }
-  private async buildContextInput(identity:ProductionStagedIdentity,model:ReasoningModel,jd:EvidenceSource,candidates:EvidenceSource[],onStage:(stage:string)=>void,policyVersion:string,expectedContextFingerprint:string):Promise<StagedResearchInput>{
+  private async buildContextInput(
+    identity:ProductionStagedIdentity,
+    model:ReasoningModel,
+    jd:EvidenceSource,
+    candidates:EvidenceSource[],
+    onStage:(stage:string)=>void,
+    policyVersion:string,
+    expectedContextFingerprint:string,
+  ):Promise<StagedResearchInput>{
     const binding=createHash('sha256').update(JSON.stringify({profile:identity.profileVersion,sources:sourceFingerprint([jd,...candidates])})).digest('hex');
     const store=new SqliteStagedInputStore(this.db);
     const existing=await store.get(identity,binding,model);if(existing)return existing;
     if(policyVersion!==STAGED_POLICY_VERSION)throw new ModelProviderUnavailableError('FRESH_CONTEXT_INPUT_REQUIRES_STAGED_V8');
     if(identity.evaluationContextFingerprint!==expectedContextFingerprint)throw new ModelProviderUnavailableError('CONTEXT_ACQUISITION_POLICY_IDENTITY_MISMATCH');
-    // Composition and retries must never reacquire context for a completed evaluation.
     if(await this.cache.get(identity))throw new Error('STAGED_COMPLETED_INPUT_SNAPSHOT_MISSING');
+
     const version=await this.db.one<{company_name:string|null;job_title:string|null}>(`SELECT company_name,job_title FROM opportunity_versions WHERE id=? AND canonical_job_id=?`,[identity.opportunityVersion,identity.canonicalJobId]);
     const person=await this.db.one<{email:string}>(`SELECT email FROM people WHERE id=? AND tenant_id=?`,[identity.personId,identity.tenantId]);
     const opportunity={id:identity.canonicalJobId,company:version?.company_name||'Unknown company',title:version?.job_title||'Unknown role'};
-    onStage('Acquiring and freezing company context');
     const providers=this.providers??[new ProductionContextProvider(this.db,identity.tenantId)];
     if(!providers.length)throw new Error('STAGED_CONTEXT_PROVIDER_REQUIRED');
-    const acquired=await Promise.all(providers.map(provider=>provider.acquire(opportunity,contextFields)));
+
+    const loadClaims=async(source:EvidenceSource,ordinal:number)=>{
+      const key={
+        sourceFingerprint:sourceFingerprint([source]),
+        modelId:model.id,
+        modelVersion:model.version,
+        modelConfigurationFingerprint:model.configurationFingerprint??"unconfigured",
+      };
+      let claims=await this.cache.cachedClaims(key);
+      if(!claims){
+        onStage(`Extracting immutable ${source.plane} source evidence`);
+        try{
+          claims=await extractValidatedSourceClaims(model,source,`${source.plane}-1-`,onStage);
+        }catch(error){
+          if(source.plane!=='CONTEXT'||!(error instanceof EmptySourceEvidenceError))throw error;
+          claims=[];
+        }
+        await this.cache.cacheClaims(key,source,claims);
+      }
+      return rebaseClaims(claims,source.plane,ordinal);
+    };
+
+    onStage('Acquiring and freezing company context');
+    const baseEvidencePromise=Promise.all([
+      loadClaims(jd,1),
+      ...candidates.map((source,index)=>loadClaims(source,index+1)),
+    ]).then(groups=>groups.flat());
+    const acquisitionPromise=Promise.all(
+      providers.map(provider=>provider.acquire(opportunity,contextFields)),
+    );
+    const [baseEvidence,acquired]=await Promise.all([baseEvidencePromise,acquisitionPromise]);
+
     if(!acquired.some(result=>result.attempts.some(attempt=>['RETRIEVED','NO_RESULTS','ACQUIRED'].includes(attempt.status))))throw new ModelProviderUnavailableError('CONTEXT_ACQUISITION_NOT_OPERATIONAL');
     const contextSources=acquired.flatMap(result=>result.sources).map(source=>sourceSchema.parse(source));
     if(contextSources.some(source=>source.plane!=='CONTEXT'))throw new Error('CONTEXT_PROVIDER_SOURCE_PLANE_INVALID');
-    const sources=[jd,...candidates,...[...new Map(contextSources.map(source=>[source.id,source])).values()]];
+    const uniqueContext=[...new Map(contextSources.map(source=>[source.id,source])).values()];
     const acquisition=acquired.flatMap(result=>result.attempts);
-    const selected=await selectRelevantContextSources(opportunity,jd,contextSources,model,onStage);
+
+    const [selected,candidateConflicts]=await Promise.all([
+      selectRelevantContextSources(opportunity,jd,uniqueContext,model,onStage),
+      compareCandidateSources([jd,...candidates],baseEvidence,model,onStage),
+    ]);
     for(const attempt of acquisition)attempt.detail+=` Relevance selection: ${selected.reasoning}`;
-    const evidence:Claim[]=[];const ordinals=new Map<string,number>();
-    for(const source of sources){
-      if(source.plane==='CONTEXT'&&!selected.sourceIds.includes(source.id))continue;
-      const ordinal=(ordinals.get(source.plane)||0)+1;ordinals.set(source.plane,ordinal);
-      const key={sourceFingerprint:sourceFingerprint([source]),modelId:model.id,modelVersion:model.version};
-      let claims=await this.cache.cachedClaims(key);
-      if(!claims){
-        try{claims=await extractValidatedSourceClaims(model,source,`${source.plane}-1-`,onStage);}catch(error){if(source.plane!=='CONTEXT'||!(error instanceof EmptySourceEvidenceError))throw error;claims=[];}
-        await this.cache.cacheClaims(key,source,claims);
-      }
-      evidence.push(...rebaseClaims(claims,source.plane,ordinal));
-    }
-    const candidateConflicts=await compareCandidateSources(sources,evidence,model,onStage);
-    const base={opportunity,candidate:{name:person?.email||'Candidate'},sources,evidence,candidateSourceRefs:candidates.map(source=>({id:source.id,title:source.title})),candidateConflicts,acquisition,validEvidenceClaimIds:evidence.map(claim=>claim.id),fields:[...contextFields,...scopeFields]};
+
+    const selectedSet=new Set(selected.sourceIds);
+    const selectedContext=uniqueContext.filter(source=>selectedSet.has(source.id));
+    const contextEvidence=(await Promise.all(
+      selectedContext.map((source,index)=>loadClaims(source,index+1)),
+    )).flat();
+    const sources=[jd,...candidates,...uniqueContext];
+    const evidence=[...baseEvidence,...contextEvidence];
+
+    const base={
+      opportunity,
+      candidate:{name:person?.email||'Candidate'},
+      sources,
+      evidence,
+      candidateSourceRefs:candidates.map(source=>({id:source.id,title:source.title})),
+      candidateConflicts,
+      acquisition,
+      validEvidenceClaimIds:evidence.map(claim=>claim.id),
+      fields:[...contextFields,...scopeFields],
+    };
     return store.save(identity,binding,model,{...base,fingerprint:contextInputFingerprint(base)});
   }
+
 }

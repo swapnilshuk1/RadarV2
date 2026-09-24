@@ -516,23 +516,14 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
     
     if (jobs.length === 0) {
       idleCount++;
-      
-      const tPollStats = Date.now();
-      const stats = await queue.getDashboardStats();
-      workerStats.pollingMs += (Date.now() - tPollStats);
-      
-      const hasRetries = stats.counts.some((c: any) => c.status === "RETRY" && c.count > 0);
-      
-      if (hasRetries) {
-        workerStats.status = "Waiting Retry";
-        workerStats.waitingRetryMs += 5000;
-      } else {
-        workerStats.status = "Queue Empty";
-        workerStats.sleepingMs += 5000;
-      }
+      // leaseJobs is the indexed source of truth for due work. Do not run the
+      // dashboard's historical aggregates on every idle poll.
+      workerStats.status = "Queue Empty / waiting for due work";
+      workerStats.sleepingMs += 5000;
 
-      if (idleCount % 12 === 0) {
-        // Print dashboard every minute if idle (5s * 12)
+      if (idleCount % 60 === 0) {
+        // Keep operator output useful without turning an idle worker into a
+        // one-minute table-scan loop.
         await printDashboard(queue, workerStats);
       }
       await new Promise(r => setTimeout(r, 5000));
@@ -576,6 +567,8 @@ export async function enrichJobsForRun(
     queue?: EnrichmentQueue;
     repos?: import("../src/domain/repositories").StorageProvider;
     pipelineVersion?: string;
+    /** Explicit operator action may enrich captures from a stopped scrape. */
+    allowTerminalRun?: boolean;
   }
 ) {
   const queue = deps?.queue ?? new EnrichmentQueue();
@@ -589,7 +582,7 @@ export async function enrichJobsForRun(
       const manifestPath = path.join(process.cwd(), ".scraper-artifacts", "runs", runId, "manifest.json");
       if (fs.existsSync(manifestPath)) {
         const m = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-        if (["stopping", "stopped", "aborted"].includes(m.status)) {
+        if (!deps?.allowTerminalRun && ["stopping", "stopped", "aborted"].includes(m.status)) {
           log(`[Enrich] Cancellation requested for run ${runId}. Halting enrichment loop.`, "warn");
           break;
         }

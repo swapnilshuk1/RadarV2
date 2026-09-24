@@ -6,6 +6,7 @@ import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
 import { hydrateVirtualizedList } from "../utils/scroll";
 import { normalizePostingDate } from "../utils/date";
+import { load as loadHtml } from "cheerio";
 
 export interface NaukriListTelemetry {
   apiPagesExpected: number[];
@@ -549,7 +550,42 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-Site": "same-origin",
       }).catch(() => {});
-      await targetPage.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
+      // Do not suppress navigation failures. Continuing after a timed-out
+      // navigation turns a useful transport signal into a later, opaque
+      // UNKNOWN_FAILURE during DOM extraction.
+      const response = await targetPage.goto(url, {
+        waitUntil: "domcontentloaded",
+        timeout: CONFIG.detailTimeoutMs,
+      });
+      const httpStatus = response?.status();
+
+      if (httpStatus === 404) {
+        return {
+          fetched: false,
+          fetchError: "Job no longer available (404)",
+          fetchDurationMs: Date.now() - t0,
+          httpStatus,
+          failureClass: "REMOVED_404" as FailureClass,
+        };
+      }
+      if (httpStatus === 429) {
+        return {
+          fetched: false,
+          fetchError: "Rate limited (429)",
+          fetchDurationMs: Date.now() - t0,
+          httpStatus,
+          failureClass: "RATE_LIMIT_429" as FailureClass,
+        };
+      }
+      if (httpStatus !== undefined && httpStatus >= 500) {
+        return {
+          fetched: false,
+          fetchError: `Server error (${httpStatus})`,
+          fetchDurationMs: Date.now() - t0,
+          httpStatus,
+          failureClass: "HTTP_SERVER_ERROR" as FailureClass,
+        };
+      }
       
       await jitter(400, 900);
       await targetPage.waitForSelector(browserContentSelectors, { timeout: 6000 }).catch(() => {});
@@ -559,7 +595,6 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       // 1. Check Primary Job Description Containers
       let jdHtml = null;
       let fullJdText = "";
-      const cheerio = require("cheerio");
 
       // METHOD 1: Clean Next.js State Extraction
       ctx.logger(`[${ctx.portal}] Attempting extraction via __NEXT_DATA__ JSON payload`);
@@ -584,7 +619,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       if (!jdHtml) {
           ctx.logger(`[${ctx.portal}] Falling back to DOM selector extraction`);
           const htmlContent = await targetPage.content();
-          const cheerioApi = cheerio.load(htmlContent);
+          const cheerioApi = loadHtml(htmlContent);
           
           const primaryContainers = [
               "#jobs-desc [class*='components_jd']",
@@ -606,7 +641,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
           for (const sel of primaryContainers) {
               const elements = cheerioApi(sel);
               if (elements.length > 0) {
-                  const clone = cheerio.load(elements.first().html() || "");
+                  const clone = loadHtml(elements.first().html() || "");
                   clone('br, p, div, li, h1, h2, h3, h4, h5, h6').append('\n');
                   const txt = clone.text().replace(/[ \t]+/g, ' ').replace(/\n\s*\n/g, '\n').trim();
                   if (txt.length >= 50) {
@@ -641,7 +676,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       }
 
       if (jdHtml) {
-          const jdDom = cheerio.load(jdHtml);
+          const jdDom = loadHtml(jdHtml);
           jdDom('br, p, div, li, h1, h2, h3, h4, h5, h6').append('\n');
           
           let rawText = jdDom.text();
@@ -716,6 +751,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         rawHtml,
         rawText: trimmedText,
         fetchDurationMs: Date.now() - t0,
+        httpStatus,
         quality: isSparse ? ("SPARSE" as const) : ("VALID" as const),
         extractedTitle,
       };
@@ -733,6 +769,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       else if (isTimeout) failureClass = "NAVIGATION_TIMEOUT";
       else if (is404) failureClass = "REMOVED_404";
       else if (isConn) failureClass = "CONNECTION_ERROR";
+
+      ctx.logger(`[${ctx.portal}] Detail navigation/extraction failed (${failureClass}): ${msg}`);
 
       return {
         fetched: false,
@@ -772,5 +810,4 @@ export function classifyNaukriHtml(html: string, title: string): { state: string
   
   return { state: "UNKNOWN" };
 }
-
 

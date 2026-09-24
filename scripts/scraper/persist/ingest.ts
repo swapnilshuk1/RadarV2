@@ -51,7 +51,13 @@ export async function ingestIntoSqlite(
   // stores. A missing projection is repairable only with exact persisted proof.
   let verifiedAdmissionId: string | undefined;
   const binding = card.evaluationEvidence;
-  if (binding?.state === 'BOUND') {
+  // Blob payloads retain the immutable identity tuple but older writers did
+  // not persist the UI-only `state` marker. Treat the complete tuple itself
+  // as bound evidence, then verify it exactly against canonical storage.
+  const hasBoundIdentity = Boolean(
+    binding?.canonicalJobId && binding.opportunityVersion && binding.contentHash,
+  );
+  if (hasBoundIdentity) {
     if (!resolvedCanonicalId || binding.canonicalJobId !== resolvedCanonicalId || !binding.opportunityVersion || !binding.contentHash) {
       throw new Error('ENRICHMENT_CANONICAL_ADMISSION_MISMATCH');
     }

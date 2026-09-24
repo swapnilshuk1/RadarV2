@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { naukriHandler } from "../../scripts/scraper/portals/naukri";
 import { checkLinkedInSessionState } from "../../scripts/scraper/portals/linkedin";
 import { resolveCanonicalIdentity } from "../../src/lib/acquisition/canonical-identity";
@@ -34,16 +34,25 @@ describe("Scraper Bottleneck Fixes & Optimization Regression Tests", () => {
   });
 
   it("P1: LinkedIn checkLinkedInSessionState detects AUTH_MISSING when li_at cookie is absent", async () => {
+    const goto = vi.fn(async () => undefined);
     const mockContext: any = {
       browserContext: {
         cookies: async () => [],
       },
-      activePage: null,
+      activePage: {
+        isClosed: () => false,
+        url: () => "about:blank",
+        goto,
+      },
       logger: () => {},
     };
 
     const state = await checkLinkedInSessionState(mockContext);
     expect(state).toBe("AUTH_MISSING");
+    expect(goto).toHaveBeenCalledWith("https://www.linkedin.com/feed/", {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    });
   });
 
   it("P1: LinkedIn checkLinkedInSessionState detects AUTH_EXPIRED when redirected to login/authwall", async () => {
