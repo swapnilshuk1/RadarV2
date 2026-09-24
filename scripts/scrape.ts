@@ -1775,7 +1775,6 @@ export async function processUnit(
     /* Keep historical ledger recognition distinct from same-run duplicate
      * suppression. A known listing still proceeds to canonical ingestion so
      * its material source version can be reused or versioned correctly. */
-    const historicalLedgerCardIds = new Set<string>();
     let pageCanonicalIngested = 0;
     let integrityFailuresInUnit = 0;
     let portalPauseTriggered = false;
@@ -1947,7 +1946,6 @@ export async function processUnit(
           priorLedgerItem = res.priorLedgerItem;
           ledgerItem = res.ledgerItem;
         }
-        if (priorLedgerItem) historicalLedgerCardIds.add(cardUnitId);
 
         const nominalSnapshotPath = path.join(SNAPSHOT_DIR, `${feedCard.cardHash}.json`);
         const isHistoricallyNew = !priorLedgerItem && !fs.existsSync(nominalSnapshotPath);
@@ -2589,7 +2587,6 @@ export async function processUnit(
             resolvedLedgerItem = res.resolvedLedgerItem;
             admissionLedgerItem = res.admissionLedgerItem;
           }
-          if (resolvedLedgerItem) historicalLedgerCardIds.add(cardUnitId);
 
           detailedCard = {
             ...feedCard,
@@ -2799,6 +2796,7 @@ export async function processUnit(
           isNew: canonicalIngestionResult
             ? canonicalIngestionResult.isNewOpportunity
             : isHistoricallyNew,
+          isNewVersion: canonicalIngestionResult?.isNewVersion,
           status: "done",
         });
       } catch (err: any) {
@@ -2847,7 +2845,9 @@ export async function processUnit(
     });
 
     let canonicalDuplicates = 0;
-    let ledgerKnown = 0;
+    let historicalReuse = 0;
+    let newVersions = 0;
+    let reusedVersions = 0;
     let hardFiltered = 0;
     const hardFilterBreakdown: Record<string, number> = {
       TITLE_INTENT_MISMATCH: 0,
@@ -2879,7 +2879,7 @@ export async function processUnit(
         if (errStr.toLowerCase().includes("duplicate")) {
           canonicalDuplicates++;
         } else if (errStr.toLowerCase().includes("ledger")) {
-          ledgerKnown++;
+          validationFailed++;
         } else {
           hardFiltered++;
           const match = errStr.match(/\[HardFilter:([A-Z_]+)\]/);
@@ -2905,19 +2905,19 @@ export async function processUnit(
           if (cu.snapshotPath && fs.existsSync(cu.snapshotPath)) {
             novelAcquired++;
           }
-        } else if (historicalLedgerCardIds.has(cardUnitId)) {
-          ledgerKnown++;
         } else {
-          canonicalDuplicates++;
+          historicalReuse++;
+          if (cu.isNewVersion) newVersions++;
+          else reusedVersions++;
         }
       }
     }
     
     const cardsParsed = cards.length;
-    const classified = canonicalDuplicates + ledgerKnown + hardFiltered + identityFailed + integrityFailed + validationFailed + canonicalIngestFailed + novelAccepted + cancelledOrPruned;
+    const classified = canonicalDuplicates + historicalReuse + hardFiltered + identityFailed + integrityFailed + validationFailed + canonicalIngestFailed + novelAccepted + cancelledOrPruned;
     
     if (classified !== cardsParsed) {
-      log(`[AccountingInvariantViolation] cardsParsed=${cardsParsed}, classified=${classified} (Duplicates=${canonicalDuplicates}, Ledger=${ledgerKnown}, HardFiltered=${hardFiltered}, IdentityFailed=${identityFailed}, IntegrityFailed=${integrityFailed}, ValidationFailed=${validationFailed}, CanonicalIngestFailed=${canonicalIngestFailed}, NovelAccepted=${novelAccepted}, CancelledPruned=${cancelledOrPruned})`, "warn");
+      log(`[AccountingInvariantViolation] cardsParsed=${cardsParsed}, classified=${classified} (Duplicates=${canonicalDuplicates}, HistoricalReuse=${historicalReuse}, HardFiltered=${hardFiltered}, IdentityFailed=${identityFailed}, IntegrityFailed=${integrityFailed}, ValidationFailed=${validationFailed}, CanonicalIngestFailed=${canonicalIngestFailed}, NovelAccepted=${novelAccepted}, CancelledPruned=${cancelledOrPruned})`, "warn");
     }
     if (novelAcquired > novelAccepted) {
       log(`[AccountingInvariantViolation] novelAcquired (${novelAcquired}) > novelAccepted (${novelAccepted})`, "warn");
@@ -2925,7 +2925,7 @@ export async function processUnit(
 
     const newJobs = novelAccepted;
     const duplicates = canonicalDuplicates;
-    const rejected = ledgerKnown + hardFiltered + identityFailed + integrityFailed + validationFailed + canonicalIngestFailed;
+    const rejected = hardFiltered + identityFailed + integrityFailed + validationFailed + canonicalIngestFailed;
     const opportunities = novelAccepted;
     
     outcome.detailCount = novelAcquired;
@@ -3079,7 +3079,7 @@ export async function processUnit(
         cardsSeen: cards.length,
         cardsParsed,
         canonicalDuplicates,
-        ledgerKnown,
+        ledgerKnown: historicalReuse,
         hardFiltered,
         identityFailed,
         integrityFailed,
@@ -3116,7 +3116,7 @@ export async function processUnit(
       ? ` (Intent: ${hardFilterBreakdown.TITLE_INTENT_MISMATCH || 0}, Loc: ${hardFilterBreakdown.LOCATION_EXCLUSION || 0}, Exp: ${hardFilterBreakdown.EXPERIENCE_EXCLUSION || 0}, Seniority: ${hardFilterBreakdown.SENIORITY_EXCLUSION || 0}, Other: ${hardFilterBreakdown.OTHER || 0})`
       : "";
 
-    log(`\n=== PAGE SUMMARY ===\nPortal: ${unit.portal}\nKeyword: ${unit.keyword}\nPage: ${unit.page}\n\nCards Seen ............ ${cards.length}\nCards Parsed .......... ${cardsParsed}\n  ├── Canonical Duplicates ... ${canonicalDuplicates}\n  ├── Ledger Known ........... ${ledgerKnown}\n  ├── Hard Filtered .......... ${hardFiltered}${hfBreakdownStr}\n  ├── Identity Failures ...... ${identityFailed}\n  ├── Integrity Failures ..... ${integrityFailed}\n  ├── Validation Failures .... ${validationFailed}\n  └── Novel Accepted ......... ${novelAccepted} (Acquired: ${novelAcquired})\n      └── Canonical Ingested ... ${pageCanonicalIngested} (Total Run: ${mgr.getTelemetry("canonicalOpportunitiesIngested") || 0})\n\nNovelty Rate .......... ${((novelAccepted / Math.max(1, cardsParsed)) * 100).toFixed(1)}%\nDecision .............. ${decision}\nReason ................ ${reason}\n====================\n`, "info");
+    log(`\n=== PAGE SUMMARY ===\nPortal: ${unit.portal}\nKeyword: ${unit.keyword}\nPage: ${unit.page}\n\nCards Seen ............ ${cards.length}\nCards Parsed .......... ${cardsParsed}\n  ├── Current-run Duplicates . ${canonicalDuplicates}\n  ├── Historical Reuse ....... ${historicalReuse}\n  ├── New Opportunities ...... ${novelAccepted}\n  ├── New Versions ........... ${newVersions}\n  ├── Reused Versions ........ ${reusedVersions}\n  ├── Hard Filtered .......... ${hardFiltered}${hfBreakdownStr}\n  ├── Identity Failures ...... ${identityFailed}\n  ├── Integrity Failures ..... ${integrityFailed}\n  ├── Validation Failures .... ${validationFailed}\n  └── Canonical Ingest Failures ${canonicalIngestFailed}\n\nNovelty Rate .......... ${((novelAccepted / Math.max(1, cardsParsed)) * 100).toFixed(1)}%\nDecision .............. ${decision}\nReason ................ ${reason}\n====================\n`, "info");
   } catch (err: any) {
     if (mgr.isCancellationRequested() || err?.message?.includes("Target page, context or browser has been closed") || err?.message?.includes("browser has been closed")) {
       outcome.status = "aborted";

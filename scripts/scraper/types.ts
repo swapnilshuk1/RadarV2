@@ -95,6 +95,7 @@ export interface CardUnit {
   extractionPath?: string;
   error?: string;
   isNew?: boolean;
+  isNewVersion?: boolean;
   failureClass?: FailureClass;
   failureKind?: CardFailureKind;
   detailAttempted?: boolean;
