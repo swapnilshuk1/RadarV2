@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getDatabaseAdapter } from "@/data/database";
-import { requireAuthUser } from "../auth/guard";
+import { AuthError, requireAuthUser } from "../auth/guard";
 import { resolveServingScope } from "../security/scope-resolver";
 import {
   EvaluationRuntimeControl,
@@ -65,6 +65,22 @@ export interface EvaluatorTelemetrySnapshot {
   }>;
 }
 
+/** A captured-job evaluation is bound to a durable scrape run. */
+function capturedJobPredicate(jobAlias: string): string {
+  return `EXISTS (
+    SELECT 1
+    FROM evaluation_requirements er
+    JOIN scrape_run_evaluation_requirements srer
+      ON srer.evaluation_requirement_id=er.id
+    WHERE er.tenant_id=${jobAlias}.tenant_id
+      AND er.person_id=${jobAlias}.person_id
+      AND er.search_plan_id=${jobAlias}.search_plan_id
+      AND er.canonical_job_id=${jobAlias}.canonical_job_id
+      AND er.opportunity_version=${jobAlias}.opportunity_version
+      AND er.evaluation_context_fingerprint=${jobAlias}.evaluation_context_fingerprint
+  )`;
+}
+
 async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getDatabaseAdapter>) {
   const { scope } = await resolveServingScope(userId, undefined, db);
   const membership = await db.one<{ role: string }>(
@@ -75,7 +91,7 @@ async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getD
   );
 
   if (!membership) {
-    throw new Error("FORBIDDEN: Active tenant membership required");
+    throw new AuthError("FORBIDDEN: Active tenant membership required", 403);
   }
 
   // This controls a process-global daemon. Keep the operator boundary strict,
@@ -92,18 +108,19 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
   const local = EvaluationDaemon.getGlobalDaemonRuntimeStatus();
 
   const statusRows = await db.many<{ status: string; n: number }>(
-    `SELECT status,COUNT(*) AS n
-     FROM evaluation_jobs
-     WHERE tenant_id=? AND person_id=?
-     GROUP BY status`,
+    `SELECT ej.status AS status,COUNT(*) AS n
+     FROM evaluation_jobs AS ej
+     WHERE ej.tenant_id=? AND ej.person_id=? AND ${capturedJobPredicate("ej")}
+     GROUP BY ej.status`,
     [scope.tenantId, scope.personId],
   );
   const counts = Object.fromEntries(statusRows.map((row) => [row.status, Number(row.n)]));
 
   const latest = await db.one<{ completed_at: string | null }>(
-    `SELECT MAX(completed_at) AS completed_at
-     FROM evaluation_jobs
-     WHERE tenant_id=? AND person_id=? AND status='completed'`,
+    `SELECT MAX(ej.completed_at) AS completed_at
+     FROM evaluation_jobs AS ej
+     WHERE ej.tenant_id=? AND ej.person_id=? AND ej.status='completed'
+       AND ${capturedJobPredicate("ej")}`,
     [scope.tenantId, scope.personId],
   );
 
@@ -124,8 +141,9 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
                 OR locked_at < datetime('now', '-300 seconds')
               THEN 1 ELSE 0
             END AS reclaimable
-     FROM evaluation_jobs
+     FROM evaluation_jobs AS ej
      WHERE tenant_id=? AND person_id=? AND status IN ('processing','staged_processing')
+       AND ${capturedJobPredicate("ej")}
      ORDER BY COALESCE(first_claimed_at,created_at),created_at`,
     [scope.tenantId, scope.personId],
   );
@@ -200,11 +218,13 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
     total_tokens: number | null;
     error_code: string | null;
   }>(
-    `SELECT id,evaluation_job_id,stage,attempt,status,model_version,started_at,completed_at,
-            latency_ms,input_tokens,cached_input_tokens,reasoning_tokens,output_tokens,total_tokens,error_code
-     FROM model_invocations
-     WHERE tenant_id=? AND person_id=? AND pipeline='evaluation'
-     ORDER BY started_at DESC
+    `SELECT mi.id,mi.evaluation_job_id,mi.stage,mi.attempt,mi.status,mi.model_version,mi.started_at,mi.completed_at,
+            mi.latency_ms,mi.input_tokens,mi.cached_input_tokens,mi.reasoning_tokens,mi.output_tokens,mi.total_tokens,mi.error_code
+     FROM model_invocations AS mi
+     JOIN evaluation_jobs AS ej ON ej.id=mi.evaluation_job_id
+     WHERE mi.tenant_id=? AND mi.person_id=? AND mi.pipeline='evaluation'
+       AND ${capturedJobPredicate("ej")}
+     ORDER BY mi.started_at DESC
      LIMIT 30`,
     [scope.tenantId, scope.personId],
   );
@@ -262,7 +282,7 @@ export const controlEvaluatorFn = createServerFn({ method: "POST" })
     const db = getDatabaseAdapter();
     const { canControl } = await resolveEvaluatorAccess(user.id, db);
     if (!canControl) {
-      throw new Error("FORBIDDEN: Active tenant administrator privileges required");
+      throw new AuthError("FORBIDDEN: Active tenant administrator privileges required", 403);
     }
     const control = new EvaluationRuntimeControl(db);
 

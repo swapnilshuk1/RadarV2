@@ -55,6 +55,9 @@ export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPane
   const [error, setError] = useState<string | null>(null);
   const [controlBusy, setControlBusy] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [pageVisible, setPageVisible] = useState(
+    () => typeof document === "undefined" || document.visibilityState === "visible",
+  );
 
   const refresh = useCallback(async () => {
     try {
@@ -66,15 +69,30 @@ export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPane
     }
   }, []);
 
+  const pollingIntervalMs = snapshot?.control.localDaemonRunning ? 3_000 : 30_000;
+
   useEffect(() => {
-    void refresh();
-    const telemetryInterval = window.setInterval(() => void refresh(), 1500);
-    const clockInterval = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => {
-      window.clearInterval(telemetryInterval);
-      window.clearInterval(clockInterval);
+    const onVisibilityChange = () => {
+      const visible = document.visibilityState === "visible";
+      setPageVisible(visible);
+      if (visible) void refresh();
     };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [refresh]);
+
+  useEffect(() => {
+    if (!pageVisible) return;
+    void refresh();
+    const telemetryInterval = window.setInterval(() => void refresh(), pollingIntervalMs);
+    return () => window.clearInterval(telemetryInterval);
+  }, [pageVisible, pollingIntervalMs, refresh]);
+
+  useEffect(() => {
+    if (!pageVisible || !snapshot?.queue.liveModelCalls) return;
+    const clockInterval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(clockInterval);
+  }, [pageVisible, snapshot?.queue.liveModelCalls]);
 
   const act = useCallback(
     async (action: "start" | "pause" | "resume" | "stop") => {

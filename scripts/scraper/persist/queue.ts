@@ -707,59 +707,41 @@ export class EnrichmentQueue {
     pending: number;
     latestJobs: any[];
   }> {
-    const [total, completed, failed, processing, pending, latestJobs] = await Promise.all([
-      this.db.one<{ count: number }>(
-        `SELECT COUNT(DISTINCT ej.id) as count 
-         FROM enrichment_jobs ej 
-         LEFT JOIN scrape_run_enrichment_requirements r ON r.enrichment_job_id = ej.id 
-         WHERE ej.run_id = ? OR r.run_id = ?`,
-        [runId, runId]
-      ),
-      this.db.one<{ count: number }>(
-        `SELECT COUNT(DISTINCT ej.id) as count 
-         FROM enrichment_jobs ej 
-         LEFT JOIN scrape_run_enrichment_requirements r ON r.enrichment_job_id = ej.id 
-         WHERE (ej.run_id = ? OR r.run_id = ?) AND ej.status = 'COMPLETE'`,
-        [runId, runId]
-      ),
-      this.db.one<{ count: number }>(
-        `SELECT COUNT(DISTINCT ej.id) as count 
-         FROM enrichment_jobs ej 
-         LEFT JOIN scrape_run_enrichment_requirements r ON r.enrichment_job_id = ej.id 
-         WHERE (ej.run_id = ? OR r.run_id = ?) AND ej.status = 'FAILED'`,
-        [runId, runId]
-      ),
-      this.db.one<{ count: number }>(
-        `SELECT COUNT(DISTINCT ej.id) as count 
-         FROM enrichment_jobs ej 
-         LEFT JOIN scrape_run_enrichment_requirements r ON r.enrichment_job_id = ej.id 
-         WHERE (ej.run_id = ? OR r.run_id = ?) AND ej.status IN ('LEASED', 'RUNNING')`,
-        [runId, runId]
-      ),
-      this.db.one<{ count: number }>(
-        `SELECT COUNT(DISTINCT ej.id) as count 
-         FROM enrichment_jobs ej 
-         LEFT JOIN scrape_run_enrichment_requirements r ON r.enrichment_job_id = ej.id 
-         WHERE (ej.run_id = ? OR r.run_id = ?) AND ej.status IN ('PENDING', 'RETRY')`,
-        [runId, runId]
+    const runJobs = `
+      SELECT id, snapshot_path, status, last_error, completed_at, created_at
+      FROM enrichment_jobs WHERE run_id = ?
+      UNION
+      SELECT ej.id, ej.snapshot_path, ej.status, ej.last_error, ej.completed_at, ej.created_at
+      FROM scrape_run_enrichment_requirements r
+      JOIN enrichment_jobs ej ON ej.id = r.enrichment_job_id
+      WHERE r.run_id = ?`;
+    const [counts, latestJobs] = await Promise.all([
+      this.db.one<{ total: number; completed: number; failed: number; processing: number; pending: number }>(
+        `WITH run_jobs AS (${runJobs})
+         SELECT COUNT(*) AS total,
+                SUM(CASE WHEN status='COMPLETE' THEN 1 ELSE 0 END) AS completed,
+                SUM(CASE WHEN status='FAILED' THEN 1 ELSE 0 END) AS failed,
+                SUM(CASE WHEN status IN ('LEASED','RUNNING') THEN 1 ELSE 0 END) AS processing,
+                SUM(CASE WHEN status IN ('PENDING','RETRY') THEN 1 ELSE 0 END) AS pending
+         FROM run_jobs`,
+        [runId, runId],
       ),
       this.db.many<any>(
-        `SELECT DISTINCT ej.id, ej.snapshot_path, ej.status, ej.last_error, ej.completed_at, ej.created_at
-         FROM enrichment_jobs ej
-         LEFT JOIN scrape_run_enrichment_requirements r ON r.enrichment_job_id = ej.id
-         WHERE ej.run_id = ? OR r.run_id = ?
-         ORDER BY ej.completed_at DESC, ej.created_at DESC
+        `WITH run_jobs AS (${runJobs})
+         SELECT id, snapshot_path, status, last_error, completed_at, created_at
+         FROM run_jobs
+         ORDER BY completed_at DESC, created_at DESC
          LIMIT 3`,
-        [runId, runId]
+        [runId, runId],
       ),
     ]);
 
     return {
-      total: total?.count || 0,
-      completed: completed?.count || 0,
-      failed: failed?.count || 0,
-      processing: processing?.count || 0,
-      pending: pending?.count || 0,
+      total: counts?.total || 0,
+      completed: counts?.completed || 0,
+      failed: counts?.failed || 0,
+      processing: counts?.processing || 0,
+      pending: counts?.pending || 0,
       latestJobs: latestJobs || [],
     };
   }
