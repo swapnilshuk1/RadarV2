@@ -338,6 +338,8 @@ export function describeBlobStoreConfiguration(env: NodeJS.ProcessEnv = process.
   const isSqliteCandidate = env.RADAR_DATABASE_TARGET?.toLowerCase() === "sqlite-candidate";
   const candidateRoot = path.resolve(env.RADAR_SQLITE_CANDIDATE_ROOT || "/var/lib/radar-candidate");
   const configuredLocalRoot = env.RADAR_ARTIFACT_STORE_ROOT;
+  const sharedLocalRoot = env.RADAR_SHARED_LOCAL_BLOB_ROOT;
+  const allowsSharedLocalBlob = env.RADAR_SQLITE_CANDIDATE_ALLOW_SHARED_LOCAL_BLOB === "true";
   const candidateRemoteBucket = env.RADAR_CANDIDATE_BLOB_STORAGE_BUCKET;
   const remoteBucket = isSqliteCandidate ? candidateRemoteBucket : env.BLOB_STORAGE_BUCKET;
   const hasRemoteConfiguration = Boolean(env.BLOB_STORAGE_ENDPOINT && remoteBucket);
@@ -361,9 +363,15 @@ export function describeBlobStoreConfiguration(env: NodeJS.ProcessEnv = process.
     }
     const localArtifactRoot = path.resolve(configuredLocalRoot);
     const relative = path.relative(candidateRoot, localArtifactRoot);
-    if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+    const isBelowCandidateRoot = relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
+    const isExplicitSharedSingleHostRoot = mode === "single_host"
+      && allowsSharedLocalBlob
+      && Boolean(sharedLocalRoot)
+      && path.isAbsolute(sharedLocalRoot!)
+      && localArtifactRoot === path.resolve(sharedLocalRoot!);
+    if (!isBelowCandidateRoot && !isExplicitSharedSingleHostRoot) {
       throw new BlobStoreConfigurationError(
-        `SQLite candidate artifact root must be below ${candidateRoot}; received ${localArtifactRoot}.`,
+        `SQLite candidate artifact root must be below ${candidateRoot}, unless single_host shared-local mode explicitly sets RADAR_SQLITE_CANDIDATE_ALLOW_SHARED_LOCAL_BLOB=true and RADAR_SHARED_LOCAL_BLOB_ROOT to the exact absolute artifact root; received ${localArtifactRoot}.`,
       );
     }
     return { mode, artifactBackend: "local_filesystem", artifactLimits: resolveArtifactStoreLimits(env), localArtifactRoot };

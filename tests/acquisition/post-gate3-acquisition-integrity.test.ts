@@ -693,6 +693,11 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
     const expectedKey = `acquisition/${res1.canonicalJobId}/${res1.opportunityVersion}/snapshot.json`;
     expect(putSpy).toHaveBeenCalledWith(expectedKey, expect.any(String), "application/json");
     expect(await mockBlobStore.exists(expectedKey)).toBe(true);
+    expect(res1.sourcePayloadKey).toBe(expectedKey);
+    expect(raw.prepare("SELECT source_payload_key FROM opportunity_versions WHERE id = ?").get(res1.opportunityVersion))
+      .toEqual({ source_payload_key: expectedKey });
+    expect(computeContentHash(JSON.parse((await mockBlobStore.get(expectedKey))!.toString("utf8")).canonicalMaterial))
+      .toBe(res1.contentHash);
 
     const initialContent = blobData.get(expectedKey);
     putSpy.mockClear();

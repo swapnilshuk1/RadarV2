@@ -158,6 +158,7 @@ export class SourceSnapshotResolver {
           `Opportunity source payload digest mismatch for ${ref.canonicalJobId}/${ref.opportunityVersion}.`,
         );
       }
+      this.assertBlobPayloadConsistency(row, bytes);
       return {
         ref,
         storage: "BLOB",
@@ -195,6 +196,31 @@ export class SourceSnapshotResolver {
     if (recomputed !== row.content_hash) {
       throw new SourceSnapshotIdentityMismatchError(
         `Opportunity source content no longer matches its canonical hash for ${row.canonical_job_id}/${row.id}.`,
+      );
+    }
+  }
+
+  /** Text snapshots retain metadata, so validate their canonical material—not raw JSON bytes. */
+  private assertBlobPayloadConsistency(row: OpportunitySourceRow, bytes: Buffer): void {
+    if (row.source_media_type !== "application/json") return;
+    let parsed: any;
+    try {
+      parsed = JSON.parse(bytes.toString("utf8"));
+    } catch {
+      throw new SourceSnapshotIdentityMismatchError(
+        `Canonical text source payload is not valid JSON for ${row.canonical_job_id}/${row.id}.`,
+      );
+    }
+    const material = parsed?.canonicalMaterial || {
+      title: parsed?.title ?? parsed?.jobTitle ?? "",
+      companyName: parsed?.companyName ?? parsed?.company ?? null,
+      location: parsed?.location ?? null,
+      employmentType: parsed?.employmentType ?? null,
+      rawContent: parsed?.detail?.rawText ?? parsed?.rawText ?? "",
+    };
+    if (computeContentHash(material) !== row.content_hash) {
+      throw new SourceSnapshotIdentityMismatchError(
+        `Canonical text source payload content does not match ${row.canonical_job_id}/${row.id}.`,
       );
     }
   }

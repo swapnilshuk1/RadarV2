@@ -285,6 +285,25 @@ describe("Gate 1B source/provenance immutability", () => {
     await expect(resolver.resolve(ref)).rejects.toBeInstanceOf(SourceSnapshotUnavailableError);
   });
 
+  it("resolves a text snapshot only when its canonical material matches the persisted content hash", async () => {
+    const rawDb = new Database(":memory:");
+    schema(rawDb);
+    applySourceImmutabilityMigration(rawDb);
+    const db = new TestAdapter(rawDb);
+    const blobs = new MemoryBlobStore();
+    const material = { title: "VP Revenue", companyName: "Acme", location: "Delhi", employmentType: "Full-time", rawContent: "Durable source job description." };
+    const key = "acquisition/job-text/version-text/snapshot.json";
+    await blobs.put(key, JSON.stringify({ canonicalMaterial: material, generatedAt: "not canonical" }), "application/json");
+    rawDb.prepare(`INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, source_payload_key, source_media_type, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run("version-text", "job-text", computeContentHash(material), material.title, material.companyName, material.location, material.employmentType, material.rawContent, key, "application/json", "2026-09-24T00:00:00.000Z");
+    const resolver = new SourceSnapshotResolver(db, blobs);
+    const ref = await resolver.captureOpportunityVersionRef("job-text", "version-text");
+    await expect(resolver.resolve(ref)).resolves.toMatchObject({ storage: "BLOB", mediaType: "application/json" });
+    await blobs.put(key, JSON.stringify({ canonicalMaterial: { ...material, rawContent: "tampered" } }), "application/json");
+    await expect(resolver.resolve(ref)).rejects.toBeInstanceOf(SourceSnapshotIdentityMismatchError);
+  });
+
   it("content-addresses new PDF payloads and fails closed when the same opportunity version is replayed with different bytes", async () => {
     const rawDb = new Database(":memory:");
     schema(rawDb);

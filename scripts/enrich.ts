@@ -11,6 +11,7 @@ import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-ident
 import { makeLogger } from "./scraper/utils/logger";
 import { CONFIG } from "./scraper/config";
 import { getDatabaseAdapter, type DatabaseAdapter } from "../src/data/database";
+import type { BlobStore } from "../src/lib/storage/blob-store";
 
 const log = makeLogger("enrich");
 const WORKER_ID = `worker-${process.pid}`;
@@ -63,6 +64,17 @@ export function assertCanonicalPayloadIdentity(
       `ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH: Job ${job.canonical_job_id}/${job.opportunity_version} does not match payload evidence ${detailedCard.evaluationEvidence?.canonicalJobId}/${detailedCard.evaluationEvidence?.opportunityVersion}`
     );
   }
+}
+
+/** Returns true only when an unreferenced queue artifact was actually deleted. */
+export async function deletePayloadIfEphemeral(
+  queue: EnrichmentQueue,
+  payloadKey: string,
+  blobStore: BlobStore,
+): Promise<boolean> {
+  if (await queue.isCanonicalSourcePayload(payloadKey)) return false;
+  await blobStore.delete(payloadKey);
+  return true;
 }
 
 export async function processJob(
@@ -292,13 +304,12 @@ export async function processJob(
       await queue.markCompleted(job.id);
     }
 
-    // The canonical evaluation and lineage have been persisted before this
-    // point. The acquisition payload is no longer required for serving or a
-    // successful retry, so release the bounded local/remote artifact promptly.
+    // Canonical source evidence is retained; only an unreferenced queue
+    // artifact can be released after successful enrichment.
     if (payloadKey) {
       try {
         const { getBlobStore } = await import("../src/lib/storage/blob-store");
-        await getBlobStore().delete(payloadKey);
+        await deletePayloadIfEphemeral(queue, payloadKey, getBlobStore());
       } catch (cleanupError: any) {
         // Completion is canonical and must not be rolled back because an
         // ephemeral acquisition-artifact cleanup later fails.
@@ -347,19 +358,21 @@ function filteredCardHash(card: DetailedCard) {
   return card.cardHash;
 }
 
-async function cleanupExpiredTerminalPayloads(queue: EnrichmentQueue): Promise<void> {
+export async function cleanupExpiredTerminalPayloads(
+  queue: EnrichmentQueue,
+  deps?: { blobStore?: BlobStore; retentionHours?: number },
+): Promise<void> {
   const { getBlobStore, resolveArtifactStoreLimits } = await import("../src/lib/storage/blob-store");
-  const retentionHours = resolveArtifactStoreLimits().retentionHours;
+  const retentionHours = deps?.retentionHours ?? resolveArtifactStoreLimits().retentionHours;
   const cutoffIso = new Date(Date.now() - retentionHours * 60 * 60 * 1000).toISOString();
   const payloadKeys = await queue.getExpiredTerminalPayloadKeys(cutoffIso);
   if (payloadKeys.length === 0) return;
 
-  const blobStore = getBlobStore();
+  const blobStore = deps?.blobStore ?? getBlobStore();
   let deleted = 0;
   for (const payloadKey of payloadKeys) {
     try {
-      await blobStore.delete(payloadKey);
-      deleted += 1;
+      if (await deletePayloadIfEphemeral(queue, payloadKey, blobStore)) deleted += 1;
     } catch (error: any) {
       log(`[Enrich] Retention cleanup could not delete ${payloadKey}: ${error.message}`, "warn");
     }

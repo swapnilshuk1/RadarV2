@@ -621,6 +621,22 @@ export class EnrichmentQueue {
     return rows.map((row) => row.payload_key);
   }
 
+  /**
+   * Canonical source payloads are evidence, not queue artifacts.  All
+   * enrichment cleanup funnels through this database-backed guard rather than
+   * relying on a key prefix or a worker's local interpretation of a payload.
+   */
+  public async isCanonicalSourcePayload(payloadKey: string): Promise<boolean> {
+    const row = await this.db.one<{ present: number }>(
+      `SELECT 1 AS present
+       FROM opportunity_versions
+       WHERE source_payload_key = ?
+       LIMIT 1`,
+      [payloadKey],
+    );
+    return Boolean(row);
+  }
+
   public async logEvent(jobId: string, eventType: string, details?: string): Promise<void> {
     try {
       await this.db.execute(

@@ -15,7 +15,16 @@ test framework: the six real candidate processes, crash/restart behavior, and
 the 30-minute workload. Replacing those with fake worker implementations would
 weaken the proof.
 
-## Candidate bootstrap
+## Candidate BlobStore modes
+
+Portal browsing, portal cookies, and CAPTCHA clearance are localhost-only. The
+scraper submits an authenticated immutable acquisition envelope to Oracle;
+Oracle assigns the stable `sourcePayloadKey` and persists the source payload
+before canonical admission.
+
+### Isolated candidate mode (default)
+
+The default remains the fail-closed isolated candidate configuration:
 
 Restore a non-production database copy to the candidate host, then use only:
 
@@ -27,7 +36,7 @@ export RADAR_SQLITE_CANDIDATE_PATH=/var/lib/radar-candidate/radar.sqlite
 export RADAR_ARTIFACT_STORE_ROOT=/var/lib/radar-candidate/artifacts
 ```
 
-The file must already exist. `RADAR_ARTIFACT_STORE_ROOT` is mandatory for a
+The database file must already exist. `RADAR_ARTIFACT_STORE_ROOT` is mandatory for a
 candidate using local filesystem blobs; it must be an absolute path below
 `RADAR_SQLITE_CANDIDATE_ROOT`, so the normal `<cwd>/.radar/artifacts/blobs`
 default can never be reused. A candidate using object storage must instead set
@@ -36,10 +45,43 @@ both `BLOB_STORAGE_ENDPOINT` and an explicit
 If `BLOB_STORAGE_BUCKET` is present for the normal deployment, the candidate
 bucket must be a different bucket; matching names fail startup.
 
-A first-time empty bootstrap additionally requires
+### Explicit shared-single-host proof mode
+
+For the intended single-Oracle-host topology, the sequential Turso control and
+SQLite candidate may use the same durable local BlobStore. This is permitted
+only through all of the following explicit settings:
+
+```bash
+export RADAR_DEPLOYMENT_MODE=single_host
+export RADAR_ARTIFACT_STORE_ROOT=/var/lib/radar-data/blobs
+export RADAR_SHARED_LOCAL_BLOB_ROOT=/var/lib/radar-data/blobs
+export RADAR_SQLITE_CANDIDATE_ALLOW_SHARED_LOCAL_BLOB=true
+```
+
+The shared root must be absolute and resolve exactly to
+`RADAR_ARTIFACT_STORE_ROOT`. The opt-in is rejected in `distributed` mode, if
+the root is missing or relative, or if the paths differ. Remote candidate-bucket
+isolation rules remain unchanged. Use shared-local mode only when ingress,
+workers, serving, and every BlobStore consumer execute on the same Oracle host,
+and run Turso control and SQLite candidate phases sequentially. The only
+intended variable is the database backend.
+
+A first-time empty candidate bootstrap additionally requires
 `RADAR_SQLITE_CANDIDATE_ALLOW_CREATE=true`; remove that variable immediately
 after bootstrapping. Candidate artifacts/blob storage must use paths distinct
-from production before starting any scraper or worker.
+from control artifacts unless explicit shared-single-host proof mode is active.
+
+Canonical source blobs referenced by `opportunity_versions.source_payload_key`
+are durable evidence. Enrichment completion and terminal-payload retention
+cleanup query canonical database state before deletion and never delete a
+referenced key. Unreferenced queue payloads remain eligible for bounded cleanup.
+
+The default 512 MiB / 5,000 file / 168-hour artifact limits were intended for
+ephemeral payloads. Configure explicit larger limits on the proof host, for
+example `RADAR_ARTIFACT_MAX_BYTES=21474836480` and
+`RADAR_ARTIFACT_MAX_FILES=100000`; retention still governs only unreferenced
+ephemeral payloads. Size the filesystem and monitoring for the retained
+canonical corpus.
 
 Every candidate process receives the same variables and starts separately:
 
@@ -87,7 +129,7 @@ The proof fails on an escaped `SQLITE_BUSY`, `database is locked`, or nested
 transaction error; it also fails unless integrity and foreign-key checks are
 clean. Keep the health JSON and worker logs as the proof record.
 
-## Backup and restore
+## Database and BlobStore backup/restore
 
 Create an online backup; never copy a live database/WAL by hand:
 
@@ -102,19 +144,20 @@ against that restored file and confirm it can read the expected serving data.
 Compare migration ledger, tenant/person/opportunity/evaluation/dossier counts
 and active evaluation-context pointers before declaring the backup proof passed.
 
+SQLite backup does not back up the local durable BlobStore. For the Oracle
+proof, complete both checks:
+
+1. Restore the SQLite database against the retained `/var/lib/radar-data/blobs`
+   corpus and retrieve sampled canonical `sourcePayloadKey` objects.
+2. With ingress and blob writers quiescent (or via a coherent filesystem
+   snapshot), take a filesystem-level backup of the BlobStore to a distinct
+   backup path/device. Restore that corpus alongside a restored database and
+   retrieve the same sampled source evidence.
+
+Do not copy a mutating blob tree as an ad-hoc live backup.
+
 ## Readiness decision
 
 Only mark **CODE READY FOR ORACLE PROOF** after targeted tests, TypeScript and
 the build pass. Persistent SQLite is not production-ready until the Oracle
 proof, crash recovery, integrity/FK checks and backup/restore boot all pass.
-# Localhost acquisition boundary
-
-Portal browsing, portal cookies, and CAPTCHA clearance are localhost-only. The
-scraper submits an authenticated immutable acquisition envelope to Oracle; Oracle
-persists canonical data and its source payload through the configured durable
-BlobStore. The candidate must use the same durable blob/object-store backend as
-the Turso control where possible; SQLite changes the database backend only.
-
-Never pass a laptop filesystem path as source provenance. Oracle assigns and
-stores the stable `sourcePayloadKey`, which must remain retrievable by
-enrichment, restore verification, and a restored-stack boot.

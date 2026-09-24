@@ -51,6 +51,39 @@ describe("Phase 4C: BlobStore Connectivity & Backend Protocol Verification", () 
     } as NodeJS.ProcessEnv)).toThrow(/must be below/);
   });
 
+  it("0c2. permits a shared local root only through explicit single-host opt-in", () => {
+    const base = {
+      RADAR_ENV: "staging", RADAR_DATABASE_TARGET: "sqlite-candidate",
+      RADAR_SQLITE_CANDIDATE_ROOT: "/var/lib/radar-candidate",
+      RADAR_ARTIFACT_STORE_ROOT: "/var/lib/radar-data/blobs",
+    } as NodeJS.ProcessEnv;
+    expect(() => describeBlobStoreConfiguration(base)).toThrow(/must be below/);
+    expect(describeBlobStoreConfiguration({
+      ...base,
+      RADAR_DEPLOYMENT_MODE: "single_host",
+      RADAR_SQLITE_CANDIDATE_ALLOW_SHARED_LOCAL_BLOB: "true",
+      RADAR_SHARED_LOCAL_BLOB_ROOT: "/var/lib/radar-data/blobs",
+    })).toMatchObject({ artifactBackend: "local_filesystem", localArtifactRoot: path.resolve("/var/lib/radar-data/blobs") });
+    expect(() => describeBlobStoreConfiguration({
+      ...base,
+      RADAR_DEPLOYMENT_MODE: "distributed",
+      RADAR_SQLITE_CANDIDATE_ALLOW_SHARED_LOCAL_BLOB: "true",
+      RADAR_SHARED_LOCAL_BLOB_ROOT: "/var/lib/radar-data/blobs",
+    })).toThrow(/must be below/);
+    expect(() => describeBlobStoreConfiguration({
+      ...base,
+      RADAR_DEPLOYMENT_MODE: "single_host",
+      RADAR_SQLITE_CANDIDATE_ALLOW_SHARED_LOCAL_BLOB: "true",
+      RADAR_SHARED_LOCAL_BLOB_ROOT: "relative/blobs",
+    })).toThrow(/must be below/);
+    expect(() => describeBlobStoreConfiguration({
+      ...base,
+      RADAR_DEPLOYMENT_MODE: "single_host",
+      RADAR_SQLITE_CANDIDATE_ALLOW_SHARED_LOCAL_BLOB: "true",
+      RADAR_SHARED_LOCAL_BLOB_ROOT: "/var/lib/radar-data/other-blobs",
+    })).toThrow(/must be below/);
+  });
+
   it("0d. requires a distinct explicit remote bucket for a SQLite candidate", () => {
     const candidate = {
       RADAR_ENV: "staging", RADAR_DATABASE_TARGET: "sqlite-candidate",
