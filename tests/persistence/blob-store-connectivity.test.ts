@@ -34,6 +34,23 @@ describe("Phase 4C: BlobStore Connectivity & Backend Protocol Verification", () 
     } as NodeJS.ProcessEnv)).toBe(true);
   });
 
+  it("0c. requires explicit candidate artifact isolation", () => {
+    expect(() => describeBlobStoreConfiguration({
+      RADAR_ENV: "staging", RADAR_DATABASE_TARGET: "sqlite-candidate",
+      RADAR_SQLITE_CANDIDATE_ROOT: "/var/lib/radar-candidate",
+    } as NodeJS.ProcessEnv)).toThrow(/RADAR_ARTIFACT_STORE_ROOT/);
+    expect(describeBlobStoreConfiguration({
+      RADAR_ENV: "staging", RADAR_DATABASE_TARGET: "sqlite-candidate",
+      RADAR_SQLITE_CANDIDATE_ROOT: "/var/lib/radar-candidate",
+      RADAR_ARTIFACT_STORE_ROOT: "/var/lib/radar-candidate/artifacts",
+    } as NodeJS.ProcessEnv)).toMatchObject({ artifactBackend: "local_filesystem", localArtifactRoot: path.resolve("/var/lib/radar-candidate/artifacts") });
+    expect(() => describeBlobStoreConfiguration({
+      RADAR_ENV: "staging", RADAR_DATABASE_TARGET: "sqlite-candidate",
+      RADAR_SQLITE_CANDIDATE_ROOT: "/var/lib/radar-candidate",
+      RADAR_ARTIFACT_STORE_ROOT: "/srv/production-artifacts",
+    } as NodeJS.ProcessEnv)).toThrow(/must be below/);
+  });
+
   it("1. MemoryBlobStore roundtrip & health check", async () => {
     const memStore = new MemoryBlobStore();
     const check = await memStore.healthCheck();

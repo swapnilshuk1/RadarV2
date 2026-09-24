@@ -331,9 +331,32 @@ export function describeBlobStoreConfiguration(env: NodeJS.ProcessEnv = process.
   mode: DeploymentMode;
   artifactBackend: "local_filesystem" | "s3_compatible";
   artifactLimits: ArtifactStoreLimits | null;
+  localArtifactRoot?: string;
+  remoteBucket?: string;
 } {
   const mode = resolveDeploymentMode(env);
-  const hasRemoteConfiguration = Boolean(env.BLOB_STORAGE_ENDPOINT && env.BLOB_STORAGE_BUCKET);
+  const isSqliteCandidate = env.RADAR_DATABASE_TARGET?.toLowerCase() === "sqlite-candidate";
+  const candidateRoot = path.resolve(env.RADAR_SQLITE_CANDIDATE_ROOT || "/var/lib/radar-candidate");
+  const configuredLocalRoot = env.RADAR_ARTIFACT_STORE_ROOT;
+  const candidateRemoteBucket = env.RADAR_CANDIDATE_BLOB_STORAGE_BUCKET;
+  const remoteBucket = isSqliteCandidate ? candidateRemoteBucket : env.BLOB_STORAGE_BUCKET;
+  const hasRemoteConfiguration = Boolean(env.BLOB_STORAGE_ENDPOINT && remoteBucket);
+
+  if (isSqliteCandidate && !hasRemoteConfiguration) {
+    if (!configuredLocalRoot || !path.isAbsolute(configuredLocalRoot)) {
+      throw new BlobStoreConfigurationError(
+        "SQLite candidate requires an absolute RADAR_ARTIFACT_STORE_ROOT or explicit RADAR_CANDIDATE_BLOB_STORAGE_BUCKET with BLOB_STORAGE_ENDPOINT.",
+      );
+    }
+    const localArtifactRoot = path.resolve(configuredLocalRoot);
+    const relative = path.relative(candidateRoot, localArtifactRoot);
+    if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+      throw new BlobStoreConfigurationError(
+        `SQLite candidate artifact root must be below ${candidateRoot}; received ${localArtifactRoot}.`,
+      );
+    }
+    return { mode, artifactBackend: "local_filesystem", artifactLimits: resolveArtifactStoreLimits(env), localArtifactRoot };
+  }
   if (mode === "distributed" && !hasRemoteConfiguration) {
     throw new BlobStoreConfigurationError(
       "Distributed deployment mode requires remote object storage (BLOB_STORAGE_ENDPOINT and BLOB_STORAGE_BUCKET)."
@@ -343,6 +366,8 @@ export function describeBlobStoreConfiguration(env: NodeJS.ProcessEnv = process.
     mode,
     artifactBackend: hasRemoteConfiguration ? "s3_compatible" : "local_filesystem",
     artifactLimits: hasRemoteConfiguration ? null : resolveArtifactStoreLimits(env),
+    ...(!hasRemoteConfiguration && configuredLocalRoot ? { localArtifactRoot: path.resolve(configuredLocalRoot) } : {}),
+    ...(hasRemoteConfiguration ? { remoteBucket } : {}),
   };
 }
 
@@ -365,9 +390,9 @@ export function getBlobStore(options?: { enforceDistributed?: boolean }): BlobSt
       throw new BlobStoreConfigurationError("This caller requires distributed BlobStore mode, but RADAR_DEPLOYMENT_MODE is not 'distributed'.");
     }
     if (config.artifactBackend === "s3_compatible") {
-      _globalBlobStore = new S3CompatibleBlobStore();
+      _globalBlobStore = new S3CompatibleBlobStore({ bucket: config.remoteBucket });
     } else {
-      _globalBlobStore = new LocalFsBlobStore(undefined, config.artifactLimits || resolveArtifactStoreLimits());
+      _globalBlobStore = new LocalFsBlobStore(config.localArtifactRoot, config.artifactLimits || resolveArtifactStoreLimits());
     }
   }
   return _globalBlobStore;

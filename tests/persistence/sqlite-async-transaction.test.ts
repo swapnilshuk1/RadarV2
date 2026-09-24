@@ -71,4 +71,26 @@ describe("SqliteAdapter async transaction ownership", () => {
     })).rejects.toThrow("expected rollback");
     expect(await db.many("SELECT * FROM entries")).toEqual([]);
   });
+
+  it("runs rebuild migrations without a nested BEGIN and restores foreign keys", async () => {
+    const raw = new Database(":memory:");
+    databases.push(raw);
+    raw.pragma("foreign_keys = ON");
+    raw.exec("CREATE TABLE parent (id TEXT PRIMARY KEY); CREATE TABLE child (parent_id TEXT REFERENCES parent(id));");
+    const db = new SqliteAdapter(raw);
+    const exec = raw.exec.bind(raw);
+    const begins: string[] = [];
+    (raw as any).exec = (sql: string) => { if (sql === "BEGIN IMMEDIATE") begins.push(sql); return exec(sql); };
+    await db.executeMigration!(["DROP TABLE parent", "CREATE TABLE parent (id TEXT PRIMARY KEY)"], { disableForeignKeys: true });
+    expect(begins).toHaveLength(1);
+    expect(raw.pragma("foreign_keys", { simple: true })).toBe(1);
+    expect(raw.pragma("foreign_key_check")).toEqual([]);
+  });
+
+  it("rolls back a failed migration and releases ownership", async () => {
+    const db = adapter();
+    await expect(db.executeMigration!(["CREATE TABLE rollback_probe (id TEXT)", "NOT VALID SQL"])).rejects.toThrow();
+    expect(await db.one("SELECT name FROM sqlite_master WHERE name='rollback_probe'")).toBeNull();
+    await expect(db.execute("INSERT INTO entries VALUES (?, ?)", ["after-failure", "ok"])).resolves.toMatchObject({ rowsAffected: 1 });
+  });
 });

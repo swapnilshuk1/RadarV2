@@ -44,6 +44,27 @@ export class SqliteAdapter implements DatabaseAdapter {
     return await fn();
   }
 
+  /** Acquire the connection for a whole awaited critical section. */
+  private async withExclusiveConnection<T>(fn: () => Promise<T>): Promise<T> {
+    const previous = this.transactionTail;
+    let releaseTransaction!: () => void;
+    this.transactionTail = new Promise<void>((resolve) => { releaseTransaction = resolve; });
+    await previous;
+
+    const owner = Symbol("sqlite-transaction");
+    let releaseActive!: () => void;
+    this.activeTransactionCompletion = new Promise<void>((resolve) => { releaseActive = resolve; });
+    this.activeTransactionOwner = owner;
+    try {
+      return await this.transactionContext.run(owner, fn);
+    } finally {
+      this.activeTransactionOwner = null;
+      this.activeTransactionCompletion = null;
+      releaseActive();
+      releaseTransaction();
+    }
+  }
+
   async one<T>(sql: string, params: QueryParams = []): Promise<T | null> {
     return this.runOperation(() => {
       const row = this.db.prepare(sql).get(...(params as any[]));
@@ -76,61 +97,48 @@ export class SqliteAdapter implements DatabaseAdapter {
       return await fn(this);
     }
 
-    const previous = this.transactionTail;
-    let releaseTransaction!: () => void;
-    this.transactionTail = new Promise<void>((resolve) => { releaseTransaction = resolve; });
-    await previous;
-
-    const transactionOwner = Symbol("sqlite-transaction");
-    let releaseActive!: () => void;
-    this.activeTransactionCompletion = new Promise<void>((resolve) => { releaseActive = resolve; });
-    try {
+    return this.withExclusiveConnection(async () => {
       this.db.exec("BEGIN IMMEDIATE");
-      this.activeTransactionOwner = transactionOwner;
-      return await this.transactionContext.run(transactionOwner, async () => {
-        try {
-          const result = await fn(this);
-          this.db.exec("COMMIT");
-          return result;
-        } catch (err) {
-          if (this.db.inTransaction) this.db.exec("ROLLBACK");
-          throw err;
-        }
-      });
-    } finally {
-      this.activeTransactionOwner = null;
-      this.activeTransactionCompletion = null;
-      releaseActive();
-      releaseTransaction();
-    }
+      try {
+        const result = await fn(this);
+        this.db.exec("COMMIT");
+        return result;
+      } catch (err) {
+        if (this.db.inTransaction) this.db.exec("ROLLBACK");
+        throw err;
+      }
+    });
   }
 
   async executeMigration(statements: readonly string[], options?: { disableForeignKeys?: boolean }): Promise<void> {
-    await this.transaction(async () => {
+    await this.withExclusiveConnection(async () => {
       const disableFk = options?.disableForeignKeys ?? false;
-      if (disableFk) {
-        this.db.pragma("foreign_keys = OFF");
-      }
-      this.db.exec("BEGIN IMMEDIATE");
+      let originalError: unknown;
+      let foreignKeyCheckError: Error | undefined;
       try {
+        // SQLite ignores foreign_keys changes inside a transaction. Rebuild
+        // migrations therefore own the pragma before BEGIN, rather than using
+        // transaction(), which would issue a nested BEGIN here.
+        if (disableFk) this.db.pragma("foreign_keys = OFF");
+        this.db.exec("BEGIN IMMEDIATE");
         for (const stmt of statements) {
           this.db.prepare(stmt).run();
         }
         this.db.exec("COMMIT");
       } catch (err) {
-        if (this.db.inTransaction) {
-          this.db.exec("ROLLBACK");
-        }
-        throw err;
+        originalError = err;
+        if (this.db.inTransaction) this.db.exec("ROLLBACK");
       } finally {
         if (disableFk) {
           this.db.pragma("foreign_keys = ON");
           const violations = this.db.pragma("foreign_key_check") as any[];
           if (violations && violations.length > 0) {
-            throw new Error(`Foreign key constraint check failed after migration: ${JSON.stringify(violations)}`);
+            foreignKeyCheckError = new Error(`Foreign key constraint check failed after migration: ${JSON.stringify(violations)}`);
           }
         }
       }
+      if (originalError) throw originalError;
+      if (foreignKeyCheckError) throw foreignKeyCheckError;
     });
   }
 }

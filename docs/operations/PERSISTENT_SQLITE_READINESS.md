@@ -24,9 +24,17 @@ export RADAR_ENV=staging
 export RADAR_DATABASE_TARGET=sqlite-candidate
 export RADAR_SQLITE_CANDIDATE_ROOT=/var/lib/radar-candidate
 export RADAR_SQLITE_CANDIDATE_PATH=/var/lib/radar-candidate/radar.sqlite
+export RADAR_ARTIFACT_STORE_ROOT=/var/lib/radar-candidate/artifacts
 ```
 
-The file must already exist. A first-time empty bootstrap additionally requires
+The file must already exist. `RADAR_ARTIFACT_STORE_ROOT` is mandatory for a
+candidate using local filesystem blobs; it must be an absolute path below
+`RADAR_SQLITE_CANDIDATE_ROOT`, so the normal `<cwd>/.radar/artifacts/blobs`
+default can never be reused. A candidate using object storage must instead set
+both `BLOB_STORAGE_ENDPOINT` and an explicit
+`RADAR_CANDIDATE_BLOB_STORAGE_BUCKET`; it never inherits `BLOB_STORAGE_BUCKET`.
+
+A first-time empty bootstrap additionally requires
 `RADAR_SQLITE_CANDIDATE_ALLOW_CREATE=true`; remove that variable immediately
 after bootstrapping. Candidate artifacts/blob storage must use paths distinct
 from production before starting any scraper or worker.
