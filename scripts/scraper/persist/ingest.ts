@@ -54,11 +54,8 @@ export async function ingestIntoSqlite(
   // Blob payloads retain the immutable identity tuple but older writers did
   // not persist the UI-only `state` marker. Treat the complete tuple itself
   // as bound evidence, then verify it exactly against canonical storage.
-  const hasBoundIdentity = Boolean(
-    binding?.canonicalJobId && binding.opportunityVersion && binding.contentHash,
-  );
-  if (hasBoundIdentity) {
-    if (!resolvedCanonicalId || binding.canonicalJobId !== resolvedCanonicalId || !binding.opportunityVersion || !binding.contentHash) {
+  if (binding?.canonicalJobId && binding.opportunityVersion && binding.contentHash) {
+    if (!resolvedCanonicalId || binding.canonicalJobId !== resolvedCanonicalId) {
       throw new Error('ENRICHMENT_CANONICAL_ADMISSION_MISMATCH');
     }
     const admitted = await (adapter || getDatabaseAdapter()).one<{id:string}>(

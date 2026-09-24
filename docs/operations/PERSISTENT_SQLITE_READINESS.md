@@ -33,6 +33,8 @@ candidate using local filesystem blobs; it must be an absolute path below
 default can never be reused. A candidate using object storage must instead set
 both `BLOB_STORAGE_ENDPOINT` and an explicit
 `RADAR_CANDIDATE_BLOB_STORAGE_BUCKET`; it never inherits `BLOB_STORAGE_BUCKET`.
+If `BLOB_STORAGE_BUCKET` is present for the normal deployment, the candidate
+bucket must be a different bucket; matching names fail startup.
 
 A first-time empty bootstrap additionally requires
 `RADAR_SQLITE_CANDIDATE_ALLOW_CREATE=true`; remove that variable immediately

@@ -149,7 +149,7 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
   );
 
   const processingStateJobs = await Promise.all(
-    activeRows.map(async (job) => {
+    activeRows.map(async (job): Promise<EvaluatorTelemetrySnapshot["processingStateJobs"][number]> => {
       const [latestInvocation, tokenRow] = await Promise.all([
         db.one<{
           stage: string;

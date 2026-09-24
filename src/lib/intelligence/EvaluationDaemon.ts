@@ -18,6 +18,7 @@ export class EvaluationDaemon {
   private readonly pollIntervalMs: number;
   private lastGlobalReconcileAt = 0;
   private reconciliationInFlight: Promise<void> | null = null;
+  private readonly scheduledPolls = new Set<ReturnType<typeof setTimeout>>();
 
   constructor(
     workerId?: string,
@@ -51,7 +52,17 @@ export class EvaluationDaemon {
       `[EvaluationDaemon] Started orchestration loop (poll: ${this.pollIntervalMs}ms, jobs: ${this.workers.length})`,
     );
 
-    const loop = async (worker: EvaluationWorker, slot: number) => {
+    let loop: (worker: EvaluationWorker, slot: number) => Promise<void>;
+    const scheduleLoop = (worker: EvaluationWorker, slot: number, delayMs: number): void => {
+      if (signal.aborted) return;
+      const timer = setTimeout(() => {
+        this.scheduledPolls.delete(timer);
+        if (!signal.aborted) void loop(worker, slot);
+      }, delayMs);
+      this.scheduledPolls.add(timer);
+    };
+
+    loop = async (worker: EvaluationWorker, slot: number): Promise<void> => {
       if (signal.aborted) return;
       try {
         const control = await this.runtimeControl.get();
@@ -66,7 +77,7 @@ export class EvaluationDaemon {
           return;
         }
         if (control.desiredState === "PAUSED") {
-          setTimeout(() => void loop(worker, slot), this.pollIntervalMs);
+          scheduleLoop(worker, slot, this.pollIntervalMs);
           return;
         }
 
@@ -87,9 +98,9 @@ export class EvaluationDaemon {
               `[EvaluationDaemon] Job ${result.jobId} encountered error: ${result.error}`,
             );
           }
-          setTimeout(() => void loop(worker, slot), 0);
+          scheduleLoop(worker, slot, 0);
         } else {
-          setTimeout(() => void loop(worker, slot), this.pollIntervalMs);
+          scheduleLoop(worker, slot, this.pollIntervalMs);
         }
       } catch (err: any) {
         if (signal.aborted) return;
@@ -97,14 +108,14 @@ export class EvaluationDaemon {
           console.error(
             `[EvaluationDaemon] Slot ${slot} model provider unavailable; paused for ${Math.ceil(err.retryAfterMs / 1000)} seconds: ${err.message}`,
           );
-          setTimeout(() => void loop(worker, slot), err.retryAfterMs);
+          scheduleLoop(worker, slot, err.retryAfterMs);
           return;
         }
         console.error(
           `[EvaluationDaemon] Slot ${slot} orchestrator exception survived:`,
           err?.message || err,
         );
-        setTimeout(() => void loop(worker, slot), this.pollIntervalMs);
+        scheduleLoop(worker, slot, this.pollIntervalMs);
       }
     };
 
@@ -122,18 +133,20 @@ export class EvaluationDaemon {
     if (this.reconciliationInFlight) return this.reconciliationInFlight;
 
     this.lastGlobalReconcileAt = Date.now();
-    this.reconciliationInFlight = this.reconciler
-      .reconcileActiveRuns()
-      .catch((recErr: any) => {
+    const reconciliation = (async (): Promise<void> => {
+      try {
+        await this.reconciler.reconcileActiveRuns();
+      } catch (recErr: any) {
         console.warn(
           `[EvaluationDaemon] ${reason === "startup" ? "Startup" : "Safety"} active-run reconciliation error:`,
           recErr?.message || recErr,
         );
-      })
-      .finally(() => {
+      } finally {
         this.reconciliationInFlight = null;
-      });
-    return this.reconciliationInFlight;
+      }
+    })();
+    this.reconciliationInFlight = reconciliation;
+    return reconciliation;
   }
 
   public stop(): void {
@@ -141,6 +154,8 @@ export class EvaluationDaemon {
       this.abortController.abort();
       this.abortController = null;
     }
+    for (const timer of this.scheduledPolls) clearTimeout(timer);
+    this.scheduledPolls.clear();
     this.isRunning = false;
     console.log("[EvaluationDaemon] Stopped orchestration loop.");
   }
