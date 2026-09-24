@@ -41,7 +41,7 @@ let _hasLoadedDatabaseEnvironment = false;
 
 export interface DatabaseTargetIdentity {
   readonly radarEnv: RadarEnvironment;
-  readonly engine: "turso" | "test-sqlite" | "unconfigured";
+  readonly engine: "turso" | "sqlite-candidate" | "test-sqlite" | "unconfigured";
   /** Safe, deterministic identity: never includes an auth token or URL query. */
   readonly fingerprint: string;
   readonly sanitizedTarget: string;
@@ -92,9 +92,53 @@ function sanitizeDatabaseUrl(url: string): string {
   }
 }
 
+function resolveSqliteCandidatePath(radarEnv: RadarEnvironment): string | null {
+  if (process.env.RADAR_DATABASE_TARGET?.toLowerCase() !== "sqlite-candidate") return null;
+  if (radarEnv === "production") {
+    throw new Error(
+      "[DatabaseAdapter] SQLITE_CANDIDATE_PRODUCTION_FORBIDDEN: persistent SQLite proof mode cannot run with RADAR_ENV=production.",
+    );
+  }
+
+  const configuredPath = process.env.RADAR_SQLITE_CANDIDATE_PATH;
+  if (!configuredPath || !path.isAbsolute(configuredPath)) {
+    throw new Error(
+      "[DatabaseAdapter] RADAR_SQLITE_CANDIDATE_PATH must be an explicit absolute path.",
+    );
+  }
+
+  const candidatePath = path.resolve(configuredPath);
+  const candidateRoot = path.resolve(
+    process.env.RADAR_SQLITE_CANDIDATE_ROOT || "/var/lib/radar-candidate",
+  );
+  const relative = path.relative(candidateRoot, candidatePath);
+  if (
+    relative === "" ||
+    relative.startsWith("..") ||
+    path.isAbsolute(relative) ||
+    !candidatePath.toLowerCase().endsWith(".sqlite")
+  ) {
+    throw new Error(
+      `[DatabaseAdapter] SQLITE_CANDIDATE_PATH_OUTSIDE_ROOT: ${candidatePath} must be a .sqlite file below ${candidateRoot}.`,
+    );
+  }
+
+  return candidatePath;
+}
+
 export function getDatabaseTargetIdentity(dbPath?: string): DatabaseTargetIdentity {
   loadDatabaseEnvironment();
   const radarEnv = getRadarEnv();
+  const candidatePath = dbPath === ":memory:" ? null : resolveSqliteCandidatePath(radarEnv);
+  if (candidatePath) {
+    const digest = createHash("sha256").update(candidatePath).digest("hex").slice(0, 16);
+    return {
+      radarEnv,
+      engine: "sqlite-candidate",
+      fingerprint: `sqlite-candidate:${digest}`,
+      sanitizedTarget: candidatePath,
+    };
+  }
   if (radarEnv === "test" && process.env.RADAR_USE_TURSO !== "true" && dbPath !== "turso") {
     return { radarEnv, engine: "test-sqlite", fingerprint: "test-sqlite:memory", sanitizedTarget: ":memory:" };
   }
@@ -129,7 +173,63 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
   const tursoUrl = process.env.TURSO_CONNECTION_URL || process.env.TURSO_DATABASE_URL;
   const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-  // 1. Explicit Test Environment: Default to in-memory SQLite (:memory:) unless RADAR_USE_TURSO is explicitly true
+  // 1. Explicit, non-production persistent SQLite candidate. There is no
+  // implicit fallback: the operator must opt in and provide a path below the
+  // candidate root. Existing data is required unless creation is separately
+  // and explicitly enabled for bootstrap.
+  if (identity.engine === "sqlite-candidate") {
+    let DatabaseConstructor: any = null;
+    const req = getReq();
+    if (req) {
+      try {
+        DatabaseConstructor = req("better-sqlite3");
+      } catch {}
+    }
+    if (!DatabaseConstructor) {
+      throw new Error("[DatabaseAdapter] better-sqlite3 module unavailable for SQLite candidate database");
+    }
+
+    const candidatePath = identity.sanitizedTarget;
+    const allowCreate = process.env.RADAR_SQLITE_CANDIDATE_ALLOW_CREATE === "true";
+    if (!fs.existsSync(candidatePath)) {
+      if (!allowCreate) {
+        throw new Error(
+          `[DatabaseAdapter] SQLITE_CANDIDATE_MISSING: ${candidatePath}. Restore/copy the non-production candidate first, or explicitly set RADAR_SQLITE_CANDIDATE_ALLOW_CREATE=true for bootstrap only.`,
+        );
+      }
+      fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+    }
+
+    const sqliteDb = new DatabaseConstructor(candidatePath, { timeout: 10_000 });
+    const journalMode = String(sqliteDb.pragma("journal_mode = WAL", { simple: true })).toLowerCase();
+    sqliteDb.pragma("foreign_keys = ON");
+    sqliteDb.pragma("busy_timeout = 10000");
+    sqliteDb.pragma("synchronous = FULL");
+    if (journalMode !== "wal") {
+      sqliteDb.close();
+      throw new Error(
+        `[DatabaseAdapter] SQLITE_CANDIDATE_WAL_REQUIRED: requested WAL but SQLite reported ${journalMode}.`,
+      );
+    }
+
+    if (!_hasLoggedStartup) {
+      console.log("\n─────────────────────────────");
+      console.log("RADAR Database Connection");
+      console.log("─────────────────────────────");
+      console.log("Engine      : SQLite candidate (persistent WAL)");
+      console.log(`Target      : ${identity.sanitizedTarget}`);
+      console.log(`Fingerprint : ${identity.fingerprint}`);
+      console.log(`RADAR_ENV   : ${radarEnv}`);
+      console.log("PRAGMAs     : journal_mode=WAL, foreign_keys=ON, busy_timeout=10000, synchronous=FULL");
+      console.log("─────────────────────────────\n");
+      _hasLoggedStartup = true;
+    }
+
+    _cachedAdapter = new SqliteAdapter(sqliteDb);
+    return _cachedAdapter;
+  }
+
+  // 2. Explicit Test Environment: Default to in-memory SQLite (:memory:) unless RADAR_USE_TURSO is explicitly true
   if (radarEnv === "test" && process.env.RADAR_USE_TURSO !== "true" && dbPath !== "turso") {
     let DatabaseConstructor: any = null;
     const req = getReq();
@@ -188,7 +288,7 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
     return _cachedAdapter;
   }
 
-  // 2. Turso Connection (Required for Dev, Staging, Production)
+  // 3. Turso Connection (required outside explicitly gated SQLite candidate proof mode)
   if (tursoUrl && tursoToken) {
     if (!_hasLoggedStartup) {
       console.log("\n─────────────────────────────");
@@ -212,7 +312,7 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
     return _cachedAdapter;
   }
 
-  // 3. Strict Fail-Fast: Zero Silent Fallbacks to radar.sqlite or No-Op Adapter
+  // 4. Strict Fail-Fast: Zero Silent Fallbacks to radar.sqlite or No-Op Adapter
   switch (radarEnv) {
     case "production":
       throw new Error("[DatabaseAdapter] Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment.");
