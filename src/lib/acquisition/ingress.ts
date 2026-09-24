@@ -193,6 +193,13 @@ export async function handleAcquisitionIngress(request: Request): Promise<Respon
     const result = await new AcquisitionIngressService().submit(parseAcquisitionEnvelope(JSON.parse(body)));
     return new Response(JSON.stringify({ accepted: true, result }), { status: 201, headers: { "content-type": "application/json" } });
   } catch (error) {
+    // Keep the ingress response intentionally non-disclosing, but preserve the
+    // actual failure for the operator. Without this, unrelated storage/schema
+    // faults are indistinguishable from a rejected acquisition at the client.
+    if (!(error instanceof AcquisitionIngressError)) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[AcquisitionIngress] unexpected submission failure", { message });
+    }
     const known = error instanceof AcquisitionIngressError ? error : new AcquisitionIngressError(422, "ACQUISITION_REJECTED");
     return new Response(JSON.stringify({ error: known.message }), { status: known.status, headers: { "content-type": "application/json" } });
   }
