@@ -22,7 +22,10 @@ const BACKOFF_SECONDS = [60, 120, 240, 480];
 let lastLlmCallTime = 0;
 let backoffMultiplierMs = 0;
 
-async function rateLimitedExtract(card: DetailedCard) {
+async function rateLimitedExtract(
+  card: DetailedCard,
+  telemetry?: { onModelStarted?: (details: Record<string, unknown>) => Promise<void>; onModelCompleted?: (details: Record<string, unknown>) => Promise<void> },
+) {
   const minIntervalMs = (process.env.NODE_ENV === "test" || process.env.VITEST) ? 0 : 2500 + backoffMultiplierMs; // Baseline 2.5s + dynamic backoff (0 in test)
   const now = Date.now();
   const elapsed = now - lastLlmCallTime;
@@ -32,7 +35,14 @@ async function rateLimitedExtract(card: DetailedCard) {
   lastLlmCallTime = Date.now();
 
   try {
+    await telemetry?.onModelStarted?.({ atMs: Date.now() });
     const res = await extract(card);
+    await telemetry?.onModelCompleted?.({
+      atMs: Date.now(),
+      provider: res.telemetry.llmCalled ? "enrichment-provider" : "none",
+      model: res.telemetry.llmCalled ? "provider-reported-in-extraction" : "none",
+      status: "completed",
+    });
     if (backoffMultiplierMs > 0) {
       backoffMultiplierMs = Math.max(0, backoffMultiplierMs - 500); // Gradually recover
     }
@@ -194,7 +204,10 @@ export async function processJob(
     } else {
       // 1. Extract live on Full JD via Rate-Limited LLM
       const tLlm0 = Date.now();
-      extraction = await rateLimitedExtract(detailedCard);
+      extraction = await rateLimitedExtract(detailedCard, {
+        onModelStarted: (details) => queue.logEvent(job.id, "MODEL_REQUEST_STARTED", JSON.stringify({ ...details, attempt: job.attempts + 1, stage: "enrichment" })),
+        onModelCompleted: (details) => queue.logEvent(job.id, "MODEL_RESPONSE_RECEIVED", JSON.stringify({ ...details, attempt: job.attempts + 1, stage: "enrichment" })),
+      });
       llmMs = Date.now() - tLlm0;
       extraction.opportunityVersion = oppVer;
       extraction.versionCreatedAt = versionCreatedAt;

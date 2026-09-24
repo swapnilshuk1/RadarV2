@@ -40,6 +40,7 @@ function summarize(values: Array<number | null>) {
   return {
     count: present.length,
     p50Ms: percentile(present, 50),
+    p75Ms: percentile(present, 75),
     p95Ms: percentile(present, 95),
     maxMs: present.length ? Math.max(...present) : null,
   };
@@ -77,8 +78,8 @@ async function enrichmentJobs(db: DatabaseAdapter, runId: string): Promise<Row[]
 }
 
 async function enrichmentEvents(db: DatabaseAdapter, runId: string) {
-  if (!(await tableExists(db, "enrichment_events"))) return [] as Array<{ event_type: string; n: number }>;
-  return db.many<{ event_type: string; n: number }>(
+  if (!(await tableExists(db, "enrichment_events"))) return [] as Array<{ job_id: string; event_type: string; details: string | null; created_at: string }>;
+  return db.many<{ job_id: string; event_type: string; details: string | null; created_at: string }>(
     `WITH run_job_ids AS (
        SELECT id FROM enrichment_jobs WHERE run_id=?
        UNION
@@ -86,12 +87,21 @@ async function enrichmentEvents(db: DatabaseAdapter, runId: string) {
        FROM scrape_run_enrichment_requirements
        WHERE run_id=?
      )
-     SELECT ee.event_type,COUNT(*) AS n
+     SELECT ee.job_id,ee.event_type,ee.details,ee.created_at
      FROM enrichment_events ee
      JOIN run_job_ids rj ON rj.id=ee.job_id
-     GROUP BY ee.event_type`,
+     ORDER BY ee.created_at`,
     [runId, runId],
   );
+}
+
+function eventTime(event: { details: string | null; created_at: string } | undefined): number | null {
+  if (!event) return null;
+  try {
+    const parsed = JSON.parse(event.details || "{}") as { atMs?: unknown };
+    if (typeof parsed.atMs === "number" && Number.isFinite(parsed.atMs)) return parsed.atMs;
+  } catch { /* legacy event */ }
+  return epochMs(event.created_at);
 }
 
 async function evaluationJobs(db: DatabaseAdapter, runId: string): Promise<Row[]> {
@@ -119,8 +129,8 @@ async function modelInvocations(db: DatabaseAdapter, runId: string): Promise<Row
   if (!(await tableExists(db, "model_invocations"))) return [];
   return db.many<Row>(
     `SELECT DISTINCT
-       mi.id,mi.stage,mi.attempt,mi.status,mi.started_at,mi.completed_at,
-       mi.latency_ms,mi.error_code
+       mi.id,mi.evaluation_job_id,mi.stage,mi.attempt,mi.status,mi.provider,mi.model_id,
+       mi.started_at,mi.completed_at,mi.latency_ms,mi.error_code
      FROM scrape_run_evaluation_requirements srer
      JOIN evaluation_requirements er ON er.id=srer.evaluation_requirement_id
      JOIN evaluation_jobs ej
@@ -166,6 +176,26 @@ function stageSummary(rows: Row[]) {
   );
 }
 
+async function enrichmentToEvaluationReady(db: DatabaseAdapter, runId: string): Promise<Row[]> {
+  return db.many<Row>(
+    `WITH run_job_ids AS (
+       SELECT id FROM enrichment_jobs WHERE run_id=?
+       UNION
+       SELECT enrichment_job_id FROM scrape_run_enrichment_requirements WHERE run_id=?
+     )
+     SELECT DISTINCT ej.id AS enrichment_job_id,ej.completed_at,er.id AS evaluation_requirement_id,er.ready_at
+     FROM enrichment_jobs ej
+     JOIN run_job_ids rj ON rj.id=ej.id
+     JOIN evaluation_requirements er
+       ON er.canonical_job_id=ej.canonical_job_id
+      AND er.opportunity_version=ej.opportunity_version
+      AND er.required_enrichment_pipeline_version=ej.pipeline_version
+     WHERE ej.completed_at IS NOT NULL AND er.ready_at IS NOT NULL
+     ORDER BY ej.completed_at,er.ready_at`,
+    [runId, runId],
+  );
+}
+
 async function main() {
   const runId = arg("run-id");
   if (!runId) {
@@ -176,18 +206,40 @@ async function main() {
   const identity = getDatabaseTargetIdentity();
   const capturedAt = new Date().toISOString();
   const now = Date.now();
-  const [enrichment, events, evaluations, models] = await Promise.all([
+  const [enrichment, events, evaluations, models, dependencyRelease] = await Promise.all([
     enrichmentJobs(db, runId),
     enrichmentEvents(db, runId),
     evaluationJobs(db, runId),
     modelInvocations(db, runId),
+    enrichmentToEvaluationReady(db, runId),
   ]);
 
   if (!enrichment.length && !evaluations.length) {
     throw new Error(`No enrichment/evaluation rows found for run ${runId}`);
   }
 
-  const eventCounts = Object.fromEntries(events.map((row) => [row.event_type, Number(row.n)]));
+  const eventCounts = Object.fromEntries([...new Set(events.map((row) => row.event_type))].map((type) => [type, events.filter((row) => row.event_type === type).length]));
+  const enrichmentTiming = enrichment.map((job) => {
+    const jobEvents = events.filter((event) => event.job_id === String(job.id));
+    const first = (type: string) => jobEvents.find((event) => event.event_type === type);
+    const claimed = eventTime(first("LEASE_ACQUIRED"));
+    const modelStarted = eventTime(first("MODEL_REQUEST_STARTED"));
+    const modelCompleted = eventTime(first("MODEL_RESPONSE_RECEIVED"));
+    const completed = epochMs(job.completed_at);
+    return { queued: epochMs(job.created_at), claimed, modelStarted, modelCompleted, completed };
+  });
+  const evaluationTiming = evaluations.map((job) => {
+    const invocation = models
+      .filter((model) => String(model.evaluation_job_id) === String(job.id))
+      .sort((a, b) => (epochMs(a.started_at) ?? Number.MAX_SAFE_INTEGER) - (epochMs(b.started_at) ?? Number.MAX_SAFE_INTEGER))[0];
+    const ready = epochMs(job.ready_at);
+    const claimed = epochMs(job.first_claimed_at);
+    const modelStarted = invocation ? epochMs(invocation.started_at) : null;
+    const modelCompleted = invocation ? epochMs(invocation.completed_at) : null;
+    const persisted = epochMs(job.evaluation_persisted_at);
+    const completed = epochMs(job.completed_at);
+    return { ready, claimed, modelStarted, modelCompleted, persisted, completed };
+  });
   const activeEnrichment = new Set(["PENDING", "LEASED", "RUNNING", "RETRY"]);
   const activeEvaluation = new Set(["pending", "processing", "staged_pending", "staged_processing"]);
 
@@ -199,6 +251,11 @@ async function main() {
     enrichment: {
       jobs: enrichment.length,
       queuedToStarted: summarize(enrichment.map((row) => elapsedMs(row.created_at, row.started_at))),
+      queueResidence: summarize(enrichmentTiming.map((row) => row.queued === null || row.claimed === null ? null : Math.max(0, row.claimed - row.queued))),
+      claimToModel: summarize(enrichmentTiming.map((row) => row.claimed === null || row.modelStarted === null ? null : Math.max(0, row.modelStarted - row.claimed))),
+      modelDuration: summarize(enrichmentTiming.map((row) => row.modelStarted === null || row.modelCompleted === null ? null : Math.max(0, row.modelCompleted - row.modelStarted))),
+      modelToComplete: summarize(enrichmentTiming.map((row) => row.modelCompleted === null || row.completed === null ? null : Math.max(0, row.completed - row.modelCompleted))),
+      completedToEvaluationReady: summarize(dependencyRelease.map((row) => elapsedMs(row.completed_at, row.ready_at))),
       startedToCompleted: summarize(enrichment.map((row) => elapsedMs(row.started_at, row.completed_at))),
       queuedToCompleted: summarize(enrichment.map((row) => elapsedMs(row.created_at, row.completed_at))),
       queueAge: summarize(
@@ -229,6 +286,10 @@ async function main() {
       firstClaimToPersisted: summarize(evaluations.map((row) => elapsedMs(row.first_claimed_at, row.evaluation_persisted_at))),
       readyToPersisted: summarize(evaluations.map((row) => elapsedMs(row.ready_at, row.evaluation_persisted_at))),
       readyToCompleted: summarize(evaluations.map((row) => elapsedMs(row.ready_at, row.completed_at))),
+      claimToModel: summarize(evaluationTiming.map((row) => row.claimed === null || row.modelStarted === null ? null : Math.max(0, row.modelStarted - row.claimed))),
+      modelDuration: summarize(evaluationTiming.map((row) => row.modelStarted === null || row.modelCompleted === null ? null : Math.max(0, row.modelCompleted - row.modelStarted))),
+      modelToPersist: summarize(evaluationTiming.map((row) => row.modelCompleted === null || row.persisted === null ? null : Math.max(0, row.persisted - row.modelCompleted))),
+      persistToComplete: summarize(evaluationTiming.map((row) => row.persisted === null || row.completed === null ? null : Math.max(0, row.completed - row.persisted))),
       queueAge: summarize(
         evaluations.map((row) => {
           const ready = epochMs(row.ready_at);
