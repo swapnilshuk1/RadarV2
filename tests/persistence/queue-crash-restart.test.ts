@@ -89,6 +89,30 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
     expect(eligible).not.toContain("snapshots/retention.json");
   });
 
+  it("uses the payload/status index for retention cleanup's active-work check", () => {
+    const plan = sqliteDb
+      .prepare(
+        `EXPLAIN QUERY PLAN
+         SELECT DISTINCT terminal.payload_key
+         FROM enrichment_jobs AS terminal
+         WHERE terminal.status IN ('COMPLETE', 'FAILED')
+           AND terminal.payload_key IS NOT NULL
+           AND terminal.payload_key != ''
+           AND datetime(COALESCE(terminal.completed_at, terminal.created_at)) < datetime(?)
+           AND NOT EXISTS (
+             SELECT 1
+             FROM enrichment_jobs AS active
+             WHERE active.payload_key = terminal.payload_key
+               AND active.status NOT IN ('COMPLETE', 'FAILED')
+           )`,
+      )
+      .all("2026-09-23T00:00:00.000Z") as Array<{ detail: string }>;
+    const details = plan.map((step) => step.detail).join("\n");
+
+    expect(details).toContain("USING COVERING INDEX idx_enrichment_jobs_payload_status");
+    expect(details).not.toContain("SCAN active");
+  });
+
   it("Invariant 2: Priority Ordering — Highest business + execution priority leased first", async () => {
     const baseProv = {
       runId: "run_prio",
