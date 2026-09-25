@@ -26,6 +26,6 @@ export interface EnrichInput {
 export type EnrichPatch = Record<string, { value: string | null; rationale?: string }>;
 
 export interface EnrichmentProvider {
-  id: string; // e.g. "gemini-2.5-flash@1.0.0"
+  id: string; // Model/config identity participates in enrichment cache identity.
   enrich(input: EnrichInput): Promise<EnrichPatch | null>;
 }

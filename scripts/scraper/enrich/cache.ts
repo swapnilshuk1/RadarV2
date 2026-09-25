@@ -13,7 +13,7 @@ function normalizeText(text: string): string {
 
 function computeHash(input: EnrichInput, providerId: string): string {
   const normalized = normalizeText(
-    `${input.title}\n${input.company}\n${input.location}\n${input.detailText}`,
+    `${input.title}\n${input.company}\n${input.location}\n${input.snippet}\n${input.detailText}`,
   );
 
   // The missingKeys are part of the request payload, so they should be hashed too

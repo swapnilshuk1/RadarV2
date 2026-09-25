@@ -35,9 +35,7 @@ export class OntologyResolver {
         continue;
       }
 
-      // 1. Primary Lookup against CapabilityRegistry
       const match: CapabilityRegistryEntry | null = CapabilityRegistry.lookup(fact.value);
-
       if (match) {
         resolvedCapIds.add(match.id);
         resolvedClaims.push({
@@ -47,20 +45,26 @@ export class OntologyResolver {
           confidence: fact.confidence,
         });
       } else {
-        // 2. Hierarchical EKB Concept Resolver (Fast Runtime Resolution)
-        void EKBConceptResolver.resolveConcept(fact.value).then((concept) => {
-          if (concept.resolvedConceptId) {
-            resolvedCapIds.add(concept.resolvedConceptId);
-          } else if (concept.resolutionMethod === "LLM_SYNTHESIS_REQUIRED") {
-            // Log unmapped candidate term asynchronously to Proposal Queue
-            unmappedTermsDetected.push(fact.value);
-            EKBProposalEngine.submitProposal("NEW_CAPABILITY", "unclassified", {
-              rawTerm: fact.value,
-              sourceDocumentId: graph.provenance.documentId,
-              personId: graph.personId,
-            });
-          }
-        });
+        // EKBConceptResolver is deterministic today. Resolve it before the
+        // projection is built; fire-and-forget resolution made projection
+        // contents depend on event-loop timing.
+        const concept = EKBConceptResolver.resolveConcept(fact.value);
+        if (concept.resolvedConceptId) {
+          resolvedCapIds.add(concept.resolvedConceptId);
+          resolvedClaims.push({
+            statement: fact.value,
+            capabilityId: concept.resolvedConceptId,
+            evidenceIds: [fact.id],
+            confidence: Math.min(fact.confidence, concept.confidence),
+          });
+        } else if (concept.resolutionMethod === "LLM_SYNTHESIS_REQUIRED") {
+          unmappedTermsDetected.push(fact.value);
+          EKBProposalEngine.submitProposal("NEW_CAPABILITY", "unclassified", {
+            rawTerm: fact.value,
+            sourceDocumentId: graph.provenance.documentId,
+            personId: graph.personId,
+          });
+        }
       }
 
       if (fact.type === "TECHNOLOGY" || fact.type === "ACHIEVEMENT") {

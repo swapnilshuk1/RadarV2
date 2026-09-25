@@ -20,7 +20,7 @@ export class EKBConceptResolver {
    * Step 4: Context Lookup
    * Step 5: LLM Synthesis (Invoked ONLY if Steps 1-4 fail)
    */
-  public static async resolveConcept(rawTerm: string, versionId: string = "14.2.1"): Promise<ConceptResolutionResult> {
+  public static resolveConcept(rawTerm: string, versionId: string = "14.2.1"): ConceptResolutionResult {
     const cleanTerm = rawTerm.trim().toLowerCase();
 
     // Step 1: Exact Alias

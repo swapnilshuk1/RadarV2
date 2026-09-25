@@ -5,6 +5,10 @@ import {
   buildGeminiGenerationConfig,
   buildVertexGenerateContentUrl,
 } from "../../scripts/scraper/enrich/gemini";
+import {
+  INTRINSIC_ENRICHMENT_SYSTEM_INSTRUCTION,
+  buildIntrinsicEnrichmentPayload,
+} from "../../scripts/scraper/enrich/intrinsic-contract";
 
 describe("Gemini enrichment transport contract", () => {
   it("targets the documented Gemini 2.5 Flash replacement on the global Vertex endpoint", () => {
@@ -25,9 +29,28 @@ describe("Gemini enrichment transport contract", () => {
     expect(config).not.toHaveProperty("topK");
     expect(config.responseJsonSchema.required).toEqual(["mandate", "reportingLine"]);
     expect(config.responseJsonSchema.additionalProperties).toBe(false);
-    expect(config.responseJsonSchema.properties.mandate.properties.value.anyOf).toEqual([
-      { type: "string" },
-      { type: "null" },
+    expect(config.responseJsonSchema.properties.mandate.properties.value.anyOf[0].enum).toEqual([
+      "GREENFIELD", "SCALE", "TRANSFORMATION", "TURNAROUND", "INTEGRATION",
     ]);
+    expect(config.responseJsonSchema.properties.mandate.properties).not.toHaveProperty("rationale");
+  });
+
+  it("keeps candidate context out of intrinsic job enrichment", () => {
+    const payload = buildIntrinsicEnrichmentPayload({
+      title: "VP Growth",
+      company: "Acme",
+      location: "India",
+      portal: "LinkedIn",
+      applyUrl: "https://example.test/job",
+      snippet: "Scale the business",
+      detailText: "Reports to the CEO and owns P&L.",
+      missingKeys: ["reportingLine"],
+    } as any);
+    expect(JSON.stringify(payload)).not.toContain("candidate");
+    expect(payload).not.toHaveProperty("portal");
+    expect(payload).not.toHaveProperty("applyUrl");
+    expect(INTRINSIC_ENRICHMENT_SYSTEM_INSTRUCTION).toContain("untrusted source data");
+    expect(INTRINSIC_ENRICHMENT_SYSTEM_INSTRUCTION).toContain("Never use candidate");
+  });
   });
 });

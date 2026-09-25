@@ -27,6 +27,9 @@ export async function processNextDocumentJob(workerId = `document-worker-${crypt
       storageUri: `turso://document_contents/${job.document_id}`, mimeType: payload.mimeType,
       documentHash: payload.documentHash, documentText: payload.documentText,
       fileBuffer: payload.base64Buffer ? Buffer.from(payload.base64Buffer, "base64") : undefined,
+      // A profile projection becomes canonical evaluation input. Never silently
+      // promote heuristic fallback lines into an authoritative projection.
+      requireModelBackedExtraction: true,
     });
     if (!result.success) throw new Error(result.error || "Document pipeline failed");
     await db.execute(

@@ -2,9 +2,14 @@ import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import type { EnrichInput, EnrichPatch } from "./contract";
-import { CANDIDATE_PROFILE_JSON } from "../config";
 import { StartRateScheduler } from "./start-rate-scheduler";
 import { providerRetryAfterMs } from "../../../src/lib/model/provider-unavailable";
+import {
+  INTRINSIC_ENRICHMENT_SYSTEM_INSTRUCTION,
+  buildIntrinsicEnrichmentPayload,
+  buildIntrinsicResponseJsonSchema,
+  validateIntrinsicEnrichmentPatch,
+} from "./intrinsic-contract";
 
 // Returned patches are Inferred, not Explicit — the LLM never gets to claim
 // verbatim evidence. That contract is enforced in extractor.ts.
@@ -15,17 +20,6 @@ function emit(input: EnrichInput, type: string, details: Record<string, unknown>
   void Promise.resolve(input.telemetry?.(type, { atMs: Date.now(), ...details })).catch(
     () => undefined,
   );
-}
-
-let profileCache: string | null = null;
-function loadProfile(): string {
-  if (profileCache !== null) return profileCache;
-  try {
-    profileCache = fs.readFileSync(CANDIDATE_PROFILE_JSON, "utf-8");
-  } catch {
-    profileCache = "{}";
-  }
-  return profileCache;
 }
 
 // Cache the access token and its expiry to avoid spawning gcloud on every single request
@@ -166,21 +160,7 @@ export function buildVertexGenerateContentUrl(
 }
 
 export function buildGeminiResponseJsonSchema(missingKeys: readonly string[]) {
-  const fieldSchema = {
-    type: "object",
-    properties: {
-      value: { anyOf: [{ type: "string" }, { type: "null" }] },
-      rationale: { type: "string" },
-    },
-    required: ["value", "rationale"],
-    additionalProperties: false,
-  };
-  return {
-    type: "object",
-    properties: Object.fromEntries(missingKeys.map((key) => [key, fieldSchema])),
-    required: [...missingKeys],
-    additionalProperties: false,
-  };
+  return buildIntrinsicResponseJsonSchema(missingKeys);
 }
 
 export function buildGeminiGenerationConfig(missingKeys: readonly string[]) {
@@ -223,17 +203,20 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
     url = buildVertexGenerateContentUrl(projectId, GEMINI_ENRICHMENT_MODEL, GEMINI_ENRICHMENT_LOCATION);
   }
 
-  const prompt = buildPrompt(input);
-  const profileChars = loadProfile().length;
+  const requestPayload = buildIntrinsicEnrichmentPayload(input);
+  const userContent = JSON.stringify(requestPayload);
   emit(input, "PROVIDER_REQUEST_PREPARED", {
     provider: "gemini",
     model: GEMINI_ENRICHMENT_MODEL,
     transport: apiKey ? "gemini-api-key" : "vertex-adc",
-    candidateProfileChars: profileChars,
+    candidateProfileChars: 0,
+    candidateContextIncluded: false,
+    systemInstructionChars: INTRINSIC_ENRICHMENT_SYSTEM_INSTRUCTION.length,
     snippetChars: input.snippet.length,
     detailChars: input.detailText.length,
     detailCharsSent: input.detailText.slice(0, 6000).length,
-    promptChars: prompt.length,
+    promptChars: INTRINSIC_ENRICHMENT_SYSTEM_INSTRUCTION.length + userContent.length,
+    inputPayloadChars: userContent.length,
     missingDimensionCount: input.missingKeys.length,
     missingDimensions: input.missingKeys,
     vertexLocation: apiKey ? null : GEMINI_ENRICHMENT_LOCATION,
@@ -271,7 +254,8 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
         headers,
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          systemInstruction: { parts: [{ text: INTRINSIC_ENRICHMENT_SYSTEM_INSTRUCTION }] },
+          contents: [{ role: "user", parts: [{ text: userContent }] }],
           generationConfig: buildGeminiGenerationConfig(input.missingKeys),
         }),
       });
@@ -370,32 +354,8 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
       outputTokens: data.usageMetadata?.candidatesTokenCount ?? null,
       totalTokens: data.usageMetadata?.totalTokenCount ?? null,
     });
-    return JSON.parse(text) as Patch;
+    return validateIntrinsicEnrichmentPatch(JSON.parse(text), input.missingKeys);
   } catch (err: any) {
     return null;
   }
-}
-
-function buildPrompt(input: EnrichInput): string {
-  return `You are an executive search analyst filling *missing* fields in a job posting.
-Candidate profile (context only):
-${loadProfile()}
-
-Job posting:
-Title: ${input.title}
-Company: ${input.company}
-Location: ${input.location}
-Portal: ${input.portal}
-URL: ${input.applyUrl}
-Snippet: ${input.snippet}
-Detail: ${input.detailText.slice(0, 6000)}
-
-Return ONLY a JSON object mapping each of these dimension keys to an object
-{ "value": "<short answer or null>", "rationale": "<one sentence>" }.
-Dimensions to fill: ${JSON.stringify(input.missingKeys)}
-
-Rules:
-- If the posting does not mention the field, return "value": null.
-- Never invent numbers, company names, or reporting relationships.
-- Prefer null over guessing.`;
 }

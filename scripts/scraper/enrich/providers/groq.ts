@@ -1,70 +1,54 @@
-// Groq enrichment provider — uses Groq's OpenAI-compatible chat endpoint.
-// Model is configurable via GROQ_MODEL env var (default: llama-3.3-70b-versatile).
+// Groq enrichment provider — alternate transport for the same intrinsic-JD contract.
 import type { EnrichmentProvider, EnrichInput, EnrichPatch } from "../contract";
-import fs from "fs";
-import { CANDIDATE_PROFILE_JSON } from "../../config";
+import {
+  INTRINSIC_ENRICHMENT_SYSTEM_INSTRUCTION,
+  buildIntrinsicEnrichmentPayload,
+  buildIntrinsicResponseJsonSchema,
+  validateIntrinsicEnrichmentPatch,
+} from "../intrinsic-contract";
 
-const DEFAULT_MODEL = "llama-3.3-70b-versatile";
-
-let profileCache: string | null = null;
-function loadProfile(): string {
-  if (profileCache !== null) return profileCache;
-  try { profileCache = fs.readFileSync(CANDIDATE_PROFILE_JSON, "utf-8"); }
-  catch { profileCache = "{}"; }
-  return profileCache;
-}
-
-function cleanText(text: string): string {
-  // Strip any remaining HTML tags just in case
-  const noHtml = text.replace(/<[^>]*>?/gm, ' ');
-  // Compress all whitespace (spaces, tabs, newlines) into a single space
-  return noHtml.replace(/\s+/g, ' ').trim();
-}
-
-function buildPrompt(input: EnrichInput): string {
-  const cleanDetail = cleanText(input.detailText).slice(0, 6000);
-  
-  return `You are an executive search analyst filling *missing* fields in a job posting.
-Candidate profile (context only):
-${loadProfile()}
-
-Job posting:
-Title: ${input.title}
-Company: ${input.company}
-Location: ${input.location}
-Portal: ${input.portal}
-URL: ${input.applyUrl}
-Snippet: ${input.snippet}
-Detail: ${cleanDetail}
-
-Return ONLY a JSON object mapping each of these dimension keys to an object
-{ "value": "<short answer or null>", "rationale": "<one sentence>" }.
-Dimensions to fill: ${JSON.stringify(input.missingKeys)}
-
-Rules:
-- If the posting does not mention the field, return "value": null.
-- Never invent numbers, company names, or reporting relationships.
-- Prefer null over guessing.`;
-}
+export const DEFAULT_GROQ_ENRICHMENT_MODEL = "qwen/qwen3.8-27b";
+const STRICT_SCHEMA_MODELS = new Set([
+  "qwen/qwen3.8-27b",
+  "openai/gpt-oss-20b",
+  "openai/gpt-oss-120b",
+]);
 
 export const groqMetrics = {
   retries429: 0,
   failures: 0,
-  successes: 0
+  successes: 0,
 };
 
-async function groqCall(apiKey: string, model: string, prompt: string): Promise<any> {
+function responseFormat(model: string, missingKeys: readonly string[]) {
+  const schema = buildIntrinsicResponseJsonSchema(missingKeys);
+  return STRICT_SCHEMA_MODELS.has(model)
+    ? {
+        type: "json_schema",
+        json_schema: {
+          name: "radar_intrinsic_job_enrichment",
+          strict: true,
+          schema,
+        },
+      }
+    : { type: "json_object" };
+}
+
+async function groqCall(apiKey: string, model: string, input: EnrichInput): Promise<any> {
+  const payload = buildIntrinsicEnrichmentPayload(input);
+  const prompt = `${INTRINSIC_ENRICHMENT_SYSTEM_INSTRUCTION}\n\nINPUT JSON:\n${JSON.stringify(payload)}`;
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model,
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.1,
-      response_format: { type: "json_object" },
+      reasoning_effort: model === "qwen/qwen3.8-27b" ? "none" : undefined,
+      max_completion_tokens: 1024,
+      response_format: responseFormat(model, input.missingKeys),
     }),
   });
   return { res, data: res.ok ? await res.json() : null, status: res.status };
@@ -72,44 +56,23 @@ async function groqCall(apiKey: string, model: string, prompt: string): Promise<
 
 async function enrichWithGroq(input: EnrichInput): Promise<EnrichPatch | null> {
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return null; // No key = deterministic-only run.
+  if (!apiKey) return null;
 
-  const model = process.env.GROQ_MODEL || DEFAULT_MODEL;
-  const prompt = buildPrompt(input);
+  const model = process.env.GROQ_MODEL || DEFAULT_GROQ_ENRICHMENT_MODEL;
 
   try {
-    console.info(`\n[enrich:groq] Enriching "${input.title}" at "${input.company}"`);
-    console.info(`[enrich:groq] Missing dimensions: ${input.missingKeys.join(", ")}`);
-    
-    let { res, data, status } = await groqCall(apiKey, model, prompt);
-
+    let { res, data, status } = await groqCall(apiKey, model, input);
     if (status === 429) {
-      // Rate-limited — wait 10 s and retry once.
-      console.warn("[enrich:groq] Rate-limited (429) — retrying in 10 s");
       groqMetrics.retries429++;
-      await new Promise((r) => setTimeout(r, 10_000));
-      ({ res, data, status } = await groqCall(apiKey, model, prompt));
+      await new Promise((resolve) => setTimeout(resolve, 10_000));
+      ({ res, data, status } = await groqCall(apiKey, model, input));
     }
-
     if (!res.ok) throw new Error(`Groq status ${status}`);
 
     const text = data?.choices?.[0]?.message?.content;
     if (!text) throw new Error("Groq returned empty response");
-
-    console.info(`[enrich:groq] Raw response from Groq:\n${text}`);
-
-    // Log token usage if available.
-    if (data.usage) {
-      console.info(
-        `[enrich:groq] tokens — prompt:${data.usage.prompt_tokens} completion:${data.usage.completion_tokens}`
-      );
-    }
-
-    const parsed = JSON.parse(text) as EnrichPatch;
-    console.info(`[enrich:groq] Successfully extracted values:`);
-    for (const [key, field] of Object.entries(parsed)) {
-      console.info(`  - ${key}: "${field?.value}" (Rationale: ${field?.rationale})`);
-    }
+    const parsed = validateIntrinsicEnrichmentPatch(JSON.parse(text), input.missingKeys);
+    if (!parsed) throw new Error("Groq returned an invalid intrinsic-enrichment payload");
 
     groqMetrics.successes++;
     return parsed;
@@ -121,7 +84,7 @@ async function enrichWithGroq(input: EnrichInput): Promise<EnrichPatch | null> {
 }
 
 export const groqProvider: EnrichmentProvider = {
-  id: `groq:${process.env.GROQ_MODEL || DEFAULT_MODEL}`,
+  id: `groq:${process.env.GROQ_MODEL || DEFAULT_GROQ_ENRICHMENT_MODEL}@3.0.0`,
   async enrich(input: EnrichInput) {
     return enrichWithGroq(input);
   },
