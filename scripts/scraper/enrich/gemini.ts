@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import type { EnrichInput, EnrichPatch } from "./contract";
 import { CANDIDATE_PROFILE_JSON } from "../config";
+import { StartRateScheduler } from "./start-rate-scheduler";
 
 // Returned patches are Inferred, not Explicit — the LLM never gets to claim
 // verbatim evidence. That contract is enforced in extractor.ts.
@@ -128,33 +129,16 @@ async function getADCToken(): Promise<string | null> {
   return null;
 }
 
-let requestQueue: Promise<any> = Promise.resolve();
+const MIN_START_INTERVAL_MS = Number(process.env.GEMINI_MIN_START_INTERVAL_MS ?? "4200");
+const MAX_IN_FLIGHT = Number(process.env.GEMINI_MAX_IN_FLIGHT ?? "2");
+const startScheduler = new StartRateScheduler(MIN_START_INTERVAL_MS, MAX_IN_FLIGHT);
 
 export async function enrichWithLLM(input: EnrichInput): Promise<Patch | null> {
-  // Queue calls serially to enforce strict 4.1s spacing between Vertex AI calls
-  const queuedAt = Date.now();
-  emit(input, "PROVIDER_QUEUE_ENTERED", {
-    provider: "gemini",
-    model: "gemini-2.5-flash",
-    queueMode: "serialized",
-  });
-  const result = new Promise<Patch | null>((resolve) => {
-    requestQueue = requestQueue.then(async () => {
-      emit(input, "PROVIDER_QUEUE_RELEASED", {
-        provider: "gemini",
-        model: "gemini-2.5-flash",
-        queueMode: "serialized",
-        waitMs: Date.now() - queuedAt,
-      });
-      try {
-        const patch = await executeEnrichWithLLM(input);
-        resolve(patch);
-      } catch (err: any) {
-        resolve(null);
-      }
-    });
-  });
-  return result;
+  try {
+    return await executeEnrichWithLLM(input);
+  } catch {
+    return null;
+  }
 }
 
 async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise<Patch | null> {
@@ -172,20 +156,6 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
     headers["Authorization"] = `Bearer ${adcToken}`;
     const projectId = process.env.GCP_PROJECT_ID || "project-0e166cfc-e3f5-49d7-af6";
     url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`;
-
-    // Throttle to stay within Vertex AI's default 15 RPM (1 request / 4.1s) trial quota
-    emit(input, "PROVIDER_THROTTLE_STARTED", {
-      provider: "gemini",
-      model: "gemini-2.5-flash",
-      transport: "vertex-adc",
-      configuredWaitMs: 4200,
-    });
-    await new Promise((resolve) => setTimeout(resolve, 4200));
-    emit(input, "PROVIDER_THROTTLE_COMPLETED", {
-      provider: "gemini",
-      model: "gemini-2.5-flash",
-      transport: "vertex-adc",
-    });
   }
 
   const prompt = buildPrompt(input);
@@ -203,20 +173,40 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
     missingDimensions: input.missingKeys,
   });
   try {
+    emit(input, "PROVIDER_QUEUE_ENTERED", {
+      provider: "gemini",
+      model: "gemini-2.5-flash",
+      queueMode: "start-rate",
+      minStartIntervalMs: MIN_START_INTERVAL_MS,
+      maxInFlight: MAX_IN_FLIGHT,
+    });
+    const lease = await startScheduler.acquire();
+    emit(input, "PROVIDER_QUEUE_RELEASED", {
+      provider: "gemini",
+      model: "gemini-2.5-flash",
+      queueMode: "start-rate",
+      waitMs: lease.queueWaitMs,
+      inFlightAtStart: lease.inFlightAtStart,
+    });
     const requestStartedAt = Date.now();
     emit(input, "PROVIDER_HTTP_REQUEST_STARTED", {
       provider: "gemini",
       model: "gemini-2.5-flash",
       transport: apiKey ? "gemini-api-key" : "vertex-adc",
     });
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json", temperature: 0.1 },
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: "application/json", temperature: 0.1 },
+        }),
+      });
+    } finally {
+      lease.release();
+    }
     emit(input, "PROVIDER_HTTP_RESPONSE_RECEIVED", {
       provider: "gemini",
       model: "gemini-2.5-flash",
