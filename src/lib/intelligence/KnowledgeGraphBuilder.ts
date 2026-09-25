@@ -1,7 +1,7 @@
 import type { 
   Company, Opportunity, Source, Document, Evidence, Fact, Provenance
 } from "../../domain/entities";
-import type { DetailedCard, ExtractionResult } from "../../../scripts/scraper/types";
+import type { DetailedCard, ExtractionResult, DimensionResult } from "../../../scripts/scraper/types";
 
 export interface KnowledgeGraph {
   source: Source;
