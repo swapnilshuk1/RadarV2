@@ -188,7 +188,6 @@ export function buildGeminiGenerationConfig(missingKeys: readonly string[]) {
     responseMimeType: "application/json",
     responseJsonSchema: buildGeminiResponseJsonSchema(missingKeys),
     thinkingConfig: { thinkingLevel: "MINIMAL" },
-    candidateCount: 1,
     maxOutputTokens: MAX_OUTPUT_TOKENS,
   };
 }
