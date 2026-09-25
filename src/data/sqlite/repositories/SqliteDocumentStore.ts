@@ -195,16 +195,37 @@ export class SqliteDocumentStore {
     return { rawText: row.raw_text, textHash: row.text_hash };
   }
 
-  async findExistingEvidenceGraphByTextHash(textHash: string, personId: string): Promise<EvidenceGraph | undefined> {
+  async findExistingEvidenceGraphByTextHash(
+    textHash: string,
+    personId: string,
+    contract?: {
+      extractorVersion?: string;
+      promptVersion?: string;
+      requireModelBacked?: boolean;
+    },
+  ): Promise<EvidenceGraph | undefined> {
+    const predicates = ["dc.text_hash = ?", "eg.person_id = ?"];
+    const params: unknown[] = [textHash, personId];
+    if (contract?.extractorVersion) {
+      predicates.push("eg.extractor_version = ?");
+      params.push(contract.extractorVersion);
+    }
+    if (contract?.promptVersion) {
+      predicates.push("eg.prompt_version = ?");
+      params.push(contract.promptVersion);
+    }
+    if (contract?.requireModelBacked) {
+      predicates.push("eg.model <> 'heuristic'");
+    }
     const row = await this.db.one<any>(
       `
-      SELECT eg.graph_json 
+      SELECT eg.graph_json
       FROM document_contents dc
       JOIN evidence_graphs eg ON dc.document_id = eg.document_id
-      WHERE dc.text_hash = ? AND eg.person_id = ?
+      WHERE ${predicates.join(" AND ")}
       ORDER BY eg.created_at DESC LIMIT 1
       `,
-      [textHash, personId]
+      params
     );
     if (!row || !row.graph_json) return undefined;
     try {

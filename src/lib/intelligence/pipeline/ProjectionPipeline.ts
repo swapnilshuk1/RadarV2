@@ -11,7 +11,11 @@ import { createRepositories, getRepositories } from "../../../data/sqlite/provid
 import { getDatabaseAdapter, type DatabaseAdapter } from "../../../data/database";
 import { versionCandidateProjection } from "../../../data/sqlite/repositories/profile-projection-version";
 import type { CandidateDocumentRecord } from "../../../data/sqlite/repositories/SqliteDocumentStore";
-import { EvidenceExtractionService } from "../extraction/EvidenceExtractionService";
+import {
+  EvidenceExtractionService,
+  CANDIDATE_EVIDENCE_EXTRACTOR_VERSION,
+  CANDIDATE_EVIDENCE_PROMPT_VERSION,
+} from "../extraction/EvidenceExtractionService";
 import { EvidenceNormalizer } from "../extraction/EvidenceNormalizer";
 import { OntologyResolver } from "../extraction/OntologyResolver";
 import { CandidateProjectionBuilderImpl } from "../builders/CandidateProjectionBuilder";
@@ -139,10 +143,18 @@ export class ProjectionPipeline {
         // Content can be reused only inside the same candidate identity. A hash
         // proves identical text, never shared ownership or provenance.
         if (textHash) {
-          const existingGraph = await this.repos.documents.findExistingEvidenceGraphByTextHash(textHash, personId);
+          const existingGraph = await this.repos.documents.findExistingEvidenceGraphByTextHash(
+            textHash,
+            personId,
+            {
+              extractorVersion: CANDIDATE_EVIDENCE_EXTRACTOR_VERSION,
+              promptVersion: CANDIDATE_EVIDENCE_PROMPT_VERSION,
+              requireModelBacked: Boolean(input.requireModelBackedExtraction),
+            },
+          );
           const reusableGraph = reuseEvidenceGraphForOwner(existingGraph, personId, documentId);
           if (reusableGraph) {
-            console.log(`[ProjectionPipeline] Instant deduplication match for textHash ${textHash.slice(0, 8)}...!`);
+            console.log(`[ProjectionPipeline] Contract-compatible evidence reuse for textHash ${textHash.slice(0, 8)}...`);
             evidenceGraph = reusableGraph;
             isDeduplicated = true;
           }

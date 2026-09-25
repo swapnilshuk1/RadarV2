@@ -21,6 +21,8 @@ export interface EvidenceExtractionInput {
 }
 
 export const DEFAULT_GROQ_CANDIDATE_EXTRACTION_MODEL = "qwen/qwen3.8-27b";
+export const CANDIDATE_EVIDENCE_EXTRACTOR_VERSION = "1.1.0";
+export const CANDIDATE_EVIDENCE_PROMPT_VERSION = "v1.1";
 
 export function candidateEvidenceResponseSchema() {
   return {
@@ -50,8 +52,8 @@ export function candidateEvidenceResponseSchema() {
 export class EvidenceExtractionService {
   private apiKey: string = "";
   private bedrockToken: string = "";
-  private extractorVersion = "1.1.0";
-  private promptVersion = "v1.1";
+  private extractorVersion = CANDIDATE_EVIDENCE_EXTRACTOR_VERSION;
+  private promptVersion = CANDIDATE_EVIDENCE_PROMPT_VERSION;
   private modelName =
     process.env.GROQ_CANDIDATE_EXTRACTION_MODEL?.trim() || DEFAULT_GROQ_CANDIDATE_EXTRACTION_MODEL;
 
