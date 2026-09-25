@@ -1,7 +1,6 @@
 // src/lib/intelligence/candidate-sync.ts
 
 import { getRepositories } from "../../data/sqlite/provider";
-import { candidateProfile } from "../../data/candidate-profile";
 import type { CandidateProfile } from "../../domain/candidate";
 import type { CandidateProjection } from "../domain/candidate_projection";
 import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBuilder";
@@ -13,8 +12,13 @@ import { validateCandidateProjection } from "../domain/candidate_projection";
  */
 export async function syncCanonicalCandidateProjection(
   personId: string,
-  profile: CandidateProfile = candidateProfile
+  profile?: CandidateProfile
 ): Promise<CandidateProjection> {
+  if (!profile) {
+    throw new Error(
+      "STATIC_CANDIDATE_PROFILE_SYNC_DISABLED: authoritative projections must come from source-bound candidate documents.",
+    );
+  }
   const repos = getRepositories();
   const builder = new CandidateProjectionBuilderImpl();
   const projection = builder.fromProfile(profile);

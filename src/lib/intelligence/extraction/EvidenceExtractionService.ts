@@ -9,6 +9,7 @@ import type { JsonModel } from '../../model/json-model';
 
 import type { EvidenceGraph, ExtractedFact, FactType } from "../../../domain/evidence";
 import { BedrockMantleJsonModel } from "../../model/bedrock-mantle-model";
+import { loadMantleCredentials } from "../../model/bedrock-credentials";
 import fs from "fs";
 import path from "path";
 
@@ -81,6 +82,15 @@ export class EvidenceExtractionService {
       }
     }
     this.bedrockToken = process.env.BEDROCK_MANTLE_API_KEY?.trim() || "";
+    if (!this.apiKey && !this.bedrockToken) {
+      try {
+        loadMantleCredentials();
+        this.bedrockToken = process.env.BEDROCK_MANTLE_API_KEY?.trim() || "";
+      } catch {
+        // Absence is handled by the extraction contract below. Authoritative
+        // document workers now fail closed rather than promoting heuristics.
+      }
+    }
   }
 
   public async extract(input: EvidenceExtractionInput): Promise<EvidenceGraph> {
