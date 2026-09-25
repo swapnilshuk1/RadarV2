@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EvidenceExtractionService } from "../../src/lib/intelligence/extraction/EvidenceExtractionService";
+import { EvidenceExtractionService, CANDIDATE_EVIDENCE_PROMPT_VERSION } from "../../src/lib/intelligence/extraction/EvidenceExtractionService";
 
 describe("Bedrock candidate extraction grounding", () => {
   it("retains only exact source spans returned by a provider", () => {
@@ -39,4 +39,31 @@ describe("Bedrock candidate extraction grounding", () => {
     await expect(new EvidenceExtractionService(model).extract({personId:"person",documentId:"doc",documentHash:"hash",documentText:"Candidate source"})).rejects.toBe(failure);
   });
 
+});
+
+
+it("persists the canonical candidate evidence prompt version for Bedrock extraction", async () => {
+  const source = "Led enterprise marketing transformation.";
+  const model = {
+    id: "test-bedrock",
+    version: "zai.glm-5",
+    configurationFingerprint: "test",
+    async generate() {
+      return { facts: [{
+        type: "ACHIEVEMENT",
+        value: "Led enterprise marketing transformation.",
+        confidence: 0.95,
+        sourceSpan: source,
+        justification: "Explicit source statement",
+      }] };
+    },
+  };
+  const service = new EvidenceExtractionService(model as any);
+  const graph = await service.extract({
+    personId: "person-1",
+    documentId: "doc-1",
+    documentHash: "hash",
+    documentText: source,
+  });
+  expect(graph.provenance.promptVersion).toBe(CANDIDATE_EVIDENCE_PROMPT_VERSION);
 });

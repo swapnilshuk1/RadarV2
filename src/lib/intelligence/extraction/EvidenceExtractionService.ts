@@ -228,7 +228,7 @@ ${input.documentText}
         documentId: input.documentId,
         documentHash: input.documentHash,
         extractorVersion: this.extractorVersion,
-        promptVersion: "bedrock-factual-v1",
+        promptVersion: this.promptVersion,
         model: model.version,
         createdAt: now,
       },
