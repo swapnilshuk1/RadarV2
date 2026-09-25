@@ -19,6 +19,8 @@ describe("Gemini enrichment transport contract", () => {
     const config = buildGeminiGenerationConfig(["mandate", "reportingLine"]) as any;
     expect(config.responseMimeType).toBe("application/json");
     expect(config.thinkingConfig).toEqual({ thinkingLevel: "MINIMAL" });
+    expect(config.candidateCount).toBe(1);
+    expect(config.maxOutputTokens).toBe(1024);
     expect(config).not.toHaveProperty("temperature");
     expect(config).not.toHaveProperty("topP");
     expect(config).not.toHaveProperty("topK");

@@ -139,6 +139,17 @@ export const GEMINI_ENRICHMENT_LOCATION =
 
 const MIN_START_INTERVAL_MS = Number(process.env.GEMINI_MIN_START_INTERVAL_MS ?? "4200");
 const MAX_IN_FLIGHT = Number(process.env.GEMINI_MAX_IN_FLIGHT ?? "2");
+// Conservative RADAR traffic smoothing policy, not a documented Vertex RPM quota.
+const configuredTimeout = Number(process.env.GEMINI_REQUEST_TIMEOUT_MS ?? "120000");
+const REQUEST_TIMEOUT_MS =
+  Number.isFinite(configuredTimeout) && configuredTimeout >= 1_000
+    ? Math.floor(configuredTimeout)
+    : 120_000;
+const configuredMaxOutput = Number(process.env.GEMINI_ENRICHMENT_MAX_OUTPUT_TOKENS ?? "1024");
+const MAX_OUTPUT_TOKENS =
+  Number.isFinite(configuredMaxOutput) && configuredMaxOutput >= 128
+    ? Math.floor(configuredMaxOutput)
+    : 1024;
 const configuredRetries = Number(process.env.GEMINI_MAX_PROVIDER_RETRIES ?? "2");
 const MAX_PROVIDER_RETRIES =
   Number.isFinite(configuredRetries) && configuredRetries >= 0 ? Math.floor(configuredRetries) : 2;
@@ -177,6 +188,8 @@ export function buildGeminiGenerationConfig(missingKeys: readonly string[]) {
     responseMimeType: "application/json",
     responseJsonSchema: buildGeminiResponseJsonSchema(missingKeys),
     thinkingConfig: { thinkingLevel: "MINIMAL" },
+    candidateCount: 1,
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
   };
 }
 
@@ -226,6 +239,8 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
     missingDimensions: input.missingKeys,
     vertexLocation: apiKey ? null : GEMINI_ENRICHMENT_LOCATION,
     thinkingLevel: "MINIMAL",
+    requestTimeoutMs: REQUEST_TIMEOUT_MS,
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
   });
   try {
     emit(input, "PROVIDER_QUEUE_ENTERED", {
@@ -255,6 +270,7 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
       res = await fetch(url, {
         method: "POST",
         headers,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: buildGeminiGenerationConfig(input.missingKeys),
