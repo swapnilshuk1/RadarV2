@@ -52,5 +52,4 @@ describe("Gemini enrichment transport contract", () => {
     expect(INTRINSIC_ENRICHMENT_SYSTEM_INSTRUCTION).toContain("untrusted source data");
     expect(INTRINSIC_ENRICHMENT_SYSTEM_INSTRUCTION).toContain("Never use candidate");
   });
-  });
 });

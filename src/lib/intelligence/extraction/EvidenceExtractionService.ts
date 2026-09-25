@@ -183,10 +183,9 @@ ${input.documentText}
   }
 
   /**
-   * The candidate pipeline predates the staged Bedrock model route. Keep Groq
-   * as the primary legacy provider, while allowing a process-supplied Bedrock
-   * Mantle key to provide the same factual-extraction contract. Credential
-   * discovery remains outside this service.
+   * Bedrock remains an alternate model-backed factual extraction route.
+   * Both provider paths are held to the same exact-source-span contract;
+   * credential discovery remains outside this service.
    */
   private async bedrockExtract(input: EvidenceExtractionInput, graphId: string, now: string): Promise<EvidenceGraph> {
     const model = this.model ?? new BedrockMantleJsonModel(
