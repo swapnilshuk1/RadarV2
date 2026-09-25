@@ -17,7 +17,7 @@ import { extractFunctionalScope, functionalScopeExtractorId } from "./dimensions
 import { extractGeography, geographyExtractorId } from "./dimensions/geography";
 import { extractWorkModel, workModelExtractorId } from "./dimensions/workModel";
 import { extractTechnology, technologyExtractorId } from "./dimensions/technologyStack";
-import type { EnrichmentProvider } from "../enrich/contract";
+import type { EnrichmentProvider, EnrichmentTelemetry } from "../enrich/contract";
 import { defaultProvider } from "../enrich/providers/index";
 import { pickMissingForEnrichment, resolveMode, type EnrichmentMode } from "../enrich/policy";
 import type { Anchored } from "./anchor";
@@ -29,31 +29,90 @@ interface DimSpec {
   label: string;
   importance: Importance;
   extractorId: string;
-  run: (input: { title: string; snippet: string; detailText: string; location: string }) => Anchored<string>;
+  run: (input: {
+    title: string;
+    snippet: string;
+    detailText: string;
+    location: string;
+  }) => Anchored<string>;
   proofHeadline: string;
   proofDetail: string;
 }
 
 const SPECS: DimSpec[] = [
-  { key: "requiredLevel", label: "Required Level", importance: "Core", extractorId: requiredLevelExtractorId,
-    run: (i) => extractRequiredLevel(i), proofHeadline: "Seniority check", proofDetail: "Matches target title list" },
-  { key: "reportingLine", label: "Reporting Line", importance: "Core", extractorId: reportingExtractorId,
-    run: (i) => extractReportingLine(i), proofHeadline: "Reporting line alignment", proofDetail: "CxO / MD reporting proven" },
-  { key: "mandate", label: "Mandate", importance: "Core", extractorId: mandateExtractorId,
-    run: (i) => extractMandate(i), proofHeadline: "Mandate alignment", proofDetail: "Lifecycle stage matches profile" },
-  { key: "commercialAccountability", label: "Commercial Accountability", importance: "Core", extractorId: commercialExtractorId,
-    run: (i) => extractCommercial(i), proofHeadline: "P&L Scale matches", proofDetail: "Prior P&L / budget precedent" },
-  { key: "functionalScope", label: "Functional Scope", importance: "Supporting", extractorId: functionalScopeExtractorId,
-    run: (i) => extractFunctionalScope(i), proofHeadline: "Competency match", proofDetail: "Full growth capability stack" },
-  { key: "geography", label: "Geography", importance: "Supporting", extractorId: geographyExtractorId,
-    run: (i) => extractGeography({ location: i.location, snippet: i.snippet, detailText: i.detailText }),
-    proofHeadline: "Location match", proofDetail: "Target market listing matches" },
-  { key: "workModel", label: "Work Model", importance: "Context", extractorId: workModelExtractorId,
+  {
+    key: "requiredLevel",
+    label: "Required Level",
+    importance: "Core",
+    extractorId: requiredLevelExtractorId,
+    run: (i) => extractRequiredLevel(i),
+    proofHeadline: "Seniority check",
+    proofDetail: "Matches target title list",
+  },
+  {
+    key: "reportingLine",
+    label: "Reporting Line",
+    importance: "Core",
+    extractorId: reportingExtractorId,
+    run: (i) => extractReportingLine(i),
+    proofHeadline: "Reporting line alignment",
+    proofDetail: "CxO / MD reporting proven",
+  },
+  {
+    key: "mandate",
+    label: "Mandate",
+    importance: "Core",
+    extractorId: mandateExtractorId,
+    run: (i) => extractMandate(i),
+    proofHeadline: "Mandate alignment",
+    proofDetail: "Lifecycle stage matches profile",
+  },
+  {
+    key: "commercialAccountability",
+    label: "Commercial Accountability",
+    importance: "Core",
+    extractorId: commercialExtractorId,
+    run: (i) => extractCommercial(i),
+    proofHeadline: "P&L Scale matches",
+    proofDetail: "Prior P&L / budget precedent",
+  },
+  {
+    key: "functionalScope",
+    label: "Functional Scope",
+    importance: "Supporting",
+    extractorId: functionalScopeExtractorId,
+    run: (i) => extractFunctionalScope(i),
+    proofHeadline: "Competency match",
+    proofDetail: "Full growth capability stack",
+  },
+  {
+    key: "geography",
+    label: "Geography",
+    importance: "Supporting",
+    extractorId: geographyExtractorId,
+    run: (i) =>
+      extractGeography({ location: i.location, snippet: i.snippet, detailText: i.detailText }),
+    proofHeadline: "Location match",
+    proofDetail: "Target market listing matches",
+  },
+  {
+    key: "workModel",
+    label: "Work Model",
+    importance: "Context",
+    extractorId: workModelExtractorId,
     run: (i) => extractWorkModel({ snippet: i.snippet, detailText: i.detailText }),
-    proofHeadline: "Work model preference", proofDetail: "Preferred work model" },
-  { key: "technologyStack", label: "Technology Stack", importance: "Context", extractorId: technologyExtractorId,
+    proofHeadline: "Work model preference",
+    proofDetail: "Preferred work model",
+  },
+  {
+    key: "technologyStack",
+    label: "Technology Stack",
+    importance: "Context",
+    extractorId: technologyExtractorId,
     run: (i) => extractTechnology({ title: i.title, snippet: i.snippet, detailText: i.detailText }),
-    proofHeadline: "Platform stack", proofDetail: "Platform-native experience" },
+    proofHeadline: "Platform stack",
+    proofDetail: "Platform-native experience",
+  },
 ];
 
 function toBucket(status: "Explicit" | "Inferred" | "Missing"): Bucket {
@@ -77,6 +136,7 @@ function toQuality(status: "Explicit" | "Inferred" | "Missing", evidenceCount: n
 export interface ExtractOptions {
   mode?: EnrichmentMode;
   provider?: EnrichmentProvider;
+  telemetry?: EnrichmentTelemetry;
 }
 
 const llmLimiter = createLimiter(CONFIG.llmConcurrency);
@@ -88,14 +148,14 @@ export function getLLMQueueStats() {
   const count = queueWaitTimes.length;
   const totalWait = queueWaitTimes.reduce((a, b) => a + b, 0);
   const p95 = count > 0 ? queueWaitTimes[Math.floor(count * 0.95)] : 0;
-  
-  return { 
-    totalWait, 
+
+  return {
+    totalWait,
     count,
     avg: count > 0 ? totalWait / count : 0,
     p95,
     active: llmLimiter.activeCount,
-    pending: llmLimiter.pendingCount
+    pending: llmLimiter.pendingCount,
   };
 }
 
@@ -115,7 +175,10 @@ export function cleanDimensionValue(val: string | null): string | null {
   return str;
 }
 
-export async function extract(snapshot: DetailedCard, opts: ExtractOptions = {}): Promise<ExtractionResult> {
+export async function extract(
+  snapshot: DetailedCard,
+  opts: ExtractOptions = {},
+): Promise<ExtractionResult> {
   const mode = opts.mode ?? resolveMode();
   const provider = opts.provider ?? defaultProvider;
   const t0 = Date.now();
@@ -153,22 +216,49 @@ export async function extract(snapshot: DetailedCard, opts: ExtractOptions = {})
   let llmCalled = false;
   let llmFallbackReason: string | undefined;
 
-  const hasSubstantiveText = (snippet.trim().length >= 50) || (detailText.trim().length >= 50);
+  const hasSubstantiveText = snippet.trim().length >= 50 || detailText.trim().length >= 50;
 
   if (toFill.length > 0 && hasSubstantiveText) {
     llmCalled = true;
     llmFallbackReason = `${mode}:${toFill.map((d) => d.key).join(",")}`;
     const startWait = Date.now();
+    void Promise.resolve(
+      opts.telemetry?.("EXTRACTOR_INPUT_SHAPE", {
+        atMs: startWait,
+        provider: provider.id,
+        snippetChars: snippet.length,
+        detailChars: detailText.length,
+        detailCharsSent: detailText.slice(0, 6000).length,
+        missingDimensionCount: toFill.length,
+        missingDimensions: toFill.map((d) => d.key),
+        extractorActiveAtEnqueue: llmLimiter.activeCount,
+        extractorPendingAtEnqueue: llmLimiter.pendingCount,
+      }),
+    ).catch(() => undefined);
     try {
       const filled = await llmLimiter.run(async () => {
         const queueTime = Date.now() - startWait;
         queueWaitTimes.push(queueTime);
-        
+        void Promise.resolve(
+          opts.telemetry?.("EXTRACTOR_LIMITER_ACQUIRED", {
+            atMs: Date.now(),
+            waitMs: queueTime,
+            extractorActiveAtAcquire: llmLimiter.activeCount,
+            extractorPendingAtAcquire: llmLimiter.pendingCount,
+          }),
+        ).catch(() => undefined);
+
         const lt0 = Date.now();
         const res = await provider.enrich({
-          title, company, location, snippet, detailText,
-          applyUrl, portal: snapshot.portal,
+          title,
+          company,
+          location,
+          snippet,
+          detailText,
+          applyUrl,
+          portal: snapshot.portal,
           missingKeys: toFill.map((d) => d.key),
+          telemetry: opts.telemetry,
         });
         llmMs = Date.now() - lt0;
         return res;
@@ -192,7 +282,6 @@ export async function extract(snapshot: DetailedCard, opts: ExtractOptions = {})
   } else if (toFill.length > 0) {
     llmFallbackReason = "skipped:insufficient_text";
   }
-
 
   return {
     extractorVersion: EXTRACTOR_VERSION,

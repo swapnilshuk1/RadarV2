@@ -1,29 +1,28 @@
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import type { PortalName } from "../types";
+import type { EnrichInput, EnrichPatch } from "./contract";
 import { CANDIDATE_PROFILE_JSON } from "../config";
-
-interface EnrichInput {
-  title: string;
-  company: string;
-  location: string;
-  snippet: string;
-  detailText: string;
-  applyUrl: string;
-  portal: PortalName;
-  missingKeys: string[];
-}
 
 // Returned patches are Inferred, not Explicit — the LLM never gets to claim
 // verbatim evidence. That contract is enforced in extractor.ts.
-type Patch = Record<string, { value: string | null; rationale?: string }>;
+type Patch = EnrichPatch;
+
+function emit(input: EnrichInput, type: string, details: Record<string, unknown>) {
+  // Diagnostics must not affect enrichment control flow or provider timing.
+  void Promise.resolve(input.telemetry?.(type, { atMs: Date.now(), ...details })).catch(
+    () => undefined,
+  );
+}
 
 let profileCache: string | null = null;
 function loadProfile(): string {
   if (profileCache !== null) return profileCache;
-  try { profileCache = fs.readFileSync(CANDIDATE_PROFILE_JSON, "utf-8"); }
-  catch { profileCache = "{}"; }
+  try {
+    profileCache = fs.readFileSync(CANDIDATE_PROFILE_JSON, "utf-8");
+  } catch {
+    profileCache = "{}";
+  }
   return profileCache;
 }
 
@@ -41,10 +40,19 @@ async function getADCToken(): Promise<string | null> {
       process.env.GOOGLE_APPLICATION_CREDENTIALS,
       process.platform === "win32"
         ? path.join(process.env.APPDATA || "", "gcloud", "application_default_credentials.json")
-        : path.join(process.env.HOME || "", ".config", "gcloud", "application_default_credentials.json"),
+        : path.join(
+            process.env.HOME || "",
+            ".config",
+            "gcloud",
+            "application_default_credentials.json",
+          ),
       process.platform === "win32"
-        ? path.join(process.env.LOCALAPPDATA || "", "gcloud", "application_default_credentials.json")
-        : ""
+        ? path.join(
+            process.env.LOCALAPPDATA || "",
+            "gcloud",
+            "application_default_credentials.json",
+          )
+        : "",
     ].filter(Boolean) as string[];
 
     for (const credPath of candidatePaths) {
@@ -80,13 +88,19 @@ async function getADCToken(): Promise<string | null> {
 
     // 2. Fallback to gcloud CLI
     let cmd = "gcloud";
-    
+
     if (process.platform === "win32") {
       const commonPaths = [
         "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
-        path.join(process.env.USERPROFILE || "", "AppData\\Local\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd"),
-        path.join(process.env.USERPROFILE || "", "Downloads\\google-cloud-cli-windows-x86_64\\google-cloud-sdk\\bin\\gcloud.cmd"),
-        "C:\\Program Files\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd"
+        path.join(
+          process.env.USERPROFILE || "",
+          "AppData\\Local\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        ),
+        path.join(
+          process.env.USERPROFILE || "",
+          "Downloads\\google-cloud-cli-windows-x86_64\\google-cloud-sdk\\bin\\gcloud.cmd",
+        ),
+        "C:\\Program Files\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
       ];
       for (const p of commonPaths) {
         if (fs.existsSync(p)) {
@@ -118,8 +132,20 @@ let requestQueue: Promise<any> = Promise.resolve();
 
 export async function enrichWithLLM(input: EnrichInput): Promise<Patch | null> {
   // Queue calls serially to enforce strict 4.1s spacing between Vertex AI calls
+  const queuedAt = Date.now();
+  emit(input, "PROVIDER_QUEUE_ENTERED", {
+    provider: "gemini",
+    model: "gemini-2.5-flash",
+    queueMode: "serialized",
+  });
   const result = new Promise<Patch | null>((resolve) => {
     requestQueue = requestQueue.then(async () => {
+      emit(input, "PROVIDER_QUEUE_RELEASED", {
+        provider: "gemini",
+        model: "gemini-2.5-flash",
+        queueMode: "serialized",
+        waitMs: Date.now() - queuedAt,
+      });
       try {
         const patch = await executeEnrichWithLLM(input);
         resolve(patch);
@@ -146,13 +172,43 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
     headers["Authorization"] = `Bearer ${adcToken}`;
     const projectId = process.env.GCP_PROJECT_ID || "project-0e166cfc-e3f5-49d7-af6";
     url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`;
-    
+
     // Throttle to stay within Vertex AI's default 15 RPM (1 request / 4.1s) trial quota
-    await new Promise(resolve => setTimeout(resolve, 4200));
+    emit(input, "PROVIDER_THROTTLE_STARTED", {
+      provider: "gemini",
+      model: "gemini-2.5-flash",
+      transport: "vertex-adc",
+      configuredWaitMs: 4200,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 4200));
+    emit(input, "PROVIDER_THROTTLE_COMPLETED", {
+      provider: "gemini",
+      model: "gemini-2.5-flash",
+      transport: "vertex-adc",
+    });
   }
 
   const prompt = buildPrompt(input);
+  const profileChars = loadProfile().length;
+  emit(input, "PROVIDER_REQUEST_PREPARED", {
+    provider: "gemini",
+    model: "gemini-2.5-flash",
+    transport: apiKey ? "gemini-api-key" : "vertex-adc",
+    candidateProfileChars: profileChars,
+    snippetChars: input.snippet.length,
+    detailChars: input.detailText.length,
+    detailCharsSent: input.detailText.slice(0, 6000).length,
+    promptChars: prompt.length,
+    missingDimensionCount: input.missingKeys.length,
+    missingDimensions: input.missingKeys,
+  });
   try {
+    const requestStartedAt = Date.now();
+    emit(input, "PROVIDER_HTTP_REQUEST_STARTED", {
+      provider: "gemini",
+      model: "gemini-2.5-flash",
+      transport: apiKey ? "gemini-api-key" : "vertex-adc",
+    });
     const res = await fetch(url, {
       method: "POST",
       headers,
@@ -161,10 +217,24 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
         generationConfig: { responseMimeType: "application/json", temperature: 0.1 },
       }),
     });
+    emit(input, "PROVIDER_HTTP_RESPONSE_RECEIVED", {
+      provider: "gemini",
+      model: "gemini-2.5-flash",
+      transport: apiKey ? "gemini-api-key" : "vertex-adc",
+      status: res.status,
+      httpDurationMs: Date.now() - requestStartedAt,
+    });
 
     if (res.status === 429) {
       if (retryCount < 3) {
         const backoffMs = (retryCount + 1) * 5000;
+        emit(input, "PROVIDER_RETRY_SCHEDULED", {
+          provider: "gemini",
+          model: "gemini-2.5-flash",
+          status: 429,
+          retryAttempt: retryCount + 1,
+          backoffMs,
+        });
         await new Promise((r) => setTimeout(r, backoffMs));
         return executeEnrichWithLLM(input, retryCount + 1);
       }
@@ -178,6 +248,14 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
     const data = await res.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) return null;
+    emit(input, "PROVIDER_RESPONSE_PARSED", {
+      provider: "gemini",
+      model: "gemini-2.5-flash",
+      outputChars: text.length,
+      promptTokens: data.usageMetadata?.promptTokenCount ?? null,
+      outputTokens: data.usageMetadata?.candidatesTokenCount ?? null,
+      totalTokens: data.usageMetadata?.totalTokenCount ?? null,
+    });
     return JSON.parse(text) as Patch;
   } catch (err: any) {
     return null;
