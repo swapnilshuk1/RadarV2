@@ -4,6 +4,7 @@ import path from "path";
 import type { EnrichInput, EnrichPatch } from "./contract";
 import { CANDIDATE_PROFILE_JSON } from "../config";
 import { StartRateScheduler } from "./start-rate-scheduler";
+import { providerRetryAfterMs } from "../../../src/lib/model/provider-unavailable";
 
 // Returned patches are Inferred, not Explicit — the LLM never gets to claim
 // verbatim evidence. That contract is enforced in extractor.ts.
@@ -129,9 +130,61 @@ async function getADCToken(): Promise<string | null> {
   return null;
 }
 
+export const DEFAULT_GEMINI_ENRICHMENT_MODEL = "gemini-3.5-flash-lite";
+export const DEFAULT_GEMINI_ENRICHMENT_LOCATION = "global";
+export const GEMINI_ENRICHMENT_MODEL =
+  (process.env.GEMINI_ENRICHMENT_MODEL ?? DEFAULT_GEMINI_ENRICHMENT_MODEL).trim();
+export const GEMINI_ENRICHMENT_LOCATION =
+  (process.env.GEMINI_ENRICHMENT_LOCATION ?? DEFAULT_GEMINI_ENRICHMENT_LOCATION).trim();
+
 const MIN_START_INTERVAL_MS = Number(process.env.GEMINI_MIN_START_INTERVAL_MS ?? "4200");
 const MAX_IN_FLIGHT = Number(process.env.GEMINI_MAX_IN_FLIGHT ?? "2");
+const configuredRetries = Number(process.env.GEMINI_MAX_PROVIDER_RETRIES ?? "2");
+const MAX_PROVIDER_RETRIES =
+  Number.isFinite(configuredRetries) && configuredRetries >= 0 ? Math.floor(configuredRetries) : 2;
+const RETRYABLE_GEMINI_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 const startScheduler = new StartRateScheduler(MIN_START_INTERVAL_MS, MAX_IN_FLIGHT);
+
+export function buildVertexGenerateContentUrl(
+  projectId: string,
+  model = DEFAULT_GEMINI_ENRICHMENT_MODEL,
+  location = DEFAULT_GEMINI_ENRICHMENT_LOCATION,
+): string {
+  const host = location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
+  return `https://${host}/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
+}
+
+export function buildGeminiResponseJsonSchema(missingKeys: readonly string[]) {
+  const fieldSchema = {
+    type: "object",
+    properties: {
+      value: { anyOf: [{ type: "string" }, { type: "null" }] },
+      rationale: { type: "string" },
+    },
+    required: ["value", "rationale"],
+    additionalProperties: false,
+  };
+  return {
+    type: "object",
+    properties: Object.fromEntries(missingKeys.map((key) => [key, fieldSchema])),
+    required: [...missingKeys],
+    additionalProperties: false,
+  };
+}
+
+export function buildGeminiGenerationConfig(missingKeys: readonly string[]) {
+  return {
+    responseMimeType: "application/json",
+    responseJsonSchema: buildGeminiResponseJsonSchema(missingKeys),
+    thinkingConfig: { thinkingLevel: "MINIMAL" },
+  };
+}
+
+function retryDelayMs(retryCount: number, providerDelayMs?: number): number {
+  const exponential = Math.min(60_000, 1_000 * 2 ** retryCount);
+  const jitter = Math.floor(Math.random() * 1_000);
+  return Math.max(providerDelayMs ?? 0, exponential + jitter);
+}
 
 export async function enrichWithLLM(input: EnrichInput): Promise<Patch | null> {
   try {
@@ -147,7 +200,7 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
   let url = "";
 
   if (apiKey) {
-    url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_ENRICHMENT_MODEL}:generateContent?key=${apiKey}`;
   } else {
     const adcToken = await getADCToken();
     if (!adcToken) {
@@ -155,14 +208,14 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
     }
     headers["Authorization"] = `Bearer ${adcToken}`;
     const projectId = process.env.GCP_PROJECT_ID || "project-0e166cfc-e3f5-49d7-af6";
-    url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`;
+    url = buildVertexGenerateContentUrl(projectId, GEMINI_ENRICHMENT_MODEL, GEMINI_ENRICHMENT_LOCATION);
   }
 
   const prompt = buildPrompt(input);
   const profileChars = loadProfile().length;
   emit(input, "PROVIDER_REQUEST_PREPARED", {
     provider: "gemini",
-    model: "gemini-2.5-flash",
+    model: GEMINI_ENRICHMENT_MODEL,
     transport: apiKey ? "gemini-api-key" : "vertex-adc",
     candidateProfileChars: profileChars,
     snippetChars: input.snippet.length,
@@ -171,11 +224,13 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
     promptChars: prompt.length,
     missingDimensionCount: input.missingKeys.length,
     missingDimensions: input.missingKeys,
+    vertexLocation: apiKey ? null : GEMINI_ENRICHMENT_LOCATION,
+    thinkingLevel: "MINIMAL",
   });
   try {
     emit(input, "PROVIDER_QUEUE_ENTERED", {
       provider: "gemini",
-      model: "gemini-2.5-flash",
+      model: GEMINI_ENRICHMENT_MODEL,
       queueMode: "start-rate",
       minStartIntervalMs: MIN_START_INTERVAL_MS,
       maxInFlight: MAX_IN_FLIGHT,
@@ -183,7 +238,7 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
     const lease = await startScheduler.acquire();
     emit(input, "PROVIDER_QUEUE_RELEASED", {
       provider: "gemini",
-      model: "gemini-2.5-flash",
+      model: GEMINI_ENRICHMENT_MODEL,
       queueMode: "start-rate",
       waitMs: lease.queueWaitMs,
       inFlightAtStart: lease.inFlightAtStart,
@@ -191,41 +246,62 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
     const requestStartedAt = Date.now();
     emit(input, "PROVIDER_HTTP_REQUEST_STARTED", {
       provider: "gemini",
-      model: "gemini-2.5-flash",
+      model: GEMINI_ENRICHMENT_MODEL,
       transport: apiKey ? "gemini-api-key" : "vertex-adc",
     });
-    let res: Response;
+    let res: Response | undefined;
+    let transportError: unknown;
     try {
       res = await fetch(url, {
         method: "POST",
         headers,
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json", temperature: 0.1 },
+          generationConfig: buildGeminiGenerationConfig(input.missingKeys),
         }),
       });
+    } catch (error) {
+      transportError = error;
     } finally {
       lease.release();
     }
+    if (transportError) {
+      if (retryCount < MAX_PROVIDER_RETRIES) {
+        const backoffMs = retryDelayMs(retryCount);
+        emit(input, "PROVIDER_RETRY_SCHEDULED", {
+          provider: "gemini",
+          model: GEMINI_ENRICHMENT_MODEL,
+          transport: apiKey ? "gemini-api-key" : "vertex-adc",
+          reason: "transport_error",
+          retryAttempt: retryCount + 1,
+          backoffMs,
+        });
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        return executeEnrichWithLLM(input, retryCount + 1);
+      }
+      return null;
+    }
+    if (!res) return null;
     emit(input, "PROVIDER_HTTP_RESPONSE_RECEIVED", {
       provider: "gemini",
-      model: "gemini-2.5-flash",
+      model: GEMINI_ENRICHMENT_MODEL,
       transport: apiKey ? "gemini-api-key" : "vertex-adc",
       status: res.status,
       httpDurationMs: Date.now() - requestStartedAt,
     });
 
-    if (res.status === 429) {
-      if (retryCount < 3) {
-        const backoffMs = (retryCount + 1) * 5000;
+    if (RETRYABLE_GEMINI_STATUSES.has(res.status)) {
+      const providerDelayMs = await providerRetryAfterMs(res);
+      if (retryCount < MAX_PROVIDER_RETRIES) {
+        const backoffMs = retryDelayMs(retryCount, providerDelayMs);
         emit(input, "PROVIDER_RETRY_SCHEDULED", {
           provider: "gemini",
-          model: "gemini-2.5-flash",
-          status: 429,
+          model: GEMINI_ENRICHMENT_MODEL,
+          status: res.status,
           retryAttempt: retryCount + 1,
           backoffMs,
         });
-        await new Promise((r) => setTimeout(r, backoffMs));
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
         return executeEnrichWithLLM(input, retryCount + 1);
       }
       return null;
@@ -235,14 +311,47 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
       return null;
     }
 
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const data = (await res.json()) as {
+      usageMetadata?: {
+        promptTokenCount?: number;
+        candidatesTokenCount?: number;
+        thoughtsTokenCount?: number;
+        cachedContentTokenCount?: number;
+        totalTokenCount?: number;
+      };
+      candidates?: Array<{
+        finishReason?: string;
+        content?: { parts?: Array<{ text?: string; thought?: boolean }> };
+      }>;
+    };
+    const candidate = data.candidates?.[0];
+    if (candidate?.finishReason && candidate.finishReason !== "STOP") {
+      emit(input, "PROVIDER_RESPONSE_INCOMPLETE", {
+        provider: "gemini",
+        model: GEMINI_ENRICHMENT_MODEL,
+        finishReason: candidate.finishReason,
+      });
+      return null;
+    }
+    const text =
+      candidate?.content?.parts
+        ?.filter((part) => !part.thought)
+        .map((part) => part.text ?? "")
+        .join("") ?? "";
     if (!text) return null;
+    const promptTokens = data.usageMetadata?.promptTokenCount ?? null;
+    const cachedInputTokens = data.usageMetadata?.cachedContentTokenCount ?? null;
     emit(input, "PROVIDER_RESPONSE_PARSED", {
       provider: "gemini",
-      model: "gemini-2.5-flash",
+      model: GEMINI_ENRICHMENT_MODEL,
       outputChars: text.length,
-      promptTokens: data.usageMetadata?.promptTokenCount ?? null,
+      promptTokens,
+      cachedInputTokens,
+      uncachedInputTokens:
+        promptTokens !== null && cachedInputTokens !== null
+          ? Math.max(0, promptTokens - cachedInputTokens)
+          : null,
+      reasoningTokens: data.usageMetadata?.thoughtsTokenCount ?? null,
       outputTokens: data.usageMetadata?.candidatesTokenCount ?? null,
       totalTokens: data.usageMetadata?.totalTokenCount ?? null,
     });
