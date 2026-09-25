@@ -381,6 +381,8 @@ export interface ExtractionResult {
     deterministicMs: number;
     llmMs: number;
     llmCalled: boolean;
+    /** Exact enrichment provider contract used when an LLM call was attempted. */
+    providerId?: string;
     llmFallbackReason?: string;
     tokensIn?: number;
     tokensOut?: number;

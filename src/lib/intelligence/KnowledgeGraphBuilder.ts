@@ -36,7 +36,7 @@ export class KnowledgeGraphBuilder {
   public build(
     card: DetailedCard, 
     extraction: ExtractionResult,
-    runId: string,
+    runId: string | undefined,
     extractorVersion: string,
     resolvedCanonicalId?: string
   ): { graph: KnowledgeGraph, report: KnowledgeGraphBuildReport } {
@@ -44,12 +44,45 @@ export class KnowledgeGraphBuilder {
     const warnings: string[] = [];
     const timestamp = new Date().toISOString();
 
+    const inferredProviderIds = Array.from(
+      new Set(
+        (extraction.dimensions || [])
+          .filter((dim) => dim.jdEvidence?.provenance === "llm" && dim.jdEvidence?.extractorId)
+          .map((dim) => dim.jdEvidence.extractorId as string),
+      ),
+    );
+    const providerId =
+      extraction.telemetry?.providerId ||
+      (inferredProviderIds.length === 1 ? inferredProviderIds[0] : undefined);
     const provenance: Provenance = {
       schemaVersion: "1.0",
       extractorVersion,
-      model: "gpt-4o-mini", // Sourced from extraction conceptually
-      runId,
-      timestamp
+      ...(providerId
+        ? {
+            promptVersion: extraction.promptVersion,
+            model: providerId,
+          }
+        : {}),
+      ...(runId ? { runId } : {}),
+      timestamp,
+    };
+    const dimensionProvenance = (dim: DimensionResult): Provenance => {
+      const model =
+        dim.jdEvidence?.provenance === "llm" && dim.jdEvidence?.extractorId
+          ? dim.jdEvidence.extractorId
+          : undefined;
+      return {
+        schemaVersion: "1.0",
+        extractorVersion,
+        ...(model
+          ? {
+              promptVersion: extraction.promptVersion,
+              model,
+            }
+          : {}),
+        ...(runId ? { runId } : {}),
+        timestamp,
+      };
     };
 
     // 1. Source (Identity: Portal Name)
@@ -174,7 +207,7 @@ export class KnowledgeGraphBuilder {
                 qualityScore: 0.9,
                 createdAt: timestamp,
                 updatedAt: timestamp,
-                provenance
+                provenance: dimensionProvenance(dim),
               });
             }
           }
@@ -199,7 +232,7 @@ export class KnowledgeGraphBuilder {
           evidenceIds,
           createdAt: timestamp,
           updatedAt: timestamp,
-          provenance
+          provenance: dimensionProvenance(dim),
         });
       }
     }

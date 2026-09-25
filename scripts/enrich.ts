@@ -354,6 +354,7 @@ export async function processJob(
       deps?.repos,
       resolvedCanonicalId,
       activeDb,
+      job.run_id,
     );
 
     if (report.warnings.length > 0) {

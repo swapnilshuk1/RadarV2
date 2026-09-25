@@ -14,10 +14,9 @@ export async function ingestIntoSqlite(
   persist: boolean = true,
   repos?: StorageProvider,
   resolvedCanonicalId?: string,
-  adapter?: DatabaseAdapter
+  adapter?: DatabaseAdapter,
+  runId?: string
 ): Promise<KnowledgeGraphBuildReport> {
-  
-  const runId = "run_" + new Date().toISOString().split("T")[0]; // Stub run ID for now
 
   let parsedExtraction;
   try {

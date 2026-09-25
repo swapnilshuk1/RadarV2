@@ -296,6 +296,12 @@ export async function extract(
     applyUrl,
     dimensions: dims,
     normalizedText: detailText || "",
-    telemetry: { deterministicMs: detMs, llmMs, llmCalled, llmFallbackReason },
+    telemetry: {
+      deterministicMs: detMs,
+      llmMs,
+      llmCalled,
+      providerId: llmCalled ? provider.id : undefined,
+      llmFallbackReason,
+    },
   };
 }
