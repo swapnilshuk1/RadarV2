@@ -161,8 +161,12 @@ ${input.documentText}
       const content = data.choices?.[0]?.message?.content;
       if (!content) throw new Error("Empty response choice from Groq");
 
-      const parsed = JSON.parse(content);
-      const rawFacts = Array.isArray(parsed.facts) ? parsed.facts : [];
+      const parsed: unknown = JSON.parse(content);
+      const rawFacts: unknown[] =
+        typeof parsed === "object" && parsed !== null &&
+        Array.isArray((parsed as { facts?: unknown }).facts)
+          ? (parsed as { facts: unknown[] }).facts
+          : [];
 
       const facts = rawFacts
         .map((fact: unknown, index: number) =>
