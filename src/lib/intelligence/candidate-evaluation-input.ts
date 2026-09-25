@@ -1,5 +1,5 @@
-import type { CandidateProjection } from "./domain/candidate_projection";
-import type { SearchCriteriaPayload } from "./domain/evaluation_context";
+import type { CandidateProjection } from "../domain/candidate_projection";
+import type { SearchCriteriaPayload } from "../domain/evaluation_context";
 
 /**
  * Evaluation composes two immutable planes:
