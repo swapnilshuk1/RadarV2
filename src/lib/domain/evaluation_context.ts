@@ -49,6 +49,9 @@ export interface SearchCriteriaPayload {
   targetEmploymentTypes?: string[];
   excludedCompanies?: string[];
   minimumFitThreshold?: number;
+  /** Candidate intent pinned into the immutable search-plan snapshot. */
+  preferredWorkModel?: "HYBRID" | "REMOTE" | "ON_SITE" | "ANY";
+  travelTolerance?: "HIGH" | "MEDIUM" | "LOW";
   eligibilitySpec?: EligibilitySpec;
   customParameters?: Record<string, unknown>;
 }

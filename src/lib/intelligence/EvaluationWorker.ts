@@ -3,6 +3,8 @@ import { ModelProviderUnavailableError } from '../model/provider-unavailable';
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
 import { AuthContext, authorizePersonScope } from "@/lib/security/auth";
 import { runEngineSingleIntrinsic } from "./engine";
+import type { SearchCriteriaPayload } from "../domain/evaluation_context";
+import { candidateProjectionForContext } from "./candidate-evaluation-input";
 import { validateCandidateProjection } from "../domain/candidate_projection";
 import { validateEvaluationConsistency } from "@/lib/domain/evaluation_fingerprint";
 import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
@@ -441,7 +443,13 @@ export class EvaluationWorker {
 
         return await this.commitEvaluationMaterialization(job, materialized, dossierPresentationV2);
       }
-      const projection = rawProjection;
+      let snapshotCriteria: SearchCriteriaPayload;
+      try {
+        snapshotCriteria = JSON.parse(snapshotRow.payload_json) as SearchCriteriaPayload;
+      } catch {
+        throw new Error(`[EvaluationWorker] Invalid evaluation context snapshot payload for fingerprint: ${job.evaluationContextFingerprint}`);
+      }
+      const projection = candidateProjectionForContext(rawProjection, snapshotCriteria);
 
       // 2. CandidateProjection integrity verification
       const validation = validateCandidateProjection(projection);

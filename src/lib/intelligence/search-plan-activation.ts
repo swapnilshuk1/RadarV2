@@ -69,6 +69,8 @@ export async function activateSearchPlanForIntent(
     targetRoles: effectiveTitles,
     targetLocations: effectiveLocations,
     targetIndustries: input.industries || [],
+    preferredWorkModel: input.preferredWorkModel,
+    travelTolerance: input.travelTolerance,
     eligibilitySpec: {
       ...searchPlan.eligibilitySpec,
       ontologyVersion: loadEvaluationVersionManifest().ontologyVersion,
