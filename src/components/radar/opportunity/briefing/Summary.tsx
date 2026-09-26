@@ -7,6 +7,7 @@ interface SummaryProps {
   dossierState: DossierDecisionState;
   currentIndex: number;
   totalCount: number;
+  scope?: { tenantId?: string; personId?: string };
 }
 
 export function Summary({
@@ -15,6 +16,7 @@ export function Summary({
   dossierState,
   currentIndex,
   totalCount,
+  scope,
 }: SummaryProps) {
   return (
     <>
@@ -22,7 +24,7 @@ export function Summary({
       <header className="border-b border-border bg-background">
         <div className="mx-auto max-w-[1180px] px-5 py-6">
           <div className="flex items-center justify-between gap-3">
-            <Link to="/" className="label-mono hover:text-foreground transition-colors font-normal">
+            <Link to="/" search={scope} className="label-mono hover:text-foreground transition-colors font-normal">
               ← Shortlist
             </Link>
             <span className="label-mono font-normal text-muted-foreground">

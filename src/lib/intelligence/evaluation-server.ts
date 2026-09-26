@@ -81,8 +81,15 @@ function capturedJobPredicate(jobAlias: string): string {
   )`;
 }
 
-async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getDatabaseAdapter>) {
-  const { scope } = await resolveServingScope(userId, undefined, db);
+type CandidateScopeRequest = { tenantId?: string; personId?: string };
+function requestedCandidateScope(data?: CandidateScopeRequest) {
+  if (Boolean(data?.tenantId) !== Boolean(data?.personId)) throw new AuthError("CANDIDATE_SCOPE_INCOMPLETE", 400);
+  return data;
+}
+
+async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getDatabaseAdapter>, requested?: CandidateScopeRequest) {
+  const scopeRequest = requestedCandidateScope(requested);
+  const { scope } = await resolveServingScope(userId, scopeRequest?.tenantId, db, scopeRequest?.personId);
   const membership = await db.one<{ role: string }>(
     `SELECT role
      FROM memberships
@@ -100,9 +107,9 @@ async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getD
   return { scope, canControl: membership.role === "admin" };
 }
 
-async function snapshotForUser(user: { id: string; role?: string }): Promise<EvaluatorTelemetrySnapshot> {
+async function snapshotForUser(user: { id: string; role?: string }, requested?: CandidateScopeRequest): Promise<EvaluatorTelemetrySnapshot> {
   const db = getDatabaseAdapter();
-  const { scope, canControl } = await resolveEvaluatorAccess(user.id, db);
+  const { scope, canControl } = await resolveEvaluatorAccess(user.id, db, requested);
   const runtime = await new EvaluationRuntimeControl(db).get();
   const { EvaluationDaemon } = await import("./EvaluationDaemon");
   const local = EvaluationDaemon.getGlobalDaemonRuntimeStatus();
@@ -270,17 +277,18 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
 }
 
 export const getEvaluatorTelemetryFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    return snapshotForUser(user);
+    return snapshotForUser(user, data);
   });
 
 export const controlEvaluatorFn = createServerFn({ method: "POST" })
-  .validator((data: { action: "start" | "pause" | "resume" | "stop" }) => data)
+  .validator((data: { action: "start" | "pause" | "resume" | "stop" } & CandidateScopeRequest) => data)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const db = getDatabaseAdapter();
-    const { canControl } = await resolveEvaluatorAccess(user.id, db);
+    const { canControl } = await resolveEvaluatorAccess(user.id, db, data);
     if (!canControl) {
       throw new AuthError("FORBIDDEN: Active tenant administrator privileges required", 403);
     }
@@ -298,5 +306,5 @@ export const controlEvaluatorFn = createServerFn({ method: "POST" })
       EvaluationDaemon.startGlobalDaemon(2000);
     }
 
-    return snapshotForUser(user);
+    return snapshotForUser(user, data);
   });

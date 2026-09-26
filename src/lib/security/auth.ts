@@ -19,6 +19,8 @@ export interface AuthContext {
   userId: string;
   tenantId: string;
   permissions: Permission[];
+  /** Membership, not the legacy profile row, is the tenant authority. */
+  role?: string;
 }
 
 // 2. Authorization derives the resource scope
@@ -43,8 +45,22 @@ export class TenantIsolationError extends Error {
 export async function authorizePersonScope(
   authContext: AuthContext,
   requestedPersonId: string,
-  db: DatabaseAdapter
+  db: DatabaseAdapter,
+  requiredPermission?: "read:person" | "write:person",
 ): Promise<AuthorizedPersonScope> {
+  // A membership establishes a tenant boundary, not unrestricted access to
+  // every candidate within that boundary.  Self-service remains available to
+  // the authenticated candidate; delegated access requires an explicit
+  // membership grant (or that tenant's administrator role).
+  if (
+    requestedPersonId !== authContext.userId &&
+    authContext.role !== "admin" &&
+    (requiredPermission !== undefined && !authContext.permissions.includes(requiredPermission))
+  ) {
+    throw new TenantIsolationError(
+      `User ${authContext.userId} lacks ${requiredPermission || "candidate"} authority for person ${requestedPersonId}.`,
+    );
+  }
   // Direct tenant-scoped boundary query
   const row = await db.one<{ id: string; tenant_id: string | null }>(
     `SELECT id, tenant_id FROM people WHERE id = ? AND tenant_id = ?`,
@@ -87,10 +103,11 @@ export async function authenticateTenantMembership(
     user_id: string;
     tenant_id: string;
     permissions: string;
+    role: string;
     status: string;
     revoked_at: string | null;
   }>(
-    `SELECT user_id, tenant_id, permissions, status, revoked_at 
+    `SELECT user_id, tenant_id, permissions, role, status, revoked_at
      FROM memberships 
      WHERE user_id = ? AND tenant_id = ?`,
     [userId, tenantId]
@@ -115,5 +132,6 @@ export async function authenticateTenantMembership(
     userId,
     tenantId,
     permissions,
+    role: row.role,
   };
 }

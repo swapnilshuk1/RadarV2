@@ -13,6 +13,31 @@ schema validation, policy constraints, lifecycle, persistence and activation.
 Grounded inference, visible EXPLICIT/INFERRED cues, narrative variation and both
 approved dossier templates remain product requirements.
 
+### Multi-tenant product invariant
+
+RADAR is a multi-tenant product. Tenant isolation is a permanent product and
+architecture invariant, not a rollout phase or a legacy transition concern. A
+successful dossier is not authorization to weaken ownership boundaries.
+
+Every customer-owned durable resource must carry `tenant_id` or derive its tenant
+through a database-enforced ownership relationship. This includes people and their
+candidate sources, search plans and snapshots, credentials, scrape runs and their
+work, evaluation contexts and evaluations, dossiers, decisions, and their serving
+projections. A global market corpus may be shared only when it contains no
+tenant-owned candidate data and is explicitly modelled as global.
+
+The authorization chain is always `authenticated user → active membership → tenant
+→ authorized person → tenant-owned resource`. Membership in a tenant does not by
+itself authorize access to every person in that tenant: the requested person must
+be selected explicitly and authorized against the membership's permissions. New
+read paths and writes must preserve the tenant/person identity through to the
+database predicate, unique key, or enforced foreign-key relationship; they must
+not infer a global “current candidate” or select an unscoped latest record.
+
+Pre-production simplifies migration and release mechanics, not this domain model.
+Any exception to the invariant requires a documented global-data classification
+and a test showing that it cannot expose tenant-owned data across boundaries.
+
 ```mermaid
 flowchart TD
   A[Portal acquisition] --> B[Preserved payload and canonical opportunity version]

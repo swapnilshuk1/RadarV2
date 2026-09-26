@@ -16,9 +16,12 @@ export const Route = createFileRoute("/decisions")({
     ],
   }),
   staleTime: 0,
-  loader: async () => {
+  loader: async ({ location }) => {
+    const raw = location.search as { tenantId?: unknown; personId?: unknown };
+    const scope = { tenantId: typeof raw.tenantId === "string" ? raw.tenantId : undefined, personId: typeof raw.personId === "string" ? raw.personId : undefined };
+    if (Boolean(scope.tenantId) !== Boolean(scope.personId)) throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
     return {
-      opportunitiesList: await getDecidedOpportunitiesFn()
+      opportunitiesList: await getDecidedOpportunitiesFn({ data: scope }), scope,
     };
   },
   component: OpportunitiesPage,
@@ -40,8 +43,8 @@ export function resolveDecisionsCardScore(
 export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS";
 
 function OpportunitiesPage() {
-  const { decisions, undo, clear, hydrated, error: decisionError } = useDecisions();
-  const { opportunitiesList: loadedOpportunities } = Route.useLoaderData();
+  const { opportunitiesList: loadedOpportunities, scope } = Route.useLoaderData();
+  const { decisions, undo, clear, hydrated, error: decisionError } = useDecisions(scope);
   const rawOpportunities = loadedOpportunities as Array<Opportunity | ServedOpportunity>;
   // Phase 4: Non-evaluated variants without decisions must not contribute to counts or enter the ledger.
   // Explicit user decisions (including those on sparse specifications) remain preserved and represented.
@@ -253,6 +256,7 @@ function OpportunitiesPage() {
                         <Link
                           to="/opportunity/$jobHash"
                           params={{ jobHash: o.jobHash }}
+                          search={scope}
                           className="hover:underline hover:text-accent-ink transition-colors"
                           data-testid={`opportunity-role-link-${o.jobHash}`}
                         >
@@ -293,6 +297,7 @@ function OpportunitiesPage() {
                       <Link
                         to="/opportunity/$jobHash"
                         params={{ jobHash: o.jobHash }}
+                          search={scope}
                         className="rounded-sm border border-border px-3 py-1 label-mono text-xs text-ink hover:bg-background hover:text-accent-ink transition-colors"
                         data-testid={`open-opportunity-btn-${o.jobHash}`}
                       >

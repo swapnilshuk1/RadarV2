@@ -18,8 +18,11 @@ import { DossierView } from "@/dossier/DossierView";
 import { isExternalPostingUrl } from "@/lib/acquisition/external-posting-url";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
-  loader: async ({ params }: { params: { jobHash: string } }) => {
-    const details = await getOpportunityDetailsFn({ data: params.jobHash });
+  loader: async ({ params, location }: { params: { jobHash: string }; location: { search: unknown } }) => {
+    const raw = location.search as { tenantId?: unknown; personId?: unknown };
+    const deps = { tenantId: typeof raw.tenantId === "string" ? raw.tenantId : undefined, personId: typeof raw.personId === "string" ? raw.personId : undefined };
+    if (Boolean(deps.tenantId) !== Boolean(deps.personId)) throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
+    const details = await getOpportunityDetailsFn({ data: { jobHash: params.jobHash, ...deps } });
     if (!details.opportunity) throw notFound();
     return {
       opportunity: details.opportunity,
@@ -61,7 +64,8 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
 export function OpportunityBriefView() {
   const { opportunity, neighbors, currentIndex, totalCount } = Route.useLoaderData();
   const o = opportunity;
-  const { decisions, decide: recordDecision } = useDecisions();
+  const scope = Route.useSearch() as { tenantId?: string; personId?: string };
+  const { decisions, decide: recordDecision } = useDecisions(scope);
   const router = useRouter();
   const waitingForReview =
     isEvaluated(o) &&
@@ -93,7 +97,7 @@ export function OpportunityBriefView() {
         <p className="text-muted-foreground mb-8">
           This opportunity is queued for evaluation under your active context.
         </p>
-        <Link to="/" className="text-primary hover:underline">
+        <Link to="/" search={scope} className="text-primary hover:underline">
           Return to Shortlist
         </Link>
       </div>
@@ -111,7 +115,7 @@ export function OpportunityBriefView() {
     return (
       <>
         <div className="memo-container flex flex-wrap items-center justify-between gap-4 py-4">
-          <Link to="/" className="text-primary hover:underline">
+          <Link to="/" search={scope} className="text-primary hover:underline">
             Return to Shortlist
           </Link>
           <div className="flex gap-2" aria-label="Your decision">
@@ -154,7 +158,7 @@ export function OpportunityBriefView() {
   if (isEvaluated(o) && o.memoReviewState === "preparing") {
     return (
       <div className="memo-container py-16">
-        <Link to="/">Return to Shortlist</Link>
+        <Link to="/" search={scope}>Return to Shortlist</Link>
         <h1 className="font-serif text-3xl mt-6">{o.role}</h1>
         <p>
           {o.company} · {o.decision}
@@ -186,7 +190,7 @@ export function OpportunityBriefView() {
   if (isEvaluated(o) && o.memoReviewState === "preparation_attention") {
     return (
       <div className="memo-container py-16">
-        <Link to="/">Return to Shortlist</Link>
+        <Link to="/" search={scope}>Return to Shortlist</Link>
         <h1 className="font-serif text-3xl mt-6">{o.role}</h1>
         <p>
           {o.company} · {o.decision}
@@ -219,7 +223,7 @@ export function OpportunityBriefView() {
   if (isEvaluated(o) && o.memoReviewState === "withheld") {
     return (
       <div className="memo-container py-16">
-        <Link to="/">Return to Shortlist</Link>
+        <Link to="/" search={scope}>Return to Shortlist</Link>
         <h1 className="font-serif text-3xl mt-6">{o.role}</h1>
         <p>
           {o.company} · {o.decision}
@@ -247,6 +251,7 @@ export function OpportunityBriefView() {
         totalCount={totalCount}
         decide={decide}
         dossierState={dossierState}
+        scope={scope}
       />
     );
   }
@@ -256,7 +261,7 @@ export function OpportunityBriefView() {
       <div className="memo-container py-16 text-center">
         <h2 className="text-xl font-serif text-foreground mb-4">Opportunity Unavailable</h2>
         <p className="text-muted-foreground mb-8">State: {o.evaluationState}</p>
-        <Link to="/" className="text-primary hover:underline">
+        <Link to="/" search={scope} className="text-primary hover:underline">
           Return to Shortlist
         </Link>
       </div>
@@ -288,6 +293,7 @@ export function OpportunityBriefView() {
             evaluatedAt={presentation.evaluatedAt}
             focusTopic={presentation.focusTopic}
             whyRoleExists={presentation.whyRoleExists}
+            scope={scope}
           />
         </div>
         <div className="lg:hidden">
@@ -302,6 +308,7 @@ export function OpportunityBriefView() {
             jobProj={presentation.jobProjection}
             executionPkg={presentation.executionPackage}
             whyRoleExists={presentation.whyRoleExists}
+            scope={scope}
           />
         </div>
       </>
@@ -358,7 +365,7 @@ export function OpportunityBriefView() {
 
       <nav className="flex justify-between text-sm">
         {neighbors?.prev ? (
-          <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.prev }}>
+          <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.prev }} search={scope}>
             Previous
           </Link>
         ) : (
@@ -368,7 +375,7 @@ export function OpportunityBriefView() {
           {currentIndex} of {totalCount}
         </span>
         {neighbors?.next ? (
-          <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.next }}>
+          <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.next }} search={scope}>
             Next
           </Link>
         ) : (

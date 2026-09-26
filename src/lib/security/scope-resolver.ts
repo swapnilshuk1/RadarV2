@@ -15,7 +15,7 @@
  */
 
 import { getDatabaseAdapter, type DatabaseAdapter } from "../../data/database";
-import { PERMISSIONS, TenantIsolationError, type AuthorizedPersonScope } from "./auth";
+import { authenticateTenantMembership, authorizePersonScope, PERMISSIONS, TenantIsolationError, type AuthorizedPersonScope } from "./auth";
 import type { Permission } from "./auth";
 export type { AuthorizedPersonScope } from "./auth";
 
@@ -60,7 +60,9 @@ interface RawScopeContextRow {
 export async function resolveServingScope(
   userId: string,
   requestedTenantId?: string,
-  adapter?: DatabaseAdapter
+  adapter?: DatabaseAdapter,
+  requestedPersonId?: string,
+  requiredPermission: "read:person" | "write:person" = "read:person",
 ): Promise<ResolvedServingScope> {
   const db = adapter || getDatabaseAdapter();
 
@@ -139,14 +141,16 @@ export async function resolveServingScope(
     if (row.target_membership_status !== "active" || row.target_membership_revoked_at !== null) {
       throw new TenantIsolationError(`Membership for user ${userId} in tenant ${requestedTenantId} is inactive or revoked.`);
     }
-    if (!row.person_id) {
-      throw new TenantIsolationError(`Person ${userId} not found.`);
-    }
-    if (row.person_tenant_id === null) {
-      throw new TenantIsolationError(`Person ${userId} is a legacy/unassigned record and cannot be accessed by tenant ${requestedTenantId}.`);
-    }
-    if (row.person_tenant_id !== requestedTenantId) {
-      throw new TenantIsolationError(`Access denied. Person ${userId} does not belong to tenant ${requestedTenantId}.`);
+    if (!requestedPersonId) {
+      if (!row.person_id) {
+        throw new TenantIsolationError(`Person ${userId} not found.`);
+      }
+      if (row.person_tenant_id === null) {
+        throw new TenantIsolationError(`Person ${userId} is a legacy/unassigned record and cannot be accessed by tenant ${requestedTenantId}.`);
+      }
+      if (row.person_tenant_id !== requestedTenantId) {
+        throw new TenantIsolationError(`Access denied. Person ${userId} does not belong to tenant ${requestedTenantId}.`);
+      }
     }
   } else {
     // 2. Implicit Tenant Path
@@ -176,30 +180,53 @@ export async function resolveServingScope(
     if (row.target_membership_status !== "active" || row.target_membership_revoked_at !== null) {
       throw new TenantIsolationError(`Membership for user ${userId} in tenant ${resolvedTenantId} is inactive or revoked.`);
     }
-    if (!row.person_id) {
-      throw new TenantIsolationError(`Person ${userId} not found.`);
-    }
-    if (row.person_tenant_id === null) {
-      throw new TenantIsolationError(`Person ${userId} is a legacy/unassigned record and cannot be accessed by tenant ${resolvedTenantId}.`);
-    }
-    if (row.person_tenant_id !== resolvedTenantId) {
-      throw new TenantIsolationError(`Access denied. Person ${userId} does not belong to tenant ${resolvedTenantId}.`);
+    if (!requestedPersonId) {
+      if (!row.person_id) {
+        throw new TenantIsolationError(`Person ${userId} not found.`);
+      }
+      if (row.person_tenant_id === null) {
+        throw new TenantIsolationError(`Person ${userId} is a legacy/unassigned record and cannot be accessed by tenant ${resolvedTenantId}.`);
+      }
+      if (row.person_tenant_id !== resolvedTenantId) {
+        throw new TenantIsolationError(`Access denied. Person ${userId} does not belong to tenant ${resolvedTenantId}.`);
+      }
     }
   }
 
   const finalTenantId = requestedTenantId || row.target_tenant_id!;
-  const scope: AuthorizedPersonScope = {
-    tenantId: finalTenantId,
-    personId: userId,
-  };
+  const auth = await authenticateTenantMembership(userId, finalTenantId, db);
+  const scope = await authorizePersonScope(
+    auth,
+    requestedPersonId || userId,
+    db,
+    requiredPermission,
+  );
 
   // 3. Derive Active Evaluation Context with strict pointer precedence
   let activeContext: ActiveServingContext | undefined;
-  if (row.pointer_context_fingerprint && row.pointer_search_plan_id) {
+  if (!requestedPersonId && row.pointer_context_fingerprint && row.pointer_search_plan_id) {
     activeContext = {
       searchPlanId: row.pointer_search_plan_id,
       contextFingerprint: row.pointer_context_fingerprint,
     };
+  }
+
+  if (requestedPersonId) {
+    const targetContext = await db.one<{ context_fingerprint: string; search_plan_id: string }>(
+      `SELECT aec.context_fingerprint, aec.search_plan_id
+       FROM active_evaluation_contexts aec
+       JOIN search_plans sp ON sp.id=aec.search_plan_id
+         AND sp.tenant_id=aec.tenant_id AND sp.person_id=aec.person_id
+       WHERE aec.tenant_id=? AND aec.person_id=? AND sp.status='active'
+       ORDER BY aec.activated_at DESC LIMIT 1`,
+      [scope.tenantId, scope.personId],
+    );
+    if (targetContext) {
+      activeContext = {
+        searchPlanId: targetContext.search_plan_id,
+        contextFingerprint: targetContext.context_fingerprint,
+      };
+    }
   }
 
   return {
@@ -227,10 +254,12 @@ export interface ScraperAuthResolution {
 export async function resolveScraperAuthContext(
   userId: string,
   requestedTenantId?: string,
-  adapter?: DatabaseAdapter
+  adapter?: DatabaseAdapter,
+  requestedPersonId?: string,
+  requiredPersonPermission: "read:person" | "write:person" = "read:person",
 ): Promise<ScraperAuthResolution> {
   const db = adapter || getDatabaseAdapter();
-  const resolved = await resolveServingScope(userId, requestedTenantId, db);
+  const resolved = await resolveServingScope(userId, requestedTenantId, db, requestedPersonId, requiredPersonPermission);
   const tenantId = resolved.scope.tenantId;
 
   const membership = await db.one<{ role: string; permissions: string }>(
@@ -261,6 +290,7 @@ export async function resolveScraperAuthContext(
     userId,
     tenantId,
     permissions: effectivePermissions,
+    role: membership.role,
   };
 
   return {

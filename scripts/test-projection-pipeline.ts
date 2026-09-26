@@ -1,5 +1,6 @@
 import { ProjectionPipeline } from "../src/lib/intelligence/pipeline/ProjectionPipeline";
 import { getRepositories } from "../src/data/sqlite/provider";
+import { getDatabaseAdapter } from "../src/data/database";
 
 async function runPipelineTest() {
   console.log("=================================================");
@@ -8,6 +9,9 @@ async function runPipelineTest() {
 
   const repos = getRepositories();
   const personId = "swapnil-shukla"; // Existing authenticated user in DB
+  const tenant = await getDatabaseAdapter().one<{ tenant_id: string }>("SELECT tenant_id FROM people WHERE id = ?", [personId]);
+  if (!tenant?.tenant_id) throw new Error("PROFILE_SCOPE_REQUIRED");
+  const scope = { tenantId: tenant.tenant_id, personId };
   const documentId = `doc-test-${Date.now()}`;
   const sampleResume = `
   Swapnil Shukla - Vice President, Growth & Digital Transformation
@@ -29,7 +33,7 @@ async function runPipelineTest() {
   console.log(`Starting pipeline run for document ${documentId}...`);
   const result = await pipeline.run({
     documentId,
-    personId,
+    scope,
     filename: "sample_executive_cv.pdf",
     storageUri: "file://.scraper-artifacts/documents/sample_executive_cv.pdf",
     mimeType: "application/pdf",
@@ -45,10 +49,10 @@ async function runPipelineTest() {
   }
 
   // Verify DB Persistence
-  const doc = await repos.documents.getDocument(documentId);
+  const doc = await repos.documents.getDocument(scope, documentId);
   console.log("Saved Document Record:", doc?.stage, doc?.status);
 
-  const evGraph = await repos.documents.getEvidenceGraphForDocument(documentId);
+  const evGraph = await repos.documents.getEvidenceGraphForDocument(scope, documentId);
   console.log("Extracted Evidence Graph Facts Count:", evGraph?.facts.length);
   console.log("Sample Extracted Facts:", evGraph?.facts.slice(0, 3));
 

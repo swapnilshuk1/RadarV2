@@ -48,10 +48,12 @@ export class ProductionStagedInputAdapter {
       `SELECT dc.document_id, eg.id AS evidence_graph_id, dc.text_hash AS document_text_hash, dc.raw_text, eg.graph_json
        FROM document_contents dc
        JOIN candidate_documents cd ON cd.id=dc.document_id
+         AND cd.tenant_id=dc.tenant_id AND cd.person_id=dc.person_id
        JOIN evidence_graphs eg ON eg.document_id=dc.document_id
-       WHERE cd.person_id=?
+         AND eg.tenant_id=dc.tenant_id AND eg.person_id=dc.person_id
+       WHERE dc.tenant_id=? AND dc.person_id=?
        ORDER BY dc.document_id, eg.created_at`,
-      [identity.personId],
+      [identity.tenantId,identity.personId],
     );
     const builder=new CandidateProjectionBuilderImpl();
     const matches:CandidateBinding[]=[];
@@ -71,10 +73,10 @@ export class ProductionStagedInputAdapter {
     if(matches.length!==1) return [];
     const match=matches[0];
     await this.db.execute(
-      `INSERT INTO profile_projection_source_bindings (person_id, profile_version, document_id, evidence_graph_id, document_text_hash)
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(person_id, profile_version, document_id) DO NOTHING`,
-      [identity.personId,identity.profileVersion,match.document_id,match.evidence_graph_id,match.document_text_hash],
+      `INSERT INTO profile_projection_source_bindings (tenant_id, person_id, profile_version, document_id, evidence_graph_id, document_text_hash)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(tenant_id, person_id, profile_version, document_id) DO NOTHING`,
+      [identity.tenantId,identity.personId,identity.profileVersion,match.document_id,match.evidence_graph_id,match.document_text_hash],
     );
     return [match];
   }
@@ -86,7 +88,7 @@ export class ProductionStagedInputAdapter {
     if(!version) throw new DeterministicStagedInputUnavailableError('OPPORTUNITY_VERSION_MISSING');
     assertCanonicalJdContentHash(version);
     const jdText=rawJobText(version.raw_content||''); if(!jdText) throw new DeterministicStagedInputUnavailableError('CANONICAL_JD_MISSING');
-    let bindings=await this.db.many<CandidateBinding>(`SELECT b.document_id,b.evidence_graph_id,b.document_text_hash,dc.raw_text FROM profile_projection_source_bindings b JOIN document_contents dc ON dc.document_id=b.document_id JOIN evidence_graphs eg ON eg.id=b.evidence_graph_id AND eg.document_id=b.document_id WHERE b.person_id=? AND b.profile_version=? ORDER BY b.document_id`,[identity.personId,identity.profileVersion]);
+    let bindings=await this.db.many<CandidateBinding>(`SELECT b.document_id,b.evidence_graph_id,b.document_text_hash,dc.raw_text FROM profile_projection_source_bindings b JOIN document_contents dc ON dc.document_id=b.document_id AND dc.tenant_id=b.tenant_id AND dc.person_id=b.person_id JOIN evidence_graphs eg ON eg.id=b.evidence_graph_id AND eg.document_id=b.document_id AND eg.tenant_id=b.tenant_id AND eg.person_id=b.person_id WHERE b.tenant_id=? AND b.person_id=? AND b.profile_version=? ORDER BY b.document_id`,[identity.tenantId,identity.personId,identity.profileVersion]);
     if(!bindings.length) bindings=await this.recoverExactCandidateBinding(identity);
     if(!bindings.length) throw new DeterministicStagedInputUnavailableError('PROFILE_SOURCE_PROVENANCE_MISSING');
     if(context.policy_version==='staged-v6'&&bindings.length!==1)throw new DeterministicStagedInputUnavailableError('MULTIPLE_CANDIDATE_SOURCES_REQUIRE_CONTEXT_POLICY');
@@ -97,11 +99,11 @@ export class ProductionStagedInputAdapter {
     const evidence=(await Promise.all(sources.map(async source=>{
       const ordinal=source.plane==='JD'?1:candidateSources.findIndex(item=>item.id===source.id)+1;
       const key={sourceFingerprint:sourceFingerprint([source]),modelId:model.id,modelVersion:model.version,modelConfigurationFingerprint:model.configurationFingerprint??"unconfigured"};
-      let cached=await this.cache.cachedClaims(key);
+      let cached=await this.cache.cachedClaims(identity,key);
       if(!cached){
         onStage(`Extracting immutable ${source.plane} source evidence`);
         cached=await extractValidatedSourceClaims(model,source,`${source.plane}-1-`,onStage);
-        await this.cache.cacheClaims(key,source,cached);
+        await this.cache.cacheClaims(identity,key,source,cached);
       }
       return rebaseClaims(cached,source.plane,ordinal);
     }))).flat();
@@ -139,7 +141,7 @@ export class ProductionStagedInputAdapter {
         modelVersion:model.version,
         modelConfigurationFingerprint:model.configurationFingerprint??"unconfigured",
       };
-      let claims=await this.cache.cachedClaims(key);
+      let claims=await this.cache.cachedClaims(identity,key);
       if(!claims){
         onStage(`Extracting immutable ${source.plane} source evidence`);
         try{
@@ -148,7 +150,7 @@ export class ProductionStagedInputAdapter {
           if(source.plane!=='CONTEXT'||!(error instanceof EmptySourceEvidenceError))throw error;
           claims=[];
         }
-        await this.cache.cacheClaims(key,source,claims);
+        await this.cache.cacheClaims(identity,key,source,claims);
       }
       return rebaseClaims(claims,source.plane,ordinal);
     };

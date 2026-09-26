@@ -16,6 +16,7 @@ function option(name: string): string {
 }
 
 const personId = option("--person-id");
+const tenantId = option("--tenant-id");
 const sourcePath = resolve(option("--source"));
 loadUnifiedEnvironment();
 if (!process.env.GROQ_API_KEY?.trim()) loadMantleCredentials();
@@ -25,7 +26,7 @@ const documentHash = createHash("sha256").update(documentText, "utf8").digest("h
 const documentId = `doc-${randomUUID()}`;
 const result = await new ProjectionPipeline().run({
   documentId,
-  personId,
+  scope: { tenantId, personId },
   filename: basename(sourcePath),
   storageUri: `candidate-source-set://sha256/${documentHash}`,
   mimeType: "text/markdown",

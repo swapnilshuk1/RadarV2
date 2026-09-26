@@ -48,9 +48,10 @@ export function evaluatorQueueSummary(snapshot: EvaluatorTelemetrySnapshot | nul
 
 interface EvaluatorControlPanelProps {
   embedded?: boolean;
+  scope?: { tenantId?: string; personId?: string };
 }
 
-export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPanelProps) {
+export function EvaluatorControlPanel({ embedded = false, scope }: EvaluatorControlPanelProps) {
   const [snapshot, setSnapshot] = useState<EvaluatorTelemetrySnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [controlBusy, setControlBusy] = useState(false);
@@ -61,13 +62,13 @@ export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPane
 
   const refresh = useCallback(async () => {
     try {
-      const next = await getEvaluatorTelemetryFn();
+      const next = await getEvaluatorTelemetryFn({ data: scope });
       setSnapshot(next);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Evaluator telemetry unavailable");
     }
-  }, []);
+  }, [scope?.tenantId, scope?.personId]);
 
   const pollingIntervalMs = snapshot?.control.localDaemonRunning ? 3_000 : 30_000;
 
@@ -99,7 +100,7 @@ export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPane
       if (controlBusy) return;
       setControlBusy(true);
       try {
-        const next = await controlEvaluatorFn({ data: { action } });
+        const next = await controlEvaluatorFn({ data: { action, ...scope } });
         setSnapshot(next);
         setError(null);
       } catch (err) {
@@ -108,7 +109,7 @@ export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPane
         setControlBusy(false);
       }
     },
-    [controlBusy],
+    [controlBusy, scope?.tenantId, scope?.personId],
   );
 
   const statusLabel = useMemo(() => evaluatorStatusLabel(snapshot), [snapshot]);

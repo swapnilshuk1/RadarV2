@@ -9,6 +9,9 @@ async function auditPhase8Lineage() {
   const db = getDatabaseAdapter();
   const repos = getRepositories();
   const personId = "swapnil-shukla";
+  const person = await db.one<{ tenant_id: string }>("SELECT tenant_id FROM people WHERE id = ?", [personId]);
+  if (!person?.tenant_id) throw new Error("PROFILE_SCOPE_REQUIRED");
+  const scope = { tenantId: person.tenant_id, personId };
 
   let invariantsPassed = 0;
   let invariantsFailed = 0;
@@ -28,7 +31,7 @@ async function auditPhase8Lineage() {
   // INVARIANT 2: Evidence Invariant
   // Every projection is backed by an EvidenceGraph (or golden profile backup).
   console.log("\n[2] Auditing Evidence Invariant...");
-  const evGraph = await repos.documents.getLatestEvidenceGraph(personId);
+  const evGraph = await repos.documents.getLatestEvidenceGraph(scope);
   if (evGraph && Array.isArray(evGraph.facts) && evGraph.facts.length > 0) {
     console.log(`  ✓ EvidenceGraph exists with ${evGraph.facts.length} extracted facts. Model: ${evGraph.provenance.model}`);
     invariantsPassed++;
@@ -40,13 +43,13 @@ async function auditPhase8Lineage() {
   // INVARIANT 3: Document Content Invariant
   // Every EvidenceGraph references a valid document_contents text_hash in Turso.
   console.log("\n[3] Auditing Document Content Invariant...");
-  const latestDoc = await repos.documents.getLatestDocumentForPerson(personId);
+  const latestDoc = await repos.documents.getLatestDocumentForPerson(scope);
   if (latestDoc) {
-    let content = await repos.documents.getDocumentContent(latestDoc.id);
+    let content = await repos.documents.getDocumentContent(scope, latestDoc.id);
     if (!content) {
       // Auto-heal legacy test document by populating document_contents
-      await repos.documents.saveDocumentContent(latestDoc.id, "Sample Executive Resume Text", `hash-legacy-${latestDoc.id}`);
-      content = await repos.documents.getDocumentContent(latestDoc.id);
+      await repos.documents.saveDocumentContent(scope, latestDoc.id, "Sample Executive Resume Text", `hash-legacy-${latestDoc.id}`);
+      content = await repos.documents.getDocumentContent(scope, latestDoc.id);
     }
     if (content && content.textHash) {
       console.log(`  ✓ DocumentContent exists for doc ${latestDoc.id}. TextHash: ${content.textHash.slice(0, 12)}...`);
@@ -90,7 +93,7 @@ async function auditPhase8Lineage() {
 
   // INVARIANT 5: Career Intent Invariant (ADR-012)
   console.log("\n[5] Auditing Career Intent Invariant (ADR-012)...");
-  const intent = await repos.documents.getLatestCareerIntent(personId);
+  const intent = await repos.documents.getLatestCareerIntent(scope);
   if (intent) {
     console.log(`  ✓ Explicit CareerIntent v${intent.version || 1} exists. Min Salary: $${intent.minSalaryUsd || 0}, Locations: ${intent.preferredLocations.join(", ")}`);
     invariantsPassed++;

@@ -10,6 +10,7 @@ interface HeroProps {
   totalCount: number;
   focusTopic: string | null;
   readTime?: string;
+  scope?: { tenantId?: string; personId?: string };
 }
 
 export function Hero({
@@ -20,13 +21,14 @@ export function Hero({
   totalCount,
   focusTopic,
   readTime,
+  scope,
 }: HeroProps) {
   return (
     <header className="border-b border-border bg-background">
       <div className="memo-container py-8 sm:py-9">
         {/* Nav Sub-Header */}
         <div className="flex items-center justify-between gap-3">
-          <Link to="/" className="label-mono hover:text-foreground transition-colors font-normal">
+          <Link to="/" search={scope} className="label-mono hover:text-foreground transition-colors font-normal">
             ← Shortlist
           </Link>
           <span className="label-mono font-normal text-muted-foreground">

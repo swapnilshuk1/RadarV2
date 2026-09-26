@@ -2,11 +2,18 @@ import { createServerFn } from "@tanstack/react-start";
 import { OpportunityService } from "./opportunity-service";
 import { requireAuthUser } from "../auth/guard";
 
+type CandidateScopeRequest = { tenantId?: string; personId?: string };
+function candidateScope(data?: CandidateScopeRequest) {
+  if (Boolean(data?.tenantId) !== Boolean(data?.personId)) throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
+  return data;
+}
+
 export const getOpportunitiesFn = createServerFn({ method: "GET" })
-  .validator((d?: { categoryId?: string }) => d)
+  .validator((d?: { categoryId?: string } & CandidateScopeRequest) => d)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    return OpportunityService.listForUser(user.id, { categoryId: data?.categoryId });
+    const scope = candidateScope(data);
+    return OpportunityService.listForUser(user.id, { categoryId: data?.categoryId }, scope?.tenantId, scope?.personId);
   });
 
 export const getFeedFn = createServerFn({ method: "GET" })
@@ -16,7 +23,7 @@ export const getFeedFn = createServerFn({ method: "GET" })
       categoryId?: string;
       decisionFilter?: "all" | "unreviewed" | "decided";
       pageSize?: number;
-    }) => d
+    } & CandidateScopeRequest) => d
   )
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
@@ -27,34 +34,42 @@ export const getFeedFn = createServerFn({ method: "GET" })
         categoryId: data?.categoryId as any,
         decisionFilter: data?.decisionFilter,
       },
-      data?.pageSize
+      data?.pageSize,
+      candidateScope(data)?.tenantId,
+      candidateScope(data)?.personId,
     );
   });
 
 export const getShortlistMetricsFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    return OpportunityService.getMetricsForUser(user.id);
+    const scope = candidateScope(data);
+    return OpportunityService.getMetricsForUser(user.id, scope?.tenantId, scope?.personId);
   });
 
 export const getDecidedOpportunitiesFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    return OpportunityService.listDecidedForUser(user.id);
+    const scope = candidateScope(data);
+    return OpportunityService.listDecidedForUser(user.id, scope?.tenantId, scope?.personId);
   });
 
 export const getOpportunityFn = createServerFn({ method: "GET" })
-  .validator((d: string) => d)
-  .handler(async ({ data: jobHash }) => {
+  .validator((d: { jobHash: string } & CandidateScopeRequest) => d)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    return OpportunityService.getForUser(user.id, jobHash);
+    const scope = candidateScope(data);
+    return OpportunityService.getForUser(user.id, data.jobHash, undefined, scope?.tenantId, scope?.personId);
   });
 
 export const getQueueMetricsFn = createServerFn({ method: "GET" })
-  .validator((d: string) => d)
-  .handler(async ({ data: jobHash }) => {
+  .validator((d: { jobHash: string } & CandidateScopeRequest) => d)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    const adj = await OpportunityService.getAdjacentInfo(user.id, jobHash);
+    const scope = candidateScope(data);
+    const adj = await OpportunityService.getAdjacentInfo(user.id, data.jobHash, scope?.tenantId, scope?.personId);
     return {
       currentIndex: adj.currentIndex,
       totalCount: adj.totalCount,
@@ -62,17 +77,19 @@ export const getQueueMetricsFn = createServerFn({ method: "GET" })
   });
 
 export const getNeighboursFn = createServerFn({ method: "GET" })
-  .validator((d: string) => d)
-  .handler(async ({ data: jobHash }) => {
+  .validator((d: { jobHash: string } & CandidateScopeRequest) => d)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    return OpportunityService.neighboursForUser(user.id, jobHash);
+    const scope = candidateScope(data);
+    return OpportunityService.neighboursForUser(user.id, data.jobHash, undefined, scope?.tenantId, scope?.personId);
   });
 
 export const getOpportunityDetailsFn = createServerFn({ method: "GET" })
-  .validator((d: string) => d)
-  .handler(async ({ data: jobHash }) => {
+  .validator((d: { jobHash: string } & CandidateScopeRequest) => d)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    return OpportunityService.getDetailsForUser(user.id, jobHash);
+    const scope = candidateScope(data);
+    return OpportunityService.getDetailsForUser(user.id, data.jobHash, undefined, scope?.tenantId, scope?.personId);
   });
 
 

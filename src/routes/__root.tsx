@@ -19,6 +19,12 @@ import { OnboardingProvider, useOnboarding } from "../components/onboarding/Onbo
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
+  const location = useLocation();
+  const raw = location.search as { tenantId?: unknown; personId?: unknown };
+  const candidateScope =
+    typeof raw.tenantId === "string" && typeof raw.personId === "string"
+      ? { tenantId: raw.tenantId, personId: raw.personId }
+      : {};
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -30,6 +36,7 @@ function NotFoundComponent() {
         <div className="mt-6">
           <Link
             to="/"
+            search={candidateScope}
             className="inline-flex items-center rounded-sm border border-ink bg-ink px-4 py-2 label-mono text-parchment transition-colors hover:bg-parchment hover:text-ink"
           >
             Return to shortlist
@@ -46,6 +53,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }
   console.error("[Root Error Boundary]", error);
   const router = useRouter();
+  const location = useLocation();
+  const raw = location.search as { tenantId?: unknown; personId?: unknown };
+  const candidateScope =
+    typeof raw.tenantId === "string" && typeof raw.personId === "string"
+      ? { tenantId: raw.tenantId, personId: raw.personId }
+      : {};
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
@@ -68,12 +81,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           >
             Try again
           </button>
-          <a
-            href="/"
+          <Link
+            to="/"
+            search={candidateScope}
             className="inline-flex items-center rounded-sm border border-ink/20 px-4 py-2 label-mono text-ink"
           >
             Shortlist
-          </a>
+          </Link>
         </div>
       </div>
     </div>
@@ -113,11 +127,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       }
     }
   },
-  loader: async () => {
+  loader: async ({ location }) => {
     try {
       const user = await getSessionUserFn();
       if (!user) return { metrics: null };
-      const metrics = await getShortlistMetricsFn();
+      const raw = location.search as { tenantId?: unknown; personId?: unknown };
+      const scope = {
+        tenantId: typeof raw.tenantId === "string" ? raw.tenantId : undefined,
+        personId: typeof raw.personId === "string" ? raw.personId : undefined,
+      };
+      if (Boolean(scope.tenantId) !== Boolean(scope.personId)) return { metrics: null };
+      const metrics = await getShortlistMetricsFn({ data: scope });
       return { metrics };
     } catch {
       return { metrics: null };
@@ -174,6 +194,11 @@ function GlobalHeader() {
   const [isDark, setIsDark] = useState(false);
 
   const totalActiveCount = data?.metrics?.totalScreened ?? 3007;
+  const rawSearch = location.search as { tenantId?: unknown; personId?: unknown };
+  const candidateScope =
+    typeof rawSearch.tenantId === "string" && typeof rawSearch.personId === "string"
+      ? { tenantId: rawSearch.tenantId, personId: rawSearch.personId }
+      : {};
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -215,7 +240,7 @@ function GlobalHeader() {
       <div className="memo-container grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 py-2.5">
         {/* Brand & Telemetry */}
         <div className="flex items-center gap-3 shrink-0">
-          <Link to="/" className="flex items-center gap-2 group">
+          <Link to="/" search={candidateScope} className="flex items-center gap-2 group">
             <span className="font-mono text-[0.82rem] font-bold tracking-[0.38em] text-foreground group-hover:text-primary transition-colors">RADAR</span>
           </Link>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.62rem] font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
@@ -230,6 +255,7 @@ function GlobalHeader() {
             <li>
               <Link
                 to="/"
+                search={candidateScope}
                 className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
                   isSelected("/") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
                 }`}
@@ -240,6 +266,7 @@ function GlobalHeader() {
             <li>
               <Link
                 to="/profile"
+                search={candidateScope}
                 className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
                   isSelected("/profile") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
                 }`}
@@ -250,6 +277,7 @@ function GlobalHeader() {
             <li>
               <Link
                 to="/decisions"
+                search={candidateScope}
                 className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
                   isSelected("/decisions") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
                 }`}

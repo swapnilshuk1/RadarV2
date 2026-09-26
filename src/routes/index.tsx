@@ -45,18 +45,22 @@ export const Route = createFileRoute("/")({
     ],
   }),
   staleTime: 0,
-  loader: async () => {
+  loader: async ({ location }) => {
+    const raw = location.search as { tenantId?: unknown; personId?: unknown };
+    const deps = { tenantId: typeof raw.tenantId === "string" ? raw.tenantId : undefined, personId: typeof raw.personId === "string" ? raw.personId : undefined };
+    if (Boolean(deps.tenantId) !== Boolean(deps.personId)) throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
     const [opportunitiesList, metrics, searchPlanPreview, capturedEnrichmentRuns] = await Promise.all([
-      getOpportunitiesFn(),
-      getShortlistMetricsFn(),
-      getScrapePlanPreviewFn(),
-      getCapturedEnrichmentRunsFn(),
+      getOpportunitiesFn({ data: deps }),
+      getShortlistMetricsFn({ data: deps }),
+      getScrapePlanPreviewFn({ data: deps }),
+      getCapturedEnrichmentRunsFn({ data: deps }),
     ]);
     return {
       opportunitiesList,
       metrics,
       searchPlanPreview,
       capturedEnrichmentRuns,
+      scope: deps,
     };
   },
   component: Shortlist,
@@ -77,8 +81,8 @@ export function isCurrentDossierResponse(
 }
 
 function Shortlist() {
-  const { opportunitiesList, metrics, searchPlanPreview, capturedEnrichmentRuns } = Route.useLoaderData();
-  const { decide: recordDecision } = useDecisions();
+  const { opportunitiesList, metrics, searchPlanPreview, capturedEnrichmentRuns, scope } = Route.useLoaderData();
+  const { decide: recordDecision } = useDecisions(scope);
   const { progress, markArrivalSeen } = useOnboarding();
   const [open, setOpen] = useState<string | null>(null);
   const [openedTimes, setOpenedTimes] = useState<Record<string, number>>({});
@@ -101,7 +105,7 @@ function Shortlist() {
 
   useEffect(() => {
     if (!startingEnrichmentRunId) return;
-    const refresh = () => getCapturedEnrichmentRunsFn()
+    const refresh = () => getCapturedEnrichmentRunsFn({ data: scope })
       .then(setPendingCaptureRuns)
       .catch((error) => console.error("Failed to refresh captured-job enrichment status:", error));
     refresh();
@@ -130,7 +134,7 @@ function Shortlist() {
 
     let active = true;
     setIsLoadingCategory(true);
-    getOpportunitiesFn({ data: { categoryId: selectedCategoryId } })
+    getOpportunitiesFn({ data: { categoryId: selectedCategoryId, ...scope } })
       .then((ops) => {
         if (active) {
           categoryCacheRef.current.set(selectedCategoryId, ops);
@@ -154,7 +158,7 @@ function Shortlist() {
     const cacheKey = dossierCacheKey(opportunity);
     if (dossierByJobHash[cacheKey] !== undefined) return;
     setDossierByJobHash((current) => ({ ...current, [cacheKey]: null }));
-    getOpportunityDetailsFn({ data: opportunity.jobHash })
+    getOpportunityDetailsFn({ data: { jobHash: opportunity.jobHash, ...scope } })
       .then((details) => setDossierByJobHash((current) => {
         if (!isCurrentDossierResponse(opportunity, details.opportunity)) {
           const { [cacheKey]: _discarded, ...withoutMismatchedResponse } = current;
@@ -243,8 +247,8 @@ function Shortlist() {
     setStartingEnrichmentRunId(runId);
     setEnrichmentStartError(null);
     try {
-      await startCapturedEnrichmentFn({ data: { runId } });
-      const runs = await getCapturedEnrichmentRunsFn();
+      await startCapturedEnrichmentFn({ data: { runId, ...scope } });
+      const runs = await getCapturedEnrichmentRunsFn({ data: scope });
       setPendingCaptureRuns(runs);
     } catch (error: any) {
       setEnrichmentStartError(error?.message || "Could not start captured-job enrichment.");
@@ -376,6 +380,7 @@ function Shortlist() {
                 {isBothSkipped ? (
                   <Link
                     to="/profile"
+                    search={scope}
                     className="mono text-[11px] font-bold uppercase tracking-wider bg-foreground text-background px-4 py-2.5 rounded-full hover:opacity-90 transition-opacity shadow-xs"
                   >
                     Complete setup →
@@ -539,6 +544,7 @@ function Shortlist() {
               {(cursorIndex > 0 || activeOps.length > attentionWindow) && (
                 <Link
                   to="/decisions"
+                  search={scope}
                   className="inline-flex items-center text-[11.5px] font-mono text-muted-foreground hover:text-foreground transition-colors"
                   data-testid="escape-hatch-link"
                 >
@@ -606,7 +612,7 @@ function Shortlist() {
             </p>
           )}
 
-          <EvaluatorControlPanel embedded />
+          <EvaluatorControlPanel embedded scope={scope} />
         </details>
       </main>
 

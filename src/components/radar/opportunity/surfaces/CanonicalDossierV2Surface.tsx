@@ -13,6 +13,7 @@ export interface CanonicalDossierV2SurfaceProps {
   totalCount?: number;
   decide: (verb: DecisionVerb) => void;
   dossierState: DossierDecisionState;
+  scope?: { tenantId?: string; personId?: string };
 }
 
 function PropositionBadge({ kind }: { kind: EditorialPropositionKind }) {
@@ -51,6 +52,7 @@ export function CanonicalDossierV2Surface({
   totalCount,
   decide,
   dossierState,
+  scope,
 }: CanonicalDossierV2SurfaceProps) {
   const comp = presentation.composition;
   const isEvaluated = presentation.evaluation.state === "EVALUATED";
@@ -90,7 +92,7 @@ export function CanonicalDossierV2Surface({
       <header className="border-b border-border bg-surface-raised py-4">
         <div className="memo-container flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/" search={scope} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               ← Return to Shortlist
             </Link>
             {currentIndex !== undefined && totalCount !== undefined && (
@@ -326,6 +328,7 @@ export function CanonicalDossierV2Surface({
             <Link
               to="/opportunity/$jobHash"
               params={{ jobHash: neighbors.prev }}
+              search={scope}
               className="dock-link"
             >
               ← PREV
@@ -382,6 +385,7 @@ export function CanonicalDossierV2Surface({
             <Link
               to="/opportunity/$jobHash"
               params={{ jobHash: neighbors.next }}
+              search={scope}
               className="dock-link"
             >
               NEXT →

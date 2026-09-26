@@ -27,10 +27,11 @@ describe('staged production persistence boundary', () => {
   });
   it('keys cached source evidence by immutable fingerprint and exact model configuration identity', async () => {
     const db=getDatabaseAdapter(':memory:'); await runMigrations(db); const store=new SqliteStagedEvaluationStore(db);
-    await store.cacheClaims({sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'},{id:'jd-a'},[{id:'JD-1-1'}]);
-    expect(await store.cachedClaims({sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'})).toEqual([{id:'JD-1-1'}]);
-    expect(await store.cachedClaims({sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-b'})).toBeUndefined();
-    expect(await store.cachedClaims({sourceFingerprint:'content-b',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'})).toBeUndefined();
+    const scope={tenantId:'tenant',personId:'person'};
+    await store.cacheClaims(scope,{sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'},{id:'jd-a'},[{id:'JD-1-1'}]);
+    expect(await store.cachedClaims(scope,{sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'})).toEqual([{id:'JD-1-1'}]);
+    expect(await store.cachedClaims(scope,{sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-b'})).toBeUndefined();
+    expect(await store.cachedClaims(scope,{sourceFingerprint:'content-b',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'})).toBeUndefined();
   });
   it('reuses validated semantic checkpoints across worker restarts but not across model configurations', async () => {
     const db=getDatabaseAdapter(':memory:'); await runMigrations(db);
