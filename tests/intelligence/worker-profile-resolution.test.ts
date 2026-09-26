@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { describe, test, expect, beforeEach } from "vitest";
 import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
@@ -7,7 +7,6 @@ import { DatabaseAdapter, QueryParams } from "../../src/data/database";
 import { type CandidateProjection } from "../../src/lib/domain/candidate_projection";
 import { TenantScopedPersonStore } from "../../src/data/sqlite/repositories/TenantScopedPersonStore";
 import { deriveCandidateProjectionVersion } from "../../src/data/sqlite/repositories/profile-projection-version";
-import * as staticProfileModule from "../../src/data/candidate-profile";
 
 class TestSqliteAdapter implements DatabaseAdapter {
   constructor(private db: InstanceType<typeof Database>) {}
@@ -268,18 +267,11 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
     expect(jobRow.last_error).toContain("Simulated worker processing failure");
   });
 
-  test("TEST 7: Static candidate-profile seed is NOT consulted by EvaluationWorker during processing", async () => {
-    // Spy on candidateProfile object access to prove it is completely decoupled
-    const staticProfileSpy = vi.spyOn(staticProfileModule, "candidateProfile", "get");
-
+  test("TEST 7: EvaluationWorker consumes only the persisted scoped projection", async () => {
     const job = seedEvaluationContextAndJob("job_test_7", "{}", "user_alpha", "tenant_alpha", "plan_alpha");
     const result = await worker.processJob(job);
 
     expect(result.status).toBe("completed");
-    // Verify that the static seed getter was never invoked
-    expect(staticProfileSpy).not.toHaveBeenCalled();
-
-    staticProfileSpy.mockRestore();
   });
 
   test("TEST 8: missing authoritative projection materializes NOT_EVALUABLE without a score or verdict", async () => {

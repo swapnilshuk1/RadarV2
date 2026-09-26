@@ -1,8 +1,6 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { PersonStore } from "../../../domain/repositories";
 import type { Person, ResumeVersion } from "../../../domain/entities";
-import { type CandidateProjection, validateCandidateProjection } from "../../../lib/domain/candidate_projection";
-import { versionCandidateProjection } from "./profile-projection-version";
 
 export class SqlitePersonStore implements PersonStore {
   constructor(private db: DatabaseAdapter) {}
@@ -54,96 +52,9 @@ export class SqlitePersonStore implements PersonStore {
     };
   }
 
-  async getCandidateState(personId: string): Promise<any | undefined> {
-    const row = await this.db.one<{ candidate_state: string }>(
-      `SELECT candidate_state FROM people WHERE id = ?`,
-      [personId]
-    );
-    if (!row || !row.candidate_state) return undefined;
-    try {
-      return JSON.parse(row.candidate_state);
-    } catch (e) {
-      console.error("[SqlitePersonStore] Failed to parse candidate_state JSON for user:", personId);
-      return undefined;
-    }
-  }
-
-  async saveCandidateState(personId: string, state: any): Promise<void> {
-    const stateStr = JSON.stringify(state);
-    await this.db.execute(
-      `UPDATE people SET candidate_state = ? WHERE id = ?`,
-      [stateStr, personId]
-    );
-  }
-
-  async saveProjection(personId: string, projection: CandidateProjection): Promise<void> {
-    const validation = validateCandidateProjection(projection);
-    if (!validation.valid) {
-      console.warn(
-        `[SqlitePersonStore.saveProjection] Warning: saving projection for ${personId} with missing fields: [${validation.missingFields.join(", ")}]`
-      );
-    }
-
-    const persistedProjection = versionCandidateProjection(projection);
-    // A projection is an immutable evaluation input. Its content-addressed
-    // version is therefore also its durable row identity.
-    const profileId = `profile-${personId}-${persistedProjection.profileVersion}`;
-    const projectionJson = JSON.stringify(persistedProjection);
-    const now = new Date().toISOString();
-    
-    // Extract queryable scalar columns from projection
-    const currentTitle = persistedProjection.attainedTitle?.trim() || "Unknown";
-    const yearsExperience = persistedProjection.yearsOfExperience || 0;
-    const archetype = persistedProjection.archetype?.trim() || "Unknown";
-    const preferredWorkModel = persistedProjection.preferredWorkModel || "ANY";
-
-    await this.db.execute(
-      `
-      INSERT INTO career_profiles (
-        id, person_id, timeline, skills, 
-        projection_json, projection_generated_at,
-        current_title, years_experience, archetype, preferred_work_model,
-        created_at, updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO NOTHING
-      `,
-      [
-        profileId, personId, "[]", "[]", // Dummy timeline/skills for NOT NULL constraints
-        projectionJson, now,
-        currentTitle, yearsExperience, archetype, preferredWorkModel,
-        now, now
-      ]
-    );
-  }
   
   async saveResumeVersion(version: ResumeVersion): Promise<void> {
     throw new Error("Method not implemented.");
-  }
-
-  async getLatestProjection(personId: string): Promise<CandidateProjection | undefined> {
-    const row = await this.db.one<{ projection_json: string }>(
-      `SELECT projection_json FROM career_profiles WHERE person_id = ? ORDER BY projection_generated_at DESC, rowid DESC LIMIT 1`,
-      [personId]
-    );
-    if (!row || !row.projection_json) {
-      return undefined;
-    }
-    
-    try {
-      const parsed = JSON.parse(row.projection_json) as CandidateProjection;
-      const validation = validateCandidateProjection(parsed);
-      if (!validation.valid) {
-        console.error(
-          `[SqlitePersonStore] Stored projection for user '${personId}' failed integrity check: missing [${validation.missingFields.join(", ")}]. Stored projection is invalid/incomplete.`
-        );
-        return undefined;
-      }
-      return versionCandidateProjection(parsed);
-    } catch (e) {
-      console.error("[SqlitePersonStore] Failed to parse projection_json:", personId);
-      return undefined;
-    }
   }
 
   

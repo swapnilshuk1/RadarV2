@@ -511,7 +511,7 @@ describe("Shortlist canonical dossier presentation contract", () => {
     expect(loaderSource).toContain("getOpportunitiesFn");
     expect(loaderSource).not.toContain("getOpportunityDetailsFn");
     expect(routeSource).toContain("const [dossierByJobHash");
-    expect(routeSource).toContain("getOpportunityDetailsFn({ data: opportunity.jobHash })");
+    expect(routeSource).toContain("getOpportunityDetailsFn({ data: { jobHash: opportunity.jobHash, ...scope } })");
     expect(routeSource).toContain("onExpand(o)");
   });
 

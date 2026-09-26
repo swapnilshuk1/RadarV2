@@ -9,7 +9,6 @@
 import { getDatabase } from "../../data/sqlite/provider";
 import type { CandidateProjection, Claim, Evidence } from "../domain/candidate";
 import type { CandidateIntent } from "../domain/intent";
-import rawProfile from "../../data/candidate-profile.json";
 
 let cachedDossier: {
   projection: CandidateProjection;
@@ -35,7 +34,8 @@ export class CandidateIntelligencePipeline {
     if (cachedDossier && !profilePath && !providedProfile) {
       return cachedDossier;
     }
-    let raw: any = providedProfile || rawProfile;
+    if (!providedProfile) throw new Error("CANDIDATE_PROFILE_REQUIRED");
+    let raw: any = providedProfile;
 
     if (!providedProfile && typeof window === "undefined") {
       try {

@@ -28,6 +28,7 @@ import {
 } from "../serving/EvaluationServingEngine";
 import { RematerializationMetricCollector } from "./RematerializationMetrics";
 import { AsyncConcurrencyPool } from "./AsyncConcurrencyPool";
+import { TenantScopedPersonStore } from "../../../data/sqlite/repositories/TenantScopedPersonStore";
 import type {
   RematerializeOptions,
   BatchReconciliationReport,
@@ -35,7 +36,6 @@ import type {
   RematerializationState,
   ContinuousMigrationSummary,
 } from "./RematerializationTypes";
-import { candidateProfile } from "../../../data/candidate-profile";
 import {
   validateCandidateProjection,
   type CandidateProjection,
@@ -117,22 +117,11 @@ export class EvaluationRematerializer {
     await Promise.all(
       distinctPersonIds.map(async (personId) => {
         try {
-          let projection = await repos.people.getLatestProjection(personId);
-          if (!projection) {
-            try {
-              const { syncCanonicalCandidateProjection } = await import("../candidate-sync");
-              projection = await syncCanonicalCandidateProjection(personId).catch(() => undefined);
-            } catch {}
-          }
+          const tenantId = rows.find((row) => row.person_id === personId)?.tenant_id;
+          let projection = tenantId ? await new TenantScopedPersonStore(db, { tenantId, personId }).getLatestProjection(personId) : undefined;
 
           if (!projection) {
-            // Safe transformation fallback using explicit builder validation (no blind casting)
-            const builder = new CandidateProjectionBuilderImpl();
-            const candidateProj = builder.fromProfile(candidateProfile);
-            const validation = validateCandidateProjection(candidateProj);
-            if (validation.valid) {
-              projection = candidateProj;
-            }
+            throw new Error("CANONICAL_CANDIDATE_PROJECTION_REQUIRED");
           }
 
           projectionsMap.set(personId, projection || null);

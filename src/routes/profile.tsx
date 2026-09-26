@@ -86,9 +86,11 @@ function ProfilePage() {
 
           if (res.status === "COMPLETED") {
             markEvidenceProvided();
+            setIsUploading(false);
             await router.invalidate();
           } else if (res.status === "FAILED") {
             setUploadError(res.errorMessage || "Pipeline processing failed.");
+            setIsUploading(false);
           }
         }
       } catch (err: any) {
@@ -132,7 +134,6 @@ function ProfilePage() {
 
       if (res.success && res.documentId) {
         setActiveDocId(res.documentId);
-        markEvidenceProvided();
       } else {
         setUploadError("Failed to initiate file upload.");
         setIsUploading(false);
@@ -162,7 +163,6 @@ function ProfilePage() {
 
       if (res.success && res.documentId) {
         setActiveDocId(res.documentId);
-        markEvidenceProvided();
       } else {
         setUploadError("Failed to initiate text upload.");
         setIsUploading(false);
@@ -293,12 +293,12 @@ function ProfilePage() {
                 Upload Executive Résumé
               </p>
               <p className="text-[11.5px] text-muted-foreground mt-0.5">
-                Supports `.pdf`, `.docx`, `.doc`, `.txt`, `.md`
+                   Supports `.pdf`, `.docx`, `.txt`
               </p>
             </div>
             <input
               type="file"
-              accept=".pdf,.docx,.doc,.txt,.md"
+                accept=".pdf,.docx,.txt"
               className="hidden"
               id="resume-file-input"
               onChange={(e) => {

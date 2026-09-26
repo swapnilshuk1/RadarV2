@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRepositories } from "../../data/sqlite/provider";
+import { getDatabaseAdapter } from "../../data/database";
 import { requireAuthUser } from "../auth/guard";
 
 export function sanitizeAttentionWindow(val: unknown): number {
@@ -12,9 +12,8 @@ export function sanitizeAttentionWindow(val: unknown): number {
 
 export const getUserPreferencesFn = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireAuthUser();
-  const repos = getRepositories();
-  const state = (await repos.people.getCandidateState(user.id)) || {};
-  const attentionWindow = sanitizeAttentionWindow(state.attentionWindow ?? (state as any).intent?.maxMonthlyPursuits);
+  const row = await getDatabaseAdapter().one<{attention_window:number}>("SELECT attention_window FROM user_preferences WHERE user_id = ?", [user.id]);
+  const attentionWindow = sanitizeAttentionWindow(row?.attention_window);
   return { success: true, preferences: { attentionWindow } };
 });
 
@@ -22,19 +21,7 @@ export const saveUserPreferencesFn = createServerFn({ method: "POST" })
   .validator((p: { attentionWindow?: number }) => p)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    const repos = getRepositories();
-    const currentState = (await repos.people.getCandidateState(user.id)) || {};
     const sanitizedWindow = sanitizeAttentionWindow(data.attentionWindow);
-    
-    const updatedState = {
-      ...currentState,
-      attentionWindow: sanitizedWindow,
-      intent: {
-        ...((currentState as any).intent || {}),
-        maxMonthlyPursuits: sanitizedWindow, // Derived compatibility projection
-      },
-    };
-
-    await repos.people.saveCandidateState(user.id, updatedState);
+    await getDatabaseAdapter().execute("INSERT INTO user_preferences(user_id, attention_window, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(user_id) DO UPDATE SET attention_window=excluded.attention_window, updated_at=CURRENT_TIMESTAMP", [user.id, sanitizedWindow]);
     return { success: true, attentionWindow: sanitizedWindow };
   });

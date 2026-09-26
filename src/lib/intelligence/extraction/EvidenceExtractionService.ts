@@ -62,17 +62,11 @@ export class EvidenceExtractionService {
     if (this.model) return this.bedrockExtract(input, graphId, now);
 
     if (!this.apiKey && this.bedrockToken) {
-      try {
-        return await this.bedrockExtract(input, graphId, now);
-      } catch (err: any) {
-        console.warn(`[EvidenceExtractionService] Bedrock extraction failed: ${err.message}; using heuristic fallback.`);
-        return this.heuristicExtract(input, graphId, now);
-      }
+      return this.bedrockExtract(input, graphId, now);
     }
 
     if (!this.apiKey) {
-      console.warn("[EvidenceExtractionService] No configured extraction credential found; falling back to heuristic parsing.");
-      return this.heuristicExtract(input, graphId, now);
+      throw new Error("CANDIDATE_EVIDENCE_PROVIDER_UNAVAILABLE");
     }
 
     const cleanText = input.documentText.slice(0, 10000).replace(/\s+/g, " ").trim();
@@ -139,14 +133,9 @@ Return ONLY a JSON object formatted as:
       const parsed = JSON.parse(content);
       const rawFacts = Array.isArray(parsed.facts) ? parsed.facts : [];
 
-      const facts: ExtractedFact[] = rawFacts.map((f: any, idx: number) => ({
-        id: `fact-${input.documentId}-${idx + 1}`,
-        type: (f.type as FactType) || "OTHER",
-        value: String(f.value || ""),
-        confidence: typeof f.confidence === "number" ? f.confidence : 0.8,
-        sourceSpan: String(f.sourceSpan || ""),
-        justification: String(f.justification || "")
-      }));
+      const facts = rawFacts.map((fact: unknown, index: number) => this.toExtractedFact(fact, input.documentText, input.documentId, index))
+        .filter((fact: ExtractedFact | undefined): fact is ExtractedFact => Boolean(fact));
+      if (facts.length !== rawFacts.length || facts.length === 0) throw new Error("CANDIDATE_EVIDENCE_GROUNDING_INVALID");
 
       return {
         id: graphId,
@@ -161,10 +150,7 @@ Return ONLY a JSON object formatted as:
           createdAt: now
         }
       };
-    } catch (err: any) {
-      console.warn(`[EvidenceExtractionService] LLM extraction failed: ${err.message}; using heuristic fallback.`);
-      return this.heuristicExtract(input, graphId, now);
-    }
+    } catch (err: any) { throw new Error(`CANDIDATE_EVIDENCE_EXTRACTION_FAILED: ${err.message}`); }
   }
 
   /**
@@ -204,13 +190,13 @@ Return ONLY a JSON object formatted as:
     };
     const output = await model.generate(
       `You are a factual candidate-evidence extraction engine. Extract discrete facts from the supplied candidate document.\n\nRules:\n1. Do not infer candidate intent, preferences, future plans, or eligibility.\n2. Each sourceSpan must be an exact contiguous quotation from the supplied document.\n3. Preserve original quantities, currencies, titles, employers, and dates.\n4. Classify each fact as EMPLOYMENT, ACHIEVEMENT, TECHNOLOGY, LEADERSHIP, EDUCATION, LOCATION, or OTHER.\n5. Return only the requested JSON object.`,
-      { documentText: input.documentText },
+      { documentText: input.documentText.slice(0, 10000) },
       responseSchema,
     ) as { facts?: unknown[] };
     const facts = (Array.isArray(output.facts) ? output.facts : [])
       .map((fact, index) => this.toExtractedFact(fact, input.documentText, input.documentId, index))
       .filter((fact): fact is ExtractedFact => Boolean(fact));
-    if (facts.length === 0) throw new Error("Bedrock returned no source-grounded candidate facts");
+    if (facts.length !== (Array.isArray(output.facts) ? output.facts.length : 0) || facts.length === 0) throw new Error("CANDIDATE_EVIDENCE_GROUNDING_INVALID");
     return {
       id: graphId,
       personId: input.personId,
@@ -230,18 +216,20 @@ Return ONLY a JSON object formatted as:
     if (!value || typeof value !== "object") return undefined;
     const fact = value as Partial<ExtractedFact>;
     const sourceSpan = typeof fact.sourceSpan === "string" ? fact.sourceSpan.trim() : "";
-    if (!sourceSpan || !rawText.includes(sourceSpan)) return undefined;
+    if (!sourceSpan || !rawText.includes(sourceSpan) || typeof fact.value !== "string" || !fact.value.trim() || typeof fact.justification !== "string" || !fact.justification.trim()) return undefined;
     const allowedTypes: FactType[] = ["EMPLOYMENT", "ACHIEVEMENT", "TECHNOLOGY", "LEADERSHIP", "EDUCATION", "LOCATION", "OTHER"];
+    if (!allowedTypes.includes(fact.type as FactType) || typeof fact.confidence !== "number" || fact.confidence < 0 || fact.confidence > 1) return undefined;
     return {
       id: `fact-${documentId}-${index + 1}`,
-      type: allowedTypes.includes(fact.type as FactType) ? fact.type as FactType : "OTHER",
-      value: typeof fact.value === "string" ? fact.value : sourceSpan,
-      confidence: typeof fact.confidence === "number" && fact.confidence >= 0 && fact.confidence <= 1 ? fact.confidence : 0.8,
+      type: fact.type as FactType,
+      value: fact.value.trim(),
+      confidence: fact.confidence,
       sourceSpan,
-      justification: typeof fact.justification === "string" ? fact.justification : "Source-grounded fact extraction",
+      justification: fact.justification.trim(),
     };
   }
 
+  /** Test-only helper; production extract() never promotes heuristic output. */
   private heuristicExtract(input: EvidenceExtractionInput, graphId: string, createdAt: string): EvidenceGraph {
     const lines = input.documentText.split("\n").map(l => l.trim()).filter(Boolean);
     const facts: ExtractedFact[] = lines.slice(0, 30).map((line, idx) => ({

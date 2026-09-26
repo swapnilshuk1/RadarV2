@@ -58,7 +58,7 @@ export function reuseEvidenceGraphForOwner(
   personId: string,
   documentId: string,
 ): EvidenceGraph | undefined {
-  if (!existingGraph || existingGraph.personId !== personId) return undefined;
+  if (!existingGraph || existingGraph.personId !== personId || existingGraph.provenance.model === "heuristic") return undefined;
   return {
     ...existingGraph,
     id: `ev-graph-${documentId}-dedup`,
@@ -138,12 +138,15 @@ export class ProjectionPipeline {
       let evidenceGraph: EvidenceGraph | undefined;
       if (currentStage === "EVIDENCE_EXTRACTED") {
         await this.repos.documents.updateDocumentStage(scope, documentId, "EVIDENCE_EXTRACTED", "PROCESSING");
+        const persistedGraph = await this.repos.documents.getEvidenceGraphForDocument(scope, documentId);
+        const replaceHeuristicGraph = persistedGraph?.provenance.model === "heuristic";
+        evidenceGraph = replaceHeuristicGraph ? undefined : persistedGraph;
 
         // Content can be reused only inside the same candidate identity. A hash
         // proves identical text, never shared ownership or provenance.
-        if (textHash) {
+        if (!evidenceGraph && textHash) {
           const existingGraph = await this.repos.documents.findExistingEvidenceGraphByTextHash(scope, textHash);
-          const reusableGraph = reuseEvidenceGraphForOwner(existingGraph, personId, documentId);
+          const reusableGraph = existingGraph?.provenance.model === "heuristic" ? undefined : reuseEvidenceGraphForOwner(existingGraph, personId, documentId);
           if (reusableGraph) {
             console.log(`[ProjectionPipeline] Instant deduplication match for textHash ${textHash.slice(0, 8)}...!`);
             evidenceGraph = reusableGraph;
@@ -160,11 +163,12 @@ export class ProjectionPipeline {
           });
         }
 
-        if (input.requireModelBackedExtraction && evidenceGraph.provenance.model === "heuristic") {
+        if (evidenceGraph.provenance.model === "heuristic") {
           throw new Error("AUTHORITATIVE_SOURCE_EXTRACTION_UNAVAILABLE");
         }
 
-        await this.repos.documents.saveEvidenceGraph(scope, evidenceGraph);
+        if (replaceHeuristicGraph) await this.repos.documents.replaceEvidenceGraphForDocument(scope, evidenceGraph);
+        else if (!(await this.repos.documents.getEvidenceGraphForDocument(scope, documentId))) await this.repos.documents.saveEvidenceGraph(scope, evidenceGraph);
         currentStage = "NORMALIZED";
       } else {
         evidenceGraph = await this.repos.documents.getEvidenceGraphForDocument(scope, documentId);

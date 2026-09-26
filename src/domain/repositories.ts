@@ -160,14 +160,10 @@ export interface PersonStore {
   registerPerson(person: Person): Promise<void>;
   getPersonByEmail(email: string): Promise<Person | undefined>;
   
-  saveProjection(personId: string, projection: CandidateProjection): Promise<void>;
   saveResumeVersion(version: ResumeVersion): Promise<void>;
   
-  getLatestProjection(personId: string): Promise<CandidateProjection | undefined>;
   getResumeVersions(candidateProfileId: string): Promise<ResumeVersion[]>;
 
-  getCandidateState(personId: string): Promise<any | undefined>;
-  saveCandidateState(personId: string, state: any): Promise<void>;
 }
 
 export interface DecisionSupportStore {

@@ -17,7 +17,7 @@ import { DatabaseAdapter, QueryParams } from "@/data/database/adapter";
 import { CanonicalIngestionService } from "@/lib/acquisition/CanonicalIngestionService";
 import { CanonicalEvaluator } from "@/lib/intelligence/evaluation/CanonicalEvaluator";
 import { CandidateProjectionBuilderImpl } from "@/lib/intelligence/builders/CandidateProjectionBuilder";
-import { candidateProfile } from "@/data/candidate-profile";
+import { syntheticCandidateProfile as candidateProfile } from "../fixtures/synthetic-candidate-profile";
 import { MemoryBlobStore } from "@/lib/storage/blob-store";
 import {
   EXTRACTOR_VERSION,

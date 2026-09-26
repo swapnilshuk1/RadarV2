@@ -12,8 +12,6 @@
  * 5. Distortion Metric: Only successfully recovered and comparable records are included in the denominator.
  */
 
-import { CandidateProjectionBuilderImpl } from "../intelligence/builders/CandidateProjectionBuilder";
-import { candidateProfile } from "../../data/candidate-profile";
 import { runEngineSingle } from "../intelligence/engine";
 import { EvidenceGate } from "../intelligence/gates/EvidenceGate";
 import { fastFetchDetail } from "../../../scripts/scraper/utils/http-fetch";
@@ -184,9 +182,8 @@ const GENERIC_ATS_SELECTORS = [
 export class HistoricalRecoveryEngine {
   private candidateProjection: any;
 
-  constructor() {
-    const builder = new CandidateProjectionBuilderImpl();
-    this.candidateProjection = builder.fromProfile(candidateProfile);
+  constructor(candidateProjection: unknown) {
+    this.candidateProjection = candidateProjection;
   }
 
   /**

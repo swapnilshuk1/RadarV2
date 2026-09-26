@@ -4,6 +4,8 @@ import { serveEvaluation } from "../../src/lib/intelligence/serving/EvaluationSe
 import type { CanonicalIntrinsicEvaluationPayload } from "../../src/lib/intelligence/serving/EvaluationServingEngine";
 import { getRepositories } from "../../src/data/sqlite/provider";
 import { getDatabaseAdapter } from "../../src/data/database";
+import { TenantScopedPersonStore } from "../../src/data/sqlite/repositories/TenantScopedPersonStore";
+import { syntheticCandidateProfile } from "../fixtures/synthetic-candidate-profile";
 
 describe("Headspace Serving Contract Regression Suite", () => {
   const userId = "ms6i7e3y-4x0chy5fy";
@@ -25,9 +27,8 @@ describe("Headspace Serving Contract Regression Suite", () => {
 
     // 1. Seed candidate projection with attention window 5
     const { CandidateProjectionBuilderImpl } = await import("../../src/lib/intelligence/builders/CandidateProjectionBuilder");
-    const { candidateProfile } = await import("../../src/data/candidate-profile");
-    const baseProj = new CandidateProjectionBuilderImpl().fromProfile(candidateProfile);
-    await repos.people.saveProjection(userId, {
+    const baseProj = new CandidateProjectionBuilderImpl().fromProfile(syntheticCandidateProfile);
+    await new TenantScopedPersonStore(db, { tenantId, personId: userId }).saveProjection(userId, {
       ...baseProj,
       attentionWindow: 5,
     });

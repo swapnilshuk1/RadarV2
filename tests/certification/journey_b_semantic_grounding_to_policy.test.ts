@@ -17,7 +17,7 @@ import { CanonicalEvaluator } from "@/lib/intelligence/evaluation/CanonicalEvalu
 import { CandidateProjectionBuilderImpl } from "@/lib/intelligence/builders/CandidateProjectionBuilder";
 import { EvidenceRichnessCalculator } from "@/lib/intelligence/utils/EvidenceRichnessCalculator";
 import { EvidenceGate } from "@/lib/intelligence/gates/EvidenceGate";
-import { candidateProfile } from "@/data/candidate-profile";
+import { syntheticCandidateProfile as candidateProfile } from "../fixtures/synthetic-candidate-profile";
 import type { GroundedOpportunityDimension } from "@/lib/domain/job_projection";
 
 describe("Journey B: Semantic Grounding → Policy Evaluation Boundary", () => {
