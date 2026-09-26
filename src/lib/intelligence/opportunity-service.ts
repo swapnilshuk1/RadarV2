@@ -35,7 +35,12 @@ export type ServiceOptions = { categoryId?: string };
  * Resolves AuthorizedPersonScope strictly through authenticated database membership and person scoping.
  * Zero implicit fallback to default tenants.
  */
-export async function resolveScope(userId: string, requestedTenantId?: string): Promise<AuthorizedPersonScope> {
+export async function resolveScope(
+  userId: string,
+  requestedTenantId?: string,
+  requestedPersonId?: string,
+  requiredPermission: "read:person" | "write:person" = "read:person",
+): Promise<AuthorizedPersonScope> {
   const db = getDatabaseAdapter();
   let tenantId = requestedTenantId;
 
@@ -66,7 +71,7 @@ export async function resolveScope(userId: string, requestedTenantId?: string): 
   }
 
   const authContext = await authenticateTenantMembership(userId, tenantId, db);
-  return authorizePersonScope(authContext, userId, db);
+  return authorizePersonScope(authContext, requestedPersonId || userId, db, requiredPermission);
 }
 
 import { SingleflightOpportunityQueries } from "./serving/singleflight";
@@ -132,8 +137,8 @@ export class OpportunityService {
   /**
    * Computes authoritative canonical aggregate metrics across the active search plan population via SQL aggregation.
    */
-  static async getMetricsForUser(userId: string, requestedTenantId?: string): Promise<CanonicalOpportunityMetrics> {
-    const scope = await resolveScope(userId, requestedTenantId);
+  static async getMetricsForUser(userId: string, requestedTenantId?: string, requestedPersonId?: string): Promise<CanonicalOpportunityMetrics> {
+    const scope = await resolveScope(userId, requestedTenantId, requestedPersonId);
     const queries = this.getServingQueries();
     return queries.getMetrics(scope);
   }
@@ -146,9 +151,10 @@ export class OpportunityService {
     cursor?: OpaqueCursor,
     filters?: FeedFilters,
     pageSize?: number,
-    requestedTenantId?: string
+    requestedTenantId?: string,
+    requestedPersonId?: string,
   ): Promise<FeedPage> {
-    const scope = await resolveScope(userId, requestedTenantId);
+    const scope = await resolveScope(userId, requestedTenantId, requestedPersonId);
     const queries = this.getServingQueries();
     return queries.getFeed(scope, cursor, filters, pageSize);
   }
@@ -156,8 +162,8 @@ export class OpportunityService {
   /**
    * Hydrates exact opportunity DTOs for user decisions independent of feed rank bounds.
    */
-  static async listDecidedForUser(userId: string, requestedTenantId?: string): Promise<Opportunity[]> {
-    const scope = await resolveScope(userId, requestedTenantId);
+  static async listDecidedForUser(userId: string, requestedTenantId?: string, requestedPersonId?: string): Promise<Opportunity[]> {
+    const scope = await resolveScope(userId, requestedTenantId, requestedPersonId);
     const queries = this.getServingQueries();
     const feedItems = await collectDecidedFeedItems(queries, scope);
 
@@ -174,8 +180,8 @@ export class OpportunityService {
    * hydration uses the canonical serving read model, so legacy/corrupt
    * evaluated artifacts cannot become browser-defined recommendations.
    */
-  static async listForUser(userId: string, options?: ServiceOptions, requestedTenantId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity[]> {
-    const scope = await resolveScope(userId, requestedTenantId);
+  static async listForUser(userId: string, options?: ServiceOptions, requestedTenantId?: string, requestedPersonId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity[]> {
+    const scope = await resolveScope(userId, requestedTenantId, requestedPersonId);
     const queries = this.getServingQueries();
     const feedItems = await collectUnreviewedFeedItems(queries, scope, options?.categoryId);
 
@@ -204,8 +210,8 @@ export class OpportunityService {
    * Gets a single computed opportunity DTO by hash strictly within the authorized canonical population.
    * Zero fallback to legacy un-scoped evaluators.
    */
-  static async getForUser(userId: string, jobHash: string, options?: ServiceOptions, requestedTenantId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity | undefined> {
-    const scope = await resolveScope(userId, requestedTenantId);
+  static async getForUser(userId: string, jobHash: string, options?: ServiceOptions, requestedTenantId?: string, requestedPersonId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity | undefined> {
+    const scope = await resolveScope(userId, requestedTenantId, requestedPersonId);
     const queries = this.getServingQueries();
     const opp = await queries.getDossier(scope, jobHash);
     return opp || undefined;
@@ -217,9 +223,10 @@ export class OpportunityService {
   static async getAdjacentInfo(
     userId: string,
     jobHash: string,
-    requestedTenantId?: string
+    requestedTenantId?: string,
+    requestedPersonId?: string,
   ): Promise<{ currentIndex: number; totalCount: number; prev?: any; next?: any }> {
-    const scope = await resolveScope(userId, requestedTenantId);
+    const scope = await resolveScope(userId, requestedTenantId, requestedPersonId);
     const queries = this.getServingQueries();
     const nav = await queries.getNavigation(scope, jobHash);
     if (!nav) {
@@ -245,9 +252,10 @@ export class OpportunityService {
     userId: string,
     jobHash: string,
     options?: ServiceOptions,
-    requestedTenantId?: string
+    requestedTenantId?: string,
+    requestedPersonId?: string,
   ): Promise<{ prev: any; next: any }> {
-    const scope = await resolveScope(userId, requestedTenantId);
+    const scope = await resolveScope(userId, requestedTenantId, requestedPersonId);
     const queries = this.getServingQueries();
     const nav = await queries.getNavigation(scope, jobHash, { categoryId: options?.categoryId as any });
     return {
@@ -264,14 +272,15 @@ export class OpportunityService {
     userId: string,
     jobHash: string,
     options?: ServiceOptions,
-    requestedTenantId?: string
+    requestedTenantId?: string,
+    requestedPersonId?: string,
   ): Promise<{
     opportunity: import("../../data/opportunity-fixtures").ServedOpportunity | undefined;
     currentIndex: number;
     totalCount: number;
     neighbors: { prev: any; next: any };
   }> {
-    const scope = await resolveScope(userId, requestedTenantId);
+    const scope = await resolveScope(userId, requestedTenantId, requestedPersonId);
     const queries = this.getServingQueries();
     const [opp, nav] = await Promise.all([
       queries.getDossier(scope, jobHash),

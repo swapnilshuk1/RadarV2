@@ -4,7 +4,8 @@ import {
   uploadDocumentFn,
   getPipelineStatusFn,
   saveIntentFn,
-  getLatestIntentFn
+  getLatestIntentFn,
+  getDefaultProfileScopeFn
 } from "../lib/intelligence/document-server";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 import { useAttentionPreference } from "../lib/attention-store";
@@ -18,15 +19,27 @@ export const Route = createFileRoute("/profile")({
       { name: "description", content: "Upload executive resume (PDF, DOCX, TXT) and configure career intent." }
     ]
   }),
-  loader: async () => {
-    const intent = await getLatestIntentFn();
-    return { intent };
+  loader: async ({ location }) => {
+    const raw = location.search as { tenantId?: unknown; personId?: unknown };
+    const deps = { tenantId: typeof raw.tenantId === "string" ? raw.tenantId : undefined, personId: typeof raw.personId === "string" ? raw.personId : undefined };
+    if (Boolean(deps.tenantId) !== Boolean(deps.personId)) throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
+    const scope = deps.tenantId && deps.personId ? { tenantId: deps.tenantId, personId: deps.personId } : await getDefaultProfileScopeFn();
+    const intent = await getLatestIntentFn({ data: scope });
+    return { intent, scope };
   },
-  component: ProfilePage
+  component: ProfileRoute
 });
 
+function ProfileRoute() {
+  const { scope } = Route.useLoaderData();
+  return <ProfilePage key={`${scope.tenantId}:${scope.personId}`} />;
+}
+
 function ProfilePage() {
-  const { intent } = Route.useLoaderData();
+  const { intent, scope } = Route.useLoaderData();
+  const requireScope = () => {
+    return scope;
+  };
   const [parsing, setParsing] = useState(false);
   const router = useRouter();
   const navigate = useNavigate();
@@ -66,7 +79,7 @@ function ProfilePage() {
 
     const interval = setInterval(async () => {
       try {
-        const res = await getPipelineStatusFn({ data: { documentId: activeDocId } });
+        const res = await getPipelineStatusFn({ data: { ...requireScope(), documentId: activeDocId } });
         if (res.success && res.stage) {
           setPipelineStage(res.stage);
           setPipelineStatus(res.status || "PROCESSING");
@@ -84,7 +97,7 @@ function ProfilePage() {
     }, 1200);
 
     return () => clearInterval(interval);
-  }, [activeDocId, pipelineStatus, router, markEvidenceProvided]);
+  }, [activeDocId, pipelineStatus, router, markEvidenceProvided, scope]);
 
   const fileToBase64 = (fileToConvert: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -110,6 +123,7 @@ function ProfilePage() {
 
       const res = await uploadDocumentFn({
         data: {
+          ...requireScope(),
           filename: file.name,
           mimeType: file.type || "application/pdf",
           base64Buffer
@@ -139,6 +153,7 @@ function ProfilePage() {
     try {
       const res = await uploadDocumentFn({
         data: {
+          ...requireScope(),
           filename: "pasted_resume_text.txt",
           mimeType: "text/plain",
           documentText: pasteText
@@ -169,6 +184,7 @@ function ProfilePage() {
 
       const result = await saveIntentFn({
         data: {
+          ...requireScope(),
           currency: currency || undefined,
           targetSalaryAmount: targetSalary.trim() ? Number(targetSalary) : undefined,
           // Non-USD salary remains in its source currency until an explicit
@@ -185,7 +201,7 @@ function ProfilePage() {
       if (!presentation.persisted) throw new Error(presentation.message);
       markIntentSet();
       await router.invalidate();
-      if (presentation.navigateHome) navigate({ to: "/" });
+      if (presentation.navigateHome) navigate({ to: "/", search: scope });
     } catch (err: any) {
       console.error("Save intent failed:", err);
     } finally {
@@ -519,7 +535,7 @@ function ProfilePage() {
                   type="button"
                   onClick={() => {
                     markIntentSkipped();
-                    navigate({ to: "/" });
+                    navigate({ to: "/", search: scope });
                   }}
                   className="mono text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-4 cursor-pointer"
                 >

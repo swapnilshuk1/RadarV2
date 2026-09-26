@@ -41,6 +41,22 @@ describe("OAuth scope provisioning", () => {
     expect(raw.prepare("SELECT user_id FROM oauth_accounts").get()).toMatchObject({ user_id: "existing" });
   });
 
+  test("legacy profile admin is promoted into tenant membership authority", async () => {
+    await db.execute("INSERT INTO people (id, email, tenant_id, role) VALUES ('existing', 'new@example.test', 'tenant_active', 'admin')");
+    await db.execute("INSERT INTO users (id, email) VALUES ('existing', 'new@example.test')");
+    await db.execute("INSERT INTO memberships (user_id, tenant_id, role, permissions, status) VALUES ('existing', 'tenant_active', 'member', '[]', 'active')");
+    await provisionOAuthScope(db, identity, () => "unused");
+    expect(raw.prepare("SELECT role FROM memberships WHERE user_id='existing' AND tenant_id='tenant_active'").get()).toMatchObject({ role: "admin" });
+  });
+
+  test("OAuth login never downgrades an existing tenant admin membership", async () => {
+    await db.execute("INSERT INTO people (id, email, tenant_id, role) VALUES ('existing', 'new@example.test', 'tenant_active', 'user')");
+    await db.execute("INSERT INTO users (id, email) VALUES ('existing', 'new@example.test')");
+    await db.execute("INSERT INTO memberships (user_id, tenant_id, role, permissions, status) VALUES ('existing', 'tenant_active', 'admin', '[]', 'active')");
+    await provisionOAuthScope(db, identity, () => "unused");
+    expect(raw.prepare("SELECT role FROM memberships WHERE user_id='existing' AND tenant_id='tenant_active'").get()).toMatchObject({ role: "admin" });
+  });
+
   test("an established but incomplete person is never classified as new", async () => {
     await db.execute("INSERT INTO people (id, email, tenant_id, onboarded) VALUES ('existing', 'new@example.test', 'tenant_active', 0)");
     await db.execute("INSERT INTO users (id, email) VALUES ('existing', 'new@example.test')");

@@ -6,6 +6,12 @@ import { requireAuthUser } from "../auth/guard";
 import { getRepositories } from "../../data/sqlite/provider";
 import { getDatabaseAdapter } from "../../data/database";
 
+type CandidateScopeRequest = { tenantId?: string; personId?: string };
+function requestedCandidateScope(data?: CandidateScopeRequest) {
+  if (Boolean(data?.tenantId) !== Boolean(data?.personId)) throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
+  return data;
+}
+
 let rebuildTimeout: NodeJS.Timeout | null = null;
 
 // Debounced notification after canonical ingestion; legacy JSON is not rebuilt.
@@ -90,10 +96,12 @@ export interface CapturedEnrichmentRun {
 
 /** Captures are shown separately from the shortlist until their enrichment produces an evaluation. */
 export const getCapturedEnrichmentRunsFn = createServerFn({ method: "GET" })
-  .handler(async (): Promise<CapturedEnrichmentRun[]> => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }): Promise<CapturedEnrichmentRun[]> => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const db = getDatabaseAdapter();
     const rows = await db.many<any>(
       `SELECT r.id AS run_id, r.status AS run_status,
@@ -124,11 +132,12 @@ export const getCapturedEnrichmentRunsFn = createServerFn({ method: "GET" })
 
 /** Starts a local, run-scoped worker. The user invokes this explicitly from the shortlist. */
 export const startCapturedEnrichmentFn = createServerFn({ method: "POST" })
-  .validator((data: { runId: string }) => data)
+  .validator((data: { runId: string } & CandidateScopeRequest) => data)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
     const run = await getRepositories().scrapeRuns.getRun(scope, data.runId);
     if (!run) {
       const { TenantIsolationError } = await import("../security/auth");
@@ -170,11 +179,13 @@ export const startCapturedEnrichmentFn = createServerFn({ method: "POST" })
  * display a reconstructed or stale interpretation of the next search.
  */
 export const getScrapePlanPreviewFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
     try {
       const { resolveScraperAuthContext } = await import("../security/scope-resolver");
-      const { scope, activeContext } = await resolveScraperAuthContext(user.id);
+      const requested = requestedCandidateScope(data);
+      const { scope, activeContext } = await resolveScraperAuthContext(user.id, requested?.tenantId, undefined, requested?.personId);
       const { ScraperPlanResolver } = await import("./ScraperPlanResolver");
       const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(scope, activeContext);
       const { compileCoverageVariants } = await import("../../../scripts/scraper/run/acquisition-variants");
@@ -214,14 +225,16 @@ export function getActiveScrapeLock(): { runId: string; startedAt: number } | nu
 }
 
 export const triggerScrapeFn = createServerFn({ method: "POST" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     // 1. Enforce Authentication
     const user = await requireAuthUser();
 
     try {
       console.log("[Server] triggerScrapeFn: resolving verified scraper auth scope…");
       const { resolveScraperAuthContext } = await import("../security/scope-resolver");
-      const { authContext, scope, activeContext } = await resolveScraperAuthContext(user.id);
+      const requested = requestedCandidateScope(data);
+      const { authContext, scope, activeContext } = await resolveScraperAuthContext(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
       const { ScraperPlanResolver } = await import("./ScraperPlanResolver");
       const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(scope, activeContext);
       const repos = getRepositories();
@@ -274,12 +287,13 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
   });
 
 export const getRunEventsFn = createServerFn({ method: "GET" })
-  .validator((d: { runId: string; afterIndex: number }) => d)
+  .validator((d: { runId: string; afterIndex: number } & CandidateScopeRequest) => d)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { runId, afterIndex } = data;
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const scopedRun = await getRepositories().scrapeRuns.getRun(scope, runId);
     if (!scopedRun) {
       const { TenantIsolationError } = await import("../security/auth");
@@ -451,18 +465,22 @@ export async function abortScrapeState(runId: string, force = false) {
 }
 
 export const getActiveScrapeFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     return getRepositories().scrapeRuns.getLatestRun(scope);
   });
 
 export const getLatestRunFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const repos = getRepositories();
 
     // 1. Query Turso Cloud for the caller's scoped latest run
@@ -497,11 +515,12 @@ export const getLatestRunFn = createServerFn({ method: "GET" })
   });
 
 export const getRunProgressFn = createServerFn({ method: "GET" })
-  .validator((d: { runId: string }) => d)
+  .validator((d: { runId: string } & CandidateScopeRequest) => d)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const repos = getRepositories();
 
     const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
@@ -536,11 +555,12 @@ export const getRunProgressFn = createServerFn({ method: "GET" })
   });
 
 export const confirmScrapeFn = createServerFn({ method: "POST" })
-  .validator((d: { runId: string }) => d)
+  .validator((d: { runId: string } & CandidateScopeRequest) => d)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
     const repos = getRepositories();
 
     const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
@@ -567,11 +587,12 @@ export const confirmScrapeFn = createServerFn({ method: "POST" })
   });
 
 export const abortScrapeFn = createServerFn({ method: "POST" })
-  .validator((d: { runId: string }) => d)
+  .validator((d: { runId: string } & CandidateScopeRequest) => d)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
     const repos = getRepositories();
 
     const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
@@ -586,9 +607,11 @@ export const abortScrapeFn = createServerFn({ method: "POST" })
   });
 
 export const getLiveScrapedFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    await import("../security/scope-resolver").then(({ resolveServingScope }) => resolveServingScope(user.id));
+    const requested = requestedCandidateScope(data);
+    await import("../security/scope-resolver").then(({ resolveServingScope }) => resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId));
     // Process-local scrape artifacts have no canonical person/tenant ownership.
     // They are deliberately no longer a production serving authority.
     return [];

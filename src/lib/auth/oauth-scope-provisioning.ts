@@ -29,8 +29,8 @@ export async function provisionOAuthScope(db: DatabaseAdapter, identity: OAuthId
     const tenantId = tenants[0].id;
     const linked = await tx.one<{ user_id: string }>("SELECT user_id FROM oauth_accounts WHERE provider = ? AND provider_user_id = ?", [identity.provider, identity.providerUserId]);
     const person = linked
-      ? await tx.one<{ id: string; onboarded: number }>("SELECT id, onboarded FROM people WHERE id = ?", [linked.user_id])
-      : await tx.one<{ id: string; onboarded: number }>("SELECT id, onboarded FROM people WHERE email = ?", [identity.email]);
+      ? await tx.one<{ id: string; onboarded: number; role: string }>("SELECT id, onboarded, role FROM people WHERE id = ?", [linked.user_id])
+      : await tx.one<{ id: string; onboarded: number; role: string }>("SELECT id, onboarded, role FROM people WHERE email = ?", [identity.email]);
     if (linked && !person) throw new Error("[Auth] OAuth account is linked to a missing person.");
     const personId = person?.id || createId();
     const isNewUser = !person;
@@ -43,7 +43,19 @@ export async function provisionOAuthScope(db: DatabaseAdapter, identity: OAuthId
       await tx.execute("UPDATE people SET tenant_id = ?, name = ?, avatar_url = ?, email_verified = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [tenantId, identity.name, identity.avatarUrl, identity.emailVerified ? 1 : 0, personId]);
     }
     await tx.execute("INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)", [personId, identity.email]);
-    await tx.execute(`INSERT INTO memberships (user_id, tenant_id, role, permissions, status) VALUES (?, ?, 'member', '[]', 'active') ON CONFLICT(user_id, tenant_id) DO UPDATE SET status = 'active', revoked_at = NULL`, [personId, tenantId]);
+    // Reconcile the one historical profile-level admin marker into the
+    // membership authority exactly at OAuth provisioning.  Runtime checks use
+    // memberships only; this avoids a global people.role escape hatch.
+    const membershipRole = person?.role === "admin" ? "admin" : "member";
+    await tx.execute(
+      `INSERT INTO memberships (user_id, tenant_id, role, permissions, status)
+       VALUES (?, ?, ?, '[]', 'active')
+       ON CONFLICT(user_id, tenant_id) DO UPDATE SET
+         role = CASE WHEN excluded.role = 'admin' THEN 'admin' ELSE memberships.role END,
+         status = 'active',
+         revoked_at = NULL`,
+      [personId, tenantId, membershipRole],
+    );
     await tx.execute("INSERT OR IGNORE INTO oauth_accounts (provider, provider_user_id, user_id) VALUES (?, ?, ?)", [identity.provider, identity.providerUserId, personId]);
     return { personId, tenantId, isNewUser, needsOnboarding };
   });

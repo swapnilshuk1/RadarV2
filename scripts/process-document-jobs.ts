@@ -5,10 +5,10 @@ import { ProjectionPipeline } from "../src/lib/intelligence/pipeline/ProjectionP
 
 export async function processNextDocumentJob(workerId = `document-worker-${crypto.randomUUID()}`): Promise<boolean> {
   const db = getDatabaseAdapter();
-  const job = await db.one<{ id: string; person_id: string; document_id: string; payload_json: string; attempts: number; max_attempts: number }>(
-    `SELECT j.id, j.person_id, j.document_id, j.payload_json, j.attempts, j.max_attempts
+  const job = await db.one<{ id: string; tenant_id: string; person_id: string; document_id: string; payload_json: string; attempts: number; max_attempts: number }>(
+    `SELECT j.id, j.tenant_id, j.person_id, j.document_id, j.payload_json, j.attempts, j.max_attempts
      FROM candidate_document_jobs j
-     JOIN candidate_documents d ON d.id = j.document_id AND d.person_id = j.person_id
+     JOIN candidate_documents d ON d.id = j.document_id AND d.tenant_id = j.tenant_id AND d.person_id = j.person_id
      WHERE j.status = 'pending' OR (j.status = 'processing' AND j.locked_at < datetime('now', '-300 seconds'))
      ORDER BY j.created_at LIMIT 1`,
   );
@@ -23,7 +23,7 @@ export async function processNextDocumentJob(workerId = `document-worker-${crypt
   try {
     const payload = JSON.parse(job.payload_json);
     const result = await new ProjectionPipeline().run({
-      documentId: job.document_id, personId: job.person_id, filename: payload.filename,
+      scope: { tenantId: job.tenant_id, personId: job.person_id }, documentId: job.document_id, filename: payload.filename,
       storageUri: `turso://document_contents/${job.document_id}`, mimeType: payload.mimeType,
       documentHash: payload.documentHash, documentText: payload.documentText,
       fileBuffer: payload.base64Buffer ? Buffer.from(payload.base64Buffer, "base64") : undefined,

@@ -1,91 +1,24 @@
-import { execSync } from "child_process";
-import path from "path";
-import fs from "fs";
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
-/**
- * RADAR v2 Production Deployment Pipeline
- * 
- * Target: Oracle Cloud VM (161.118.175.246 / http://161.118.175.246.sslip.io/)
- * SSH Key: C:\Users\swapn\.ssh\oracle_official.key
- * User: ubuntu
- * Directory: /home/ubuntu/radar-local-v2
- * PM2 Process: radar-v2
- */
+const sshKey = path.resolve(process.env.USERPROFILE || process.env.HOME || "", ".ssh", "oracle_official.key");
+const remoteHost = "ubuntu@161.118.175.246";
+const remoteDir = "/home/ubuntu/radar-local-v2";
+const sha = process.argv[2];
 
-const SSH_KEY = path.resolve(process.env.USERPROFILE || process.env.HOME || "", ".ssh", "oracle_official.key");
-const REMOTE_HOST = "ubuntu@161.118.175.246";
-const REMOTE_DIR = "/home/ubuntu/radar-local-v2";
-
-function run(cmd: string, cwd = process.cwd()) {
-  console.log(`\n> ${cmd}`);
-  return execSync(cmd, { cwd, stdio: "inherit" });
-}
+function run(command: string, args: string[]) { console.log(`> ${command} ${args.join(" ")}`); return execFileSync(command, args, { stdio: "inherit" }); }
+function output(command: string, args: string[]) { return execFileSync(command, args, { encoding: "utf8" }).trim(); }
 
 async function deploy() {
-  console.log("============================================================");
-  console.log("       RADAR V2 — ORACLE CLOUD AUTOMATED DEPLOYMENT         ");
-  console.log("============================================================\n");
-  console.log(`Target Host  : ${REMOTE_HOST}`);
-  console.log(`SSH Key      : ${SSH_KEY}`);
-  console.log(`Remote Path  : ${REMOTE_DIR}`);
-  console.log(`Live Service : http://161.118.175.246.sslip.io/`);
-  console.log("────────────────────────────────────────────────────────────\n");
-
-  if (!fs.existsSync(SSH_KEY)) {
-    throw new Error(`SSH private key not found at: ${SSH_KEY}`);
-  }
-
-  // 1. Local Verification
-  console.log("[1/4] Running local TypeScript typecheck...");
-  run("npx tsc --noEmit");
-
-  console.log("\n[2/4] Running local production build verification...");
-  run("npm run build");
-
-  // 2. Git Status and Push
-  console.log("\n[3/4] Checking and pushing Git changes to origin/main...");
-  try {
-    const status = execSync("git status --porcelain").toString();
-    if (status.trim()) {
-      console.log("Staging and committing local changes...");
-      run("git add .");
-      const commitMsg = process.argv[2] || `Deploy update: ${new Date().toISOString()}`;
-      run(`git commit -m "${commitMsg.replace(/"/g, '\\"')}"`);
-    } else {
-      console.log("Working tree clean. Nothing to commit locally.");
-    }
-  } catch (e: any) {
-    console.log("Git commit notice:", e.message);
-  }
-
-  run("git push origin main");
-
-  // 3. Remote Pull, Build, and PM2 Restart
-  console.log("\n[4/4] Deploying to Oracle Cloud Server via SSH...");
-  const remoteCmds = [
-    `cd ${REMOTE_DIR}`,
-    `git fetch origin main`,
-    `git reset --hard origin/main`,
-    `npm install`,
-    `npm run db:migrate`,
-    `npm run build`,
-    `pm2 restart radar-v2`,
-    `pm2 restart radar-enrich || pm2 start npm --name "radar-enrich" -- run enrich`,
-    `pm2 restart radar-evaluate || pm2 start npm --name "radar-evaluate" -- run worker:evaluations`,
-    `pm2 save`,
-    `pm2 status`
-  ].join(" && ");
-
-  const sshCmd = `ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" ${REMOTE_HOST} "${remoteCmds}"`;
-  run(sshCmd);
-
-  console.log("\n============================================================");
-  console.log("      DEPLOYMENT COMPLETE — SERVER RUNNING SUCCESSFULLY     ");
-  console.log("      Live URL: http://161.118.175.246.sslip.io/             ");
-  console.log("============================================================\n");
+  if (!sha || !/^[0-9a-f]{7,64}$/i.test(sha)) throw new Error("Usage: npm run deploy -- <approved-commit-sha>");
+  if (!fs.existsSync(sshKey)) throw new Error(`SSH private key not found: ${sshKey}`);
+  if (output("git", ["status", "--porcelain"])) throw new Error("Refusing deployment from a dirty worktree.");
+  const exactSha = output("git", ["rev-parse", "--verify", `${sha}^{commit}`]);
+  if (output("git", ["rev-parse", "HEAD"]) !== exactSha) throw new Error("Checkout the approved SHA locally before deployment.");
+  run("npm", ["run", "build"]);
+  run("npm", ["run", "db:status"]);
+  const remote = ["set -eu", `cd ${remoteDir}`, "git fetch --all --tags --prune", `git checkout --detach ${exactSha}`, "test -z \"$(git status --porcelain)\"", "npm ci", "npm run build", "npm run db:status", "pm2 stop radar-v2 || true", "pm2 stop radar-enrich || true", "pm2 stop radar-evaluate || true", "pm2 stop radar-documents || true", "npm run db:migrate", "pm2 startOrRestart ecosystem.config.cjs --only radar-v2", "for i in $(seq 1 30); do curl --fail --silent --show-error http://127.0.0.1:3000/login >/dev/null && break; sleep 1; done", "curl --fail --silent --show-error http://127.0.0.1:3000/login >/dev/null", "pm2 save", "echo 'Web started; workers remain stopped pending explicit operator approval.'"].join(" && ");
+  run("ssh", ["-o", "StrictHostKeyChecking=yes", "-i", sshKey, remoteHost, remote]);
 }
-
-deploy().catch(err => {
-  console.error("\n❌ Deployment failed:", err.message);
-  process.exit(1);
-});
+deploy().catch((error: unknown) => { console.error(error); process.exitCode = 1; });

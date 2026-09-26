@@ -29,6 +29,7 @@ interface ReadingSurfaceProps {
   evaluatedAt?: string;
   focusTopic: string | null;
   whyRoleExists: string | null;
+  scope?: { tenantId?: string; personId?: string };
 }
 
 /** Scroll-triggered reveal hook: observes children and adds .animate-reveal on viewport entry */
@@ -99,6 +100,7 @@ export function ReadingSurface({
   evaluatedAt,
   focusTopic,
   whyRoleExists,
+  scope,
 }: ReadingSurfaceProps) {
   const revealRef = useScrollReveal();
   const readTime = estimateReadTime(brief);
@@ -146,6 +148,7 @@ export function ReadingSurface({
         totalCount={totalCount}
         focusTopic={focusTopic}
         readTime={readTime}
+        scope={scope}
       />
 
       {/* CORE MEMORANDUM GRID WITH SECTION PREFERENCES */}
@@ -230,6 +233,7 @@ export function ReadingSurface({
             <Link
               to="/opportunity/$jobHash"
               params={{ jobHash: neighbors.prev }}
+              search={scope}
               className="dock-link"
             >
               ← PREV
@@ -295,6 +299,7 @@ export function ReadingSurface({
             <Link
               to="/opportunity/$jobHash"
               params={{ jobHash: neighbors.next }}
+              search={scope}
               className="dock-link"
             >
               NEXT →

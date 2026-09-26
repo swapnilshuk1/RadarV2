@@ -18,6 +18,7 @@ interface ExecutiveBriefingSurfaceProps {
   jobProj: any;
   executionPkg: any;
   whyRoleExists: string | null;
+  scope?: { tenantId?: string; personId?: string };
 }
 
 export function getBriefProvenanceLabel(brief: {
@@ -41,6 +42,7 @@ export function ExecutiveBriefingSurface({
   jobProj,
   executionPkg,
   whyRoleExists,
+  scope,
 }: ExecutiveBriefingSurfaceProps) {
   const provenanceLabel = getBriefProvenanceLabel(brief);
   const applicationAction = applicationActionFor(o);
@@ -53,6 +55,7 @@ export function ExecutiveBriefingSurface({
         dossierState={dossierState}
         currentIndex={currentIndex}
         totalCount={totalCount}
+        scope={scope}
       />
 
       <section className="py-8 space-y-8">

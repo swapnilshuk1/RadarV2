@@ -1,11 +1,10 @@
 import { spawn } from "child_process";
 import { getDatabaseTargetIdentity } from "../src/data/database";
-import { runMigrations } from "../src/data/sqlite/migrations/runner";
 
 async function main() {
   const identity = getDatabaseTargetIdentity();
-  console.log(`Migration target fingerprint: ${identity.fingerprint}`);
-  await runMigrations();
+  console.log(`Database target fingerprint: ${identity.fingerprint}`);
+  console.log("Development startup never applies migrations. Run `npm run db:migrate` against an explicitly selected non-production target.");
 
   const viteCommand = process.platform === "win32" ? "npx.cmd" : "npx";
   const vite = spawn(viteCommand, ["vite"], {
