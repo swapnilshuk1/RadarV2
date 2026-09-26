@@ -40,42 +40,10 @@ jobs:
 
           forbidden_files="$(
             git ls-files |
-              grep -E '(^|/)(auth|auth-wal|auth-shm)$|\.(sqlite|sqlite-shm|sqlite-wal|db|db-wal|db-shm|mhtml|docx)$|(^|/).*_dump\..*$|(^|/).*api_hit.*\.json$|(^|/)(search_page_dump\.html|single_card\.html|next_data\.json)$|^(test\.js|test.*\.cjs|temp\.js|parser\.cjs|scripts-and-tests-inventory\.json|radar-challenge-corpus\.json)
-        with:
-          node-version: "22.12.0"
-          cache: "npm"
-
-      - name: Pin npm version
-        run: npm install -g npm@10.9.8
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Typecheck TypeScript
-        run: npx tsc -p tsconfig.verify.json --noEmit
-
-      - name: Build Application
-        run: npm run build
-
-      - name: Run Certification Test Manifest
-        # The scraper preflight test launches a real offline Chromium instance.
-        # Browser availability is a prerequisite, not a mocked success.
-        run: |
-          npx playwright install --with-deps chromium
-          npx vitest run --config vitest.certification.config.ts
-
-      - name: Package verified Linux server output
-        run: tar -czf radar-linux-output.tar.gz .output
-
-      - name: Retain release output for this exact commit
-        uses: actions/upload-artifact@v4
-        with:
-          name: radar-linux-output-${{ github.sha }}
-          path: radar-linux-output.tar.gz
-          retention-days: 7
- ||
+              grep -E '(^|/)(auth|auth-wal|auth-shm)$|\.(sqlite|sqlite-shm|sqlite-wal|db|db-wal|db-shm|mhtml|docx)$|(^|/).*_dump\..*$|(^|/).*api_hit.*\.json$|(^|/)(search_page_dump\.html|single_card\.html|next_data\.json)$|^(test\.js|test.*\.cjs|temp\.js|parser\.cjs|scripts-and-tests-inventory\.json|radar-challenge-corpus\.json)$' ||
               true
           )"
+
           if [ -n "$forbidden_files" ]; then
             echo "::error::Forbidden tracked artifacts:"
             echo "$forbidden_files"
