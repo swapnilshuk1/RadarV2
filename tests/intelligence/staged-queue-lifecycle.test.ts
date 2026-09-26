@@ -103,11 +103,15 @@ describe('staged enrichment dependency lifecycle', () => {
     const worker=new EvaluationWorker(db);const job=await worker.claimNextJob('staged');
     const error=new ModelProviderUnavailableError(`Provider HTTP ${httpStatus}`,httpStatus,retryAfterMs);
     const evaluation=vi.spyOn(ProductionStagedEvaluationService.prototype,'evaluate').mockRejectedValue(error);
-    try{await expect(worker.processJob(job!)).rejects.toBe(error);}finally{evaluation.mockRestore();}
+    try{
+      if(httpStatus===403) await expect(worker.processJob(job!)).resolves.toMatchObject({status:'retry_scheduled',error:'MODEL_CREDENTIAL: Provider HTTP 403'});
+      else await expect(worker.processJob(job!)).rejects.toBe(error);
+    }finally{evaluation.mockRestore();}
     expect(await state()).toMatchObject({status:'staged_pending',requirement:'READY'});
-    expect(await db.one('SELECT attempts,locked_by,lease_token FROM evaluation_jobs')).toEqual({attempts:0,locked_by:null,lease_token:null});
+    expect(await db.one('SELECT attempts,locked_by,lease_token FROM evaluation_jobs')).toEqual({attempts:httpStatus===403?1:0,locked_by:null,lease_token:null});
     const delay=await db.one<{seconds:number}>(`SELECT CAST(strftime('%s',next_attempt_at)-strftime('%s','now') AS INTEGER) AS seconds FROM evaluation_jobs`);
-    expect(delay!.seconds).toBeGreaterThanOrEqual(retryAfterMs/1000-2);expect(delay!.seconds).toBeLessThanOrEqual(retryAfterMs/1000);
+    const expectedDelay=httpStatus===403?5:retryAfterMs/1000;
+    expect(delay!.seconds).toBeGreaterThanOrEqual(expectedDelay-2);expect(delay!.seconds).toBeLessThanOrEqual(expectedDelay);
     expect(await worker.claimNextJob('staged')).toBeNull();
     expect(await db.one('SELECT COUNT(*) n FROM staged_evaluations')).toEqual({n:0});
   });

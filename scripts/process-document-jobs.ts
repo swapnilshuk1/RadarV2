@@ -2,6 +2,7 @@
 import crypto from "node:crypto";
 import { getDatabaseAdapter } from "../src/data/database";
 import { ProjectionPipeline } from "../src/lib/intelligence/pipeline/ProjectionPipeline";
+import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 
 export async function processNextDocumentJob(workerId = `document-worker-${crypto.randomUUID()}`): Promise<boolean> {
   const db = getDatabaseAdapter();
@@ -63,10 +64,10 @@ if (process.argv[1]?.endsWith("process-document-jobs.ts")) {
         const processed = await processNextDocumentJob(workerId);
         if (!processed) await new Promise(resolve => setTimeout(resolve, 1_000));
       } catch (error) {
-        console.error(error);
+        runtimeLog("error", "document_worker_poll_error");
         await new Promise(resolve => setTimeout(resolve, 5_000));
       }
     }
   };
-  run().catch((error) => { console.error(error); process.exitCode = 1; });
+  run().catch(() => { runtimeLog("error", "document_worker_fatal"); process.exitCode = 1; });
 }

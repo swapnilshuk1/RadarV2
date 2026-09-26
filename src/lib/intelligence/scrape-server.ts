@@ -329,15 +329,8 @@ export async function abortScrapeState(runId: string, force = false) {
       fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
       console.log(`[Server] Abort requested for run ${runId}. Manifest status set to '${manifest.status}'.`);
     }
-    // Forcefully trigger live abort on the running scraper process
-    if (!force) {
-      try {
-        const { abortLiveRun } = await import("../../../scripts/scrape");
-        await abortLiveRun(runId);
-      } catch (e: any) {
-        console.warn(`[Server] Note: abortLiveRun call: ${e.message}`);
-      }
-    }
+    // A web instance never owns a scraper process. The durable status above is
+    // the stop command observed by the dedicated worker between work units.
     return { success: true, status: force ? "aborted" : "stopping" };
   } catch (e: any) {
     return { success: false, error: e.message };
@@ -527,61 +520,9 @@ function getCorpusJob(): CorpusJobState {
 export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
   .handler(async () => {
     await requireAuthUser({ requireAdmin: true });
-    try {
-      const job = getCorpusJob();
-      if (job.status === "running") {
-        return { success: true, running: true, message: "Corpus regeneration already in progress." };
-      }
-
-      job.status = "running";
-      job.stage = "INGESTING";
-      job.logs = [];
-      job.processedCount = 0;
-      job.error = undefined;
-      job.startedAt = new Date().toISOString();
-      job.completedAt = undefined;
-
-      const addLog = (msg: string, stage: string) => {
-        const time = new Date().toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
-        job.logs.push(`[${time}] ${msg}`);
-        job.stage = stage as any;
-      };
-
-      console.log("[Server] triggerCorpusRegenerationFn: launching corpus pipeline in background...");
-
-      // Launch background asynchronous task
-      void (async () => {
-        try {
-          const { runCorpusPipeline } = await import("../../../scripts/corpus/pipeline");
-          const result = await runCorpusPipeline((msg, stage) => {
-            addLog(msg, stage);
-          });
-
-          if (result && result.success) {
-            job.status = "completed";
-            job.stage = "COMPLETE";
-            job.processedCount = result.processedCount || 0;
-            job.completedAt = new Date().toISOString();
-          } else {
-            job.status = "failed";
-            job.stage = "FAILED";
-            job.error = result.error || result.reason || "Unknown error";
-            job.completedAt = new Date().toISOString();
-          }
-        } catch (err: any) {
-          console.error("[Server] Background corpus pipeline failed:", err);
-          job.status = "failed";
-          job.stage = "FAILED";
-          job.error = err.message || String(err);
-          job.completedAt = new Date().toISOString();
-        }
-      })();
-
-      return { success: true, running: true, message: "Corpus regeneration started in background." };
-    } catch (err: any) {
-      console.error("[Server] triggerCorpusRegenerationFn failed:", err.message);
-      return { success: false, error: err.message };
-    }
+    // Corpus regeneration is an offline maintenance operation. It deliberately
+    // has no web-process fallback; execute its explicit maintenance entrypoint.
+    return { success: false, running: false, error: "CORPUS_WORKER_REQUIRED" };
   });
 
 export const getCorpusRegenerationStatusFn = createServerFn({ method: "GET" })

@@ -431,6 +431,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/security/oauth-http-routes.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 6 | 16 |
 | `tests/security/active-tenant-pollution-repair.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 4 | 16 |
 | `tests/security/tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 16 | 43 |
+| `tests/security/candidate-profile-tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 7 | 14 |
 | `tests/semantic/controlled_integration.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 11 | 33 |
 | `tests/semantic/extraction-sanitation.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 14 |
 | `tests/semantic/normalization.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 2 |
@@ -449,6 +450,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/serving/sql_feed_parity.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 6 | 22 |
 | `tests/serving/active-context-dossier-boundary.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 6 | 22 |
 | `tests/serving/sql_metrics_aggregation.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 2 | 24 |
+| `tests/intelligence/candidate-truth-boundary.test.ts` | Candidate Truth | **KEEP** | Full Suite | 1 | 2 |
+| `tests/intelligence/phase-c-runtime-separation.test.ts` | Runtime Workers | **KEEP** | Full Suite | 4 | 8 |
 
 ---
 

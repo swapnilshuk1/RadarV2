@@ -1,6 +1,7 @@
 import { getDatabaseAdapter } from "../src/data/database";
 import { loadMantleCredentials } from "../src/lib/model/bedrock-credentials";
 import { DossierCompositionWorker } from "../src/lib/intelligence/staged/DossierCompositionWorker";
+import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 
 const db = getDatabaseAdapter();
 if (
@@ -32,7 +33,7 @@ process.on("SIGTERM", () => {
 
 do {
   const results = await Promise.all(workers.map((worker) => worker.pollOnce()));
-  for (const result of results) if (result) console.log(JSON.stringify(result));
+  for (const result of results) if (result) runtimeLog("info", "dossier_composition_processed", { status: result.status });
   if (process.argv.includes("--once")) break;
   if (!stopping && results.every((result) => result === null)) {
     await new Promise((resolve) => setTimeout(resolve, 3000));

@@ -280,6 +280,13 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
         );
         INSERT INTO people (id, tenant_id, name) VALUES ('p1', 't1', 'Candidate 1');
 
+        CREATE TABLE evaluation_runtime_control (
+          tenant_id TEXT NOT NULL,
+          person_id TEXT NOT NULL,
+          desired_state TEXT NOT NULL,
+          PRIMARY KEY (tenant_id, person_id)
+        );
+
         CREATE TABLE evaluation_jobs (
           id TEXT PRIMARY KEY,
           tenant_id TEXT,

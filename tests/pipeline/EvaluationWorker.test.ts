@@ -65,11 +65,6 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
     const exactIdentity = computeEvaluationIdentity(job.canonicalJobId, job.opportunityVersion, mockContext.contextFingerprint);
     const mockOppSource = { jobHash: "source-job-hash-1", role: "CEO", company: "Test" };
     
-    // Auth success
-    db.one.mockImplementationOnce(async (sql: string) => {
-      return { id: "p-1" }; 
-    });
-
     // Version query success (ACQUIRED / ACTIVE)
     db.one.mockImplementationOnce(async () => {
       return {
@@ -99,7 +94,7 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
       };
     });
     
-    // Snapshot followed by explicit scoped ownership and an exactly pinned projection.
+    // Snapshot followed by the scoped projection ownership proof.
     db.one.mockImplementationOnce(async () => ({ payload_json: "{}" }));
     db.one.mockImplementationOnce(async () => ({ id: "p-1" }));
     db.many.mockResolvedValueOnce([{ projection_json: JSON.stringify({
@@ -179,9 +174,6 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
       maxAttempts: 3
     };
 
-    // Auth success
-    db.one.mockImplementationOnce(async () => ({ id: "p-1" }));
-
     // Version query returns EXPIRED
     db.one.mockImplementationOnce(async () => {
       return {
@@ -253,9 +245,6 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
       maxAttempts: 3
     };
 
-    // Auth success
-    db.one.mockImplementationOnce(async () => ({ id: "p-1" }));
-
     // Version query success
     db.one.mockImplementationOnce(async () => {
       return {
@@ -279,7 +268,7 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
     
     // Worker catches Error and schedules retry
     expect(result.status).toBe("retry_scheduled");
-    expect(result.error).toContain("Missing evaluation context for fingerprint: missing-ctx");
+    expect(result.error).toContain("DURABLE_LINEAGE_MISMATCH for context: missing-ctx");
     
     // Ensure no persistence was attempted
     const insertCall = db.execute.mock.calls.find((call: any[]) => String(call[0]).includes("INSERT INTO materialized_evaluations"));
@@ -292,7 +281,7 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
     const params = retryCall[1];
     expect(params[0]).toBe('pending');
     expect(params[1]).toBe(1); // Next attempt number
-    expect(params[2]).toContain("Missing evaluation context");
+    expect(params[2]).toContain("DURABLE_LINEAGE_MISMATCH");
     expect(params[4]).toBe(job.id);
   });
 });

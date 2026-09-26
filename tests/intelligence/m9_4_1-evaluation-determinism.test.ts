@@ -357,7 +357,7 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
 
     // The job should fail gracefully with retry_scheduled without creating a corrupted materialized evaluation
     expect(result.status).toBe("retry_scheduled");
-    expect(result.error).toContain("Missing evaluation context");
+    expect(result.error).toContain("DURABLE_LINEAGE_MISMATCH");
 
     const jobRow = sqliteDb.prepare(`SELECT status, attempts FROM evaluation_jobs WHERE id = ?`).get(jobId) as any;
     expect(jobRow.status).toBe("pending"); // Retrying

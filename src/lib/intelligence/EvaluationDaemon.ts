@@ -1,9 +1,9 @@
 import crypto from "crypto";
-import { ModelProviderUnavailableError } from "../model/provider-unavailable";
+import { classifyModelFailure } from "../model/provider-unavailable";
 import { EvaluationWorker } from "./EvaluationWorker";
 import { RunReconciliationService } from "./RunReconciliationService";
 import { getDatabaseAdapter, type DatabaseAdapter } from "@/data/database";
-import { EvaluationRuntimeControl } from "./EvaluationRuntimeControl";
+import { runtimeLog } from "./runtime-log";
 
 /** A global repair is crash recovery, not a per-poll health check. */
 export const GLOBAL_RECONCILIATION_INTERVAL_MS = 5 * 60_000;
@@ -11,9 +11,7 @@ export const GLOBAL_RECONCILIATION_INTERVAL_MS = 5 * 60_000;
 export class EvaluationDaemon {
   private readonly workers: EvaluationWorker[];
   private readonly reconciler: RunReconciliationService;
-  private readonly runtimeControl: EvaluationRuntimeControl;
   private isRunning = false;
-  private lastObservedControlState: "RUNNING" | "PAUSED" | "STOPPED" | null = null;
   private abortController: AbortController | null = null;
   private readonly pollIntervalMs: number;
   private lastGlobalReconcileAt = 0;
@@ -37,7 +35,6 @@ export class EvaluationDaemon {
     );
     const adapter = options?.adapter ?? getDatabaseAdapter();
     this.reconciler = new RunReconciliationService(adapter);
-    this.runtimeControl = new EvaluationRuntimeControl(adapter);
     this.pollIntervalMs = pollIntervalMs;
   }
 
@@ -47,9 +44,7 @@ export class EvaluationDaemon {
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
 
-    console.log(
-      `[EvaluationDaemon] Started orchestration loop (poll: ${this.pollIntervalMs}ms, jobs: ${this.workers.length})`,
-    );
+    runtimeLog("info", "evaluation_daemon_started", { pollIntervalMs: this.pollIntervalMs, workers: this.workers.length });
 
     const loop = async (worker: EvaluationWorker, slot: number) => {
       if (signal.aborted) return;
@@ -64,13 +59,9 @@ export class EvaluationDaemon {
           void this.reconcileActiveRuns("safety");
 
         if (result) {
-          console.log(
-            `[EvaluationDaemon] Slot ${slot} processed job ${result.jobId} - Status: ${result.status}`,
-          );
+          runtimeLog("info", "evaluation_job_processed", { slot, jobId: result.jobId, status: result.status });
           if (result.error) {
-            console.warn(
-              `[EvaluationDaemon] Job ${result.jobId} encountered error: ${result.error}`,
-            );
+            runtimeLog("warn", "evaluation_job_error", { slot, jobId: result.jobId, status: result.status });
           }
           setTimeout(() => void loop(worker, slot), 0);
         } else {
@@ -78,17 +69,16 @@ export class EvaluationDaemon {
         }
       } catch (err: any) {
         if (signal.aborted) return;
-        if (err instanceof ModelProviderUnavailableError) {
-          console.error(
-            `[EvaluationDaemon] Slot ${slot} model provider unavailable; paused for ${Math.ceil(err.retryAfterMs / 1000)} seconds: ${err.message}`,
-          );
-          setTimeout(() => void loop(worker, slot), err.retryAfterMs);
+        const modelFailure = classifyModelFailure(err);
+        if (modelFailure.transient) {
+          // The job has already released its lease with next_attempt_at. Do
+          // not idle this worker slot through provider backoff: it can claim
+          // unrelated eligible work immediately.
+          runtimeLog("warn", "evaluation_model_retry_released", { slot, code: modelFailure.code });
+          setTimeout(() => void loop(worker, slot), 0);
           return;
         }
-        console.error(
-          `[EvaluationDaemon] Slot ${slot} orchestrator exception survived:`,
-          err?.message || err,
-        );
+        runtimeLog("error", "evaluation_daemon_error", { slot, code: modelFailure.code });
         setTimeout(() => void loop(worker, slot), this.pollIntervalMs);
       }
     };
@@ -111,10 +101,7 @@ export class EvaluationDaemon {
       .reconcileActiveRuns()
       .then(() => {})
       .catch((recErr: any) => {
-        console.warn(
-          `[EvaluationDaemon] ${reason === "startup" ? "Startup" : "Safety"} active-run reconciliation error:`,
-          recErr?.message || recErr,
-        );
+        runtimeLog("warn", "evaluation_reconciliation_error", { reason });
       })
       .finally(() => {
         this.reconciliationInFlight = null;
@@ -128,7 +115,7 @@ export class EvaluationDaemon {
       this.abortController = null;
     }
     this.isRunning = false;
-    console.log("[EvaluationDaemon] Stopped orchestration loop.");
+    runtimeLog("info", "evaluation_daemon_stopped");
   }
 
   public get isDaemonRunning(): boolean {

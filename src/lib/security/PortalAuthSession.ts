@@ -1,6 +1,7 @@
 import type { BrowserContext } from "playwright";
 import type { CredentialStatus } from "../../domain/entities";
 import type { AuthContext } from "./auth";
+import type { AuthorizedPersonScope } from "./auth";
 import {
   CredentialBroker,
   CredentialNotFoundError,
@@ -51,7 +52,7 @@ export interface PortalAuthSession {
  */
 export async function establishPortalAuthSession(
   broker: CredentialBroker,
-  auth: AuthContext,
+  auth: AuthContext | AuthorizedPersonScope,
   portal: string,
   browserContext: BrowserContext
 ): Promise<PortalAuthSession | null> {
@@ -63,7 +64,9 @@ export async function establishPortalAuthSession(
     /* Keep the broker-only execution path for production while preserving
      * compatibility with narrow broker doubles that intentionally expose only
      * the public lease method. */
-    const leaseForExecution = typeof (broker as any).leaseCredentialForScraperExecution === "function"
+    const leaseForExecution = "personId" in auth
+      ? broker.leaseCredentialForWorker.bind(broker)
+      : typeof (broker as any).leaseCredentialForScraperExecution === "function"
       ? (broker as any).leaseCredentialForScraperExecution.bind(broker)
       : broker.leaseCredential.bind(broker);
     lease = await leaseForExecution(auth, cleanPortal);
@@ -108,12 +111,8 @@ export async function establishPortalAuthSession(
     version,
     async reportHealth(status: CredentialStatus, reason?: string): Promise<void> {
       if (isDisposed) return;
-      await broker.reportCredentialHealthFromScraperExecution(
-        auth,
-        credentialId,
-        status,
-        reason,
-      );
+      if ("personId" in auth) return;
+      await broker.reportCredentialHealthFromScraperExecution(auth, credentialId, status, reason);
     },
     dispose(): void {
       isDisposed = true;

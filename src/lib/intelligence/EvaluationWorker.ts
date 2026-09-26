@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { ModelInvalidOutputError, ModelProviderUnavailableError } from '../model/provider-unavailable';
+import { classifyModelFailure } from '../model/provider-unavailable';
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
 import { runEngineSingleIntrinsic } from "./engine";
 import { validateCandidateProjection } from "../domain/candidate_projection";
@@ -539,14 +539,15 @@ export class EvaluationWorker {
 
       return await this.commitEvaluationMaterialization(job, materialized, dossierPresentationV2);
     } catch (err: any) {
-      if (err instanceof ModelProviderUnavailableError) {
+      const modelFailure = classifyModelFailure(err);
+      if (modelFailure.transient) {
         // Release only our lease. Keep the requirement READY and do not consume
         // job attempts or classify provider access as a candidate/source failure.
         await this.db.execute(`UPDATE evaluation_jobs SET status=?,last_error=?,next_attempt_at=datetime('now','+' || ? || ' seconds'),locked_by=NULL,lease_token=NULL,locked_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND locked_by=? AND lease_token=? AND status=?`,
-          [job.queueKind==='staged'?'staged_pending':'pending',err.message,Math.ceil(err.retryAfterMs/1000),job.id,this.workerId,job.leaseToken,job.queueKind==='staged'?'staged_processing':'processing']);
+          [job.queueKind==='staged'?'staged_pending':'pending',`${modelFailure.code}: ${modelFailure.message}`,Math.ceil(modelFailure.retryAfterMs/1000),job.id,this.workerId,job.leaseToken,job.queueKind==='staged'?'staged_processing':'processing']);
         throw err;
       }
-      const errorMsg = err?.message || String(err);
+      const errorMsg = `${modelFailure.code}: ${modelFailure.message}`;
       const nextAttemptNumber = job.attempts + 1;
       const processingStatus = job.queueKind === "staged" ? "staged_processing" : "processing";
       const pendingStatus = job.queueKind === "staged" ? "staged_pending" : "pending";
@@ -555,8 +556,8 @@ export class EvaluationWorker {
       if (nextAttemptNumber < job.maxAttempts) {
         // Structured-output repair is a bounded semantic retry, not an
         // operational provider outage. It releases this lease immediately.
-        const backoffSeconds = err instanceof ModelInvalidOutputError
-          ? Math.max(1, Math.ceil(err.retryAfterMs / 1000))
+        const backoffSeconds = modelFailure.code === "MODEL_INVALID_OUTPUT"
+          ? Math.max(1, Math.ceil(modelFailure.retryAfterMs / 1000))
           : 5 * Math.pow(2, job.attempts);
         const retryRes = await this.db.execute(
           `UPDATE evaluation_jobs

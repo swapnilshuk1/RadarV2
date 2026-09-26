@@ -57,23 +57,21 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
     }
   });
 
-  it("4. deploy.sh targets canonical SSH key and Oracle server repository path", () => {
+  it("4. deploy.sh delegates to the canonical exact-SHA deployment command", () => {
     const deployShPath = path.resolve(process.cwd(), "deploy.sh");
     const content = fs.readFileSync(deployShPath, "utf-8");
 
-    // Must target oracle_official.key and remote repo directory
-    expect(content).toContain("oracle_official.key");
-    expect(content).toContain("161.118.175.246");
-    expect(content).toContain("pm2 restart radar-v2");
+    expect(content).toContain("scripts/deploy.ts");
   });
 
-  it("5. deploy.ts targets canonical SSH key, build, and PM2 restart", () => {
+  it("5. deploy.ts targets the canonical host and starts only the web process", () => {
     const deployTsPath = path.resolve(process.cwd(), "scripts/deploy.ts");
     const content = fs.readFileSync(deployTsPath, "utf-8");
 
     expect(content).toContain("oracle_official.key");
     expect(content).toContain("161.118.175.246");
-    expect(content).toContain("pm2 restart radar-v2");
+    expect(content).toContain("pm2 startOrRestart ecosystem.config.cjs --only radar-v2");
+    expect(content).toContain("workers remain stopped");
   });
 
   it("6. Deployment archive contains only required deterministic files", () => {

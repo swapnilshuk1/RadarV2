@@ -333,38 +333,6 @@ export function createRunSession(
   return session;
 }
 
-export async function abortLiveRun(runId?: string): Promise<boolean> {
-  if (runId) {
-    const mgr = activeRunControllers.get(runId);
-    const runtime = activeRunSessions.get(runId);
-
-    if (!mgr) {
-      return false;
-    }
-
-    mgr.manifest.status = "stopping";
-    mgr.persistManifest();
-
-    if (runtime) {
-      for (const session of runtime.authSessions.values()) {
-        session.dispose();
-      }
-      runtime.authSessions.clear();
-    }
-
-    await closePortalContextsForRun(runId);
-
-    HealthManager.clearRun(runId);
-    activeRunSessions.delete(runId);
-
-    return true;
-  }
-
-  await shutdownAllRuns("explicit-global-abort");
-
-  return true;
-}
-
 let shutdownStarted = false;
 
 export async function shutdownAllRuns(reason: string): Promise<void> {
@@ -574,6 +542,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
   let mgr = new RunController();
   let resumed = false;
+  let queuedDurableRunId: string | undefined;
   let runScope: any = null;
   let globalMarketLock: ExclusiveLockToken | null = null;
 
@@ -589,6 +558,13 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
       if (activeDurableRun) {
         const activeStatus = activeDurableRun.status;
+
+        // A dedicated worker claims a durable queued run before any local
+        // artifact exists. Initialise that exact run rather than aborting it
+        // merely because the web process never created a manifest.
+        if ((activeStatus === "queued" || activeStatus === "initializing") && !freshRun) {
+          queuedDurableRunId = activeDurableRun.id;
+        } else {
 
         // Invariant: If actively in downstream pipeline, refuse fresh acquisition to protect workers
         if (activeStatus === "enriching" || activeStatus === "completing") {
@@ -626,7 +602,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           }
         }
 
-        if (!tryResumed) {
+        if (!queuedDurableRunId && !tryResumed) {
           if (isEarlyPhase) {
             log(
               `Active durable run ${activeDurableRun.id} in state '${activeStatus}' is unresumable or fresh run requested. Transitioning to aborted (LOCAL_RUNTIME_STATE_UNRECOVERABLE).`,
@@ -653,12 +629,13 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             );
           }
         }
+        }
       }
 
       if (!resumed) {
         // No active durable run (or previous unresumable run aborted). Create clean new run!
-        const newRunId = RunController.generateRunId();
-        await repos.scrapeRuns.createRun(runScope, {
+        const newRunId = queuedDurableRunId ?? RunController.generateRunId();
+        if (!queuedDurableRunId) await repos.scrapeRuns.createRun(runScope, {
           id: newRunId,
           searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : null,
           portalTargets: portals,
@@ -678,7 +655,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             },
           },
         });
-        log(`Created new durable scrape_run in Turso Cloud: ${newRunId}`);
+        log(`${queuedDurableRunId ? "Claimed queued" : "Created new"} durable scrape_run in Turso Cloud: ${newRunId}`);
 
         // Initialize local RunController with compensation if it fails
         try {
@@ -806,10 +783,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         // Establish JIT PortalAuthSession without retaining plaintext secrets
         let authSession: PortalAuthSession | null = null;
         try {
-          if (effectiveAuthContext) {
+          if (effectiveAuthContext || effectiveScope) {
             const repos = await getRepositories();
             const broker = new CredentialBroker(repos.credentials);
-            authSession = await establishPortalAuthSession(broker, effectiveAuthContext, portal, browserContext);
+            authSession = await establishPortalAuthSession(broker, effectiveAuthContext || effectiveScope!, portal, browserContext);
             if (authSession) {
               runtime.authSessions.set(portal, authSession);
               plog(`authenticated session established (source: ${authSession.source}, version: ${authSession.version})`);
@@ -1083,6 +1060,18 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         let portalFacts = 0;
 
         while (!mgr.isCancellationRequested()) {
+          // Stop is a durable command issued by the web boundary. Mirror it
+          // into the local run controller before claiming the next unit; the
+          // currently executing unit remains fenced by its normal persistence
+          // transitions.
+          if (runScope) {
+            const durableRun = await getRepositories().scrapeRuns.getRun(runScope, mgr.runId);
+            if (durableRun?.status === "stopping" || durableRun?.status === "aborted") {
+              mgr.manifest.status = durableRun.status;
+              mgr.persistManifest();
+              break;
+            }
+          }
           if (persistenceState.unavailable) {
             failPendingUnitsForPersistence();
             plog(`Stopping ${portal} queue because shared persistence is unavailable: ${persistenceState.error || "retry budget exhausted"}`, "error");

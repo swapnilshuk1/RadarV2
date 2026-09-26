@@ -19,6 +19,7 @@
 
 import crypto from "crypto";
 import type { AuthContext, Permission } from "./auth";
+import type { AuthorizedPersonScope } from "./auth";
 import { CredentialVault, CredentialVaultError } from "./CredentialVault";
 import type { CredentialStore } from "../../domain/repositories";
 import type { SourceCredential, CredentialStatus, CredentialAuditAction } from "../../domain/entities";
@@ -38,6 +39,11 @@ export interface CredentialLease {
    */
   secretPayload: string;
 }
+
+/** Durable scraper jobs are authorized before enqueue. This is deliberately
+ * not an AuthContext: workers never impersonate an interactive user. */
+type TrustedScraperWorkerScope = AuthorizedPersonScope & { readonly workerExecution: true };
+type CredentialLeaseAuthority = AuthContext | TrustedScraperWorkerScope;
 
 export type CredentialBrokerErrorCode =
   | "PERMISSION_DENIED"
@@ -222,22 +228,33 @@ export class CredentialBroker {
     return this.leaseCredentialInternal(auth, source, true);
   }
 
+  /** Lease only while consuming an already-authorized durable scraper run. */
+  public async leaseCredentialForWorker(
+    scope: AuthorizedPersonScope,
+    source: string,
+  ): Promise<CredentialLease> {
+    return this.leaseCredentialInternal({ ...scope, workerExecution: true }, source, true);
+  }
+
   private async leaseCredentialInternal(
-    auth: AuthContext,
+    auth: CredentialLeaseAuthority,
     source: string,
     allowAuthorizedScraperWorkflow: boolean,
   ): Promise<CredentialLease> {
-    // 1. AuthContext & Tenant validation
-    this.assertValidAuth(auth);
+    // Interactive callers require membership permissions. A worker has no
+    // interactive identity: it can reach this boundary only with a durable,
+    // previously-authorized tenant/person command.
+    const workerExecution = "workerExecution" in auth;
+    if (!workerExecution) this.assertValidAuth(auth);
 
     // 2. RBAC permission check
-    const hasReadPermission = auth.permissions.includes("read:credentials");
-    const hasManagePermission = auth.permissions.includes("manage:credentials");
-    const canRunAuthorizedScraper = allowAuthorizedScraperWorkflow && (
+    const hasReadPermission = !workerExecution && auth.permissions.includes("read:credentials");
+    const hasManagePermission = !workerExecution && auth.permissions.includes("manage:credentials");
+    const canRunAuthorizedScraper = !workerExecution && allowAuthorizedScraperWorkflow && (
       auth.permissions.includes("run:scraper")
       || auth.permissions.includes("manage:search_plan")
     );
-    if (!hasReadPermission && !hasManagePermission && !canRunAuthorizedScraper) {
+    if (!workerExecution && !hasReadPermission && !hasManagePermission && !canRunAuthorizedScraper) {
       throw new CredentialAuthorizationError(
         "Caller lacks 'read:credentials' or 'manage:credentials' permission to lease credentials",
         "PERMISSION_DENIED"
@@ -286,7 +303,7 @@ export class CredentialBroker {
           tenantId: auth.tenantId,
           credentialId: credential.id,
           action: "invalidated",
-          actorUserId: auth.userId,
+          actorUserId: workerExecution ? null : auth.userId,
           details: JSON.stringify({
             reason: "Credential expired before lease",
             source: credential.source,
@@ -315,7 +332,7 @@ export class CredentialBroker {
       tenantId: auth.tenantId,
       credentialId: credential.id,
       action: "leased",
-      actorUserId: auth.userId,
+      actorUserId: workerExecution ? null : auth.userId,
       details: JSON.stringify({
         source: credential.source,
         version: credential.version,

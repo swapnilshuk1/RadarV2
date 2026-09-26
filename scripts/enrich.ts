@@ -459,56 +459,17 @@ async function startWorker() {
     }
   };
 
-  process.on("SIGINT", async () => {
-    console.log("\nGenerating End-of-Run Validation Report...");
-    
-    const { counts, failureDistribution, throughput } = await queue.getDashboardStats();
-    const stateMap: Record<string, number> = { PENDING: 0, LEASED: 0, RUNNING: 0, RETRY: 0, COMPLETE: 0, FAILED: 0 };
-    for (const row of counts) { stateMap[row.status] = row.count; }
-    
-    let totalRetries = 0;
-    for (const row of failureDistribution) totalRetries += (row.total_failures * row.mean_retries);
-
-    const totalWallMs = Date.now() - workerStats.startTime;
-    const hours = (totalWallMs / 1000 / 60 / 60).toFixed(2);
-    const durationStr = `${Math.floor(totalWallMs / 1000 / 60 / 60)}h ${Math.floor((totalWallMs / 1000 / 60) % 60)}m`;
-
-    const isHealthy = stateMap.FAILED === 0 && throughput.overall.driftHr <= 100;
-
-    console.log(`
-======================================================================
-                         VALIDATION REPORT
-======================================================================
-Duration:          ${durationStr}
-----------------------------------------------------------------------
-Enrichment
-Completed:         ${stateMap.COMPLETE}
-Retry:             ${stateMap.RETRY}
-Failed:            ${stateMap.FAILED}
-Queue Remaining:   ${stateMap.PENDING + stateMap.LEASED + stateMap.RUNNING}
-----------------------------------------------------------------------
-Throughput
-Acquire:           ${throughput.overall.acquiredHr}/hr
-Enrich:            ${throughput.overall.completedHr}/hr
-Backlog Drift:     ${throughput.overall.driftHr > 0 ? "+" : ""}${throughput.overall.driftHr}
-----------------------------------------------------------------------
-Health
-Lease Recoveries:  N/A (tracked in events)
-Stuck Jobs:        0
-Queue Integrity:   PASS
-----------------------------------------------------------------------
-Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
-======================================================================
-`);
-    process.exit(0);
-  });
+  let stopping = false;
+  const stop = () => { stopping = true; };
+  process.once("SIGINT", stop);
+  process.once("SIGTERM", stop);
 
   // Create an initial dashboard print
   await printDashboard(queue, workerStats);
 
   let idleCount = 0;
   
-  while (true) {
+  while (!stopping) {
     // Attempt to lease up to CONFIG.llmConcurrency jobs matching this worker's pipeline version
     const tPoll = Date.now();
     const jobs = await queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency, 300, EXTRACTOR_VERSION); // 5 min lease

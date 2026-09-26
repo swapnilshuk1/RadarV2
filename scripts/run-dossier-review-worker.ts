@@ -4,6 +4,7 @@ import { createBedrockGlmResearchModel } from "../src/lib/model/bedrock-glm-rese
 import { createFactualReviewModel } from "../src/lib/model/factual-review-model";
 import { DossierReviewWorker } from "../src/lib/intelligence/staged/DossierReviewWorker";
 import { createSqliteModelInvocationSink } from "../src/lib/model/model-invocation";
+import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 
 const REVIEW_HEALTH_INTERVAL_MS = 5 * 60_000;
 
@@ -33,9 +34,9 @@ do {
   try {
     const result = await worker.pollOnce();
     if (result) {
-      console.log(JSON.stringify(result));
+      runtimeLog("info", "dossier_review_processed", { status: result.status });
       // The transition itself is the authoritative time to surface attention.
-      if (result.status === "needs_attention") console.warn(JSON.stringify({ reviewJob: result }));
+      if (result.status === "needs_attention") runtimeLog("warn", "dossier_review_needs_attention", { status: result.status });
     }
     if (process.argv.includes("--once")) break;
     const now = Date.now();
@@ -45,12 +46,10 @@ do {
         `SELECT SUM(CASE WHEN status IN ('pending','retry','processing') THEN 1 ELSE 0 END) pending,SUM(CASE WHEN status='needs_attention' THEN 1 ELSE 0 END) attention,MIN(CASE WHEN status IN ('pending','retry','processing') THEN created_at END) oldest FROM dossier_review_jobs`,
       );
       if ((health?.attention ?? 0) > 0 || (health?.oldest && now - health.oldest > 3600_000))
-        console.warn(JSON.stringify({ reviewQueue: health }));
+        runtimeLog("warn", "dossier_review_queue_attention", { pending: health?.pending ?? 0, attention: health?.attention ?? 0 });
     }
-  } catch (error) {
-    console.error(
-      "[DossierReviewWorker] Poll failed; check database/schema and worker configuration.",
-    );
+  } catch {
+    runtimeLog("error", "dossier_review_poll_error");
     if (process.argv.includes("--once")) {
       process.exitCode = 1;
       break;

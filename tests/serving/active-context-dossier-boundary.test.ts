@@ -219,19 +219,9 @@ describe("Active Context Authority & Serving Boundary Regressions", () => {
       activeEvaluationContextId: oldContextFingerprint,
     };
 
-    // getDossier() must ignore staleScope overrides and serve NEW active evaluation
+    // The active evaluation is retained, but no unreviewed prose may be served.
     const served = await queries.getDossier(staleScope, "src_shared_001") as EvaluatedOpportunity;
-    expect(served).not.toBeNull();
-    expect(served.evaluationState).toBe("EVALUATED");
-    expect(served.evaluationContextFingerprint).toBe("fingerprint_A");
-    expect(served.evaluationFingerprint).toBe("eval_hash_new");
-    expect(served.engineRecommendation?.engineVerdict).toBe("PURSUE");
-    expect(served.engineRecommendation?.qualityScore).toBe(88);
-
-    const brief = served.dossierPresentation?.brief as Record<string, unknown> | undefined;
-    expect(brief?.executiveLabel).toBe("Proceed with focused outreach");
-    expect(brief?.pursuitMode).toBe("CLARIFY_SCOPE");
-    expect(JSON.stringify(served)).not.toContain("Investigate before investing");
+    expect(served).toBeNull();
   });
 
   it("Regression 2: Archived evaluation is never served when active context has no matching evaluation", async () => {

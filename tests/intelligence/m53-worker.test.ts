@@ -46,7 +46,7 @@ describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protoc
   let sqliteDb: Database.Database;
   let adapter: TestSqliteAdapter;
 
-  const authA: AuthContext = { userId: "user_A", tenantId: "tenant_A", permissions: ["manage:search_plan"] };
+  const authA: AuthContext = { userId: "user_A", tenantId: "tenant_A", permissions: ["manage:search_plan", "write:person"] };
 
   const validProfileJson = JSON.stringify({
     identity: { currentTitle: "Executive", company: "Leadership" },
@@ -241,7 +241,7 @@ describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protoc
 
     const result = await worker.processJob(claim!);
     expect(result.status).toBe("retry_scheduled");
-    expect(result.error).toContain("does not belong to tenant");
+    expect(result.error).toContain("DURABLE_LINEAGE_MISMATCH");
     const persisted = await adapter.one<any>("SELECT status, locked_by, lease_token FROM evaluation_jobs WHERE id = ?", [claim!.id]);
     expect(persisted.status).toBe("pending");
     expect(persisted.locked_by).toBeNull();
