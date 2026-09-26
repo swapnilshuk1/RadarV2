@@ -110,21 +110,18 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
   const rawPriorSha = runner("ssh", sshArgs(config, readPriorShaCommand));
   const priorSha = rawPriorSha && /^[0-9a-f]{40}$/i.test(rawPriorSha) ? rawPriorSha : null;
 
-  // Locate and verify retained previous release directory before activation where practical.
+  // Locate and verify retained previous release directory before activation.
+  // Must fail closed: rollback-eligible only if scripts/release/verify.ts succeeds for exact priorSha.
   const priorReleaseDirectory = priorSha ? `${config.appDirectory}/releases/${priorSha}` : null;
   let priorReleaseVerified = false;
   if (priorSha && priorReleaseDirectory) {
     const verifyPriorCommand = [
-      `if [ -d ${shellQuote(priorReleaseDirectory)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/ecosystem.config.cjs`)} ]; then`,
-      `  if [ -f ${shellQuote(`${priorReleaseDirectory}/release-manifest.json`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/node_modules/.bin/tsx`)} ]; then`,
-      `    (cd ${shellQuote(priorReleaseDirectory)} && node_modules/.bin/tsx scripts/release/verify.ts . ${shellQuote(priorSha)} >/dev/null 2>&1 && echo "VERIFIED") || echo "EXISTS";`,
-      `  else`,
-      `    echo "EXISTS";`,
-      `  fi;`,
+      `if [ -d ${shellQuote(priorReleaseDirectory)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/ecosystem.config.cjs`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/release-manifest.json`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/node_modules/.bin/tsx`)} ]; then`,
+      `  (cd ${shellQuote(priorReleaseDirectory)} && node_modules/.bin/tsx scripts/release/verify.ts . ${shellQuote(priorSha)} >/dev/null 2>&1 && echo "VERIFIED") || echo "FAILED";`,
       `fi`,
     ].join(" ");
     const priorCheckResult = runner("ssh", sshArgs(config, verifyPriorCommand));
-    if (priorCheckResult === "VERIFIED" || priorCheckResult === "EXISTS") {
+    if (priorCheckResult === "VERIFIED") {
       priorReleaseVerified = true;
     }
   }
@@ -179,24 +176,58 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
 
   function rollback(errorMessage: string): void {
     const canRestorePrior = Boolean(priorSha && priorReleaseVerified && priorReleaseDirectory);
-    const failedReceipt = JSON.stringify({
+    const rollbackFailedReceipt = JSON.stringify({
       previousSha: priorSha || null,
       newSha: config.sha,
       databaseFingerprint: config.expectedDatabaseFingerprint,
       recoveryPoint,
       status: "failed",
-      rollback: canRestorePrior ? "previous-release-restored" : "no-previous-release-web-stopped",
+      rollback: "rollback_failed",
       databaseRestored: false,
       workersStarted: false,
       error: errorMessage,
     });
+    const rollbackSuccessReceipt = JSON.stringify({
+      previousSha: priorSha || null,
+      newSha: config.sha,
+      databaseFingerprint: config.expectedDatabaseFingerprint,
+      recoveryPoint,
+      status: "failed",
+      rollback: "previous-release-restored",
+      databaseRestored: false,
+      workersStarted: false,
+      error: errorMessage,
+    });
+    const rollbackUnavailableReceipt = JSON.stringify({
+      previousSha: priorSha || null,
+      newSha: config.sha,
+      databaseFingerprint: config.expectedDatabaseFingerprint,
+      recoveryPoint,
+      status: "failed",
+      rollback: priorSha
+        ? "previous-release-unverified-web-stopped"
+        : "no-previous-release-web-stopped",
+      databaseRestored: false,
+      workersStarted: false,
+      error: errorMessage,
+    });
+
     const recovery = [
       "set +e",
-      `printf '%s' ${shellQuote(failedReceipt)} > ${shellQuote(receipt)}`,
       canRestorePrior
-        ? `cd ${shellQuote(priorReleaseDirectory!)} && pm2 startOrRestart ecosystem.config.cjs --only radar-v2 --update-env && printf '%s' ${shellQuote(priorSha!)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}`
-        : "pm2 stop radar-v2 || true",
-    ].join("; ");
+        ? [
+            `printf '%s' ${shellQuote(rollbackFailedReceipt)} > ${shellQuote(receipt)}`,
+            `if (cd ${shellQuote(priorReleaseDirectory!)} && pm2 startOrRestart ecosystem.config.cjs --only radar-v2 --update-env && printf '%s' ${shellQuote(priorSha!)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}); then`,
+            `  printf '%s' ${shellQuote(rollbackSuccessReceipt)} > ${shellQuote(receipt)}`,
+            `else`,
+            `  pm2 stop radar-v2 || true`,
+            `fi`,
+          ].join("\n")
+        : [
+            "pm2 stop radar-v2 || true",
+            `printf '%s' ${shellQuote(rollbackUnavailableReceipt)} > ${shellQuote(receipt)}`,
+          ].join("\n"),
+    ].join("\n");
     try {
       runner("ssh", sshArgs(config, recovery));
     } catch {

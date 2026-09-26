@@ -456,7 +456,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/release/readiness.test.ts` | Release Engineering | **KEEP** | Full Suite | 1 | 1 |
 | `tests/release/artifact-integrity.test.ts` | Release Engineering | **KEEP** | Full Suite | 1 | 1 |
 | `tests/release/runtime-topology.test.ts` | Release Engineering | **KEEP** | Full Suite | 1 | 1 |
-| `tests/release/deployment.test.ts` | Release Engineering | **KEEP** | Full Suite | 5 | 24 |
+| `tests/release/deployment.test.ts` | Release Engineering | **KEEP** | Full Suite | 8 | 40 |
 
 ---
 
