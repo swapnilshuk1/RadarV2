@@ -5,7 +5,7 @@ import path from "node:path";
 import { getDatabaseTargetIdentity } from "../src/data/database";
 import { verifyReleaseDirectory } from "./release/verify";
 
-type DeployConfig = {
+export type DeployConfig = {
   readonly sha: string;
   readonly artifact: string;
   readonly host: string;
@@ -16,6 +16,8 @@ type DeployConfig = {
   readonly recoveryCommand: string;
   readonly readinessUrl: string;
 };
+
+export type CommandRunner = (command: string, args: string[]) => string;
 
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
@@ -51,7 +53,7 @@ function run(command: string, args: string[]): string {
   }).trim();
 }
 
-function sshArgs(config: DeployConfig, command: string): string[] {
+export function sshArgs(config: DeployConfig, command: string): string[] {
   return [
     "-o",
     "StrictHostKeyChecking=yes",
@@ -62,7 +64,7 @@ function sshArgs(config: DeployConfig, command: string): string[] {
   ];
 }
 
-function shellQuote(value: string): string {
+export function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
@@ -80,7 +82,7 @@ export function validatePreMutation(config: DeployConfig): void {
 }
 
 /** Deploys a verified, CI-produced release without checking out or building source. */
-export function deploy(config = parseConfig()): void {
+export function deploy(config = parseConfig(), runner: CommandRunner = run): void {
   validatePreMutation(config);
   process.env.RADAR_RELEASE_SHA = config.sha;
   process.env.RADAR_DEPLOY_READINESS_URL = config.readinessUrl;
@@ -100,15 +102,38 @@ export function deploy(config = parseConfig()): void {
 
   // The recovery command is supplied by the operator's actual database
   // provider. Its non-empty result is persisted as the recovery-point ID.
-  const recoveryPoint = run("ssh", sshArgs(config, `set -eu; ${config.recoveryCommand}`));
+  const recoveryPoint = runner("ssh", sshArgs(config, `set -eu; ${config.recoveryCommand}`));
   if (!recoveryPoint) throw new Error("DEPLOY_RECOVERY_POINT_UNVERIFIED");
-  const priorSha = run(
-    "ssh",
-    sshArgs(config, `cat ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)} 2>/dev/null`),
-  );
 
-  run("ssh", sshArgs(config, `set -eu; mkdir -p ${shellQuote(`${config.appDirectory}/releases`)}`));
-  run("scp", [
+  // Previous-release discovery: reading CURRENT_SHA must succeed when the file does not yet exist.
+  const readPriorShaCommand = `if [ -f ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)} ]; then cat ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}; fi`;
+  const rawPriorSha = runner("ssh", sshArgs(config, readPriorShaCommand));
+  const priorSha = rawPriorSha && /^[0-9a-f]{40}$/i.test(rawPriorSha) ? rawPriorSha : null;
+
+  // Locate and verify retained previous release directory before activation where practical.
+  const priorReleaseDirectory = priorSha ? `${config.appDirectory}/releases/${priorSha}` : null;
+  let priorReleaseVerified = false;
+  if (priorSha && priorReleaseDirectory) {
+    const verifyPriorCommand = [
+      `if [ -d ${shellQuote(priorReleaseDirectory)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/ecosystem.config.cjs`)} ]; then`,
+      `  if [ -f ${shellQuote(`${priorReleaseDirectory}/release-manifest.json`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/node_modules/.bin/tsx`)} ]; then`,
+      `    (cd ${shellQuote(priorReleaseDirectory)} && node_modules/.bin/tsx scripts/release/verify.ts . ${shellQuote(priorSha)} >/dev/null 2>&1 && echo "VERIFIED") || echo "EXISTS";`,
+      `  else`,
+      `    echo "EXISTS";`,
+      `  fi;`,
+      `fi`,
+    ].join(" ");
+    const priorCheckResult = runner("ssh", sshArgs(config, verifyPriorCommand));
+    if (priorCheckResult === "VERIFIED" || priorCheckResult === "EXISTS") {
+      priorReleaseVerified = true;
+    }
+  }
+
+  runner(
+    "ssh",
+    sshArgs(config, `set -eu; mkdir -p ${shellQuote(`${config.appDirectory}/releases`)}`),
+  );
+  runner("scp", [
     "-o",
     "StrictHostKeyChecking=yes",
     "-i",
@@ -116,9 +141,26 @@ export function deploy(config = parseConfig()): void {
     config.artifact,
     `${config.user}@${config.host}:${remoteArtifact}`,
   ]);
-  const stopWriters = writers.map((name) => `pm2 stop ${name}`).join("; ");
+
+  const stopProcessFunction = [
+    "stop_pm2_process() {",
+    '  target="$1"',
+    '  if pm2_out=$(pm2 stop "$target" 2>&1); then',
+    "    return 0",
+    "  fi",
+    '  if echo "$pm2_out" | grep -qiE "(process|namespace).*not found|already stopped" && ! echo "$pm2_out" | grep -qi "command not found"; then',
+    "    return 0",
+    "  fi",
+    '  echo "$pm2_out" >&2',
+    "  return 1",
+    "}",
+  ].join("\n");
+
+  const stopWriters = writers.map((name) => `stop_pm2_process ${shellQuote(name)}`).join("; ");
+
   const activate = [
     "set -eu",
+    stopProcessFunction,
     `rm -rf ${shellQuote(stagingDirectory)}`,
     `mkdir -p ${shellQuote(stagingDirectory)}`,
     `tar -xzf ${shellQuote(remoteArtifact)} -C ${shellQuote(stagingDirectory)}`,
@@ -126,62 +168,70 @@ export function deploy(config = parseConfig()): void {
     `node_modules/.bin/tsx scripts/release/verify.ts . ${shellQuote(config.sha)}`,
     `export RADAR_RELEASE_SHA=${shellQuote(config.sha)}`,
     stopWriters,
-    "pm2 stop radar-v2",
+    "stop_pm2_process radar-v2",
     "npm run db:migrate",
     "npm run db:status",
-    `printf '%s' ${shellQuote(config.sha)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}`,
-    `pm2 startOrRestart ecosystem.config.cjs --only radar-v2 --update-env`,
+    "pm2 startOrRestart ecosystem.config.cjs --only radar-v2 --update-env",
     `curl --fail --silent --show-error ${shellQuote(`${config.readinessUrl.replace(/\/$/, "")}/health/ready`)}`,
-    `RADAR_RELEASE_SHA=${shellQuote(config.sha)} node_modules/.bin/tsx scripts/smoke_production.ts`,
+    `RADAR_DEPLOY_READINESS_URL=${shellQuote(config.readinessUrl)} RADAR_RELEASE_SHA=${shellQuote(config.sha)} node_modules/.bin/tsx scripts/smoke_production.ts`,
+    `printf '%s' ${shellQuote(config.sha)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}`,
   ].join("; ");
-  try {
-    run("ssh", sshArgs(config, activate));
-  } catch (error) {
+
+  function rollback(errorMessage: string): void {
+    const canRestorePrior = Boolean(priorSha && priorReleaseVerified && priorReleaseDirectory);
     const failedReceipt = JSON.stringify({
       previousSha: priorSha || null,
       newSha: config.sha,
       databaseFingerprint: config.expectedDatabaseFingerprint,
       recoveryPoint,
       status: "failed",
+      rollback: canRestorePrior ? "previous-release-restored" : "no-previous-release-web-stopped",
+      databaseRestored: false,
       workersStarted: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
     });
     const recovery = [
       "set +e",
       `printf '%s' ${shellQuote(failedReceipt)} > ${shellQuote(receipt)}`,
-      priorSha
-        ? `printf '%s' ${shellQuote(priorSha)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}; pm2 restart radar-v2`
-        : "pm2 stop radar-v2",
+      canRestorePrior
+        ? `cd ${shellQuote(priorReleaseDirectory!)} && pm2 startOrRestart ecosystem.config.cjs --only radar-v2 --update-env && printf '%s' ${shellQuote(priorSha!)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}`
+        : "pm2 stop radar-v2 || true",
     ].join("; ");
     try {
-      run("ssh", sshArgs(config, recovery));
+      runner("ssh", sshArgs(config, recovery));
     } catch {
       // Preserve the original deployment failure; remote recovery is best effort.
     }
+  }
+
+  try {
+    runner("ssh", sshArgs(config, activate));
+  } catch (error) {
+    rollback(error instanceof Error ? error.message : String(error));
     throw error;
   }
 
-  const readiness = run("curl", [
-    "--fail",
-    "--silent",
-    "--show-error",
-    `${config.readinessUrl.replace(/\/$/, "")}/health/ready`,
-  ]);
+  let readiness: string;
+  try {
+    readiness = runner("curl", [
+      "--fail",
+      "--silent",
+      "--show-error",
+      `${config.readinessUrl.replace(/\/$/, "")}/health/ready`,
+    ]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    rollback(message);
+    throw error;
+  }
+
   const payload = JSON.parse(readiness) as { status?: string; releaseSha?: string };
   if (payload.status !== "ready" || payload.releaseSha !== config.sha) {
-    const failedReceipt = JSON.stringify({
-      previousSha: priorSha || null,
-      newSha: config.sha,
-      databaseFingerprint: config.expectedDatabaseFingerprint,
-      recoveryPoint,
-      status: "failed",
-      workersStarted: false,
-      error: "DEPLOY_READINESS_OR_RELEASE_SHA_FAILED",
-    });
-    const rollback = `set +e; printf '%s' ${shellQuote(failedReceipt)} > ${shellQuote(receipt)}; ${priorSha ? `printf '%s' ${shellQuote(priorSha)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}; ` : ""}pm2 restart radar-v2`;
-    run("ssh", sshArgs(config, rollback));
-    throw new Error("DEPLOY_READINESS_OR_RELEASE_SHA_FAILED");
+    const errorMsg = "DEPLOY_READINESS_OR_RELEASE_SHA_FAILED";
+    rollback(errorMsg);
+    throw new Error(errorMsg);
   }
+
   const releaseReceipt = JSON.stringify({
     previousSha: priorSha || null,
     newSha: config.sha,
@@ -190,7 +240,7 @@ export function deploy(config = parseConfig()): void {
     status: "web-ready",
     workersStarted: false,
   });
-  run(
+  runner(
     "ssh",
     sshArgs(config, `printf '%s' ${shellQuote(releaseReceipt)} > ${shellQuote(receipt)}; pm2 save`),
   );

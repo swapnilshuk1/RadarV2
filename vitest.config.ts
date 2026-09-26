@@ -19,6 +19,7 @@ export default defineConfig({
       "tests/acquisition/**/*.test.ts",
       "tests/pipeline/**/*.test.ts",
       "tests/serving/**/*.test.ts",
+      "tests/release/**/*.test.ts",
     ],
     exclude: [
       "tests/regression/**",

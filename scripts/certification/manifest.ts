@@ -148,6 +148,7 @@ export const certificationManifest = [
       "tests/release/readiness.test.ts",
       "tests/release/artifact-integrity.test.ts",
       "tests/release/runtime-topology.test.ts",
+      "tests/release/deployment.test.ts",
     ],
   },
 ] as const;
