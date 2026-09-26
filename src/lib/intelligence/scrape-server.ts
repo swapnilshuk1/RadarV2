@@ -500,29 +500,22 @@ export interface CorpusJobState {
   completedAt?: string;
 }
 
-if (typeof globalThis !== "undefined") {
-  const g = globalThis as any;
-  if (!g.__RADAR_CORPUS_JOB__) {
-    g.__RADAR_CORPUS_JOB__ = {
-      status: "idle",
-      stage: "IDLE",
-      logs: [],
-      processedCount: 0,
-    } as CorpusJobState;
-  }
-}
-
-function getCorpusJob(): CorpusJobState {
-  const g = globalThis as any;
-  return g.__RADAR_CORPUS_JOB__ || { status: "idle", stage: "IDLE", logs: [], processedCount: 0 };
+async function getCorpusJob(): Promise<CorpusJobState> {
+  const row = await getDatabaseAdapter().one<any>("SELECT * FROM corpus_regeneration_jobs WHERE id='corpus-regeneration'");
+  if (!row) return { status: "idle", stage: "IDLE", logs: [], processedCount: 0 };
+  return { status: row.status === "processing" ? "running" : row.status, stage: row.stage, logs: JSON.parse(row.logs_json || "[]"), processedCount: row.processed_count, error: row.error || undefined, startedAt: row.started_at || undefined, completedAt: row.completed_at || undefined };
 }
 
 export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
   .handler(async () => {
     await requireAuthUser({ requireAdmin: true });
-    // Corpus regeneration is an offline maintenance operation. It deliberately
-    // has no web-process fallback; execute its explicit maintenance entrypoint.
-    return { success: false, running: false, error: "CORPUS_WORKER_REQUIRED" };
+    const db = getDatabaseAdapter();
+    await db.execute(`INSERT INTO corpus_regeneration_jobs(id,status,stage,logs_json,processed_count)
+      VALUES('corpus-regeneration','queued','INGESTING','[]',0)
+      ON CONFLICT(id) DO UPDATE SET status='queued',stage='INGESTING',logs_json='[]',processed_count=0,error=NULL,locked_by=NULL,lease_token=NULL,started_at=NULL,completed_at=NULL,updated_at=CURRENT_TIMESTAMP
+      WHERE corpus_regeneration_jobs.status IN ('completed','failed')`);
+    const job = await getCorpusJob();
+    return { success: true, running: job.status === "running" || job.status === "idle", queued: job.status === "idle", message: job.status === "running" ? "Corpus regeneration already in progress." : "Corpus regeneration queued." };
   });
 
 export const getCorpusRegenerationStatusFn = createServerFn({ method: "GET" })
