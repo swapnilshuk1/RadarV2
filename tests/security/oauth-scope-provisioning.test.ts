@@ -4,6 +4,7 @@ import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { runMigrations } from "../../src/data/sqlite/migrations/runner";
 import { provisionOAuthScope } from "../../src/lib/auth/oauth-scope-provisioning";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
+import { EvaluationRuntimeControl } from "../../src/lib/intelligence/EvaluationRuntimeControl";
 
 describe("OAuth scope provisioning", () => {
   let raw: Database.Database;
@@ -41,12 +42,28 @@ describe("OAuth scope provisioning", () => {
     expect(raw.prepare("SELECT user_id FROM oauth_accounts").get()).toMatchObject({ user_id: "existing" });
   });
 
-  test("legacy profile admin is promoted into tenant membership authority", async () => {
+  test("legacy profile admin is promoted only when the membership is missing", async () => {
     await db.execute("INSERT INTO people (id, email, tenant_id, role) VALUES ('existing', 'new@example.test', 'tenant_active', 'admin')");
     await db.execute("INSERT INTO users (id, email) VALUES ('existing', 'new@example.test')");
-    await db.execute("INSERT INTO memberships (user_id, tenant_id, role, permissions, status) VALUES ('existing', 'tenant_active', 'member', '[]', 'active')");
     await provisionOAuthScope(db, identity, () => "unused");
     expect(raw.prepare("SELECT role FROM memberships WHERE user_id='existing' AND tenant_id='tenant_active'").get()).toMatchObject({ role: "admin" });
+  });
+
+  test("OAuth login never promotes or reactivates an established membership from legacy profile role", async () => {
+    await db.execute("INSERT INTO people (id, email, tenant_id, role) VALUES ('existing', 'new@example.test', 'tenant_active', 'admin')");
+    await db.execute("INSERT INTO users (id, email) VALUES ('existing', 'new@example.test')");
+    await db.execute("INSERT INTO memberships (user_id, tenant_id, role, permissions, status, revoked_at) VALUES ('existing', 'tenant_active', 'member', '[]', 'revoked', '2026-01-01T00:00:00Z')");
+    await provisionOAuthScope(db, identity, () => "unused");
+    expect(raw.prepare("SELECT role, status, revoked_at FROM memberships WHERE user_id='existing' AND tenant_id='tenant_active'").get())
+      .toMatchObject({ role: "member", status: "revoked", revoked_at: "2026-01-01T00:00:00Z" });
+  });
+
+  test("a missing scoped evaluator-control row defaults to RUNNING while a missing table remains an error", async () => {
+    const control = new EvaluationRuntimeControl(db);
+    await expect(control.get({ tenantId: "tenant_active", personId: "person_new" }))
+      .resolves.toMatchObject({ desiredState: "RUNNING", updatedAt: 0, updatedBy: null });
+    await db.execute("DROP TABLE evaluation_runtime_control");
+    await expect(control.get({ tenantId: "tenant_active", personId: "person_new" })).rejects.toThrow(/no such table/i);
   });
 
   test("OAuth login never downgrades an existing tenant admin membership", async () => {

@@ -1,4 +1,5 @@
 import type { DatabaseAdapter } from "@/data/database";
+import type { AuthorizedPersonScope } from "@/lib/security/auth";
 
 export type EvaluationRuntimeState = "RUNNING" | "PAUSED" | "STOPPED";
 
@@ -11,7 +12,7 @@ export interface EvaluationRuntimeControlRecord {
 export class EvaluationRuntimeControl {
   constructor(private readonly db: DatabaseAdapter) {}
 
-  async get(): Promise<EvaluationRuntimeControlRecord> {
+  async get(scope: AuthorizedPersonScope): Promise<EvaluationRuntimeControlRecord> {
     try {
       const row = await this.db.one<{
         desired_state: EvaluationRuntimeState;
@@ -20,10 +21,12 @@ export class EvaluationRuntimeControl {
       }>(
         `SELECT desired_state,updated_at,updated_by
          FROM evaluation_runtime_control
-         WHERE id='global'`,
+         WHERE tenant_id=? AND person_id=?`, [scope.tenantId, scope.personId],
       );
       if (!row) {
-        throw new Error("EVALUATION_RUNTIME_CONTROL_MISSING");
+        // Migration 059 intentionally begins with no rows. An absent row is
+        // the durable default, matching the worker claim predicate.
+        return { desiredState: "RUNNING", updatedAt: 0, updatedBy: null };
       }
       return {
         desiredState: row.desired_state,
@@ -31,33 +34,24 @@ export class EvaluationRuntimeControl {
         updatedBy: row.updated_by,
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (/no such table:\s*evaluation_runtime_control/i.test(message)) {
-        // Rolling deploy/partial-test compatibility only. Once migration 055
-        // exists, an explicit PAUSED/STOPPED row remains authoritative.
-        return {
-          desiredState: "RUNNING",
-          updatedAt: 0,
-          updatedBy: "control-table-unavailable",
-        };
-      }
       throw error;
     }
   }
 
   async set(
+    scope: AuthorizedPersonScope,
     desiredState: EvaluationRuntimeState,
     updatedBy: string,
   ): Promise<EvaluationRuntimeControlRecord> {
     const updatedAt = Date.now();
     await this.db.execute(
-      `INSERT INTO evaluation_runtime_control(id,desired_state,updated_at,updated_by)
-       VALUES('global',?,?,?)
-       ON CONFLICT(id) DO UPDATE SET
+      `INSERT INTO evaluation_runtime_control(tenant_id,person_id,desired_state,updated_at,updated_by)
+       VALUES(?,?,?,?,?)
+       ON CONFLICT(tenant_id,person_id) DO UPDATE SET
          desired_state=excluded.desired_state,
          updated_at=excluded.updated_at,
          updated_by=excluded.updated_by`,
-      [desiredState, updatedAt, updatedBy],
+      [scope.tenantId, scope.personId, desiredState, updatedAt, updatedBy],
     );
     return { desiredState, updatedAt, updatedBy };
   }

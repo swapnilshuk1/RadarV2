@@ -43,17 +43,14 @@ export async function provisionOAuthScope(db: DatabaseAdapter, identity: OAuthId
       await tx.execute("UPDATE people SET tenant_id = ?, name = ?, avatar_url = ?, email_verified = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [tenantId, identity.name, identity.avatarUrl, identity.emailVerified ? 1 : 0, personId]);
     }
     await tx.execute("INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)", [personId, identity.email]);
-    // Reconcile the one historical profile-level admin marker into the
-    // membership authority exactly at OAuth provisioning.  Runtime checks use
-    // memberships only; this avoids a global people.role escape hatch.
+    // Reconcile a legacy profile-level admin marker only while creating the
+    // first membership. Existing membership role/status/revocation is the
+    // authority and must never be changed by a later OAuth login.
     const membershipRole = person?.role === "admin" ? "admin" : "member";
     await tx.execute(
       `INSERT INTO memberships (user_id, tenant_id, role, permissions, status)
        VALUES (?, ?, ?, '[]', 'active')
-       ON CONFLICT(user_id, tenant_id) DO UPDATE SET
-         role = CASE WHEN excluded.role = 'admin' THEN 'admin' ELSE memberships.role END,
-         status = 'active',
-         revoked_at = NULL`,
+       ON CONFLICT(user_id, tenant_id) DO NOTHING`,
       [personId, tenantId, membershipRole],
     );
     await tx.execute("INSERT OR IGNORE INTO oauth_accounts (provider, provider_user_id, user_id) VALUES (?, ?, ?)", [identity.provider, identity.providerUserId, personId]);

@@ -57,7 +57,7 @@ export async function ingestIntoSqlite(
   const hasBoundIdentity = Boolean(
     binding?.canonicalJobId && binding.opportunityVersion && binding.contentHash,
   );
-  if (hasBoundIdentity) {
+  if (binding && hasBoundIdentity) {
     if (!resolvedCanonicalId || binding.canonicalJobId !== resolvedCanonicalId || !binding.opportunityVersion || !binding.contentHash) {
       throw new Error('ENRICHMENT_CANONICAL_ADMISSION_MISMATCH');
     }

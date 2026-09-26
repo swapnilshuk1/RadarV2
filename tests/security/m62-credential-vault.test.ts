@@ -10,6 +10,7 @@ import {
   CredentialVault,
   InMemoryKeyProvider,
   DevDeterministicKeyProvider,
+  EnvironmentCredentialKeyProvider,
   CredentialAuthenticationError,
   CredentialKeyVersionError,
   CredentialMalformedEnvelopeError,
@@ -57,6 +58,50 @@ describe("Sub-Phase M6.2: Cryptographic Vault & Envelope Encryption Security Inv
 
   beforeEach(() => {
     vault = new CredentialVault(new DevDeterministicKeyProvider());
+  });
+
+  test("configured historical keyring cannot redefine the active write version", () => {
+    const prior = {
+      key: process.env.RADAR_CREDENTIAL_ENCRYPTION_KEY,
+      version: process.env.RADAR_CREDENTIAL_KEY_VERSION,
+      keyring: process.env.RADAR_CREDENTIAL_DECRYPTION_KEYRING,
+    };
+    try {
+      process.env.RADAR_CREDENTIAL_ENCRYPTION_KEY = "11".repeat(32);
+      process.env.RADAR_CREDENTIAL_KEY_VERSION = "env_v1";
+      process.env.RADAR_CREDENTIAL_DECRYPTION_KEYRING = JSON.stringify({ env_v1: "22".repeat(32) });
+      expect(() => new EnvironmentCredentialKeyProvider()).toThrow(CredentialVaultError);
+    } finally {
+      if (prior.key === undefined) delete process.env.RADAR_CREDENTIAL_ENCRYPTION_KEY; else process.env.RADAR_CREDENTIAL_ENCRYPTION_KEY = prior.key;
+      if (prior.version === undefined) delete process.env.RADAR_CREDENTIAL_KEY_VERSION; else process.env.RADAR_CREDENTIAL_KEY_VERSION = prior.version;
+      if (prior.keyring === undefined) delete process.env.RADAR_CREDENTIAL_DECRYPTION_KEYRING; else process.env.RADAR_CREDENTIAL_DECRYPTION_KEYRING = prior.keyring;
+    }
+  });
+
+  test("rotation keyring decrypts a historical envelope while new writes use only the active version", () => {
+    const prior = {
+      key: process.env.RADAR_CREDENTIAL_ENCRYPTION_KEY,
+      version: process.env.RADAR_CREDENTIAL_KEY_VERSION,
+      keyring: process.env.RADAR_CREDENTIAL_DECRYPTION_KEYRING,
+    };
+    const historicalKey = crypto.randomBytes(32);
+    const activeKey = crypto.randomBytes(32);
+    try {
+      const legacyVault = new CredentialVault(new InMemoryKeyProvider({ kms_v2: historicalKey }, "kms_v2"));
+      const legacyEnvelope = legacyVault.encrypt("historical-credential");
+
+      process.env.RADAR_CREDENTIAL_ENCRYPTION_KEY = activeKey.toString("hex");
+      process.env.RADAR_CREDENTIAL_KEY_VERSION = "env_v1";
+      process.env.RADAR_CREDENTIAL_DECRYPTION_KEYRING = JSON.stringify({ kms_v2: historicalKey.toString("hex") });
+      const rotatedVault = new CredentialVault(new EnvironmentCredentialKeyProvider());
+
+      expect(rotatedVault.decrypt(legacyEnvelope)).toBe("historical-credential");
+      expect(rotatedVault.encrypt("new-credential").keyVersion).toBe("env_v1");
+    } finally {
+      if (prior.key === undefined) delete process.env.RADAR_CREDENTIAL_ENCRYPTION_KEY; else process.env.RADAR_CREDENTIAL_ENCRYPTION_KEY = prior.key;
+      if (prior.version === undefined) delete process.env.RADAR_CREDENTIAL_KEY_VERSION; else process.env.RADAR_CREDENTIAL_KEY_VERSION = prior.version;
+      if (prior.keyring === undefined) delete process.env.RADAR_CREDENTIAL_DECRYPTION_KEYRING; else process.env.RADAR_CREDENTIAL_DECRYPTION_KEYRING = prior.keyring;
+    }
   });
 
   // ==========================================================================

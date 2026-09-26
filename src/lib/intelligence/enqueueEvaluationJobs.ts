@@ -5,7 +5,7 @@ export interface EnqueueOptions { adapter?:DatabaseAdapter; }
 export interface EnqueueResult {searchPlanId:string;tenantId:string;personId:string;evaluationContextFingerprint:string;candidatesProcessed:number;enqueuedCount:number;skippedCount:number;ignoredNotCandidateCount:number;jobIds:string[];}
 /** Enqueues admitted candidates through the shared scheduler. Active context wins; legacy contexts remain supported. */
 export async function enqueueEvaluationJobsForPlan(auth:AuthContext,personId:string,searchPlanId:string,options?:EnqueueOptions):Promise<EnqueueResult>{
- const db=options?.adapter||getDatabaseAdapter(); const scope=await authorizePersonScope(auth,personId,db);
+ const db=options?.adapter||getDatabaseAdapter(); const scope=await authorizePersonScope(auth,personId,db,"write:person");
  const plan=await db.one<{id:string}>(`SELECT id FROM search_plans WHERE id=? AND tenant_id=? AND person_id=?`,[searchPlanId,scope.tenantId,personId]); if(!plan)throw new Error(`[enqueueEvaluationJobs] Search plan '${searchPlanId}' not found or unauthorized`);
  let active=await db.one<{context_fingerprint:string}>(`SELECT context_fingerprint FROM active_evaluation_contexts WHERE tenant_id=? AND person_id=? AND search_plan_id=?`,[scope.tenantId,personId,searchPlanId]);
  if(!active) active=await db.one<{context_fingerprint:string}>(`SELECT ec.context_fingerprint FROM evaluation_contexts ec JOIN search_plan_snapshots sps ON sps.id=ec.search_plan_snapshot_id WHERE sps.search_plan_id=? AND ec.tenant_id=? AND ec.person_id=? ORDER BY ec.created_at DESC,ec.rowid DESC LIMIT 1`,[searchPlanId,scope.tenantId,personId]);

@@ -46,7 +46,7 @@ describe("Milestone M7: Production Tenant Migration & Lineage Validation", () =>
   });
 
   it("should authorize the person scope within the tenant", async () => {
-    authorizedScope = await authorizePersonScope(authContext, PERSON_ID, db);
+    authorizedScope = await authorizePersonScope(authContext, PERSON_ID, db, "read:person");
     expect(authorizedScope.personId).toBe(PERSON_ID);
     expect(authorizedScope.tenantId).toBe(TENANT_ID);
   });

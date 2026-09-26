@@ -67,10 +67,7 @@ import {
   classifyOpportunityCategories,
   type CategoryId,
 } from "../../../lib/domain/category_taxonomy";
-import {
-  resolveServingScope,
-  type ActiveServingContext,
-} from "../../../lib/security/scope-resolver";
+import { type ActiveServingContext } from "../../../lib/security/scope-resolver";
 import { SqliteDossierPresentationStore } from "./SqliteDossierPresentationStore";
 import { SqliteRichDossierStore } from "./SqliteRichDossierStore";
 import { DRAFT_DOSSIER_VERSION, SqliteDossierReviewQueue } from "./SqliteDossierReviewQueue";
@@ -157,6 +154,29 @@ export interface RawFeedRow {
 
 export class SqliteOpportunityQueries implements OpportunityQueries {
   constructor(private db: DatabaseAdapter) {}
+
+  /** An AuthorizedPersonScope is already a verified capability.  Repository
+   * reads must never reinterpret its candidate as an authenticated actor. */
+  private async activeContextFor(scope: AuthorizedPersonScope): Promise<ActiveServingContext | undefined> {
+    if (scope.activeSearchPlanId) {
+      const row = await this.db.one<{ context_fingerprint: string }>(
+        `SELECT context_fingerprint FROM active_evaluation_contexts
+         WHERE tenant_id=? AND person_id=? AND search_plan_id=?
+         ORDER BY activated_at DESC LIMIT 1`,
+        [scope.tenantId, scope.personId, scope.activeSearchPlanId],
+      );
+      return row ? { searchPlanId: scope.activeSearchPlanId, contextFingerprint: row.context_fingerprint } : undefined;
+    }
+    const row = await this.db.one<{ search_plan_id: string; context_fingerprint: string }>(
+      `SELECT aec.search_plan_id,aec.context_fingerprint
+       FROM active_evaluation_contexts aec JOIN search_plans sp ON sp.id=aec.search_plan_id
+         AND sp.tenant_id=aec.tenant_id AND sp.person_id=aec.person_id
+       WHERE aec.tenant_id=? AND aec.person_id=? AND sp.status='active'
+       ORDER BY aec.activated_at DESC LIMIT 1`,
+      [scope.tenantId, scope.personId],
+    );
+    return row ? { searchPlanId: row.search_plan_id, contextFingerprint: row.context_fingerprint } : undefined;
+  }
 
   /** Cursor membership must be bound to every filter that changes the feed universe. */
   private feedFilterSignature(filters?: FeedFilters): string {
@@ -277,9 +297,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     pageSize = 24,
     stopwatch?: ServingStopwatch,
   ): Promise<FeedPage> {
-    const resolved = await resolveServingScope(scope.personId, scope.tenantId, this.db);
     stopwatch?.markScopeResolved();
-    const activeContext = resolved.activeContext;
+    const activeContext = await this.activeContextFor(scope);
     if (!activeContext) {
       return {
         items: [],
@@ -554,8 +573,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
   }
 
   async getMetrics(scope: AuthorizedPersonScope): Promise<CanonicalOpportunityMetrics> {
-    const resolved = await resolveServingScope(scope.personId, scope.tenantId, this.db);
-    const activeContext = resolved.activeContext;
+    const activeContext = await this.activeContextFor(scope);
     const generatedAt = new Date().toISOString();
     const snapshotId = `snap_${scope.personId}_${Date.now()}`;
 
@@ -958,9 +976,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     jobHash: string,
     stopwatch?: ServingStopwatch,
   ): Promise<ServedOpportunity | null> {
-    const resolved = await resolveServingScope(scope.personId, scope.tenantId, this.db);
     stopwatch?.markScopeResolved();
-    const activeContext = resolved.activeContext;
+    const activeContext = await this.activeContextFor(scope);
     if (!activeContext) return null;
 
     const row = await this.db.one<{
@@ -1513,8 +1530,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     jobHash: string,
     filters?: FeedFilters,
   ): Promise<NavigationContext | null> {
-    const resolved = await resolveServingScope(scope.personId, scope.tenantId, this.db);
-    const activeContext = resolved.activeContext;
+    const activeContext = await this.activeContextFor(scope);
     if (!activeContext) {
       return null;
     }

@@ -54,21 +54,6 @@ export class EvaluationDaemon {
     const loop = async (worker: EvaluationWorker, slot: number) => {
       if (signal.aborted) return;
       try {
-        const control = await this.runtimeControl.get();
-        if (control.desiredState !== this.lastObservedControlState) {
-          this.lastObservedControlState = control.desiredState;
-          console.log(
-            `[EvaluationDaemon] Runtime control -> ${control.desiredState} (updated by ${control.updatedBy ?? "unknown"})`,
-          );
-        }
-        if (control.desiredState === "STOPPED") {
-          this.stop();
-          return;
-        }
-        if (control.desiredState === "PAUSED") {
-          setTimeout(() => void loop(worker, slot), this.pollIntervalMs);
-          return;
-        }
 
         const result = await worker.pollAndProcessNext();
         if (signal.aborted) return;
@@ -124,6 +109,7 @@ export class EvaluationDaemon {
     this.lastGlobalReconcileAt = Date.now();
     this.reconciliationInFlight = this.reconciler
       .reconcileActiveRuns()
+      .then(() => {})
       .catch((recErr: any) => {
         console.warn(
           `[EvaluationDaemon] ${reason === "startup" ? "Startup" : "Safety"} active-run reconciliation error:`,
@@ -133,7 +119,7 @@ export class EvaluationDaemon {
       .finally(() => {
         this.reconciliationInFlight = null;
       });
-    return this.reconciliationInFlight;
+    return this.reconciliationInFlight ?? Promise.resolve();
   }
 
   public stop(): void {

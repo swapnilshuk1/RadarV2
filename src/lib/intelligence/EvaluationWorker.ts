@@ -1,7 +1,6 @@
 import crypto from "crypto";
 import { ModelProviderUnavailableError } from '../model/provider-unavailable';
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
-import { AuthContext, authorizePersonScope } from "@/lib/security/auth";
 import { runEngineSingleIntrinsic } from "./engine";
 import { validateCandidateProjection } from "../domain/candidate_projection";
 import { validateEvaluationConsistency } from "@/lib/domain/evaluation_fingerprint";
@@ -77,9 +76,6 @@ export class EvaluationWorker {
   }
 
   public async claimNextJob(queueKind?: ClaimedJob["queueKind"], contextFingerprint?: string): Promise<ClaimedJob | null> {
-    const runtime = await this.runtimeControl.get();
-    if (runtime.desiredState !== "RUNNING") return null;
-
     const queueFilter = queueKind === "staged"
       ? "AND ej.status IN ('staged_pending', 'staged_processing')"
       : queueKind === "legacy"
@@ -107,6 +103,7 @@ export class EvaluationWorker {
         AND er.opportunity_version = ej.opportunity_version 
         AND er.evaluation_context_fingerprint = ej.evaluation_context_fingerprint
        WHERE er.status = 'READY'
+         AND COALESCE((SELECT desired_state FROM evaluation_runtime_control c WHERE c.tenant_id=ej.tenant_id AND c.person_id=ej.person_id), 'RUNNING') = 'RUNNING'
          ${queueFilter}
          ${contextFingerprint ? 'AND ej.evaluation_context_fingerprint = ?' : ''}
          AND ((ej.status IN ('pending', 'staged_pending') AND ej.next_attempt_at <= CURRENT_TIMESTAMP)
@@ -181,21 +178,6 @@ export class EvaluationWorker {
 
   private async processClaimedJob(job: ClaimedJob): Promise<WorkerProcessingResult> {
     try {
-      const authContext: AuthContext = {
-        userId: `worker_${this.workerId}`,
-        tenantId: job.tenantId,
-        permissions: ["read:evaluation", "write:evaluation"],
-      };
-
-      try {
-        await authorizePersonScope(authContext, job.personId, this.db);
-      } catch (authErr: any) {
-        // Claimed work may never leave a lease stranded.  Treat scope failure
-        // as a normal durable worker failure so the catch block releases or
-        // dead-letters it under the job's retry policy.
-        throw new Error(`AUTHORIZATION_FAILED: ${authErr?.message || "Authorization failed"}`);
-      }
-
       const versionRow = await this.db.one<{
         raw_content: string;
         job_title: string;
@@ -238,14 +220,17 @@ export class EvaluationWorker {
                 ec.ontology_version, ec.ontology_fingerprint,
                 ec.policy_version, ec.profile_version, ec.created_at
          FROM evaluation_contexts ec
+         JOIN search_plan_snapshots sps ON sps.id=ec.search_plan_snapshot_id
+         JOIN search_plans sp ON sp.id=sps.search_plan_id
          WHERE ec.context_fingerprint = ?
            AND ec.tenant_id = ?
-           AND ec.person_id = ?`,
-        [job.evaluationContextFingerprint, job.tenantId, job.personId]
+           AND ec.person_id = ?
+           AND sp.id = ? AND sp.tenant_id = ec.tenant_id AND sp.person_id = ec.person_id`,
+        [job.evaluationContextFingerprint, job.tenantId, job.personId, job.searchPlanId]
       );
 
       if (!ctxRow) {
-        throw new Error(`[EvaluationWorker] Missing evaluation context for fingerprint: ${job.evaluationContextFingerprint}`);
+        throw new Error(`[EvaluationWorker] DURABLE_LINEAGE_MISMATCH for context: ${job.evaluationContextFingerprint}`);
       }
 
       const context: EvaluationContext = {

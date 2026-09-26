@@ -258,6 +258,7 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
         resume: false,
         autoConfirm: true,
         authContext,
+        scope,
         searchPlanId: activeContext?.searchPlanId,
         resolvedPlan,
       });

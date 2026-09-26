@@ -46,7 +46,7 @@ export async function authorizePersonScope(
   authContext: AuthContext,
   requestedPersonId: string,
   db: DatabaseAdapter,
-  requiredPermission?: "read:person" | "write:person",
+  requiredPermission: "read:person" | "write:person",
 ): Promise<AuthorizedPersonScope> {
   // A membership establishes a tenant boundary, not unrestricted access to
   // every candidate within that boundary.  Self-service remains available to
@@ -55,10 +55,10 @@ export async function authorizePersonScope(
   if (
     requestedPersonId !== authContext.userId &&
     authContext.role !== "admin" &&
-    (requiredPermission !== undefined && !authContext.permissions.includes(requiredPermission))
+    !authContext.permissions.includes(requiredPermission)
   ) {
     throw new TenantIsolationError(
-      `User ${authContext.userId} lacks ${requiredPermission || "candidate"} authority for person ${requestedPersonId}.`,
+      `User ${authContext.userId} lacks ${requiredPermission} authority for person ${requestedPersonId}.`,
     );
   }
   // Direct tenant-scoped boundary query
@@ -123,7 +123,12 @@ export async function authenticateTenantMembership(
 
   let permissions: Permission[] = [];
   try {
-    permissions = JSON.parse(row.permissions || '[]');
+    const parsed: unknown = JSON.parse(row.permissions || '[]');
+    permissions = Array.isArray(parsed)
+      ? parsed.filter((permission): permission is Permission =>
+          typeof permission === "string" && (PERMISSIONS as readonly string[]).includes(permission),
+        )
+      : [];
   } catch {
     permissions = [];
   }

@@ -87,6 +87,7 @@ import {
 export { CredentialBroker, establishPortalAuthSession };
 import crypto from "crypto";
 import type { AuthContext } from "../src/lib/security/auth";
+import type { AuthorizedPersonScope } from "../src/lib/security/auth";
 import {
   CanonicalIngestionService,
   type CanonicalIngestionResult,
@@ -287,6 +288,8 @@ export interface RunOptions {
   resume?: boolean;
   autoConfirm?: boolean;
   authContext?: AuthContext;
+  /** Candidate identity is a capability selected at the request boundary. */
+  scope?: AuthorizedPersonScope;
   searchPlanId?: string;
   resolvedPlan?: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan;
   variants?: AcquisitionVariant[];
@@ -316,7 +319,7 @@ export function createRunSession(
   const session: RunRuntimeSession = {
     runId,
     tenantId: opts.authContext?.tenantId,
-    personId: opts.authContext?.userId,
+    personId: opts.scope?.personId,
     capabilities,
     health: HealthManager.forRun(runId),
     contexts: new Map(),
@@ -424,6 +427,9 @@ function installSignalHandlers(): void {
 installSignalHandlers();
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
+  if (opts.scope && opts.authContext && opts.scope.tenantId !== opts.authContext.tenantId) {
+    throw new Error("SCRAPER_ACTOR_SCOPE_TENANT_MISMATCH");
+  }
   const log = makeLogger("scrape");
   const storageRes = verifyArtifactStorage();
   if (!storageRes.ok) {
@@ -436,12 +442,12 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   const runtimeOpts = resolveScraperRuntimeOptions(process.argv.slice(2), process.env);
   const explicitScoped = runtimeOpts.mode === "SCOPED" || process.argv.includes("--scoped");
   const hasTenant = Boolean(opts.authContext?.tenantId || runtimeOpts.tenantId);
-  const hasPerson = Boolean(opts.authContext?.userId || runtimeOpts.personId);
+  const hasPerson = Boolean(opts.scope?.personId || runtimeOpts.personId);
 
   // Partial SCOPED identity must fail closed BEFORE any browser launch
   if ((explicitScoped && (!hasTenant || !hasPerson)) || (hasTenant && !hasPerson) || (!hasTenant && hasPerson)) {
     throw new Error(
-      `PARTIAL_SCOPED_IDENTITY: SCOPED mode requires both --tenant-id and --person-id. Provided tenantId=${opts.authContext?.tenantId || runtimeOpts.tenantId || "none"}, personId=${opts.authContext?.userId || runtimeOpts.personId || "none"}. Refusing execution before browser initialization.`
+      `PARTIAL_SCOPED_IDENTITY: SCOPED mode requires both --tenant-id and --person-id. Provided tenantId=${opts.scope?.tenantId || runtimeOpts.tenantId || "none"}, personId=${opts.scope?.personId || runtimeOpts.personId || "none"}. Refusing execution before browser initialization.`
     );
   }
 
@@ -491,7 +497,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   if (effectiveAuthContext) {
     const { ScraperPlanResolver } = await import("../src/lib/intelligence/ScraperPlanResolver");
     const db = getDatabaseAdapter();
-    const scope = { tenantId: effectiveAuthContext.tenantId, personId: effectiveAuthContext.userId };
+    const scope = opts.scope || { tenantId: effectiveAuthContext.tenantId, personId: effectiveAuthContext.userId };
 
     try {
       resolvedPlan = opts.resolvedPlan || (await ScraperPlanResolver.resolveActivePlan(
@@ -532,7 +538,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       evaluationProjection = "DEFERRED_NO_SEARCH_PLAN";
       resolvedPlan = undefined;
       log(
-        `[ScraperAuth] Running planless scoped acquisition for tenant ${effectiveAuthContext.tenantId} (person: ${effectiveAuthContext.userId}).\n` +
+        `[ScraperAuth] Running planless scoped acquisition for tenant ${scope.tenantId} (person: ${scope.personId}).\n` +
         `  searchSource=${searchSource}, evaluationProjection=${evaluationProjection}. Queries: ${keywords.length}. Evaluation deferred until search plan created.`
       );
     }
@@ -570,7 +576,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   if (effectiveAuthContext) {
     runScope = {
       tenantId: effectiveAuthContext.tenantId,
-      personId: effectiveAuthContext.userId,
+      personId: opts.scope?.personId || effectiveAuthContext.userId,
       roles: [],
     };
     try {
@@ -762,8 +768,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             {
               runId: mgr.runId,
               mode: runScope ? "SCOPED" : "GLOBAL_MARKET",
-              tenantId: effectiveAuthContext?.tenantId,
-              personId: effectiveAuthContext?.userId,
+              tenantId: opts.scope?.tenantId || effectiveAuthContext?.tenantId,
+              personId: opts.scope?.personId || effectiveAuthContext?.userId,
             },
             {},
             {

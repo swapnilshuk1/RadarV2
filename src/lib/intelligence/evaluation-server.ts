@@ -110,7 +110,7 @@ async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getD
 async function snapshotForUser(user: { id: string; role?: string }, requested?: CandidateScopeRequest): Promise<EvaluatorTelemetrySnapshot> {
   const db = getDatabaseAdapter();
   const { scope, canControl } = await resolveEvaluatorAccess(user.id, db, requested);
-  const runtime = await new EvaluationRuntimeControl(db).get();
+  const runtime = await new EvaluationRuntimeControl(db).get(scope);
   const { EvaluationDaemon } = await import("./EvaluationDaemon");
   const local = EvaluationDaemon.getGlobalDaemonRuntimeStatus();
 
@@ -194,11 +194,11 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
         modelVersion: latestInvocation?.model_version ?? null,
         invocationAttempt: latestInvocation ? Number(latestInvocation.attempt) : null,
         totalTokens: Number(tokenRow?.total_tokens ?? 0),
-        telemetryState: Number(job.reclaimable) === 1
+        telemetryState: (Number(job.reclaimable) === 1
           ? "reclaimable"
           : hasLiveModelCall
             ? "live_model_call"
-            : "claimed_without_model_call",
+            : "claimed_without_model_call") as "live_model_call" | "claimed_without_model_call" | "reclaimable",
       };
     }),
   );
@@ -295,15 +295,11 @@ export const controlEvaluatorFn = createServerFn({ method: "POST" })
     const control = new EvaluationRuntimeControl(db);
 
     if (data.action === "pause") {
-      await control.set("PAUSED", user.id);
+      await control.set((await resolveEvaluatorAccess(user.id, db, data)).scope, "PAUSED", user.id);
     } else if (data.action === "stop") {
-      await control.set("STOPPED", user.id);
-      const { EvaluationDaemon } = await import("./EvaluationDaemon");
-      EvaluationDaemon.stopGlobalDaemon();
+      await control.set((await resolveEvaluatorAccess(user.id, db, data)).scope, "STOPPED", user.id);
     } else {
-      await control.set("RUNNING", user.id);
-      const { EvaluationDaemon } = await import("./EvaluationDaemon");
-      EvaluationDaemon.startGlobalDaemon(2000);
+      await control.set((await resolveEvaluatorAccess(user.id, db, data)).scope, "RUNNING", user.id);
     }
 
     return snapshotForUser(user, data);
