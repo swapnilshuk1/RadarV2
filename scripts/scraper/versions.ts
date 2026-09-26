@@ -3,8 +3,8 @@
 // uses these to invalidate cached artifacts.
 export const SCRAPER_VERSION = "2.0.0";
 export const SNAPSHOT_SCHEMA_VERSION = "2.0.0";
-export const EXTRACTOR_VERSION = "1.2.0";
-export const EXTRACTOR_PROMPT_VERSION = "1.1.0";
+export const EXTRACTOR_VERSION = "1.3.0";
+export const EXTRACTOR_PROMPT_VERSION = "1.2.0";
 export const RECOMMENDATION_SCHEMA_VERSION = "1.0.0";
 export const TELEMETRY_SCHEMA_VERSION = "1.0.0";
 export const MANIFEST_VERSION = "2.0.0";

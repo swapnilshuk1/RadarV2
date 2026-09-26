@@ -71,7 +71,7 @@ async function enrichWithGroq(input: EnrichInput): Promise<EnrichPatch | null> {
 
     const text = data?.choices?.[0]?.message?.content;
     if (!text) throw new Error("Groq returned empty response");
-    const parsed = validateIntrinsicEnrichmentPatch(JSON.parse(text), input.missingKeys);
+    const parsed = validateIntrinsicEnrichmentPatch(JSON.parse(text), input);
     if (!parsed) throw new Error("Groq returned an invalid intrinsic-enrichment payload");
 
     groqMetrics.successes++;
@@ -84,7 +84,7 @@ async function enrichWithGroq(input: EnrichInput): Promise<EnrichPatch | null> {
 }
 
 export const groqProvider: EnrichmentProvider = {
-  id: `groq:${process.env.GROQ_MODEL || DEFAULT_GROQ_ENRICHMENT_MODEL}@3.0.0`,
+  id: `groq:${process.env.GROQ_MODEL || DEFAULT_GROQ_ENRICHMENT_MODEL}@4.0.0`,
   async enrich(input: EnrichInput) {
     return enrichWithGroq(input);
   },

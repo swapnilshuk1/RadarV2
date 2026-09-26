@@ -4,7 +4,7 @@ import type { EnrichmentProvider } from "../contract";
 import { enrichWithLLM, GEMINI_ENRICHMENT_MODEL } from "../gemini";
 
 export const geminiProvider: EnrichmentProvider = {
-  id: `gemini:${GEMINI_ENRICHMENT_MODEL}@3.0.0`,
+  id: `gemini:${GEMINI_ENRICHMENT_MODEL}@4.0.0`,
   async enrich(input) {
     return enrichWithLLM(input);
   },

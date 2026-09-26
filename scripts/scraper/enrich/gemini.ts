@@ -354,7 +354,7 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
       outputTokens: data.usageMetadata?.candidatesTokenCount ?? null,
       totalTokens: data.usageMetadata?.totalTokenCount ?? null,
     });
-    return validateIntrinsicEnrichmentPatch(JSON.parse(text), input.missingKeys);
+    return validateIntrinsicEnrichmentPatch(JSON.parse(text), input);
   } catch (err: any) {
     return null;
   }

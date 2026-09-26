@@ -18,6 +18,7 @@ import { extractGeography, geographyExtractorId } from "./dimensions/geography";
 import { extractWorkModel, workModelExtractorId } from "./dimensions/workModel";
 import { extractTechnology, technologyExtractorId } from "./dimensions/technologyStack";
 import type { EnrichmentProvider, EnrichmentTelemetry } from "../enrich/contract";
+import { hasValidIntrinsicGrounding } from "../enrich/intrinsic-contract";
 import { defaultProvider } from "../enrich/providers/index";
 import { pickMissingForEnrichment, resolveMode, type EnrichmentMode } from "../enrich/policy";
 import type { Anchored } from "./anchor";
@@ -266,13 +267,21 @@ export async function extract(
 
       for (const d of toFill) {
         const patch = filled?.[d.key];
-        if (patch && patch.value) {
+        if (patch && patch.value && hasValidIntrinsicGrounding(patch, detailText)) {
           d.jdEvidence.value = cleanDimensionValue(patch.value);
           // Inferred (LLM-provided), NOT Explicit — never claims verbatim.
           d.jdEvidence.status = "Inferred";
           d.jdEvidence.provenance = "llm";
           d.jdEvidence.quality = "medium";
           d.jdEvidence.extractorId = provider.id;
+          d.jdEvidence.evidence = patch.sourceSpan && patch.source === "detail"
+            ? [{
+                quote: patch.sourceSpan,
+                source: "detail",
+                sourceStart: patch.sourceStart,
+                sourceEnd: patch.sourceEnd,
+              }]
+            : [];
           d.bucket = "Adjacent";
         }
       }

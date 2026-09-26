@@ -21,6 +21,10 @@ Classify only the requested dimensions:
 - geography: explicit operating geography.
 If the supplied posting does not support a requested dimension, return null.
 Do not invent numbers, reporting relationships, company facts, or unstated scope.
+For every non-null value, cite an exact contiguous sourceSpan from jobPosting.detail.
+Set source to "detail" and give sourceStart/sourceEnd as zero-based, end-exclusive
+offsets in jobPosting.detail. Do not normalize, paraphrase, or fabricate the span.
+Null values must not include a citation.
 Return only the schema-constrained result.`;
 
 export function buildIntrinsicEnrichmentPayload(input: EnrichInput) {
@@ -38,11 +42,11 @@ export function buildIntrinsicEnrichmentPayload(input: EnrichInput) {
   };
 }
 
-function valueSchema(key: string): Record<string, unknown> {
+function nonNullValueSchema(key: string): Record<string, unknown> {
   const allowed = INTRINSIC_DIMENSION_VALUES[key as keyof typeof INTRINSIC_DIMENSION_VALUES];
   return allowed
-    ? { anyOf: [{ type: "string", enum: [...allowed] }, { type: "null" }] }
-    : { anyOf: [{ type: "string" }, { type: "null" }] };
+    ? { type: "string", enum: [...allowed] }
+    : { type: "string" };
 }
 
 export function buildIntrinsicResponseJsonSchema(missingKeys: readonly string[]) {
@@ -53,9 +57,24 @@ export function buildIntrinsicResponseJsonSchema(missingKeys: readonly string[])
         key,
         {
           type: "object",
-          properties: { value: valueSchema(key) },
-          required: ["value"],
-          additionalProperties: false,
+          anyOf: [
+            {
+              properties: { value: { type: "null" } },
+              required: ["value"],
+              additionalProperties: false,
+            },
+            {
+              properties: {
+                value: nonNullValueSchema(key),
+                source: { const: "detail" },
+                sourceSpan: { type: "string", minLength: 1 },
+                sourceStart: { type: "integer", minimum: 0 },
+                sourceEnd: { type: "integer", minimum: 0 },
+              },
+              required: ["value", "source", "sourceSpan", "sourceStart", "sourceEnd"],
+              additionalProperties: false,
+            },
+          ],
         },
       ]),
     ),
@@ -64,14 +83,35 @@ export function buildIntrinsicResponseJsonSchema(missingKeys: readonly string[])
   };
 }
 
+export function hasValidIntrinsicGrounding(
+  patch: { source?: unknown; sourceSpan?: unknown; sourceStart?: unknown; sourceEnd?: unknown },
+  detailText: string,
+): patch is {
+  source: "detail";
+  sourceSpan: string;
+  sourceStart: number;
+  sourceEnd: number;
+} {
+  const providerVisibleDetail = detailText.slice(0, 6000);
+  return patch.source === "detail"
+    && typeof patch.sourceSpan === "string"
+    && patch.sourceSpan.length > 0
+    && Number.isInteger(patch.sourceStart)
+    && Number.isInteger(patch.sourceEnd)
+    && (patch.sourceStart as number) >= 0
+    && (patch.sourceEnd as number) > (patch.sourceStart as number)
+    && (patch.sourceEnd as number) <= providerVisibleDetail.length
+    && providerVisibleDetail.slice(patch.sourceStart as number, patch.sourceEnd as number) === patch.sourceSpan;
+}
+
 export function validateIntrinsicEnrichmentPatch(
   value: unknown,
-  missingKeys: readonly string[],
+  input: Pick<EnrichInput, "detailText" | "missingKeys">,
 ): EnrichPatch | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
   const result: EnrichPatch = {};
-  for (const key of missingKeys) {
+  for (const key of input.missingKeys) {
     const field = raw[key];
     if (!field || typeof field !== "object" || Array.isArray(field)) return null;
     const candidate = (field as { value?: unknown }).value;
@@ -82,7 +122,25 @@ export function validateIntrinsicEnrichmentPatch(
     if (typeof candidate !== "string") return null;
     const allowed = INTRINSIC_DIMENSION_VALUES[key as keyof typeof INTRINSIC_DIMENSION_VALUES];
     if (allowed && !(allowed as readonly string[]).includes(candidate)) return null;
-    result[key] = { value: candidate };
+    const citation = field as {
+      source?: unknown;
+      sourceSpan?: unknown;
+      sourceStart?: unknown;
+      sourceEnd?: unknown;
+    };
+    const grounded = hasValidIntrinsicGrounding(citation, input.detailText);
+
+    // Preserve independently grounded fields, but never promote an ungrounded
+    // non-null value into canonical enrichment.
+    result[key] = grounded
+      ? {
+          value: candidate,
+          source: "detail",
+          sourceSpan: citation.sourceSpan,
+          sourceStart: citation.sourceStart,
+          sourceEnd: citation.sourceEnd,
+        }
+      : { value: null };
   }
   return result;
 }

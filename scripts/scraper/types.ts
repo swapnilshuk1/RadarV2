@@ -342,6 +342,9 @@ export type Quality = "high" | "medium" | "low";
 export interface Evidence {
   quote: string;                 // MUST appear verbatim in rawText
   source: EvidenceSource;
+  /** Zero-based, end-exclusive offsets in the source field when available. */
+  sourceStart?: number;
+  sourceEnd?: number;
 }
 
 export interface DimensionResult {

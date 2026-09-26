@@ -23,7 +23,18 @@ export interface EnrichInput {
   telemetry?: EnrichmentTelemetry;
 }
 
-export type EnrichPatch = Record<string, { value: string | null; rationale?: string }>;
+/**
+ * A non-null LLM enrichment value must cite an exact contiguous span from the
+ * provider-visible JD detail text. `sourceStart` and `sourceEnd` are zero-based,
+ * end-exclusive offsets in the original detail text.
+ */
+export type EnrichPatch = Record<string, {
+  value: string | null;
+  source?: "detail";
+  sourceSpan?: string;
+  sourceStart?: number;
+  sourceEnd?: number;
+}>;
 
 export interface EnrichmentProvider {
   id: string; // Model/config identity participates in enrichment cache identity.
