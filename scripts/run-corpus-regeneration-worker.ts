@@ -33,4 +33,5 @@ export async function processNextCorpusRegenerationJob(
 }
 
 async function run() { const id=`corpus-worker-${process.pid}`; while (!stopping) { if (!await processNextCorpusRegenerationJob(id)) await new Promise(r=>setTimeout(r,1000)); } }
-void run();
+const isMain = process.argv[1]?.endsWith("run-corpus-regeneration-worker.ts") || process.argv[1]?.endsWith("run-corpus-regeneration-worker");
+if (isMain) void run();

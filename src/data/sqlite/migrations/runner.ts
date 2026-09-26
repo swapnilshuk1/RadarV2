@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { getDatabaseAdapter, type DatabaseAdapter } from "../../database";
 
@@ -13,6 +14,8 @@ export interface RequiredSchemaStatus {
   readonly categoryIdsColumnPresent: boolean;
   readonly dossierPresentationsTablePresent: boolean;
 }
+
+export const migrationChecksum = (content: string) => crypto.createHash("sha256").update(content.replace(/\r\n/g, "\n"), "utf8").digest("hex");
 
 const REQUIRED_COLUMNS = [
   { table: "materialized_evaluations", column: "evaluation_fingerprint", statusKey: "evaluationFingerprintColumnPresent" as const, migration: "037_materialized_evaluation_fingerprint.sql" },
@@ -174,13 +177,15 @@ export async function runMigrations(
     CREATE TABLE IF NOT EXISTS _migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       migration_name TEXT NOT NULL UNIQUE,
+      checksum TEXT,
       applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
   // 2. Fetch all currently applied migrations
-  const appliedRows = await db.many<{ migration_name: string }>(
-    "SELECT migration_name FROM _migrations ORDER BY id ASC"
+  try { await db.execute("ALTER TABLE _migrations ADD COLUMN checksum TEXT"); } catch (error: any) { if (!/duplicate column/i.test(error?.message || "")) throw error; }
+  const appliedRows = await db.many<{ migration_name: string; checksum: string | null }>(
+    "SELECT migration_name, checksum FROM _migrations ORDER BY id ASC"
   );
   const appliedSet = new Set(appliedRows.map((r) => r.migration_name));
 
@@ -201,20 +206,26 @@ const REBUILD_MIGRATIONS = new Set([
   const skipped: string[] = [];
 
   for (const file of files) {
+    const sqlContent = fs.readFileSync(path.join(dir, file), "utf-8");
+    const checksum = migrationChecksum(sqlContent);
     if (appliedSet.has(file)) {
+      const recorded = appliedRows.find((row) => row.migration_name === file);
+      if (!recorded?.checksum) {
+        await db.execute("UPDATE _migrations SET checksum=? WHERE migration_name=? AND checksum IS NULL", [checksum, file]);
+      } else if (recorded.checksum !== checksum) {
+        throw new Error(`[MigrationRunner] MIGRATION_CHECKSUM_MISMATCH: ${file}`);
+      }
       skipped.push(file);
       continue;
     }
 
-    const filePath = path.join(dir, file);
-    const sqlContent = fs.readFileSync(filePath, "utf-8");
     const statements = splitSqlStatements(sqlContent);
     const isRebuild = REBUILD_MIGRATIONS.has(file);
 
     if (isRebuild && db.executeMigration) {
       const allStatements = [
         ...statements,
-        `INSERT INTO _migrations (migration_name) VALUES ('${file.replace(/'/g, "''")}');`
+        `INSERT INTO _migrations (migration_name,checksum) VALUES ('${file.replace(/'/g, "''")}','${checksum}');`
       ];
       await db.executeMigration(allStatements, { disableForeignKeys: true });
     } else {
@@ -236,7 +247,7 @@ const REBUILD_MIGRATIONS = new Set([
             throw err;
           }
         }
-        await tx.execute("INSERT INTO _migrations (migration_name) VALUES (?)", [file]);
+        await tx.execute("INSERT INTO _migrations (migration_name,checksum) VALUES (?,?)", [file, checksum]);
       });
     }
 

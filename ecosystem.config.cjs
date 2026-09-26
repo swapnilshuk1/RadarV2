@@ -60,6 +60,22 @@ module.exports = {
         NODE_ENV: 'production',
         ...envVars
       }
-    }
+    },
+    ...[
+      ['radar-scrape','scripts/run-scrape-worker.ts'],
+      ['radar-documents','scripts/process-document-jobs.ts'],
+      ['radar-dossiers','scripts/run-dossier-composition-worker.ts'],
+      ['radar-reviews','scripts/run-dossier-review-worker.ts'],
+      ['radar-corpus','scripts/run-corpus-regeneration-worker.ts'],
+    ].map(([name,args]) => ({
+      name,
+      script: 'node_modules/tsx/dist/cli.mjs',
+      args,
+      cwd: __dirname,
+      autorestart: true,
+      restart_delay: 5000,
+      kill_timeout: 30000,
+      env: { NODE_ENV: 'production', ...envVars },
+    }))
   ]
 };

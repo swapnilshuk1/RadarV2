@@ -25,6 +25,16 @@ export interface Stage {
 
 export const STAGES: Stage[] = [
   {
+    name: "Stage 0: Lint",
+    command: "npm run lint",
+    description: "Active release paths must satisfy the repository lint contract",
+  },
+  {
+    name: "Stage 0.1: Formatting",
+    command: "npm run format:check",
+    description: "Release certification is non-mutating and format-clean",
+  },
+  {
     name: "Stage 1: TypeScript Static Verification",
     command: "npx tsc -p tsconfig.verify.json --noEmit",
     description: "Strict compile-time type agreement across domain and UI layers",
