@@ -202,7 +202,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (229 Total Files)
+## 3. Complete Test File Registry (253 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -258,10 +258,16 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/gate4-write-refresh-edge-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 8 |
 | `tests/intelligence/architecture-contracts.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 10 | 38 |
 | `tests/intelligence/candidate-projection.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 23 |
+| `tests/intelligence/candidate-evaluation-input.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 2 | 7 |
+| `tests/intelligence/candidate-evidence-cache-identity.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 2 | 10 |
+| `tests/intelligence/candidate-evidence-extraction-contract.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 1 | 8 |
+| `tests/intelligence/ontology-resolver-synchronous.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 2 | 4 |
+| `tests/intelligence/static-profile-authority.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 1 | 1 |
 | `tests/intelligence/candidate-proof-extractor-v1.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 1 |
 | `tests/intelligence/role-intelligence-extractor-v1.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 1 |
 | `tests/intelligence/profile-projection-version-compat.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 6 | 6 |
 | `tests/intelligence/canonical-acquisition-integrity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 22 | 63 |
+| `tests/intelligence/knowledge-graph-provenance.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 10 |
 | `tests/intelligence/canonical-identity.test.ts` | Identity & Candidate Projection | **KEEP** | Operator only (`RADAR_RUN_LIVE_IDENTITY_TESTS=true`) | 7 | 27 |
 | `tests/intelligence/canonical-ingestion-fk-regression.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 3 | 22 |
 | `tests/intelligence/capability-precedence.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 11 |
@@ -332,6 +338,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/persistence/cross-instance-payload-retrieval.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 2 | 10 |
 | `tests/persistence/distributed-lease-contention.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 2 | 12 |
 | `tests/persistence/blob-store-connectivity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 4 | 14 |
+| `tests/persistence/canonical-blob-retention.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 6 |
+| `tests/persistence/sqlite-async-transaction.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 11 |
 | `tests/persistence/gate3-distributed-lifecycle.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 15 | 52 |
 | `tests/persistence/populated-migration.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 1 | 9 |
 | `tests/persistence/m61-credential-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 54 |
@@ -343,6 +351,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/pipeline/autonomous-pipeline.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 41 |
 | `tests/pipeline/worker_veto_write_path.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 4 |
 | `tests/policy/attention-management.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 12 | 37 |
+| `tests/policy/read-economics.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 14 |
 | `tests/policy/attention-window.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 32 |
 | `tests/policy/atomic-plan-activation.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 14 |
 | `tests/policy/decision-ranking.test.ts` | Decision Persistence | **KEEP** | Full Suite | 12 | 64 |
@@ -407,6 +416,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/scraper/fintech-marketing-head-replay.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 8 |
 | `tests/scraper/naukri-cancellation-no-legacy-fetch.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 15 |
 | `tests/scraper/enrichment-payload-resolution.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 10 | 10 |
+| `tests/scraper/gemini-enrichment-transport.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 8 | 26 |
+| `tests/scraper/start-rate-scheduler.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 4 |
 | `tests/scraper/hard-filter-semantics.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 9 | 35 |
 | `tests/scraper/indeed-acquisition-resilience.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 9 |
 | `tests/scraper/indeed-jk-provenance.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 3 | 9 |
