@@ -111,8 +111,6 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
   const db = getDatabaseAdapter();
   const { scope, canControl } = await resolveEvaluatorAccess(user.id, db, requested);
   const runtime = await new EvaluationRuntimeControl(db).get(scope);
-  const { EvaluationDaemon } = await import("./EvaluationDaemon");
-  const local = EvaluationDaemon.getGlobalDaemonRuntimeStatus();
 
   const statusRows = await db.many<{ status: string; n: number }>(
     `SELECT ej.status AS status,COUNT(*) AS n
@@ -241,7 +239,9 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
       desiredState: runtime.desiredState,
       updatedAt: runtime.updatedAt,
       updatedBy: runtime.updatedBy,
-      localDaemonRunning: local.running,
+      // A serving process never owns worker loops. Process supervision is
+      // intentionally outside the request/runtime boundary.
+      localDaemonRunning: false,
       canControl,
     },
     queue: {

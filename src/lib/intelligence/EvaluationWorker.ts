@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { ModelProviderUnavailableError } from '../model/provider-unavailable';
+import { ModelInvalidOutputError, ModelProviderUnavailableError } from '../model/provider-unavailable';
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
 import { runEngineSingleIntrinsic } from "./engine";
 import { validateCandidateProjection } from "../domain/candidate_projection";
@@ -553,7 +553,11 @@ export class EvaluationWorker {
       const deadLetterStatus = job.queueKind === "staged" ? "staged_dead_letter" : "dead_letter";
 
       if (nextAttemptNumber < job.maxAttempts) {
-        const backoffSeconds = 5 * Math.pow(2, job.attempts);
+        // Structured-output repair is a bounded semantic retry, not an
+        // operational provider outage. It releases this lease immediately.
+        const backoffSeconds = err instanceof ModelInvalidOutputError
+          ? Math.max(1, Math.ceil(err.retryAfterMs / 1000))
+          : 5 * Math.pow(2, job.attempts);
         const retryRes = await this.db.execute(
           `UPDATE evaluation_jobs
            SET status = ?,

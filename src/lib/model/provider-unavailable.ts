@@ -1,5 +1,29 @@
 const transientFailures = new Map<string, number>();
 
+export type ModelFailureCode =
+  | "MODEL_CREDENTIAL"
+  | "MODEL_THROTTLED"
+  | "MODEL_PROVIDER"
+  | "MODEL_TRANSPORT"
+  | "MODEL_TIMEOUT"
+  | "MODEL_INVALID_OUTPUT"
+  | "MODEL_INVALID_INPUT";
+
+export class ModelFailureError extends Error {
+  constructor(
+    message: string,
+    readonly code: ModelFailureCode,
+    readonly retryAfterMs: number,
+  ) {
+    super(message);
+    this.name = "ModelFailureError";
+  }
+
+  get transient(): boolean {
+    return this.code === "MODEL_THROTTLED" || this.code === "MODEL_PROVIDER" || this.code === "MODEL_TRANSPORT" || this.code === "MODEL_TIMEOUT";
+  }
+}
+
 /** Formatting/structured-output failure: retry briefly without treating it as provider overload. */
 export class ModelInvalidOutputError extends Error {
   readonly retryAfterMs: number;
@@ -8,6 +32,18 @@ export class ModelInvalidOutputError extends Error {
     this.name = "ModelInvalidOutputError";
     this.retryAfterMs = Math.max(1_000, Math.ceil(retryAfterMs));
   }
+}
+
+export function classifyModelFailure(error: unknown): ModelFailureError {
+  if (error instanceof ModelInvalidOutputError) return new ModelFailureError(error.message, "MODEL_INVALID_OUTPUT", error.retryAfterMs);
+  if (error instanceof ModelProviderUnavailableError) {
+    const code = error.httpStatus === 401 || error.httpStatus === 403 ? "MODEL_CREDENTIAL" : error.httpStatus === 429 ? "MODEL_THROTTLED" : error.httpStatus && error.httpStatus >= 500 ? "MODEL_PROVIDER" : "MODEL_TRANSPORT";
+    return new ModelFailureError(error.message, code, error.retryAfterMs);
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  if (/timeout|abort/i.test(message)) return new ModelFailureError(message, "MODEL_TIMEOUT", 30_000);
+  if (/schema|json|output/i.test(message)) return new ModelFailureError(message, "MODEL_INVALID_OUTPUT", 2_000);
+  return new ModelFailureError(message, "MODEL_INVALID_INPUT", 0);
 }
 
 /** Shared provider-overload backoff: 30s, 60s, 120s cap + <=3s jitter.

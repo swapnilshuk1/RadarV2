@@ -452,7 +452,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   }
 
   let effectiveAuthContext: any = opts.authContext;
-  if (!effectiveAuthContext && (hasTenant && hasPerson)) {
+  // A worker consumes a previously-authorized durable scope. It must not
+  // reconstruct an interactive actor or re-run user authorization.
+  const trustedWorkerScope = opts.scope;
+  if (!effectiveAuthContext && !trustedWorkerScope && (hasTenant && hasPerson)) {
     const { resolveScraperAuthContext } = await import("../src/lib/security/scope-resolver");
     const db = getDatabaseAdapter();
     const resolvedAuth = await resolveScraperAuthContext(
@@ -463,7 +466,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     effectiveAuthContext = resolvedAuth.authContext;
   }
 
-  const mode = effectiveAuthContext ? "SCOPED" : "GLOBAL_MARKET";
+  const effectiveScope = trustedWorkerScope || (effectiveAuthContext ? { tenantId: effectiveAuthContext.tenantId, personId: effectiveAuthContext.userId } : undefined);
+  const mode = effectiveScope ? "SCOPED" : "GLOBAL_MARKET";
   const effectiveSearchPlanId = opts.searchPlanId || runtimeOpts.searchPlanId;
   const capabilities = await resolveScraperCapabilities(mode);
 
@@ -494,10 +498,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   let searchSource: "PLAN" | "SUPPLIED" | "DEFAULT" = "DEFAULT";
   let evaluationProjection: "ACTIVE" | "DEFERRED_NO_SEARCH_PLAN" = "DEFERRED_NO_SEARCH_PLAN";
 
-  if (effectiveAuthContext) {
+  if (effectiveScope) {
     const { ScraperPlanResolver } = await import("../src/lib/intelligence/ScraperPlanResolver");
     const db = getDatabaseAdapter();
-    const scope = opts.scope || { tenantId: effectiveAuthContext.tenantId, personId: effectiveAuthContext.userId };
+    const scope = effectiveScope;
 
     try {
       resolvedPlan = opts.resolvedPlan || (await ScraperPlanResolver.resolveActivePlan(
@@ -573,10 +577,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   let runScope: any = null;
   let globalMarketLock: ExclusiveLockToken | null = null;
 
-  if (effectiveAuthContext) {
+  if (effectiveScope) {
     runScope = {
-      tenantId: effectiveAuthContext.tenantId,
-      personId: opts.scope?.personId || effectiveAuthContext.userId,
+      tenantId: effectiveScope.tenantId,
+      personId: effectiveScope.personId,
       roles: [],
     };
     try {

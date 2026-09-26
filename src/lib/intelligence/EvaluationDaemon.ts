@@ -135,45 +135,4 @@ export class EvaluationDaemon {
     return this.isRunning;
   }
 
-  public static getGlobalDaemon(
-    pollIntervalMs = 2000,
-    options?: { adapter?: DatabaseAdapter; concurrency?: number },
-  ): EvaluationDaemon {
-    const g = globalThis as any;
-    if (!g.__RADAR_EVALUATION_DAEMON__) {
-      g.__RADAR_EVALUATION_DAEMON__ = new EvaluationDaemon(
-        `daemon_singleton_${process.pid || "node"}`,
-        pollIntervalMs,
-        options,
-      );
-    }
-    return g.__RADAR_EVALUATION_DAEMON__;
-  }
-
-  public static startGlobalDaemon(
-    pollIntervalMs = 2000,
-    options?: { adapter?: DatabaseAdapter; concurrency?: number },
-  ): EvaluationDaemon {
-    const daemon = EvaluationDaemon.getGlobalDaemon(pollIntervalMs, options);
-    if (!daemon.isDaemonRunning) daemon.start();
-    return daemon;
-  }
-
-  public static stopGlobalDaemon(): void {
-    const g = globalThis as any;
-    const daemon = g.__RADAR_EVALUATION_DAEMON__ as EvaluationDaemon | undefined;
-    daemon?.stop();
-  }
-
-  public static getGlobalDaemonRuntimeStatus(): {
-    exists: boolean;
-    running: boolean;
-  } {
-    const g = globalThis as any;
-    const daemon = g.__RADAR_EVALUATION_DAEMON__ as EvaluationDaemon | undefined;
-    return {
-      exists: Boolean(daemon),
-      running: Boolean(daemon?.isDaemonRunning),
-    };
-  }
 }

@@ -12,77 +12,8 @@ function requestedCandidateScope(data?: CandidateScopeRequest) {
   return data;
 }
 
-let rebuildTimeout: NodeJS.Timeout | null = null;
-
-// Debounced notification after canonical ingestion; legacy JSON is not rebuilt.
-export function triggerDebouncedRebuild() {
-  if (rebuildTimeout) {
-    clearTimeout(rebuildTimeout);
-  }
-  rebuildTimeout = setTimeout(async () => {
-    try {
-      // Notify EvaluationCoordinator that corpus has expanded
-      const { EvaluationCoordinator } = await import("./EvaluationCoordinator");
-      await EvaluationCoordinator.notify({ event: "CORPUS_UPDATED" });
-    } catch (err: any) {
-      console.error("[Server] Debounced rebuild failed:", err.message);
-    }
-  }, 10000);
-}
-
-// Worker startup is an explicit control-plane action. Importing a server
-// function module must never start enrichment or evaluation from a read path.
-export async function startRuntimeWorkers(): Promise<void> {
-  if (typeof globalThis === "undefined") return;
-  const g = globalThis as any;
-  if (!g.__RADAR_DAEMON__) {
-    g.__RADAR_DAEMON__ = {
-      started: false,
-      start: async () => {
-        if (g.__RADAR_DAEMON__.started) return;
-        g.__RADAR_DAEMON__.started = true;
-        console.log("[Daemon] Starting self-healing RADAR background daemon...");
-        
-        try {
-          // 1. Recover expired leases
-          const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
-          const queue = new EnrichmentQueue();
-          const recovered = await queue.recoverExpiredLeases();
-          if (recovered > 0) {
-            console.log(`[Daemon] Recovered ${recovered} expired leases.`);
-          }
-          
-          // 2. A global raw-enrichment worker can lease jobs created by a
-          // different host. Do not let a serving host consume locally stored
-          // scraper artifacts: only a shared object store makes that safe.
-          const { supportsCrossHostEnrichment } = await import("../storage/blob-store");
-          if (supportsCrossHostEnrichment()) {
-            const { enrichGlobalQueue } = await import("../../../scripts/enrich");
-            void enrichGlobalQueue(triggerDebouncedRebuild).catch(err => {
-              console.error("[Daemon] Queue loop error:", err);
-              g.__RADAR_DAEMON__.started = false; // allow restart
-            });
-          } else {
-            console.warn("[Daemon] Global raw enrichment disabled: local BlobStore payloads may only be consumed by their acquisition host.");
-          }
-
-          // 4. Start background Evaluation Daemon singleton for evaluation_jobs
-          const { EvaluationDaemon } = await import("./EvaluationDaemon");
-          EvaluationDaemon.startGlobalDaemon(2000);
-
-          
-        } catch (err: any) {
-          console.error("[Daemon] Startup failure:", err.message);
-          g.__RADAR_DAEMON__.started = false;
-        }
-      }
-    };
-  }
-  await g.__RADAR_DAEMON__.start();
-}
-
-let activeScrapeRunLock: { runId: string; startedAt: number } | null = null;
-const activeManualEnrichmentRuns = new Map<string, Promise<void>>();
+// Web handlers only create durable work. Worker processes own execution and
+// notification; no server-global timers or in-memory run ownership are valid.
 
 export interface CapturedEnrichmentRun {
   runId: string;
@@ -130,7 +61,7 @@ export const getCapturedEnrichmentRunsFn = createServerFn({ method: "GET" })
     }));
   });
 
-/** Starts a local, run-scoped worker. The user invokes this explicitly from the shortlist. */
+/** Queues scoped enrichment; an explicit worker process performs the work. */
 export const startCapturedEnrichmentFn = createServerFn({ method: "POST" })
   .validator((data: { runId: string } & CandidateScopeRequest) => data)
   .handler(async ({ data }) => {
@@ -146,10 +77,6 @@ export const startCapturedEnrichmentFn = createServerFn({ method: "POST" })
 
     const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
     const queue = new EnrichmentQueue();
-    if (activeManualEnrichmentRuns.has(data.runId)) {
-      return { started: false, reason: "ALREADY_RUNNING" };
-    }
-
     let stats = await queue.getRunStats(data.runId);
     // A deliberate retry from the shortlist is scoped to this authorized run.
     // It is the recovery path for a repaired worker or transient fatal state;
@@ -162,15 +89,7 @@ export const startCapturedEnrichmentFn = createServerFn({ method: "POST" })
       return { started: false, reason: "NO_PENDING_CAPTURED_JOBS" };
     }
 
-    const worker = (async () => {
-      const { enrichJobsForRun } = await import("../../../scripts/enrich");
-      await enrichJobsForRun(data.runId, { queue, allowTerminalRun: true });
-      triggerDebouncedRebuild();
-    })().finally(() => activeManualEnrichmentRuns.delete(data.runId));
-    activeManualEnrichmentRuns.set(data.runId, worker);
-    void worker.catch((error) => console.error(`[Server] Run-scoped enrichment failed for ${data.runId}:`, error));
-
-    return { started: true, pending: stats.pending, processing: stats.processing };
+    return { started: false, queued: true, pending: stats.pending, processing: stats.processing };
   });
 
 /**
@@ -214,16 +133,6 @@ export const getScrapePlanPreviewFn = createServerFn({ method: "GET" })
     }
   });
 
-export function getActiveScrapeLock(): { runId: string; startedAt: number } | null {
-  if (!activeScrapeRunLock) return null;
-  const state = getActiveScrapeState();
-  if (!state || !state.isActive) {
-    activeScrapeRunLock = null;
-    return null;
-  }
-  return activeScrapeRunLock;
-}
-
 export const triggerScrapeFn = createServerFn({ method: "POST" })
   .validator((data?: CandidateScopeRequest) => data)
   .handler(async ({ data }) => {
@@ -234,7 +143,7 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
       console.log("[Server] triggerScrapeFn: resolving verified scraper auth scope…");
       const { resolveScraperAuthContext } = await import("../security/scope-resolver");
       const requested = requestedCandidateScope(data);
-      const { authContext, scope, activeContext } = await resolveScraperAuthContext(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
+      const { scope, activeContext } = await resolveScraperAuthContext(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
       const { ScraperPlanResolver } = await import("./ScraperPlanResolver");
       const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(scope, activeContext);
       const repos = getRepositories();
@@ -251,38 +160,15 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
         };
       }
 
-      console.log(`[Server] triggerScrapeFn: launching background scraper for tenant ${authContext.tenantId} (person: ${scope.personId})…`);
-      // Dynamic import isolates Playwright/Node modules from the browser bundler.
-      const { startRun } = await import("../../../scripts/scrape");
-      const { runId, completion } = await startRun({
-        resume: false,
-        autoConfirm: true,
-        authContext,
-        scope,
-        searchPlanId: activeContext?.searchPlanId,
-        resolvedPlan,
+      const run = await repos.scrapeRuns.createRun(scope, {
+        searchPlanId: activeContext?.searchPlanId ?? resolvedPlan.searchPlanId,
+        portalTargets: ["LinkedIn", "Naukri", "Indeed"],
+        initialStatus: "queued",
+        config: { worker: "scrape", searchPlanId: resolvedPlan.searchPlanId, contextFingerprint: resolvedPlan.contextFingerprint },
       });
-      
-      activeScrapeRunLock = { runId, startedAt: Date.now() };
-
-      // Fire and forget
-      void completion
-        .then(() => {
-          if (activeScrapeRunLock?.runId === runId) {
-            activeScrapeRunLock = null;
-          }
-        })
-        .catch((err: any) => {
-          console.error(`[Server] background scrape ${runId} failed:`, err);
-          if (activeScrapeRunLock?.runId === runId) {
-            activeScrapeRunLock = null;
-          }
-        });
-
-      return { success: true, runId };
+      return { success: true, runId: run.id, queued: true };
     } catch (error: any) {
       console.error("[Server] triggerScrapeFn failed:", error);
-      activeScrapeRunLock = null;
       return { success: false, error: error?.message ?? String(error) };
     }
   });
@@ -420,13 +306,6 @@ export function getActiveScrapeState() {
 
     const runData = buildCanonicalRunData(latest.runId);
     if (runData && runData.isActive) {
-      // If there is no active process lock and updatedAt is >30s old, the run is orphaned
-      const updatedAt = runData.updatedAt ? new Date(runData.updatedAt).getTime() : 0;
-      const ageMs = Date.now() - updatedAt;
-      if (!activeScrapeRunLock && ageMs > 30000) {
-        abortScrapeState(latest.runId, true);
-        return null;
-      }
       return runData;
     }
     return null; // Active-only per Directive #2
