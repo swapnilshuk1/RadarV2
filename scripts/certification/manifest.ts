@@ -6,8 +6,6 @@
  * this manifest rather than maintaining independent lists.
  */
 
-export const EXPECTED_CERTIFICATION_FILE_COUNT = 68;
-
 export const certificationManifest = [
   {
     id: "boundary-journeys",
@@ -137,3 +135,7 @@ export const certificationManifest = [
 export const certificationTestFiles = certificationManifest.flatMap((group) => group.files);
 
 export const uniqueCertificationTestFiles = [...new Set(certificationTestFiles)];
+
+if (uniqueCertificationTestFiles.length !== certificationTestFiles.length) {
+  throw new Error("CERTIFICATION_MANIFEST_DUPLICATE_FILE");
+}

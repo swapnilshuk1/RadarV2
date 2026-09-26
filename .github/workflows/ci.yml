@@ -64,18 +64,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck TypeScript
-        run: npx tsc -p tsconfig.verify.json --noEmit
-
-      - name: Build Application
-        run: npm run build
-
-      - name: Run Certification Test Manifest
+      - name: Run authoritative release certification
         # The scraper preflight test launches a real offline Chromium instance.
         # Browser availability is a prerequisite, not a mocked success.
         run: |
           npx playwright install --with-deps chromium
-          npx vitest run --config vitest.certification.config.ts
+          npm run certify
 
       - name: Package verified Linux server output
         run: tar -czf radar-linux-output.tar.gz .output
