@@ -70,9 +70,6 @@ scraper-profile-temp-*/
 scratch/
 *.bak
 partial*.txt
-audit-reports/*
-!audit-reports/gate1b-batch06
-audit/
 reports/*_dossier_generated.*
 
 AWS-Key.pem
@@ -136,3 +133,14 @@ cohort_39_*.json
 scraped_39_*.json
 p3a-corpus-results.json
 scripts/forensic_sparse_report.json
+
+# Generated / archived evidence and machine state — never source-control
+/audit/
+/audit-reports/
+/forensics/
+/radar-certification/
+/output/
+/sample/
+/playwright-profile/
+/scripts-and-tests-inventory.json
+/radar-challenge-corpus.json

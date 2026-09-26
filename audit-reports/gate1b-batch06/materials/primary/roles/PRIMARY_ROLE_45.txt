@@ -1,9 +1,0 @@
-HEAD OF PRE-SALES SOLUTIONS ARCHITECTURE
-Company: CyberShield Enterprise Security
-Location: Gurugram, India (Hybrid)
-
-FUNCTION:
-Lead a team of 8 Solutions Architects providing deep technical architecture validation, threat vector simulations, and POC demonstrations to prospective enterprise clients.
-
-COMMERCIAL EXCLUSION:
-This is an entirely technical pre-sales engineering role. The Head of Solutions Architecture does NOT carry sales quota, does not negotiate commercial pricing terms, and does not hold contract closing responsibility. Commercial quota and deal revenue accountability belong exclusively to the Regional Sales Directors.
