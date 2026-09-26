@@ -31,10 +31,10 @@ describe('context-aware immutable production input',()=>{
   await db.execute(`INSERT INTO opportunity_versions(id,canonical_job_id,content_hash,job_title,company_name,raw_content) VALUES('version','job',?,'Head of Growth','Company','Lead growth.')`,[hash]);
   for(const [id,text]of [['one','Employment began in April 2023.'],['two','Employment began in May 2023.']]){
    const textHash=createHash('sha256').update(text).digest('hex');
-   await db.execute(`INSERT INTO candidate_documents(id,person_id,filename,storage_uri,mime_type,document_hash) VALUES(?,'person_A',?,'fixture','text/plain',?)`,[id,id,textHash]);
-   await db.execute(`INSERT INTO document_contents(id,document_id,raw_text,text_hash) VALUES(?,?,?,?)`,[`text-${id}`,id,text,textHash]);
-   await db.execute(`INSERT INTO evidence_graphs(id,person_id,document_id,graph_json,extractor_version,prompt_version,model) VALUES(?,'person_A',?,'{}','fixture','fixture','fixture')`,[`graph-${id}`,id]);
-   await db.execute(`INSERT INTO profile_projection_source_bindings(person_id,profile_version,document_id,evidence_graph_id,document_text_hash) VALUES('person_A','profile',?,?,?)`,[id,`graph-${id}`,textHash]);
+   await db.execute(`INSERT INTO candidate_documents(id,tenant_id,person_id,filename,storage_uri,mime_type,document_hash) VALUES(?,'tenant_A','person_A',?,'fixture','text/plain',?)`,[id,id,textHash]);
+   await db.execute(`INSERT INTO document_contents(id,tenant_id,person_id,document_id,raw_text,text_hash) VALUES(?,'tenant_A','person_A',?,?,?)`,[`text-${id}`,id,text,textHash]);
+   await db.execute(`INSERT INTO evidence_graphs(id,tenant_id,person_id,document_id,graph_json,extractor_version,prompt_version,model) VALUES(?,'tenant_A','person_A',?,'{}','fixture','fixture','fixture')`,[`graph-${id}`,id]);
+   await db.execute(`INSERT INTO profile_projection_source_bindings(tenant_id,person_id,profile_version,document_id,evidence_graph_id,document_text_hash) VALUES('tenant_A','person_A','profile',?,?,?)`,[id,`graph-${id}`,textHash]);
   }
   vi.spyOn(pipeline,'extractValidatedSourceClaims').mockImplementation(async(_model,document,prefix)=>[{id:`${prefix}1`,text:document.text,plane:document.plane,state:'EXPLICIT',confidence:1,citations:[{sourceId:document.id,quote:document.text}],derivedFrom:[]}]);
  });

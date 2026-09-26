@@ -143,7 +143,7 @@ export class ProjectionPipeline {
         // proves identical text, never shared ownership or provenance.
         if (textHash) {
           const existingGraph = await this.repos.documents.findExistingEvidenceGraphByTextHash(scope, textHash);
-          const reusableGraph = reuseEvidenceGraphForOwner(existingGraph, personId, documentId);
+          const reusableGraph = existingGraph?.provenance.model === "heuristic" ? undefined : reuseEvidenceGraphForOwner(existingGraph, personId, documentId);
           if (reusableGraph) {
             console.log(`[ProjectionPipeline] Instant deduplication match for textHash ${textHash.slice(0, 8)}...!`);
             evidenceGraph = reusableGraph;
@@ -160,7 +160,7 @@ export class ProjectionPipeline {
           });
         }
 
-        if (input.requireModelBackedExtraction && evidenceGraph.provenance.model === "heuristic") {
+        if (evidenceGraph.provenance.model === "heuristic") {
           throw new Error("AUTHORITATIVE_SOURCE_EXTRACTION_UNAVAILABLE");
         }
 

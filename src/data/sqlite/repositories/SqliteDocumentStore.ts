@@ -84,12 +84,24 @@ export class SqliteDocumentStore {
     }
   }
 
+  async registerDocumentAndJob(scope: AuthorizedPersonScope, doc: CandidateDocumentRecord, job: { id: string; jobHash: string; payloadJson: string }): Promise<void> {
+    this.assertScope(scope, doc.personId);
+    if (scope.tenantId !== doc.tenantId) throw new Error("DOCUMENT_SCOPE_TENANT_MISMATCH");
+    await this.db.transaction(async (tx) => {
+      const saved = await tx.execute(`INSERT INTO candidate_documents (id, tenant_id, person_id, filename, storage_uri, mime_type, document_hash, status, stage, error_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [doc.id, scope.tenantId, scope.personId, doc.filename, doc.storageUri, doc.mimeType, doc.documentHash, doc.status, doc.stage, doc.errorMessage || null, doc.createdAt, doc.updatedAt]);
+      if (saved.rowsAffected !== 1) throw new Error("DOCUMENT_REGISTRATION_FAILED");
+      const queued = await tx.execute(`INSERT INTO candidate_document_jobs (id, tenant_id, person_id, document_id, job_hash, payload_json, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')`, [job.id, scope.tenantId, scope.personId, doc.id, job.jobHash, job.payloadJson]);
+      if (queued.rowsAffected !== 1) throw new Error("DOCUMENT_JOB_ENQUEUE_FAILED");
+    });
+  }
+
   async updateDocumentStage(scope: AuthorizedPersonScope, id: string, stage: string, status: CandidateDocumentRecord["status"], errorMessage?: string): Promise<void> {
     const now = new Date().toISOString();
-    await this.db.execute(
+    const result = await this.db.execute(
       `UPDATE candidate_documents SET stage = ?, status = ?, error_message = ?, updated_at = ? WHERE id = ? AND tenant_id = ? AND person_id = ?`,
       [stage, status, errorMessage || null, now, id, scope.tenantId, scope.personId]
     );
+    if (result.rowsAffected !== 1) throw new Error(`DOCUMENT_STAGE_TRANSITION_FAILED: ${id}`);
   }
 
   async getDocument(scope: AuthorizedPersonScope, id: string): Promise<CandidateDocumentRecord | undefined> {
@@ -237,14 +249,11 @@ export class SqliteDocumentStore {
     const now = new Date().toISOString();
     
     // Get highest version for person
-    const latest = await this.db.one<any>(
-      `SELECT version FROM career_intents WHERE tenant_id = ? AND person_id = ? ORDER BY version DESC LIMIT 1`,
-      [scope.tenantId, intent.personId]
-    );
+    await this.db.transaction(async (tx) => {
+    const latest = await tx.one<any>(`SELECT version FROM career_intents WHERE tenant_id = ? AND person_id = ? ORDER BY version DESC LIMIT 1`, [scope.tenantId, intent.personId]);
     const nextVersion = (latest?.version || 0) + 1;
     const intentId = `intent-${intent.personId}-v${nextVersion}`;
-
-    await this.db.execute(
+    const saved = await tx.execute(
       `
       INSERT INTO career_intents (
         id, tenant_id, person_id, version, min_salary_usd, currency, target_salary_amount,
@@ -275,6 +284,8 @@ export class SqliteDocumentStore {
         now
       ]
     );
+    if (saved.rowsAffected !== 1) throw new Error("CAREER_INTENT_SAVE_FAILED");
+    });
   }
 
   async getLatestCareerIntent(scope: AuthorizedPersonScope): Promise<CareerIntentRecord | undefined> {
