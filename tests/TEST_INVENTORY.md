@@ -45,6 +45,7 @@ RADAR v2 Test Architecture
 | `tests/intelligence/canonical-ingestion-fk-regression.test.ts` | Resolves existing `opportunity_versions.id` on conflict; zero orphan foreign keys. | **Stage 3** |
 | `tests/intelligence/canonical-acquisition-integrity.test.ts` | Multi-portal acquisition payload validation, SHA-256 content hashing, and version lineage. | **Stage 3** |
 | `tests/acquisition/ingestion-lineage.test.ts` | Durable source-card/run to exact canonical job/version lineage, retry idempotency, and tenant/run scope isolation. | **Stage 3** |
+| `tests/acquisition/acquisition-ingress.test.ts` | Authenticated local-to-Oracle ingress boundary, canonical hash validation, idempotent submission replay, and durable run/lineage binding. | Full Suite |
 | `tests/acquisition/indeed-listing-identity.test.ts` | Indeed sponsored/direct URL normalization, bounded redirect safety, and stable `jk` canonical identity. | Full Suite |
 | `tests/acquisition/scoped-ingestion.test.ts` | A shared canonical opportunity is projected only into the authenticated tenant/person's active plan. | Full Suite |
 | `tests/intelligence/canonical-identity.test.ts` | Opt-in live canonical-account audit; never part of deterministic certification. | Operator only |
@@ -201,7 +202,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (228 Total Files)
+## 3. Complete Test File Registry (229 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -210,6 +211,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/acquisition/golden-recovery-lineage-cohort.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 23 |
 | `tests/acquisition/historical-recovery-lineage.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 10 | 60 |
 | `tests/acquisition/ingestion-lineage.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 3 | 12 |
+| `tests/acquisition/acquisition-ingress.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 3 | 11 |
 | `tests/acquisition/indeed-listing-identity.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 12 |
 | `tests/acquisition/scoped-ingestion.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 1 | 5 |
 | `tests/acquisition/portal-acquisition-reality.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 10 | 41 |
