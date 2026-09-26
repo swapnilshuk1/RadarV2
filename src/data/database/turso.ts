@@ -17,10 +17,13 @@ export class TursoAdapter implements DatabaseAdapter {
   async many<T>(sql: string, params: QueryParams = []): Promise<T[]> {
     const res = await this.client.execute({ sql, args: params as any[] });
     if (!res.rows) return [];
-    return res.rows.map(r => this.mapRow(r, res.columns) as T);
+    return res.rows.map((r) => this.mapRow(r, res.columns) as T);
   }
 
-  async execute(sql: string, params: QueryParams = []): Promise<{ rowsAffected: number; lastInsertRowid?: any }> {
+  async execute(
+    sql: string,
+    params: QueryParams = [],
+  ): Promise<{ rowsAffected: number; lastInsertRowid?: any }> {
     const res = await this.client.execute({ sql, args: params as any[] });
     return {
       rowsAffected: res.rowsAffected,
@@ -39,7 +42,7 @@ export class TursoAdapter implements DatabaseAdapter {
       many: async <R>(sql: string, params: QueryParams = []): Promise<R[]> => {
         const res = await tx.execute({ sql, args: params as any[] });
         if (!res.rows) return [];
-        return res.rows.map(r => this.mapRow(r, res.columns) as R);
+        return res.rows.map((r) => this.mapRow(r, res.columns) as R);
       },
       execute: async (sql: string, params: QueryParams = []) => {
         const res = await tx.execute({ sql, args: params as any[] });
@@ -50,7 +53,7 @@ export class TursoAdapter implements DatabaseAdapter {
       },
       transaction: async <R>(subFn: (innerTx: DatabaseAdapter) => Promise<R>): Promise<R> => {
         return await subFn(adapterTx);
-      }
+      },
     };
 
     try {
@@ -74,7 +77,10 @@ export class TursoAdapter implements DatabaseAdapter {
     return row;
   }
 
-  async executeMigration(statements: readonly string[], options?: { disableForeignKeys?: boolean }): Promise<void> {
+  async executeMigration(
+    statements: readonly string[],
+    options?: { disableForeignKeys?: boolean },
+  ): Promise<void> {
     const disableFk = options?.disableForeignKeys ?? false;
     if (disableFk) {
       await this.client.migrate(statements as string[]);
@@ -85,5 +91,9 @@ export class TursoAdapter implements DatabaseAdapter {
         }
       });
     }
+  }
+
+  async close(): Promise<void> {
+    this.client.close();
   }
 }

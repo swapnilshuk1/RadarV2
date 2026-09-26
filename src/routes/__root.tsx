@@ -100,6 +100,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   beforeLoad: async ({ location }) => {
     const isPublicRoute =
       location.pathname === "/login" ||
+      location.pathname === "/health/ready" ||
       location.pathname.startsWith("/api/auth") ||
       location.pathname.startsWith("/assets") ||
       /\.(css|js|gif|png|jpg|jpeg|ico|svg|woff|woff2|ttf|eot)$/i.test(location.pathname);

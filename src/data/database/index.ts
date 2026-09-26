@@ -17,7 +17,11 @@ export function getRadarEnv(): RadarEnvironment {
   if (env === "staging") return "staging";
   if (env === "prod" || env === "production") return "production";
 
-  if (process.env.NODE_ENV === "production" || process.env.VERCEL === "1" || process.env.RENDER === "true") {
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL === "1" ||
+    process.env.RENDER === "true"
+  ) {
     return "production";
   }
   if (process.env.NODE_ENV === "test" || process.env.VITEST === "true") {
@@ -61,7 +65,10 @@ function readEnvFile(fileBasename: string): Record<string, string> {
         if (eqIdx > 0) {
           const key = trimmed.slice(0, eqIdx).trim();
           let val = trimmed.slice(eqIdx + 1).trim();
-          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          if (
+            (val.startsWith('"') && val.endsWith('"')) ||
+            (val.startsWith("'") && val.endsWith("'"))
+          ) {
             val = val.slice(1, -1);
           }
           values[key] = val;
@@ -96,10 +103,21 @@ export function getDatabaseTargetIdentity(dbPath?: string): DatabaseTargetIdenti
   loadDatabaseEnvironment();
   const radarEnv = getRadarEnv();
   if (radarEnv === "test" && process.env.RADAR_USE_TURSO !== "true" && dbPath !== "turso") {
-    return { radarEnv, engine: "test-sqlite", fingerprint: "test-sqlite:memory", sanitizedTarget: ":memory:" };
+    return {
+      radarEnv,
+      engine: "test-sqlite",
+      fingerprint: "test-sqlite:memory",
+      sanitizedTarget: ":memory:",
+    };
   }
   const url = process.env.TURSO_CONNECTION_URL || process.env.TURSO_DATABASE_URL;
-  if (!url) return { radarEnv, engine: "unconfigured", fingerprint: "unconfigured", sanitizedTarget: "unconfigured" };
+  if (!url)
+    return {
+      radarEnv,
+      engine: "unconfigured",
+      fingerprint: "unconfigured",
+      sanitizedTarget: "unconfigured",
+    };
   const sanitizedTarget = sanitizeDatabaseUrl(url);
   const digest = createHash("sha256").update(sanitizedTarget).digest("hex").slice(0, 16);
   return { radarEnv, engine: "turso", fingerprint: `turso:${digest}`, sanitizedTarget };
@@ -110,7 +128,7 @@ function assertExpectedDatabaseTarget(identity: DatabaseTargetIdentity): void {
   if (expected && expected !== identity.fingerprint) {
     throw new Error(
       `[DatabaseAdapter] DATABASE_TARGET_MISMATCH: startup resolved ${identity.fingerprint}, ` +
-      `but migration/bootstrap resolved ${expected}. Refusing to serve against a different database.`
+        `but migration/bootstrap resolved ${expected}. Refusing to serve against a different database.`,
     );
   }
 }
@@ -140,7 +158,9 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
     }
 
     if (!DatabaseConstructor) {
-      throw new Error("[DatabaseAdapter] better-sqlite3 module unavailable for in-memory test database");
+      throw new Error(
+        "[DatabaseAdapter] better-sqlite3 module unavailable for in-memory test database",
+      );
     }
 
     if (dbPath === ":memory:") {
@@ -158,7 +178,8 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
     // Auto-apply schema migrations to in-memory SQLite instance for test isolation
     const migrationsDir = path.resolve(process.cwd(), "src/data/sqlite/migrations");
     if (fs.existsSync(migrationsDir)) {
-      const files = fs.readdirSync(migrationsDir)
+      const files = fs
+        .readdirSync(migrationsDir)
         .filter((f) => f.endsWith(".sql") && !f.endsWith("_rollback.sql"))
         .sort();
       for (const file of files) {
@@ -174,12 +195,15 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
             // Keep the same narrowly-scoped replay compatibility as runMigrations;
             // every other migration error is fatal in the test harness.
             if (
-              (sql.includes("CREATE INDEX IF NOT EXISTS") || sql.includes("CREATE UNIQUE INDEX IF NOT EXISTS")) &&
+              (sql.includes("CREATE INDEX IF NOT EXISTS") ||
+                sql.includes("CREATE UNIQUE INDEX IF NOT EXISTS")) &&
               message.includes("no such table")
             ) {
               continue;
             }
-            throw new Error(`[DatabaseAdapter] Failed applying test migration ${file}: ${error instanceof Error ? error.message : String(error)}`);
+            throw new Error(
+              `[DatabaseAdapter] Failed applying test migration ${file}: ${error instanceof Error ? error.message : String(error)}`,
+            );
           }
         }
       }
@@ -215,15 +239,25 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
   // 3. Strict Fail-Fast: Zero Silent Fallbacks to radar.sqlite or No-Op Adapter
   switch (radarEnv) {
     case "production":
-      throw new Error("[DatabaseAdapter] Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment.");
+      throw new Error(
+        "[DatabaseAdapter] Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment.",
+      );
     case "staging":
-      throw new Error("[DatabaseAdapter] Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in staging environment.");
+      throw new Error(
+        "[DatabaseAdapter] Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in staging environment.",
+      );
     case "dev":
-      throw new Error("[DatabaseAdapter] Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in dev environment. Local filesystem SQLite fallback (radar.sqlite) is permanently disabled.");
+      throw new Error(
+        "[DatabaseAdapter] Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in dev environment. Local filesystem SQLite fallback (radar.sqlite) is permanently disabled.",
+      );
     case "test":
-      throw new Error("[DatabaseAdapter] Missing database configuration for test environment. Must provide Turso credentials or specify ':memory:' for isolated unit tests.");
+      throw new Error(
+        "[DatabaseAdapter] Missing database configuration for test environment. Must provide Turso credentials or specify ':memory:' for isolated unit tests.",
+      );
     default:
-      throw new Error(`[DatabaseAdapter] Missing required database configuration for environment: ${radarEnv}`);
+      throw new Error(
+        `[DatabaseAdapter] Missing required database configuration for environment: ${radarEnv}`,
+      );
   }
 }
 
@@ -231,6 +265,13 @@ export function resetDatabaseAdapter() {
   _cachedAdapter = null;
   _hasLoggedStartup = false;
   _hasLoadedDatabaseEnvironment = false;
+}
+
+/** Explicit lifecycle hook for CLI tools and graceful worker shutdown. */
+export async function closeDatabaseAdapter(): Promise<void> {
+  const adapter = _cachedAdapter;
+  _cachedAdapter = null;
+  if (adapter?.close) await adapter.close();
 }
 
 export type { DatabaseAdapter, QueryParams } from "./adapter";

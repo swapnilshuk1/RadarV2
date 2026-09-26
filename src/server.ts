@@ -3,7 +3,11 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
-import { handleGoogleOAuthCallback, handleGoogleOAuthInitiation } from "./lib/auth/oauth-http-routes";
+import {
+  handleGoogleOAuthCallback,
+  handleGoogleOAuthInitiation,
+} from "./lib/auth/oauth-http-routes";
+import { readyResponse } from "./lib/health/readiness";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -57,6 +61,9 @@ export default {
     if (url.pathname === "/api/auth/callback") {
       return handleGoogleOAuthCallback(request);
     }
+    if (url.pathname === "/health/ready") {
+      return readyResponse();
+    }
 
     // Invariant: Privileged webhooks are completely eliminated from the runtime.
     if (url.pathname.startsWith("/api/webhooks")) {
@@ -71,7 +78,10 @@ export default {
       const response = await handler.fetch(request, env, ctx);
 
       // Invariant: Non-existent /api/* routes must return 404 JSON, not client-side HTML shells
-      if (url.pathname.startsWith("/api/") && response.headers.get("content-type")?.includes("text/html")) {
+      if (
+        url.pathname.startsWith("/api/") &&
+        response.headers.get("content-type")?.includes("text/html")
+      ) {
         return new Response(JSON.stringify({ error: "Not Found", path: url.pathname }), {
           status: 404,
           headers: { "content-type": "application/json" },

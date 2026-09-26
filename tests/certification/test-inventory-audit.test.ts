@@ -109,8 +109,8 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
     }
   });
 
-  it("5. asserts all 7 mandatory certification stages exist and have executable commands", () => {
-    expect(STAGES).toHaveLength(7);
+  it("5. asserts all mandatory certification stages exist and have executable commands", () => {
+    expect(STAGES).toHaveLength(9);
     for (const stage of STAGES) {
       expect(stage.name).toBeDefined();
       expect(stage.command).toBeDefined();

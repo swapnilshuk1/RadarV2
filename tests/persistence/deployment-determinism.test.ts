@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "fs";
 import path from "path";
-import { execSync } from "child_process";
 import { getDatabaseAdapter, resetDatabaseAdapter } from "../../src/data/database/index";
 import { getRepositories } from "../../src/data/sqlite/provider";
 import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
@@ -27,7 +26,9 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
 
     expect(() => {
       getDatabaseAdapter();
-    }).toThrow(/Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment/);
+    }).toThrow(
+      /Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment/,
+    );
   });
 
   it("2. DatabaseAdapter fails fast in production when TURSO_AUTH_TOKEN is missing", () => {
@@ -38,7 +39,9 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
 
     expect(() => {
       getDatabaseAdapter();
-    }).toThrow(/Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment/);
+    }).toThrow(
+      /Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment/,
+    );
   });
 
   it("3. DatabaseAdapter in production NEVER falls back to better-sqlite3 or radar.sqlite", () => {
@@ -52,7 +55,9 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
       getDatabaseAdapter();
       expect.fail("Should have thrown error in production");
     } catch (err: any) {
-      expect(err.message).toContain("Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment");
+      expect(err.message).toContain(
+        "Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment",
+      );
       expect(err.message).not.toContain("better-sqlite3");
     }
   });
@@ -64,49 +69,27 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
     expect(content).toContain("scripts/deploy.ts");
   });
 
-  it("5. deploy.ts targets the canonical host and starts only the web process", () => {
+  it("5. deploy.ts requires explicit target inputs, verified artifacts, and starts only web", () => {
     const deployTsPath = path.resolve(process.cwd(), "scripts/deploy.ts");
     const content = fs.readFileSync(deployTsPath, "utf-8");
 
-    expect(content).toContain("oracle_official.key");
-    expect(content).toContain("161.118.175.246");
+    expect(content).toContain("RADAR_DEPLOY_SSH_HOST");
+    expect(content).toContain("RADAR_DEPLOY_SSH_KEY_PATH");
+    expect(content).toContain("RADAR_DEPLOY_DB_FINGERPRINT");
+    expect(content).toContain("verifyReleaseDirectory");
+    expect(content).not.toContain("161.118.175.246");
+    expect(content).not.toContain("oracle_official.key");
+    expect(content).not.toContain("npm run build");
     expect(content).toContain("pm2 startOrRestart ecosystem.config.cjs --only radar-v2");
-    expect(content).toContain("workers remain stopped");
+    expect(content).toContain("workersStarted: false");
   });
 
-  it("6. Deployment archive contains only required deterministic files", () => {
-    const cwd = process.cwd();
-    const tarArchive = path.join(cwd, "radar-deploy.tar.gz");
-
-    // The certification runner builds first.  Never let a stale archive from
-    // another SHA stand in for this run's production bundle.
-    expect(fs.existsSync(path.join(cwd, ".output")), "Certification build output (.output/) is required before archive validation.").toBe(true);
-    fs.rmSync(tarArchive, { force: true });
-
-    try {
-      const gitBash = "C:\\Program Files\\Git\\bin\\bash.exe";
-      if (fs.existsSync(gitBash)) {
-        execSync(`"${gitBash}" -c "tar --exclude='node_modules' --exclude='.git' --exclude='.env*' --exclude='*.sqlite*' --exclude='*.jsonl' --exclude='*.log' --exclude='live-scraped.json' -czf radar-deploy.tar.gz .output/ package.json package-lock.json src/data/ontology/"`, { cwd });
-      } else {
-        execSync("tar --exclude='node_modules' --exclude='.git' --exclude='.env*' --exclude='*.sqlite*' --exclude='*.jsonl' --exclude='*.log' --exclude='live-scraped.json' -czf radar-deploy.tar.gz .output package.json package-lock.json src/data/ontology", { cwd });
-      }
-
-      expect(fs.existsSync(tarArchive), "Fresh deployment archive was not created.").toBe(true);
-      const listOutput = execSync("tar -tf radar-deploy.tar.gz", { cwd, encoding: "utf8" });
-      const files = listOutput.split("\n").map(f => f.trim()).filter(Boolean);
-
-      // Required files present
-      expect(files.some(f => f.includes(".output"))).toBe(true);
-      expect(files.some(f => f.includes("package.json"))).toBe(true);
-      expect(files.some(f => f.includes("src/data/ontology"))).toBe(true);
-
-      // Forbidden files absent
-      expect(files.some(f => f.includes("radar.sqlite"))).toBe(false);
-      expect(files.some(f => f.includes("live-scraped.json"))).toBe(false);
-      expect(files.some(f => f.includes(".env"))).toBe(false);
-    } finally {
-      fs.rmSync(tarArchive, { force: true });
-    }
+  it("6. CI packages the certified release bundle rather than an ad-hoc server build", () => {
+    const ci = fs.readFileSync(path.resolve(process.cwd(), ".github/workflows/ci.yml"), "utf8");
+    expect(ci).toContain("npm run certify");
+    expect(ci).toContain("npm run release:package");
+    expect(ci).toContain("radar-release-${{ github.sha }}");
+    expect(ci).not.toContain("radar-linux-output.tar.gz");
   });
 
   it("7. engine.ts contains zero direct reads from filesystem data artifacts", () => {
@@ -145,7 +128,10 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
   });
 
   it("9. SqliteOpportunityStore.listOpportunitySources queries DatabaseAdapter", () => {
-    const repoPath = path.resolve(process.cwd(), "src/data/sqlite/repositories/SqliteOpportunityStore.ts");
+    const repoPath = path.resolve(
+      process.cwd(),
+      "src/data/sqlite/repositories/SqliteOpportunityStore.ts",
+    );
     const repoContent = fs.readFileSync(repoPath, "utf-8");
 
     expect(repoContent).toContain("SELECT o.id as id, o.canonical_title as canonical_title");

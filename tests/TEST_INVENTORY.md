@@ -452,6 +452,10 @@ Every test file in the repository is mechanically tracked below:
 | `tests/serving/sql_metrics_aggregation.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 2 | 24 |
 | `tests/intelligence/candidate-truth-boundary.test.ts` | Candidate Truth | **KEEP** | Full Suite | 1 | 2 |
 | `tests/intelligence/phase-c-runtime-separation.test.ts` | Runtime Workers | **KEEP** | Full Suite | 4 | 8 |
+| `tests/intelligence/corpus-regeneration-worker.test.ts` | Runtime Workers | **KEEP** | Full Suite | 3 | 3 |
+| `tests/release/readiness.test.ts` | Release Engineering | **KEEP** | Full Suite | 1 | 1 |
+| `tests/release/artifact-integrity.test.ts` | Release Engineering | **KEEP** | Full Suite | 1 | 1 |
+| `tests/release/runtime-topology.test.ts` | Release Engineering | **KEEP** | Full Suite | 1 | 1 |
 
 ---
 

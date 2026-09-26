@@ -51,6 +51,10 @@ export const certificationManifest = [
       "tests/security/deploy-attack-surface-removed.test.ts",
       "tests/security/scrape-tenant-identity.test.ts",
       "tests/security/scrape-run-ownership.test.ts",
+      "tests/security/candidate-profile-tenant-isolation.test.ts",
+      "tests/security/tenant-isolation.test.ts",
+      "tests/security/oauth-scope-provisioning.test.ts",
+      "tests/security/m62-credential-vault.test.ts",
       "tests/ontology/tenant-ontology-compiler.test.ts",
     ],
   },
@@ -130,11 +134,37 @@ export const certificationManifest = [
       "tests/security/evaluation-context-isolation.test.ts",
     ],
   },
+  {
+    id: "runtime-release-safety",
+    name: "Runtime & Release Safety Regressions",
+    description:
+      "Canonical candidate truth, worker separation, corpus durability, migration integrity, and release safety",
+    files: [
+      "tests/intelligence/candidate-truth-boundary.test.ts",
+      "tests/intelligence/phase-c-runtime-separation.test.ts",
+      "tests/intelligence/corpus-regeneration-worker.test.ts",
+      "tests/persistence/migration-runner.test.ts",
+      "tests/persistence/populated-migration.test.ts",
+      "tests/release/readiness.test.ts",
+      "tests/release/artifact-integrity.test.ts",
+      "tests/release/runtime-topology.test.ts",
+    ],
+  },
 ] as const;
 
 export const certificationTestFiles = certificationManifest.flatMap((group) => group.files);
 
 export const uniqueCertificationTestFiles = [...new Set(certificationTestFiles)];
+
+export const requiredCertificationRegressionFiles = [
+  "tests/security/candidate-profile-tenant-isolation.test.ts",
+  "tests/security/tenant-isolation.test.ts",
+  "tests/security/oauth-scope-provisioning.test.ts",
+  "tests/security/m62-credential-vault.test.ts",
+  "tests/intelligence/candidate-truth-boundary.test.ts",
+  "tests/intelligence/phase-c-runtime-separation.test.ts",
+  "tests/intelligence/corpus-regeneration-worker.test.ts",
+] as const;
 
 if (uniqueCertificationTestFiles.length !== certificationTestFiles.length) {
   throw new Error("CERTIFICATION_MANIFEST_DUPLICATE_FILE");
