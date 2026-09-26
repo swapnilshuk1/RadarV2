@@ -1253,7 +1253,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
           )
         : null;
       const reviewJob = pending ? await queue.find(presentationIdentity, fp) : null;
-      const dossier = reviewed ?? (pending ? await queue.getDraft(presentationIdentity, fp) : null);
+      // Draft prose is an internal processing artifact. Serving may expose the
+      // evaluated verdict while review is pending, never the unreviewed memo.
+      const dossier = reviewed;
       const readModel = resolveCanonicalServingReadModel({
         evaluationState: "STAGED_EVALUATED",
         engineVerdict: row.engine_decision,

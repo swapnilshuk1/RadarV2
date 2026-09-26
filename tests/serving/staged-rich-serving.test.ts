@@ -160,7 +160,7 @@ describe("rich staged serving activation", () => {
     await new SqliteDossierReviewQueue(db).enqueue(identity, evaluationFingerprint, pending);
     await publisher.publish(identity, { allowDraft: true });
     expect(await queries.getDossier(scope, "source-job")).toMatchObject({
-      memoReviewState: "pending",
+      memoReviewState: "withheld",
       decision: "PURSUE",
     });
 
@@ -208,7 +208,7 @@ describe("rich staged serving activation", () => {
     }
   });
 
-  it("serves labelled drafts through 429, withholds defects and atomically promotes reviewed output", async () => {
+  it("withholds drafts through review retry and atomically promotes reviewed output", async () => {
     const pending = dossier();
     delete pending.generation.factualReviewer;
     delete pending.generation.factualReviews;
@@ -222,7 +222,7 @@ describe("rich staged serving activation", () => {
       `UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`,
     );
     const read = () => queries.getDossier(scope, "source-job");
-    expect(await read()).toMatchObject({ memoReviewState: "pending", decision: "PURSUE" });
+    expect(await read()).toMatchObject({ memoReviewState: "withheld", decision: "PURSUE" });
     expect(
       renderToStaticMarkup(
         createElement(DossierView, { dossier: pending, reviewState: "pending" }),
@@ -233,9 +233,8 @@ describe("rich staged serving activation", () => {
       "UPDATE dossier_review_jobs SET status='needs_attention',last_error='reviewer unavailable'",
     );
     expect(await read()).toMatchObject({
-      memoReviewState: "review_attention",
+      memoReviewState: "withheld",
       decision: "PURSUE",
-      richDossier: { executiveThesis: pending.executiveThesis },
     });
     expect(
       renderToStaticMarkup(
@@ -253,8 +252,7 @@ describe("rich staged serving activation", () => {
       compose.mockRejectedValueOnce(new ModelProviderUnavailableError("429", 429, 1000));
       expect(await worker.pollOnce()).toMatchObject({ status: "retry" });
       expect(await read()).toMatchObject({
-        memoReviewState: "pending",
-        richDossier: { executiveThesis: pending.executiveThesis },
+        memoReviewState: "withheld",
       });
       await db.execute("UPDATE dossier_review_lane SET next_attempt_at=0");
       await db.execute("UPDATE dossier_review_jobs SET next_attempt_at=0");
