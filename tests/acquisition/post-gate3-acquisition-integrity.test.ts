@@ -2505,342 +2505,74 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       });
     });
 
-    describe("Fix 5: Naukri Multi-Tier Fallback (ATS -> Native Detail)", () => {
-      it("ATS success bypasses native detail fetch and records single successful ATS attempt", async () => {
-        let nativeDetailCalls = 0;
-        let fastFetchCalls = 0;
-
-        const feedCard = {
-          title: "VP Engineering",
-          company: "Enterprise ATS Co",
-          detailUrl: "https://www.naukri.com/job-123",
-          applyRedirectUrl: "https://jobs.lever.co/company/job-123",
-          hasAuthoritativeFullDescription: false,
-          rawText: "Short snippet under 200 chars",
-          rawHtml: "<p>Short snippet</p>",
+    describe("Naukri source-priority routing", () => {
+      it("uses native Naukri detail before an available external ATS redirect", async () => {
+        let nativeCalls = 0;
+        let atsCalls = 0;
+        const native = async () => {
+          nativeCalls++;
+          return { fetched: true, rawText: "Complete native Naukri JD ".repeat(20) };
+        };
+        const ats = async () => {
+          atsCalls++;
+          return { fetched: true, outcome: "SUCCESS", rawText: "External ATS JD ".repeat(20) };
         };
 
-        const mockFastFetch = async () => {
-          fastFetchCalls++;
-          return {
-            fetched: true,
-            outcome: "SUCCESS" as const,
-            rawText: "Full authoritative description from Lever ATS with over 200 characters of rich requirements and executive responsibilities.".repeat(3),
-            rawHtml: "<div>Full authoritative description</div>",
-            fetchDurationMs: 45,
-            httpStatus: 200,
-            extractionMethod: "JSON_LD",
-            qualityTier: "VALID" as const,
-          };
-        };
-
-        const mockNativeDetail = async () => {
-          nativeDetailCalls++;
-          return { fetched: true, rawText: "native", rawHtml: "<p>native</p>", fetchDurationMs: 10 };
-        };
-
-        // Simulate Naukri acquisition logic
-        let detail: any = null;
-        let acquisitionRoute: string | undefined;
-        let enrichmentStatus: string | undefined;
-        let fallbackRoute: string | undefined;
-        const acquisitionAttempts: any[] = [];
-        let usedNaukriRichDiscovery = false;
-        let usedNaukriAts = false;
-
-        if (feedCard.hasAuthoritativeFullDescription === true && feedCard.rawText && feedCard.rawText.length >= 200 && feedCard.rawHtml) {
-          usedNaukriRichDiscovery = true;
+        let route: string | undefined;
+        const nativeResult = await native();
+        if (nativeResult.fetched && nativeResult.rawText.length >= 200) {
+          route = "DETAIL_PAGE_BROWSER";
+        } else {
+          await ats();
+          route = "ATS_ENRICHED";
         }
 
-        if (!usedNaukriRichDiscovery && feedCard.applyRedirectUrl) {
-          const atsRes = await mockFastFetch();
-          if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
-            usedNaukriAts = true;
-            acquisitionRoute = "ATS_ENRICHED";
-            enrichmentStatus = "ENRICHED_SUCCESS";
-            detail = {
-              fetched: true,
-              rawHtml: atsRes.rawHtml,
-              rawText: atsRes.rawText,
-              fetchDurationMs: atsRes.fetchDurationMs,
-              httpStatus: atsRes.httpStatus || 200,
-            };
-            acquisitionAttempts.push({
-              method: "ATS_HTTP",
-              url: feedCard.applyRedirectUrl,
-              outcome: "SUCCESS",
-            });
-          }
-        }
-
-        if (!usedNaukriRichDiscovery && !usedNaukriAts) {
-          await mockNativeDetail();
-        }
-
-        expect(usedNaukriAts).toBe(true);
-        expect(fastFetchCalls).toBe(1);
-        expect(nativeDetailCalls).toBe(0);
-        expect(acquisitionRoute).toBe("ATS_ENRICHED");
-        expect(enrichmentStatus).toBe("ENRICHED_SUCCESS");
-        expect(acquisitionAttempts.length).toBe(1);
-        expect(acquisitionAttempts[0].method).toBe("ATS_HTTP");
+        expect(nativeCalls).toBe(1);
+        expect(atsCalls).toBe(0);
+        expect(route).toBe("DETAIL_PAGE_BROWSER");
       });
 
-      it("ATS failure falls through to native detail and succeeds, preserving both attempts", async () => {
-        let nativeDetailCalls = 0;
-        let fastFetchCalls = 0;
-
-        const feedCard = {
-          title: "VP Engineering",
-          company: "Enterprise ATS Co",
-          detailUrl: "https://www.naukri.com/job-456",
-          applyRedirectUrl: "https://unreachable-ats.com/job-456",
-          hasAuthoritativeFullDescription: false,
-          rawText: "Short snippet",
-          rawHtml: "<p>Short snippet</p>",
+      it("falls back to external ATS only when native Naukri detail is unusable", async () => {
+        let nativeCalls = 0;
+        let atsCalls = 0;
+        const native = async () => {
+          nativeCalls++;
+          return { fetched: false, rawText: "" };
+        };
+        const ats = async () => {
+          atsCalls++;
+          return { fetched: true, outcome: "SUCCESS", rawText: "Complete ATS JD ".repeat(20) };
         };
 
-        const mockFastFetch = async () => {
-          fastFetchCalls++;
-          return {
-            fetched: false,
-            outcome: "TRANSPORT_ERROR" as const,
-            rawText: "",
-            rawHtml: "",
-            fetchDurationMs: 15,
-            httpStatus: 503,
-            fetchError: "Connection refused",
-            failureClass: "TRANSPORT_ERROR",
-          };
-        };
-
-        const mockNativeDetail = async () => {
-          nativeDetailCalls++;
-          return {
-            fetched: true,
-            rawText: "Native Naukri full description text exceeding 200 characters with role details and qualifications.".repeat(3),
-            rawHtml: "<div class='job-desc'>Native Naukri full description</div>",
-            fetchDurationMs: 120,
-            httpStatus: 200,
-          };
-        };
-
-        // Simulate Naukri acquisition logic
-        let detail: any = null;
-        let acquisitionRoute: string | undefined;
-        let enrichmentStatus: string | undefined;
-        let fallbackRoute: string | undefined;
-        const acquisitionAttempts: any[] = [];
-        let usedNaukriRichDiscovery = false;
-        let usedNaukriAts = false;
-
-        if (feedCard.hasAuthoritativeFullDescription === true && feedCard.rawText && feedCard.rawText.length >= 200 && feedCard.rawHtml) {
-          usedNaukriRichDiscovery = true;
-        }
-
-        if (!usedNaukriRichDiscovery && feedCard.applyRedirectUrl) {
-          const atsRes = await mockFastFetch();
-          if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
-            usedNaukriAts = true;
-          } else {
-            enrichmentStatus = "ENRICHED_FAILED";
-            fallbackRoute = "ORIGINAL_DISCOVERY_PAYLOAD";
-            acquisitionAttempts.push({
-              method: "ATS_HTTP",
-              url: feedCard.applyRedirectUrl,
-              outcome: atsRes.outcome || "EXTRACTION_FAILURE",
-            });
-            detail = {
-              fetched: false,
-              fetchError: `ATS enrichment failed: ${atsRes.fetchError}`,
-              failureClass: atsRes.failureClass,
-            };
+        let route: string | undefined;
+        const attempts: string[] = [];
+        const nativeResult = await native();
+        attempts.push("PORTAL_DETAIL");
+        if (nativeResult.fetched && nativeResult.rawText.length >= 200) {
+          route = "DETAIL_PAGE_BROWSER";
+        } else {
+          const atsResult = await ats();
+          attempts.push("ATS_HTTP");
+          if (atsResult.fetched && atsResult.outcome === "SUCCESS" && atsResult.rawText.length >= 200) {
+            route = "ATS_ENRICHED";
           }
         }
 
-        if (!usedNaukriRichDiscovery && !usedNaukriAts) {
-          const portalDetail = await mockNativeDetail();
-          if (portalDetail.fetched && portalDetail.rawText && portalDetail.rawText.length >= 200) {
-            acquisitionRoute = "DETAIL_PAGE_BROWSER";
-            detail = portalDetail;
-            acquisitionAttempts.push({
-              method: "PORTAL_DETAIL",
-              url: feedCard.detailUrl,
-              outcome: "SUCCESS",
-            });
-          }
-        }
-
-        expect(fastFetchCalls).toBe(1);
-        expect(nativeDetailCalls).toBe(1);
-        expect(usedNaukriAts).toBe(false);
-        expect(detail.fetched).toBe(true);
-        expect(acquisitionRoute).toBe("DETAIL_PAGE_BROWSER");
-        expect(acquisitionAttempts.length).toBe(2);
-        expect(acquisitionAttempts[0].method).toBe("ATS_HTTP");
-        expect(acquisitionAttempts[0].outcome).toBe("TRANSPORT_ERROR");
-        expect(acquisitionAttempts[1].method).toBe("PORTAL_DETAIL");
-        expect(acquisitionAttempts[1].outcome).toBe("SUCCESS");
+        expect(nativeCalls).toBe(1);
+        expect(atsCalls).toBe(1);
+        expect(attempts).toEqual(["PORTAL_DETAIL", "ATS_HTTP"]);
+        expect(route).toBe("ATS_ENRICHED");
       });
 
-      it("ATS unusable response (<200 chars) falls through to native detail", async () => {
-        let nativeDetailCalls = 0;
+      it("admits neither discovery snippet nor ATS shell when native and fallback detail both fail", async () => {
+        const native = { fetched: false, rawText: "" };
+        const ats = { fetched: true, outcome: "SUCCESS", rawText: "Loading chat..." };
+        let admitted = false;
 
-        const feedCard = {
-          title: "VP Product",
-          company: "Enterprise ATS Co",
-          detailUrl: "https://www.naukri.com/job-789",
-          applyRedirectUrl: "https://ats.example.com/sparse",
-          hasAuthoritativeFullDescription: false,
-          rawText: "Short snippet",
-          rawHtml: "<p>Short snippet</p>",
-        };
+        if (native.fetched && native.rawText.length >= 200) admitted = true;
+        else if (ats.fetched && ats.outcome === "SUCCESS" && ats.rawText.length >= 200) admitted = true;
 
-        const mockFastFetch = async () => ({
-          fetched: true,
-          outcome: "SUCCESS" as const,
-          rawText: "Too short", // under 200 chars
-          rawHtml: "<p>Too short</p>",
-          fetchDurationMs: 15,
-          httpStatus: 200,
-          qualityTier: "SPARSE" as const,
-        });
-
-        const mockNativeDetail = async () => {
-          nativeDetailCalls++;
-          return {
-            fetched: true,
-            rawText: "Full native description exceeding 200 characters with robust JD details.".repeat(4),
-            rawHtml: "<div>Full description</div>",
-            fetchDurationMs: 100,
-            httpStatus: 200,
-          };
-        };
-
-        let detail: any = null;
-        let acquisitionRoute: string | undefined;
-        let enrichmentStatus: string | undefined;
-        const acquisitionAttempts: any[] = [];
-        let usedNaukriRichDiscovery = false;
-        let usedNaukriAts = false;
-
-        if (!usedNaukriRichDiscovery && feedCard.applyRedirectUrl) {
-          const atsRes = await mockFastFetch();
-          if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
-            usedNaukriAts = true;
-          } else {
-            enrichmentStatus = "ENRICHED_FAILED";
-            acquisitionAttempts.push({
-              method: "ATS_HTTP",
-              url: feedCard.applyRedirectUrl,
-              outcome: "EXTRACTION_FAILURE",
-            });
-            detail = { fetched: false, failureClass: "EXTRACTION_FAILURE" };
-          }
-        }
-
-        if (!usedNaukriRichDiscovery && !usedNaukriAts) {
-          const portalDetail = await mockNativeDetail();
-          if (portalDetail.fetched && portalDetail.rawText && portalDetail.rawText.length >= 200) {
-            acquisitionRoute = "DETAIL_PAGE_BROWSER";
-            detail = portalDetail;
-            acquisitionAttempts.push({
-              method: "PORTAL_DETAIL",
-              url: feedCard.detailUrl,
-              outcome: "SUCCESS",
-            });
-          }
-        }
-
-        expect(nativeDetailCalls).toBe(1);
-        expect(detail.fetched).toBe(true);
-        expect(acquisitionRoute).toBe("DETAIL_PAGE_BROWSER");
-        expect(acquisitionAttempts.length).toBe(2);
-      });
-
-      it("both ATS and native detail failing records both attempts and does not admit snippet as canonical JD", async () => {
-        let nativeDetailCalls = 0;
-
-        const feedCard = {
-          title: "VP Product",
-          company: "Enterprise ATS Co",
-          detailUrl: "https://www.naukri.com/job-fail-both",
-          applyRedirectUrl: "https://ats.example.com/fail",
-          hasAuthoritativeFullDescription: false,
-          rawText: "Discovery card snippet only",
-          rawHtml: "<p>Snippet</p>",
-        };
-
-        const mockFastFetch = async () => ({
-          fetched: false,
-          outcome: "TRANSPORT_ERROR" as const,
-          rawText: "",
-          rawHtml: "",
-          fetchDurationMs: 10,
-          httpStatus: 500,
-          failureClass: "TRANSPORT_ERROR",
-        });
-
-        const mockNativeDetail = async () => {
-          nativeDetailCalls++;
-          return {
-            fetched: false,
-            fetchError: "DOM selector timed out",
-            rawText: "",
-            rawHtml: "",
-            fetchDurationMs: 50,
-            httpStatus: 200,
-            failureClass: "EXTRACTION_FAILURE",
-          };
-        };
-
-        let detail: any = null;
-        let acquisitionRoute: string | undefined;
-        let enrichmentStatus: string | undefined;
-        const acquisitionAttempts: any[] = [];
-        let usedNaukriRichDiscovery = false;
-        let usedNaukriAts = false;
-
-        if (!usedNaukriRichDiscovery && feedCard.applyRedirectUrl) {
-          const atsRes = await mockFastFetch();
-          if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
-            usedNaukriAts = true;
-          } else {
-            enrichmentStatus = "ENRICHED_FAILED";
-            acquisitionAttempts.push({
-              method: "ATS_HTTP",
-              url: feedCard.applyRedirectUrl,
-              outcome: "TRANSPORT_ERROR",
-            });
-            detail = { fetched: false, failureClass: atsRes.failureClass };
-          }
-        }
-
-        if (!usedNaukriRichDiscovery && !usedNaukriAts) {
-          const portalDetail = await mockNativeDetail();
-          if (portalDetail.fetched && portalDetail.rawText && portalDetail.rawText.length >= 200) {
-            acquisitionRoute = "DETAIL_PAGE_BROWSER";
-            detail = portalDetail;
-          } else {
-            detail = {
-              fetched: false,
-              fetchError: portalDetail.fetchError,
-              failureClass: portalDetail.failureClass,
-            };
-            acquisitionAttempts.push({
-              method: "PORTAL_DETAIL",
-              url: feedCard.detailUrl,
-              outcome: "EXTRACTION_FAILURE",
-            });
-          }
-        }
-
-        expect(nativeDetailCalls).toBe(1);
-        expect(detail.fetched).toBe(false);
-        expect(detail.failureClass).toBe("EXTRACTION_FAILURE");
-        expect(acquisitionAttempts.length).toBe(2);
-        expect(acquisitionAttempts[0].method).toBe("ATS_HTTP");
-        expect(acquisitionAttempts[1].method).toBe("PORTAL_DETAIL");
+        expect(admitted).toBe(false);
       });
     });
   });

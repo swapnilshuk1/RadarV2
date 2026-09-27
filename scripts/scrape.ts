@@ -1977,7 +1977,7 @@ export async function processUnit(
         } else {
           if (unit.portal === "Naukri") {
             let usedNaukriRichDiscovery = false;
-            let usedNaukriAts = false;
+            let usedNaukriNativeDetail = false;
 
             // Naukri Multi-Tier Acquisition Architecture:
             // Tier 1: Direct Rich Ingestion (ONLY when explicitly carrying authoritative full-description provenance)
@@ -2004,78 +2004,9 @@ export async function processUnit(
                 details: `Direct rich discovery payload (${feedCard.rawText.length} chars)`
               });
             } 
-            // Tier 2: External ATS Enrichment via applyRedirectUrl (< 500 chars)
-            if (!usedNaukriRichDiscovery && feedCard.applyRedirectUrl) {
-              log(`[Naukri] Attempting ATS enrichment via ${feedCard.applyRedirectUrl}`);
-              const atsRes: import("./scraper/utils/http-fetch").HttpFetchResult = await fastFetchDetail(
-                feedCard.applyRedirectUrl,
-                undefined,
-                undefined,
-                { "Referer": "https://www.naukri.com/" },
-                feedCard.title,
-                feedCard.company
-              ).catch((err: any): import("./scraper/utils/http-fetch").HttpFetchResult => ({
-                fetched: false,
-                fetchError: err.message,
-                fetchDurationMs: 0,
-                httpStatus: undefined,
-                outcome: "TRANSPORT_ERROR" as AcquisitionOutcome,
-                rawHtml: "",
-                rawText: ""
-              }));
-
-              if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
-                log(`[Naukri] ATS enrichment successful (${atsRes.rawText.length} chars, quality=${atsRes.qualityTier || 'VALID'}, method=${atsRes.extractionMethod}) for ${feedCard.title} @ ${feedCard.company}`);
-                usedNaukriAts = true;
-                acquisitionRoute = "ATS_ENRICHED";
-                enrichmentStatus = "ENRICHED_SUCCESS";
-                detail = {
-                  fetched: true,
-                  rawHtml: atsRes.rawHtml,
-                  rawText: atsRes.rawText,
-                  fetchDurationMs: atsRes.fetchDurationMs,
-                  httpStatus: atsRes.httpStatus || 200,
-                  finalUrl: feedCard.applyRedirectUrl,
-                };
-                acquisitionAttempts.push({
-                  method: "ATS_HTTP",
-                  url: feedCard.applyRedirectUrl,
-                  timestamp: new Date().toISOString(),
-                  httpStatus: atsRes.httpStatus || 200,
-                  outcome: "SUCCESS",
-                  qualityTier: atsRes.qualityTier || "VALID",
-                  extractionMethod: atsRes.extractionMethod,
-                  details: `Extracted ${atsRes.rawText.length} chars via ${atsRes.extractionMethod}`
-                });
-              } else {
-                log(`[Naukri] ATS enrichment rejected/failed (${atsRes.fetchError || atsRes.outcome}); preserving attempt and evaluating native detail fallback`);
-                enrichmentStatus = "ENRICHED_FAILED";
-                fallbackRoute = "ORIGINAL_DISCOVERY_PAYLOAD";
-                acquisitionAttempts.push({
-                  method: "ATS_HTTP",
-                  url: feedCard.applyRedirectUrl,
-                  timestamp: new Date().toISOString(),
-                  httpStatus: atsRes.httpStatus,
-                  outcome: atsRes.outcome || "EXTRACTION_FAILURE",
-                  qualityTier: atsRes.qualityTier || "NON_JOB",
-                  extractionMethod: atsRes.extractionMethod,
-                  details: atsRes.fetchError || `Rejected by quality gate (${atsRes.qualityResult?.reasons?.join("; ") || "unsubstantive"})`
-                });
-
-                detail = {
-                  fetched: false,
-                  fetchError: `ATS enrichment failed: ${atsRes.fetchError || atsRes.outcome}`,
-                  rawHtml: feedCard.rawHtml || "",
-                  rawText: feedCard.rawText || "",
-                  fetchDurationMs: 0,
-                  httpStatus: atsRes.httpStatus || 200,
-                  failureClass: atsRes.failureClass,
-                };
-              }
-            } 
-            // Tier 3: Native Detail Acquisition (invoked when rich discovery was not used and ATS did not yield a usable JD)
-            if (!usedNaukriRichDiscovery && !usedNaukriAts && !portalPauseTriggered && outcome.pausePortalQueue !== true) {
-              enrichmentStatus = enrichmentStatus === "ENRICHED_FAILED" ? "ENRICHED_FAILED" : "NOT_APPLICABLE";
+            // Tier 2: Native Naukri Detail Acquisition (source truth before any external apply/ATS redirect)
+            if (!usedNaukriRichDiscovery && !portalPauseTriggered && outcome.pausePortalQueue !== true) {
+              enrichmentStatus = "NOT_APPLICABLE";
               const pmDetail = pageManager;
               const runHealth = HealthManager.forRun(mgr.runId);
               const detailCtx: import("./scraper/types").PortalContext = {
@@ -2097,7 +2028,7 @@ export async function processUnit(
                 recordTelemetry: (event: any) => mgr.recordTelemetry(event),
               };
 
-              log(`[Naukri] ${feedCard.applyRedirectUrl ? "ATS enrichment failed" : "Discovery payload lacks authoritative provenance"} (${feedCard.rawText?.length || 0} chars, authoritative=${Boolean(feedCard.hasAuthoritativeFullDescription)}); invoking portal fetchDetail for ${feedCard.detailUrl}`);
+              log(`[Naukri] Discovery payload lacks authoritative full-JD provenance (${feedCard.rawText?.length || 0} chars); invoking native detail fetch for ${feedCard.detailUrl}`);
               mgr.journal.append({ type: "detail_extraction_started", cardId: cardUnitId, url: feedCard.detailUrl });
               const portalDetail = await handler.fetchDetail(detailCtx, feedCard.detailUrl).catch((err: any) => ({
                 fetched: false,
@@ -2111,6 +2042,7 @@ export async function processUnit(
 
               if (portalDetail.fetched && portalDetail.rawText && portalDetail.rawText.length >= 200) {
                 log(`[Naukri] Detail fetch successful (${portalDetail.rawText.length} chars) for ${feedCard.title} @ ${feedCard.company}`);
+                usedNaukriNativeDetail = true;
                 acquisitionRoute = "DETAIL_PAGE_BROWSER";
                 detail = portalDetail;
                 acquisitionAttempts.push({
@@ -2145,6 +2077,75 @@ export async function processUnit(
                 });
               }
             }
+            // Tier 3: External apply/ATS fallback (only after native Naukri detail is unavailable/unusable)
+            if (!usedNaukriRichDiscovery && !usedNaukriNativeDetail && feedCard.applyRedirectUrl) {
+              log(`[Naukri] Native detail unavailable; attempting external ATS fallback via ${feedCard.applyRedirectUrl}`);
+              const atsRes: import("./scraper/utils/http-fetch").HttpFetchResult = await fastFetchDetail(
+                feedCard.applyRedirectUrl,
+                undefined,
+                undefined,
+                { "Referer": "https://www.naukri.com/" },
+                feedCard.title,
+                feedCard.company
+              ).catch((err: any): import("./scraper/utils/http-fetch").HttpFetchResult => ({
+                fetched: false,
+                fetchError: err.message,
+                fetchDurationMs: 0,
+                httpStatus: undefined,
+                outcome: "TRANSPORT_ERROR" as AcquisitionOutcome,
+                rawHtml: "",
+                rawText: ""
+              }));
+
+              if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
+                log(`[Naukri] ATS enrichment successful (${atsRes.rawText.length} chars, quality=${atsRes.qualityTier || 'VALID'}, method=${atsRes.extractionMethod}) for ${feedCard.title} @ ${feedCard.company}`);
+                acquisitionRoute = "ATS_ENRICHED";
+                enrichmentStatus = "ENRICHED_SUCCESS";
+                detail = {
+                  fetched: true,
+                  rawHtml: atsRes.rawHtml,
+                  rawText: atsRes.rawText,
+                  fetchDurationMs: atsRes.fetchDurationMs,
+                  httpStatus: atsRes.httpStatus || 200,
+                  finalUrl: feedCard.applyRedirectUrl,
+                };
+                acquisitionAttempts.push({
+                  method: "ATS_HTTP",
+                  url: feedCard.applyRedirectUrl,
+                  timestamp: new Date().toISOString(),
+                  httpStatus: atsRes.httpStatus || 200,
+                  outcome: "SUCCESS",
+                  qualityTier: atsRes.qualityTier || "VALID",
+                  extractionMethod: atsRes.extractionMethod,
+                  details: `Extracted ${atsRes.rawText.length} chars via ${atsRes.extractionMethod}`
+                });
+              } else {
+                log(`[Naukri] External ATS fallback rejected/failed (${atsRes.fetchError || atsRes.outcome}) after native detail failure`);
+                enrichmentStatus = "ENRICHED_FAILED";
+                fallbackRoute = "ORIGINAL_DISCOVERY_PAYLOAD";
+                acquisitionAttempts.push({
+                  method: "ATS_HTTP",
+                  url: feedCard.applyRedirectUrl,
+                  timestamp: new Date().toISOString(),
+                  httpStatus: atsRes.httpStatus,
+                  outcome: atsRes.outcome || "EXTRACTION_FAILURE",
+                  qualityTier: atsRes.qualityTier || "NON_JOB",
+                  extractionMethod: atsRes.extractionMethod,
+                  details: atsRes.fetchError || `Rejected by quality gate (${atsRes.qualityResult?.reasons?.join("; ") || "unsubstantive"})`
+                });
+
+                detail = {
+                  fetched: false,
+                  fetchError: `ATS enrichment failed: ${atsRes.fetchError || atsRes.outcome}`,
+                  rawHtml: feedCard.rawHtml || "",
+                  rawText: feedCard.rawText || "",
+                  fetchDurationMs: 0,
+                  httpStatus: atsRes.httpStatus || 200,
+                  failureClass: atsRes.failureClass,
+                };
+              }
+            } 
+
           } else {
           let usedRichDiscovery = false;
           // Invariant (Gate 2): LinkedIn discovery cards are never authoritative full JDs,
