@@ -26,6 +26,9 @@ describe("Phase C runtime separation", () => {
     expect(scraper).toContain("while (!stopping)");
     expect(scraper).toContain("tenant_id");
     expect(scraper).toContain("person_id");
+    expect(scraper).toContain("portal_targets");
+    expect(scraper).toContain("config_json");
+    expect(scraper).toContain("portals: portals.length ? portals : undefined");
     expect(evaluator).toContain("process.once(\"SIGTERM\"");
     expect(evaluator).toContain("daemon.start()");
   });
