@@ -529,18 +529,6 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   const page = ctx.detailPage || ctx.searchPage || ctx.activePage;
   const mutex = ctx.detailMutex || ctx.searchMutex;
 
-  const browserContentSelectors = [
-    "#jobs-desc",
-    "[class*='components_jd']",
-    "[class*='job-desc']",
-    "[class*='dang-inner-html']",
-    "[class*='JDSummary']",
-    "[class*='key-skill']",
-    "[class*='styles_job-desc-container']",
-    "main",
-    "article"
-  ].join(", ");
-
   const doExtract = async (execPage?: any) => {
     const targetPage = execPage || page;
     try {
