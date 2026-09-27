@@ -12,7 +12,8 @@ import { resolveIntentActivationPresentation } from "../../src/lib/intelligence/
 async function createDocumentFixture() {
   const db = new SqliteAdapter(new Database(":memory:"));
   await runMigrations(db);
-  await db.execute("INSERT INTO people (id, email) VALUES ('person-a', 'a@example.test'), ('person-b', 'b@example.test')");
+  await db.execute("INSERT INTO tenants (id, status) VALUES ('tenant-default', 'active')");
+  await db.execute("INSERT INTO people (id, email, tenant_id) VALUES ('person-a', 'a@example.test', 'tenant-default'), ('person-b', 'b@example.test', 'tenant-default')");
   return { db, store: new SqliteDocumentStore(db) };
 }
 
@@ -21,13 +22,14 @@ describe("Gate 4 write and refresh edge contracts", () => {
     const { db, store } = await createDocumentFixture();
     const hash = "a".repeat(64);
     for (const [personId, documentId] of [["person-a", "doc-a"], ["person-b", "doc-b"]] as const) {
-      await store.saveDocument({
-        id: documentId, personId, filename: "cv.pdf", storageUri: `turso://${documentId}`,
+      const scope = { tenantId: "tenant-default", personId, roles: [] };
+      await store.saveDocument(scope, {
+        id: documentId, tenantId: "tenant-default", personId, filename: "cv.pdf", storageUri: `turso://${documentId}`,
         mimeType: "application/pdf", documentHash: hash, status: "UPLOADED", stage: "DOCUMENT_REGISTERED",
         createdAt: "2026-09-06T00:00:00.000Z", updatedAt: "2026-09-06T00:00:00.000Z",
       });
-      await store.enqueueDocumentProcessing({
-        id: `job-${documentId}`, personId, documentId, jobHash: `document-job:${documentId}`, payloadJson: "{}",
+      await store.enqueueDocumentProcessing(scope, {
+        id: `job-${documentId}`, tenantId: "tenant-default", personId, documentId, jobHash: `document-job:${documentId}`, payloadJson: "{}",
       });
     }
 
@@ -64,14 +66,15 @@ describe("Gate 4 write and refresh edge contracts", () => {
 
   it("uses a fresh runnable job for a same-owner byte-identical re-upload", async () => {
     const { db, store } = await createDocumentFixture();
+    const scope = { tenantId: "tenant-default", personId: "person-a", roles: [] };
     for (const documentId of ["doc-first", "doc-reupload"]) {
-      await store.saveDocument({
-        id: documentId, personId: "person-a", filename: "cv.pdf", storageUri: `turso://${documentId}`,
+      await store.saveDocument(scope, {
+        id: documentId, tenantId: "tenant-default", personId: "person-a", filename: "cv.pdf", storageUri: `turso://${documentId}`,
         mimeType: "application/pdf", documentHash: "b".repeat(64), status: "UPLOADED", stage: "DOCUMENT_REGISTERED",
         createdAt: "2026-09-06T00:00:00.000Z", updatedAt: "2026-09-06T00:00:00.000Z",
       });
-      await store.enqueueDocumentProcessing({
-        id: `job-${documentId}`, personId: "person-a", documentId, jobHash: `document-job:${documentId}`, payloadJson: "{}",
+      await store.enqueueDocumentProcessing(scope, {
+        id: `job-${documentId}`, tenantId: "tenant-default", personId: "person-a", documentId, jobHash: `document-job:${documentId}`, payloadJson: "{}",
       });
     }
     await db.execute("UPDATE candidate_document_jobs SET status = 'completed' WHERE document_id = 'doc-first'");
@@ -83,8 +86,9 @@ describe("Gate 4 write and refresh edge contracts", () => {
 
   it("preserves omitted canonical intent preferences as unknown", async () => {
     const { db, store } = await createDocumentFixture();
-    await store.saveCareerIntent({ personId: "person-a", preferredLocations: ["Bengaluru"], targetTitles: ["VP Growth"] });
-    const intent = await store.getLatestCareerIntent("person-a");
+    const scope = { tenantId: "tenant-default", personId: "person-a", roles: [] };
+    await store.saveCareerIntent(scope, { personId: "person-a", preferredLocations: ["Bengaluru"], targetTitles: ["VP Growth"] });
+    const intent = await store.getLatestCareerIntent(scope);
     expect(intent?.preferredWorkModel).toBeUndefined();
     expect(intent?.travelTolerance).toBeUndefined();
     const row = await db.one<{ preferred_work_model: string | null; travel_tolerance: string | null }>(

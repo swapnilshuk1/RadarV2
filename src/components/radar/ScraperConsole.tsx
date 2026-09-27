@@ -50,6 +50,9 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
     }
   }, [runId]);
 
+  const tenantId = scope?.tenantId;
+  const personId = scope?.personId;
+
   // Polling loop
   useEffect(() => {
     if (!runId || completed) return;
@@ -58,7 +61,9 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
 
     const poll = async () => {
       try {
-        const res: any = await getRunEventsFn({ data: { runId, afterIndex: nextIndexRef.current, ...scope } });
+        const res: any = await getRunEventsFn({
+          data: { runId, afterIndex: nextIndexRef.current, tenantId, personId },
+        });
         
         if (res.events.length > 0) {
           setEvents(prev => [...prev, ...res.events]);
@@ -95,7 +100,7 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
 
     timeoutId = setTimeout(poll, pollInterval);
     return () => clearTimeout(timeoutId);
-  }, [runId, completed, pollInterval, onRefreshFeed]);
+  }, [runId, completed, pollInterval, onRefreshFeed, tenantId, personId]);
 
   // Auto-scroll to bottom of events
   useEffect(() => {

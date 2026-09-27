@@ -256,11 +256,10 @@ describe("authenticated canonical ingestion scope", () => {
       enrichmentDispatch: makeEnrichmentDispatch("partial-scope-job-1", "VP Growth", "Acme", "Gurugram", SUBSTANTIVE_TEXT),
     };
 
-    // Missing searchPlanId
+    // Missing personId
     await expect(service.ingestOpportunity(testPayload, {
       mode: "SCOPED",
       tenantId: "tenant_A",
-      personId: "person_A",
       runId: "run_A",
     } as any)).rejects.toThrow("PARTIAL_SCOPE_REJECTED");
 

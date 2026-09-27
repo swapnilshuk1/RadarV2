@@ -144,7 +144,10 @@ function FontSandbox() {
   const [open, setOpen] = useState<string | null>("j-001"); // Default open top card to test brief
 
   const loaderData = Route.useLoaderData();
-  const opportunitiesList: Opportunity[] = (loaderData as any)?.opportunitiesList || [];
+  const opportunitiesList: Opportunity[] = useMemo(
+    () => (loaderData as any)?.opportunitiesList || [],
+    [loaderData],
+  );
   const baseCounts = getScraperCounts();
 
   // Control Panel Toggle State

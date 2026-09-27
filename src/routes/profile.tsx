@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   uploadDocumentFn,
   getPipelineStatusFn,
@@ -37,9 +37,9 @@ function ProfileRoute() {
 
 function ProfilePage() {
   const { intent, scope } = Route.useLoaderData();
-  const requireScope = () => {
+  const requireScope = useCallback(() => {
     return scope;
-  };
+  }, [scope]);
   const [parsing, setParsing] = useState(false);
   const router = useRouter();
   const navigate = useNavigate();
@@ -99,7 +99,7 @@ function ProfilePage() {
     }, 1200);
 
     return () => clearInterval(interval);
-  }, [activeDocId, pipelineStatus, router, markEvidenceProvided, scope]);
+  }, [activeDocId, pipelineStatus, router, markEvidenceProvided, requireScope]);
 
   const fileToBase64 = (fileToConvert: File): Promise<string> => {
     return new Promise((resolve, reject) => {

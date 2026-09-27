@@ -107,9 +107,9 @@ The certification manifest in `scripts/certification/manifest.ts` is the
 authoritative release check. CI retains verified Linux output for its exact
 commit. Pushing code does not deploy it.
 
-Backfill uses the existing `backfill-staged-evaluations.ts`,
-`process-staged-evaluation-jobs.ts`, `compose-staged-dossiers.ts` and
-`complete-staged-rollout.ts` scripts. Inspect their flags and database target
+Worker processing runs via dedicated PM2 worker commands:
+`npm run worker:evaluations`, `npm run worker:dossiers`, `npm run worker:reviews`,
+`npm run worker:corpus`, and `npm run worker:scrape`. Inspect their configuration and database target
 before execution. Keep ingestion, evaluation, composition, publication and
 activation counts separate. An idle queue is not a completed backfill, and PASS
 results need not appear on the shortlist.

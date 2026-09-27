@@ -16,7 +16,7 @@ import path from "node:path";
 import { runEngine, readOpportunities, injectFreshRecords, clearInjectedRecords, computeEvaluationSignature, invalidateEngineCache, ENGINE_VERSION } from "@/lib/intelligence/engine";
 import { present } from "@/lib/intelligence/present";
 import { CandidateProjectionBuilderImpl } from "@/lib/intelligence/builders/CandidateProjectionBuilder";
-import { candidateProfile } from "@/data/candidate-profile";
+import { syntheticCandidateProfile as candidateProfile } from "../fixtures/synthetic-candidate-profile";
 import { CapabilityAssessmentEngine } from "@/lib/intelligence/engines/CapabilityAssessmentEngine";
 import decisionPolicy from "@/data/ontology/decision_policy.json";
 import { POLICY_THRESHOLDS } from "@/lib/intelligence/policy/DecisionPolicyEngine";
@@ -326,7 +326,7 @@ describe("Phase-0 Strong Architecture Contract Tests — Hardened", () => {
 
     expect(listForUserBody).not.toContain("runEngine");
     expect(listForUserBody).not.toContain("OpportunityProvider");
-    expect(listForUserBody).toMatch(/queries\.getFeed|repos\.canonicalServing\.listOpportunities|repos\.evaluations\.listEvaluationsForUser/);
+    expect(listForUserBody).toMatch(/queries\.getFeed|collectUnreviewedFeedItems|repos\.canonicalServing\.listOpportunities|repos\.evaluations\.listEvaluationsForUser/);
   });
 
 });

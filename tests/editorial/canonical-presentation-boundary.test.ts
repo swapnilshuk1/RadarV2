@@ -4,7 +4,7 @@ import type { RecommendationRecord } from "@/lib/intelligence/record";
 import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
 import { present } from "@/lib/intelligence/present";
 import { TruthPreservingRewriteEngine } from "@/lib/intelligence/execution/TruthPreservingRewriteEngine";
-import candidateProfileData from "@/data/candidate-profile.json";
+import { syntheticCandidateProfile as candidateProfileData } from "../fixtures/synthetic-candidate-profile";
 import { CandidateEvidenceGraph } from "@/lib/intelligence/execution/CandidateEvidenceGraph";
 
 const socialBeatDescription = `

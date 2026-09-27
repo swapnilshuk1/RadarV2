@@ -25,7 +25,7 @@ function formatTokens(value: number | null | undefined): string {
   return value === null || value === undefined ? "—" : value.toLocaleString();
 }
 
-export function evaluatorStatusLabel(snapshot: EvaluatorTelemetrySnapshot | null): string {
+function evaluatorStatusLabel(snapshot: EvaluatorTelemetrySnapshot | null): string {
   if (!snapshot) return "Loading";
   const { desiredState, localDaemonRunning } = snapshot.control;
   if (desiredState === "PAUSED")
@@ -35,7 +35,7 @@ export function evaluatorStatusLabel(snapshot: EvaluatorTelemetrySnapshot | null
   return localDaemonRunning ? "Running" : "Ready / not running";
 }
 
-export function evaluatorQueueSummary(snapshot: EvaluatorTelemetrySnapshot | null): string {
+function evaluatorQueueSummary(snapshot: EvaluatorTelemetrySnapshot | null): string {
   if (!snapshot) return "Loading evaluator state…";
   const { pending, processing, liveModelCalls } = snapshot.queue;
   const processingLabel = processing === 1 ? "1 processing-state job" : `${processing} processing-state jobs`;
@@ -60,15 +60,18 @@ export function EvaluatorControlPanel({ embedded = false, scope }: EvaluatorCont
     () => typeof document === "undefined" || document.visibilityState === "visible",
   );
 
+  const tenantId = scope?.tenantId;
+  const personId = scope?.personId;
+
   const refresh = useCallback(async () => {
     try {
-      const next = await getEvaluatorTelemetryFn({ data: scope });
+      const next = await getEvaluatorTelemetryFn({ data: { tenantId, personId } });
       setSnapshot(next);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Evaluator telemetry unavailable");
     }
-  }, [scope?.tenantId, scope?.personId]);
+  }, [tenantId, personId]);
 
   const pollingIntervalMs = snapshot?.control.localDaemonRunning ? 3_000 : 30_000;
 
@@ -100,7 +103,7 @@ export function EvaluatorControlPanel({ embedded = false, scope }: EvaluatorCont
       if (controlBusy) return;
       setControlBusy(true);
       try {
-        const next = await controlEvaluatorFn({ data: { action, ...scope } });
+        const next = await controlEvaluatorFn({ data: { action, tenantId, personId } });
         setSnapshot(next);
         setError(null);
       } catch (err) {
@@ -109,7 +112,7 @@ export function EvaluatorControlPanel({ embedded = false, scope }: EvaluatorCont
         setControlBusy(false);
       }
     },
-    [controlBusy, scope?.tenantId, scope?.personId],
+    [controlBusy, tenantId, personId],
   );
 
   const statusLabel = useMemo(() => evaluatorStatusLabel(snapshot), [snapshot]);

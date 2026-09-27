@@ -61,7 +61,7 @@ export class EvaluationRematerializer {
     customDb?: DatabaseAdapter
   ): Promise<BatchReconciliationReport> {
     const repos = customDb ? createRepositories(customDb) : getRepositories();
-    const db = customDb || (repos.evaluations as any).db;
+    const db: DatabaseAdapter = customDb || (repos.evaluations as any).db;
 
     const limit = options.limit && options.limit > 0 ? options.limit : 10;
     const policyVersion = options.policyVersion || "v4.3";
@@ -117,7 +117,11 @@ export class EvaluationRematerializer {
     await Promise.all(
       distinctPersonIds.map(async (personId) => {
         try {
-          const tenantId = rows.find((row) => row.person_id === personId)?.tenant_id;
+          const person = await db.one<{ tenant_id: string }>(
+            `SELECT tenant_id FROM people WHERE id = ?`,
+            [personId]
+          );
+          const tenantId = person?.tenant_id || rows.find((row) => row.person_id === personId)?.tenant_id;
           let projection = tenantId ? await new TenantScopedPersonStore(db, { tenantId, personId }).getLatestProjection(personId) : undefined;
 
           if (!projection) {
@@ -135,12 +139,22 @@ export class EvaluationRematerializer {
     const decisionsMap = new Map<string, Record<string, { verb: "PURSUE" | "CONSIDER" | "PASS" }>>();
     await Promise.all(
       distinctPersonIds.map(async (personId) => {
+        const userDecMap: Record<string, { verb: "PURSUE" | "CONSIDER" | "PASS" }> = {};
         try {
-          const userDecisions = await repos.decisions.getUserDecisions(personId);
-          decisionsMap.set(personId, userDecisions as any);
-        } catch {
-          decisionsMap.set(personId, {});
-        }
+          const person = await db.one<{ tenant_id: string }>(
+            `SELECT tenant_id FROM people WHERE id = ?`,
+            [personId]
+          );
+          const tenantId = person?.tenant_id || rows.find((row) => row.person_id === personId)?.tenant_id;
+          if (tenantId) {
+            const canonicalDecs = await repos.decisions.getUserDecisions(personId, tenantId);
+            for (const [k, v] of Object.entries(canonicalDecs)) {
+              userDecMap[k] = { verb: v.verb as any };
+            }
+          }
+        } catch {}
+
+        decisionsMap.set(personId, userDecMap);
       })
     );
 

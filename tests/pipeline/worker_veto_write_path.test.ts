@@ -43,6 +43,7 @@ describe("Validation of Worker & Repository Veto Write Path", () => {
       rationale: "Rationale",
       evidenceIds: [],
       evaluationJson: JSON.stringify({
+        evaluationInputHash: "hash_input_1",
         record: {
           vetoed: true,
           verb: "CONSIDER"
@@ -70,6 +71,7 @@ describe("Validation of Worker & Repository Veto Write Path", () => {
       rationale: "Rationale",
       evidenceIds: [],
       evaluationJson: JSON.stringify({
+        evaluationInputHash: "hash_input_2",
         schemaVersion: "v4.2-intrinsic",
         vetoed: false,
         intrinsicVerdict: "PURSUE"

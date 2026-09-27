@@ -2,8 +2,8 @@
 
 Use the canonical `Radar V2` checkout. The production path is staged-v8 evaluation
 followed by dossier-v4.1 memo composition. Template B is the sole layout. Historical
-population backfill is outside the current scope; do not run population recovery
-or `complete-staged-rollout.ts` to prepare the first fresh scrape.
+population backfill is outside the current scope; do not run legacy population recovery
+to prepare the first fresh scrape.
 
 ## Local proof
 

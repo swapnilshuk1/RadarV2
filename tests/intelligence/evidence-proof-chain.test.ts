@@ -5,10 +5,32 @@ import { TruthPreservingRewriteEngine } from "../../src/lib/intelligence/executi
 import { ExecutionEngine } from "../../src/lib/intelligence/engines/ExecutionEngine";
 import { resolveDossierDecisionState } from "../../src/lib/intelligence/decision-state";
 import { BriefCompositionEngine } from "../../src/lib/intelligence/editorial/BriefCompositionEngine";
-import candidateProfileData from "../../src/data/candidate-profile.json";
+import { syntheticCandidateProfile as candidateProfileData } from "../fixtures/synthetic-candidate-profile";
 
 describe("RADAR V4 — 25-Point Adversarial Candidate-Evidence Firewall Matrix (A-Y)", () => {
-  const evidenceGraph = new CandidateEvidenceGraph(candidateProfileData);
+  const candidateProfile = {
+    ...candidateProfileData,
+    evidence: [
+      ...candidateProfileData.evidence,
+      { type: "Leadership", proof: "Led a 40-member cross-functional team across 13 markets with an $8M budget at Ford, BMW, and TVS Motor Company (₹36 Cr) within 12 months.", verbatim: "Led a 40-member cross-functional team across 13 markets with an $8M budget at Ford, BMW, and TVS Motor Company (₹36 Cr) within 12 months." },
+      { type: "Technology", proof: "Directed enterprise CRM and CDP transformation using Salesforce Marketing Cloud across 13 markets within 12 months.", verbatim: "Directed enterprise CRM and CDP transformation using Salesforce Marketing Cloud across 13 markets within 12 months." }
+    ],
+    experience: {
+      ...candidateProfileData.experience,
+      achievements: [
+        ...(candidateProfileData.experience?.achievements || []),
+        "Scaled revenue to ₹36 Cr across 13 regions at Ford and BMW within 12 months",
+        "Led 40-member team at TVS Motor Company",
+        "Implemented Salesforce CRM and CDP platforms across 13 markets within 12 months"
+      ]
+    },
+    capabilities: {
+      ...candidateProfileData.capabilities,
+      crm: ["CRM", "Salesforce", "CRM Strategy"],
+      tech: ["CDP", "Performance Marketing"]
+    }
+  };
+  const evidenceGraph = new CandidateEvidenceGraph(candidateProfile);
   const sampleJob = {
     jobHash: "naukri:01d88441522001d4",
     company: "Saaki Argus & Averil Consulting",

@@ -68,10 +68,10 @@ describe("RADAR Stage 2A: Runtime Persistence Unification & Source-of-Truth", ()
     const mockUser = "test-runtime-user-1";
     const db = getDatabaseAdapter();
     await db.execute(`INSERT OR IGNORE INTO tenants (id, status) VALUES ('tenant-runtime', 'active')`);
+    await db.execute(`INSERT OR IGNORE INTO users (id, email) VALUES ('${mockUser}', '${mockUser}@test.com')`);
     await db.execute(`INSERT OR IGNORE INTO people (id, email, tenant_id) VALUES ('${mockUser}', '${mockUser}@test.com', 'tenant-runtime')`);
     await db.execute(`INSERT OR IGNORE INTO memberships (user_id, tenant_id, role, permissions, status) VALUES ('${mockUser}', 'tenant-runtime', 'owner', '["read:opportunity","write:opportunity"]', 'active')`);
 
-    vi.spyOn(repos.people, "getLatestProjection").mockResolvedValue(mockProjection);
     vi.spyOn(repos.decisions, "getUserDecisions").mockResolvedValue({});
     vi.spyOn(repos.evaluations, "listEvaluationsForUser").mockResolvedValue([]);
 
@@ -196,10 +196,10 @@ describe("RADAR Stage 2A: Runtime Persistence Unification & Source-of-Truth", ()
     const mockUser = "test-runtime-user-single";
     const db = getDatabaseAdapter();
     await db.execute(`INSERT OR IGNORE INTO tenants (id, status) VALUES ('tenant-runtime', 'active')`);
+    await db.execute(`INSERT OR IGNORE INTO users (id, email) VALUES ('${mockUser}', '${mockUser}@test.com')`);
     await db.execute(`INSERT OR IGNORE INTO people (id, email, tenant_id) VALUES ('${mockUser}', '${mockUser}@test.com', 'tenant-runtime')`);
     await db.execute(`INSERT OR IGNORE INTO memberships (user_id, tenant_id, role, permissions, status) VALUES ('${mockUser}', 'tenant-runtime', 'owner', '["read:opportunity","write:opportunity"]', 'active')`);
 
-    vi.spyOn(repos.people, "getLatestProjection").mockResolvedValue(mockProjection);
     vi.spyOn(repos.decisions, "getUserDecisions").mockResolvedValue({});
 
     const mockServedOpp: any = {
@@ -210,7 +210,7 @@ describe("RADAR Stage 2A: Runtime Persistence Unification & Source-of-Truth", ()
       verdict: "CONSIDER",
     };
 
-    const getOppSpy = vi.spyOn(repos.canonicalServing, "getOpportunity").mockResolvedValue(mockServedOpp);
+    const getOppSpy = vi.spyOn(repos.canonicalServing, "getDossier").mockResolvedValue(mockServedOpp);
 
     const opp = await OpportunityService.getForUser(mockUser, "j-single-target");
 

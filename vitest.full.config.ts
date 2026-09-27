@@ -6,17 +6,10 @@ export default defineConfig({
     alias: { "@": path.resolve(process.cwd(), "src") },
   },
   test: {
-    include: [
-      "tests/intelligence/**/*.test.ts",
-      "tests/policy/**/*.test.ts",
-      "tests/editorial/**/*.test.ts",
-      "tests/semantic/**/*.test.ts",
-      "tests/persistence/**/*.test.ts",
-      "tests/scraper/**/*.test.ts",
-      "tests/regression/**/*.test.ts",
-    ],
+    include: ["tests/**/*.test.ts"],
     exclude: [
-      "tests/archive/**",
+      // Opt-in live operator audit; reads live production identity data from external Turso DB
+      "tests/intelligence/canonical-identity.test.ts",
       "node_modules/**",
     ],
     environment: "node",

@@ -1,6 +1,6 @@
 import { type ServedOpportunity, isEvaluated, isUnavailable, type EvaluatedOpportunity } from "../data/opportunity-fixtures";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { applicationActionFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
 import { useDecisions } from "../lib/decisions-store";
 import { DecisionBadge } from "../components/radar/DecisionBadge";
@@ -60,12 +60,12 @@ function OpportunitiesPage() {
   const [writeError, setWriteError] = useState<string | null>(null);
 
   // Helper to get effective user decision verb for an opportunity
-  const getUserVerb = (o: Opportunity | ServedOpportunity): DecisionVerb | null => {
+  const getUserVerb = useCallback((o: Opportunity | ServedOpportunity): DecisionVerb | null => {
     const recorded = decisions[o.jobHash];
     if (recorded?.verb) return recorded.verb;
     if ((o as any).userDecision?.userAction) return (o as any).userDecision.userAction as DecisionVerb;
     return null;
-  };
+  }, [decisions]);
 
   // Calculate filter counts across the complete accessible pipeline
   const counts = useMemo(() => {
@@ -86,7 +86,7 @@ function OpportunitiesPage() {
       consider,
       pass,
     };
-  }, [opportunitiesList, decisions]);
+  }, [opportunitiesList, getUserVerb]);
 
   // Combined Search + Decision Filter Composition
   const displayedOpportunities = useMemo(() => {
@@ -112,7 +112,7 @@ function OpportunitiesPage() {
 
       return company.includes(q) || role.includes(q) || location.includes(q);
     });
-  }, [opportunitiesList, decisions, filterKey, searchQuery]);
+  }, [opportunitiesList, filterKey, searchQuery, getUserVerb]);
 
   return (
     <div className="min-h-screen bg-background text-ink font-sans pb-24">

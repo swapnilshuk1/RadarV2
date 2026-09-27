@@ -95,6 +95,9 @@ function Shortlist() {
   const [enrichmentStartError, setEnrichmentStartError] = useState<string | null>(null);
   const categoryCacheRef = useRef<Map<string, ServedOpportunity[]>>(new Map());
 
+  const tenantId = scope?.tenantId;
+  const personId = scope?.personId;
+
   useEffect(() => {
     categoryCacheRef.current.clear();
   }, [opportunitiesList]);
@@ -105,13 +108,13 @@ function Shortlist() {
 
   useEffect(() => {
     if (!startingEnrichmentRunId) return;
-    const refresh = () => getCapturedEnrichmentRunsFn({ data: scope })
+    const refresh = () => getCapturedEnrichmentRunsFn({ data: { tenantId, personId } })
       .then(setPendingCaptureRuns)
       .catch((error) => console.error("Failed to refresh captured-job enrichment status:", error));
     refresh();
     const timer = window.setInterval(refresh, 3000);
     return () => window.clearInterval(timer);
-  }, [startingEnrichmentRunId]);
+  }, [startingEnrichmentRunId, tenantId, personId]);
 
   useEffect(() => {
     if (startingEnrichmentRunId && !pendingCaptureRuns.some((run) => run.runId === startingEnrichmentRunId)) {
@@ -134,7 +137,7 @@ function Shortlist() {
 
     let active = true;
     setIsLoadingCategory(true);
-    getOpportunitiesFn({ data: { categoryId: selectedCategoryId, ...scope } })
+    getOpportunitiesFn({ data: { categoryId: selectedCategoryId, tenantId, personId } })
       .then((ops) => {
         if (active) {
           categoryCacheRef.current.set(selectedCategoryId, ops);
@@ -150,7 +153,7 @@ function Shortlist() {
     return () => {
       active = false;
     };
-  }, [selectedCategoryId]);
+  }, [selectedCategoryId, tenantId, personId]);
 
   const activeOps = categoryOps ?? opportunitiesList;
 

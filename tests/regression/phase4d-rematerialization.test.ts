@@ -76,12 +76,18 @@ describe("RADAR V4 Phase 4D: Controlled Canonical Re-Materialization", () => {
     // Seed test person & candidate profile
     const repos = createRepositories(db);
     setStorageProvider(repos);
+    const tenantId = "tenant_remat_test";
     await db.execute(
-      `INSERT INTO people (id, name, email) VALUES (?, ?, ?)`,
-      [personId, "Test Executive", "exec@test.com"]
+      `INSERT OR IGNORE INTO tenants (id, status) VALUES (?, 'active')`,
+      [tenantId]
+    );
+    await db.execute(
+      `INSERT INTO people (id, name, email, tenant_id) VALUES (?, ?, ?, ?)`,
+      [personId, "Test Executive", "exec@test.com", tenantId]
     );
     const { syncCanonicalCandidateProjection } = await import("../../src/lib/intelligence/candidate-sync");
-    await syncCanonicalCandidateProjection(personId);
+    const { syntheticCandidateProfile } = await import("../fixtures/synthetic-candidate-profile");
+    await syncCanonicalCandidateProjection({ tenantId, personId }, syntheticCandidateProfile, db);
 
     // Seed sources & company
     await db.execute(

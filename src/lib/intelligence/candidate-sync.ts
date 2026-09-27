@@ -6,7 +6,7 @@ import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBu
 import { validateCandidateProjection } from "../domain/candidate_projection";
 import type { AuthorizedPersonScope } from "../security/auth";
 import { TenantScopedPersonStore } from "../../data/sqlite/repositories/TenantScopedPersonStore";
-import { getDatabaseAdapter } from "../../data/database";
+import { getDatabaseAdapter, type DatabaseAdapter } from "../../data/database";
 
 /**
  * Explicit synchronization mechanism to compile and persist the canonical
@@ -15,6 +15,7 @@ import { getDatabaseAdapter } from "../../data/database";
 export async function syncCanonicalCandidateProjection(
   scope: AuthorizedPersonScope,
   profile: CandidateProfile,
+  db: DatabaseAdapter = getDatabaseAdapter(),
 ): Promise<CandidateProjection> {
   const builder = new CandidateProjectionBuilderImpl();
   const projection = builder.fromProfile(profile);
@@ -26,6 +27,6 @@ export async function syncCanonicalCandidateProjection(
     );
   }
 
-  await new TenantScopedPersonStore(getDatabaseAdapter(), scope).saveProjection(scope.personId, projection);
+  await new TenantScopedPersonStore(db, scope).saveProjection(scope.personId, projection);
   return projection;
 }

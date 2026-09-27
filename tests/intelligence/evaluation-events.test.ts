@@ -1,4 +1,3 @@
-process.env.RADAR_USE_TURSO = "true";
 import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 import { 
   runEngine, 
@@ -13,11 +12,13 @@ import {
 import { EvaluationCoordinator } from "../../src/lib/intelligence/EvaluationCoordinator";
 import { getRepositories } from "../../src/data/sqlite/provider";
 import { runMigrations } from "../../src/data/sqlite/migrations/runner";
+import { getDatabaseAdapter } from "../../src/data/database";
+import { TenantScopedPersonStore } from "../../src/data/sqlite/repositories/TenantScopedPersonStore";
 import type { CandidateProjection } from "../../src/domain/entities";
 import type { OpportunitySource } from "../../src/domain/semantic";
 
 import { CandidateProjectionBuilderImpl } from "../../src/lib/intelligence/builders/CandidateProjectionBuilder";
-import { candidateProfile } from "../../src/data/candidate-profile";
+import { syntheticCandidateProfile as candidateProfile } from "../fixtures/synthetic-candidate-profile";
 
 describe("EvaluationCoordinator Events Invalidation Audit", () => {
   const testPersonId = "ms6i7e3y-4x0chy5fy";
@@ -26,7 +27,11 @@ describe("EvaluationCoordinator Events Invalidation Audit", () => {
   mockProjection1.personId = testPersonId;
 
   beforeAll(async () => {
-    await runMigrations();
+    try {
+      await runMigrations();
+    } catch (e: any) {
+      if (!String(e?.message).includes("already another table")) throw e;
+    }
   });
 
   beforeEach(() => {
@@ -77,11 +82,15 @@ describe("EvaluationCoordinator Events Invalidation Audit", () => {
   }, 30000);
 
   it("EVENT 2: PROJECTION_UPDATED - Content-hashed keys naturally invalidate engine cache when projection changes in DB", async () => {
-    const repos = getRepositories();
+    const db = getDatabaseAdapter();
+    await db.execute("INSERT OR IGNORE INTO tenants (id, status) VALUES ('tenant_default', 'ACTIVE')");
+    await db.execute("INSERT OR IGNORE INTO people (id, tenant_id, email) VALUES (?, 'tenant_default', 'test@test.com')", [testPersonId]);
+    const scope = { tenantId: "tenant_default", personId: testPersonId, roles: ["member"] };
+    const personStore = new TenantScopedPersonStore(db, scope);
 
     // 1. Save projection 1 for existing person
     const proj1: CandidateProjection = { ...mockProjection1, updatedAt: "2026-08-15T08:00:00.000Z" };
-    await repos.people.saveProjection(testPersonId, proj1);
+    await personStore.saveProjection(testPersonId, proj1);
 
     const list1 = runEngine(proj1);
     expect(list1.presented).toBeDefined();
@@ -92,13 +101,13 @@ describe("EvaluationCoordinator Events Invalidation Audit", () => {
       skills: ["Enterprise Sales", "P&L Management", "GTM Strategy", "M&A"],
       updatedAt: "2026-08-15T09:00:00.000Z" 
     };
-    await repos.people.saveProjection(testPersonId, proj2);
+    await personStore.saveProjection(testPersonId, proj2);
 
     // Fire PROJECTION_UPDATED event
     await EvaluationCoordinator.notify({ event: "PROJECTION_UPDATED", personId: testPersonId });
 
     // Fetch latest projection from DB
-    const latestProj = await repos.people.getLatestProjection(testPersonId);
+    const latestProj = await personStore.getLatestProjection(testPersonId);
     expect(latestProj).toBeDefined();
 
     const list2 = runEngine(latestProj!);
@@ -109,7 +118,7 @@ describe("EvaluationCoordinator Events Invalidation Audit", () => {
 
   it("EVENT 3: INTENT_UPDATED - Re-evaluates intent-driven recommendations", async () => {
     const cip = new CandidateIntelligencePipeline();
-    const dossier1 = cip.getActiveDossier();
+    const dossier1 = cip.getActiveDossier(candidateProfile);
     expect(dossier1).toBeDefined();
 
     await EvaluationCoordinator.notify({ event: "INTENT_UPDATED", personId: testPersonId });

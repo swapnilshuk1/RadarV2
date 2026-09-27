@@ -144,10 +144,8 @@ is outside the current fresh-scrape scope.
 
 ## Runtime boundaries
 
-The unused monolithic research runner, duplicate staged screening/research runner,
-experimental extraction providers and unused presentation modules were removed.
 The live semantic screening lab remains in `src/dossier/screening-semantic-lab.ts`
-with `scripts/screening-semantic-corpus.ts`. Scraper dependencies, migrations,
+with `scripts/run-corpus-regeneration-worker.ts` and `scripts/corpus/`. Scraper dependencies, migrations,
 historical data readers and still-called compatibility paths remain. New work uses the current paths above; the source tree contains no alternate
 monolithic research runner.
 

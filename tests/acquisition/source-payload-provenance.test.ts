@@ -31,12 +31,12 @@ function schema(db: Database.Database) {
     CREATE TABLE people (id TEXT PRIMARY KEY, tenant_id TEXT, is_active INTEGER);
     CREATE TABLE search_plans (id TEXT PRIMARY KEY, tenant_id TEXT, person_id TEXT, status TEXT, criteria_json TEXT);
     CREATE TABLE candidate_documents (
-      id TEXT PRIMARY KEY, person_id TEXT NOT NULL, filename TEXT NOT NULL, storage_uri TEXT NOT NULL,
+      id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL DEFAULT 'tenant_default', person_id TEXT NOT NULL, filename TEXT NOT NULL, storage_uri TEXT NOT NULL,
       mime_type TEXT NOT NULL, document_hash TEXT NOT NULL, status TEXT NOT NULL, stage TEXT NOT NULL,
       error_message TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     );
     CREATE TABLE document_contents (
-      id TEXT PRIMARY KEY, document_id TEXT NOT NULL UNIQUE, raw_text TEXT NOT NULL,
+      id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL DEFAULT 'tenant_default', person_id TEXT NOT NULL, document_id TEXT NOT NULL UNIQUE, raw_text TEXT NOT NULL,
       text_hash TEXT NOT NULL, created_at TEXT NOT NULL
     );
     CREATE TABLE canonical_opportunities (id TEXT PRIMARY KEY, source TEXT, source_job_id TEXT, canonical_url TEXT, company_name TEXT, created_at TEXT, last_seen_at TEXT, UNIQUE(source, source_job_id));
@@ -61,6 +61,7 @@ function documentRecord(id: string, hash: string) {
   const now = "2026-09-13T00:00:00.000Z";
   return {
     id,
+    tenantId: "tenant-1",
     personId: "person-1",
     filename: `${id}.pdf`,
     storageUri: `blob://${id}`,
@@ -174,17 +175,17 @@ describe("Gate 1B source/provenance immutability", () => {
     const db = new TestAdapter(rawDb);
     const store = new SqliteDocumentStore(db);
     const resolver = new SourceSnapshotResolver(db);
-
-    await store.saveDocument(documentRecord("doc-1", "document-hash-1"));
-    await store.saveDocumentContent("doc-1", "first immutable candidate source", "text-hash-1");
+    const scope = { tenantId: "tenant-1", personId: "person-1" } as any;
+    await store.saveDocument(scope, documentRecord("doc-1", "document-hash-1"));
+    await store.saveDocumentContent(scope, "doc-1", "first immutable candidate source", "text-hash-1");
     const ref = await resolver.captureCandidateDocumentRef("person-1", "doc-1");
 
-    await expect(store.saveDocumentContent("doc-1", "first immutable candidate source", "text-hash-1")).resolves.toBeUndefined();
-    await expect(store.saveDocumentContent("doc-1", "rewritten candidate source", "text-hash-2")).rejects.toThrow(/IMMUTABLE_CANDIDATE_SOURCE_CONTENT/);
+    await expect(store.saveDocumentContent(scope, "doc-1", "first immutable candidate source", "text-hash-1")).resolves.toBeUndefined();
+    await expect(store.saveDocumentContent(scope, "doc-1", "rewritten candidate source", "text-hash-2")).rejects.toThrow(/IMMUTABLE_CANDIDATE_SOURCE_CONTENT/);
 
-    await store.saveDocument(documentRecord("doc-2", "document-hash-2"));
-    await store.saveDocumentContent("doc-2", "later candidate upload", "text-hash-2");
-    await store.updateDocumentStage("doc-1", "READY", "COMPLETED");
+    await store.saveDocument(scope, documentRecord("doc-2", "document-hash-2"));
+    await store.saveDocumentContent(scope, "doc-2", "later candidate upload", "text-hash-2");
+    await store.updateDocumentStage(scope, "doc-1", "READY", "COMPLETED");
 
     const resolved = await resolver.resolve(ref);
     expect(resolved.text).toBe("first immutable candidate source");

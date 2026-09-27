@@ -15,7 +15,28 @@ describe("M9.2C Canonical Posting-Date Provenance", () => {
   
   const tenantId = "tenant_pd";
   const personId = "person_pd";
-  const scope = { tenantId, personId };
+  function makeEnrichmentDispatch(cardHash: string, title: string, company: string, location: string, description: string, portal: "linkedin" | "indeed" = "linkedin") {
+    return {
+      pipelineVersion: "1.0.0",
+      detailedCard: {
+        cardHash,
+        title,
+        company,
+        location,
+        portal: portal === "linkedin" ? ("LinkedIn" as const) : ("Indeed" as const),
+        rawText: description,
+        description,
+        summary: description.slice(0, 100),
+        directUrl: "https://example.com/job",
+        applyUrl: "https://example.com/apply",
+        dimensions: [],
+        timestamp: new Date().toISOString(),
+        enrichmentStatus: "UNENRICHED" as const,
+        detailFetchStatus: "SUCCESS" as const,
+        contentOrigin: "DETAIL_DOCUMENT" as const,
+      },
+    };
+  }
 
   beforeAll(async () => {
     sqliteDb = new Database(":memory:");
@@ -38,6 +59,7 @@ describe("M9.2C Canonical Posting-Date Provenance", () => {
 
   it("1. Valid source posting date is persisted correctly and isolated from created_at", async () => {
     const postedAt = "2023-10-01T00:00:00Z";
+    const rawContent = "Valid Corp is seeking an executive technology leader to own enterprise strategy, build cross-functional teams, lead platform modernization, and deliver measurable commercial outcomes across a global operating environment.";
     const res = await ingestionService.ingestOpportunity({
       sourcePortal: "linkedin",
       sourceJobId: "job_valid",
@@ -46,8 +68,10 @@ describe("M9.2C Canonical Posting-Date Provenance", () => {
       companyName: "Valid Corp",
       location: "Remote",
       postedAt,
-      rawContent: "Valid Corp is seeking an executive technology leader to own enterprise strategy, build cross-functional teams, lead platform modernization, and deliver measurable commercial outcomes across a global operating environment."
-    }, scope);
+      rawContent,
+      contentOrigin: "DETAIL_DOCUMENT",
+      enrichmentDispatch: makeEnrichmentDispatch("jv-1", "CEO", "Valid Corp", "Remote", rawContent, "linkedin"),
+    }, { mode: "GLOBAL_MARKET" });
 
     const row = await db.one<any>(`SELECT posted_at, created_at FROM opportunity_versions WHERE id = ?`, [res.opportunityVersion]);
     expect(row.posted_at).toBe(postedAt);
@@ -55,6 +79,7 @@ describe("M9.2C Canonical Posting-Date Provenance", () => {
   });
 
   it("2. Missing posting date persists as NULL", async () => {
+    const rawContent = "Missing Corp seeks a senior technology executive to lead the engineering organization, establish scalable operating practices, direct enterprise architecture, and deliver strategic transformation outcomes.";
     const res = await ingestionService.ingestOpportunity({
       sourcePortal: "indeed",
       sourceJobId: "job_missing",
@@ -63,8 +88,10 @@ describe("M9.2C Canonical Posting-Date Provenance", () => {
       jobTitle: "CTO",
       companyName: "Missing Corp",
       location: "Remote",
-      rawContent: "Missing Corp seeks a senior technology executive to lead the engineering organization, establish scalable operating practices, direct enterprise architecture, and deliver strategic transformation outcomes." // Note: postedAt omitted
-    }, scope);
+      rawContent,
+      contentOrigin: "DETAIL_DOCUMENT",
+      enrichmentDispatch: makeEnrichmentDispatch("jm-1", "CTO", "Missing Corp", "Remote", rawContent, "indeed"),
+    }, { mode: "GLOBAL_MARKET" });
 
     const row = await db.one<any>(`SELECT posted_at, created_at FROM opportunity_versions WHERE id = ?`, [res.opportunityVersion]);
     expect(row.posted_at).toBeNull();

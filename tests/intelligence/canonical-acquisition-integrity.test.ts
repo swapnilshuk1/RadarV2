@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import Database from "better-sqlite3";
 import { DatabaseAdapter, QueryParams } from "@/data/database/adapter";
 import { ResponseValidator } from "@/lib/acquisition/validator";
-import { classifyOpportunityCategories } from "@/lib/domain/category_taxonomy";
+import { classifyOpportunityCategories, resolveCanonicalCategoryId } from "@/lib/domain/category_taxonomy";
 import { EvaluationWorker } from "@/lib/intelligence/EvaluationWorker";
 import { SqliteMaterializedEvaluationStore } from "@/data/sqlite/repositories/SqliteMaterializedEvaluationStore";
 import { CanonicalIngestionService } from "@/lib/acquisition/CanonicalIngestionService";
@@ -162,6 +162,27 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
   });
 
   describe("Category Taxonomy - Anti-Heuristic Verification", () => {
+    it("resolves canonical category IDs and maintains classification consistency", () => {
+      expect(resolveCanonicalCategoryId("Commercial Growth")).toBe("commercial_growth");
+      expect(resolveCanonicalCategoryId("COMMERCIAL")).toBe("commercial_growth");
+      expect(resolveCanonicalCategoryId("high_growth")).toBe("commercial_growth");
+      expect(resolveCanonicalCategoryId("Transformation")).toBe("transformation");
+      expect(resolveCanonicalCategoryId("Needs More Signal")).toBe("needs_more_signal");
+      expect(resolveCanonicalCategoryId("Country Leadership")).toBe("country_leadership");
+      expect(resolveCanonicalCategoryId("Platform & Digital")).toBe("platform_digital");
+
+      const sampleOpp = {
+        role: "VP Commercial Growth & Sales",
+        description: "Drive revenue expansion and GTM strategy across APAC.",
+        recommendation: "PURSUE",
+        trueExecutiveMandate: "COMMERCIAL_EXPANSION",
+      };
+
+      const categories = classifyOpportunityCategories(sampleOpp);
+      expect(categories).toContain("all");
+      expect(categories).toContain("commercial_growth");
+    });
+
     it("does NOT classify into needs_more_signal solely because recommendation mentions 'sparse'", () => {
       // Historical bug: rec.includes('sparse') matched this normal recommendation!
       const cats = classifyOpportunityCategories({

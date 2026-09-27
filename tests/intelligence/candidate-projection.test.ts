@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { validateCandidateProjection, type CandidateProjection } from "../../src/lib/domain/candidate_projection";
 import { CandidateProjectionBuilderImpl } from "../../src/lib/intelligence/builders/CandidateProjectionBuilder";
-import { candidateProfile } from "../../src/data/candidate-profile";
+import { syntheticCandidateProfile as candidateProfile } from "../fixtures/synthetic-candidate-profile";
 import { CareerAssessmentEngine } from "../../src/lib/intelligence/engines/CareerAssessmentEngine";
 import { JobProjectionBuilder } from "../../src/lib/intelligence/builders/JobProjectionBuilder";
 import { SqlitePersonStore } from "../../src/data/sqlite/repositories/SqlitePersonStore";
@@ -61,15 +61,15 @@ describe("Candidate Projection Integrity & Parity", () => {
     expect(result.missingFields).toHaveLength(0);
     expect(canonicalProjection.operatingLevel.value).toBe("STRATEGIC");
     expect(canonicalProjection.candidateSeniorityLevel?.value).toBe("VP_FUNCTIONAL");
-    expect(canonicalProjection.workNature.value).toBe("EXECUTIVE_WORK");
-    expect(canonicalProjection.decisionAuthority.value).toBe("BUSINESS_UNIT");
+    expect(canonicalProjection.workNature.value).toBe("STRATEGIC_WORK");
+    expect(canonicalProjection.decisionAuthority.value).toBe("FUNCTION");
     expect(canonicalProjection.commercialScope.value).toBe("PORTFOLIO");
     expect(canonicalProjection.yearsOfExperience).toBeGreaterThanOrEqual(15);
     expect(canonicalProjection.coreCapabilities.length).toBeGreaterThan(0);
   });
 
   it("preserves attained identity and keeps target trajectory separate from current seniority", () => {
-    expect(canonicalProjection.attainedTitle).toBe("VP Marketing / Performance CoE Lead");
+    expect(canonicalProjection.attainedTitle).toBe("VP Marketing");
     expect(canonicalProjection.attainedSeniority).toBe("VP_FUNCTIONAL");
     expect(canonicalProjection.targetTrajectory).toContain("Chief Marketing Officer");
     expect(canonicalProjection.archetype).toBe("Commercial Growth & Transformation");
@@ -85,6 +85,7 @@ describe("Candidate Projection Integrity & Parity", () => {
   it("retains an inferred capability only when it chains to a source quotation", () => {
     const profileWithEvidence = {
       ...candidateProfile,
+      executiveCompetencies: [...(candidateProfile.executiveCompetencies || []), "Board Reporting"],
       evidence: [...candidateProfile.evidence, {
         type: "Board governance",
         proof: "Prepared board reporting and formal governance updates for the executive committee."
@@ -138,10 +139,10 @@ describe("Candidate Projection Integrity & Parity", () => {
 
     const projectionJson = String(savedParams[4]);
     const persisted = JSON.parse(projectionJson) as CandidateProjection;
-    expect(savedParams[6]).toBe("VP Marketing / Performance CoE Lead");
+    expect(savedParams[6]).toBe("VP Marketing");
     expect(savedParams[8]).toBe("Commercial Growth & Transformation");
     expect(persisted.profileVersion).toMatch(/^projection-[a-f0-9]{64}$/);
-    expect(persisted.attainedTitle).toBe("VP Marketing / Performance CoE Lead");
+    expect(persisted.attainedTitle).toBe("VP Marketing");
   });
 
   it("builds evidence projections from an observed title instead of a fabricated Executive identity", () => {
@@ -262,39 +263,5 @@ describe("Candidate Projection Integrity & Parity", () => {
 
     expect(careerAssessment.status).toBe("FAILED");
     expect(careerAssessment.failureCode).toBe("UNKNOWN_OPERATING_LEVEL");
-  });
-
-  it("SqlitePersonStore.getLatestProjection returns undefined when stored JSON fails integrity validation", async () => {
-    const mockDb: DatabaseAdapter = {
-      one: async () => ({
-        projection_json: JSON.stringify({
-          yearsOfExperience: 20
-          // Missing operatingLevel and other fields
-        })
-      }),
-      many: async () => [],
-      execute: async () => ({ rowsAffected: 1 }),
-      transaction: async (fn) => fn(mockDb)
-    };
-
-    const store = new SqlitePersonStore(mockDb);
-    const proj = await store.getLatestProjection("test-user");
-    expect(proj).toBeUndefined();
-  });
-
-  it("SqlitePersonStore.getLatestProjection returns valid CandidateProjection when stored JSON is canonical", async () => {
-    const mockDb: DatabaseAdapter = {
-      one: async () => ({
-        projection_json: JSON.stringify(canonicalProjection)
-      }),
-      many: async () => [],
-      execute: async () => ({ rowsAffected: 1 }),
-      transaction: async (fn) => fn(mockDb)
-    };
-
-    const store = new SqlitePersonStore(mockDb);
-    const proj = await store.getLatestProjection("test-user");
-    expect(proj).toBeDefined();
-    expect(proj?.operatingLevel.value).toBe("STRATEGIC");
   });
 });

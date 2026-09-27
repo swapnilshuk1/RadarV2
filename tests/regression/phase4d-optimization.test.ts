@@ -11,12 +11,14 @@ import { setStorageProvider, createRepositories } from "../../src/data/sqlite/pr
 import { EvaluationRematerializer } from "../../src/lib/intelligence/rematerialization/EvaluationRematerializer";
 import { AsyncConcurrencyPool } from "../../src/lib/intelligence/rematerialization/AsyncConcurrencyPool";
 import { syncCanonicalCandidateProjection } from "../../src/lib/intelligence/candidate-sync";
+import { syntheticCandidateProfile } from "../fixtures/synthetic-candidate-profile";
 import type { OpportunitySource } from "../../src/data/opportunity-fixtures";
 
 describe("RADAR V4 Phase 4D-E: Rematerialization Worker Optimization", () => {
   let db: any;
   let repos: any;
   const personId = "person_opt_test";
+  const tenantId = "tenant_opt_test";
 
   const sampleOpp1: OpportunitySource = {
     jobHash: "j-opt-001",
@@ -95,11 +97,16 @@ describe("RADAR V4 Phase 4D-E: Rematerialization Worker Optimization", () => {
     await runMigrations(db);
 
     // Seed test person & candidate profile
+    const tenantId = "tenant_opt_test";
     await db.execute(
-      `INSERT INTO people (id, name, email) VALUES (?, ?, ?)`,
-      [personId, "Test Executive", "exec@test.com"]
+      `INSERT OR IGNORE INTO tenants (id, status) VALUES (?, 'active')`,
+      [tenantId]
     );
-    await syncCanonicalCandidateProjection(personId);
+    await db.execute(
+      `INSERT INTO people (id, name, email, tenant_id) VALUES (?, ?, ?, ?)`,
+      [personId, "Test Executive", "exec@test.com", tenantId]
+    );
+    await syncCanonicalCandidateProjection({ tenantId, personId }, syntheticCandidateProfile, db);
 
     // Seed sources & company
     await db.execute(
@@ -116,6 +123,10 @@ describe("RADAR V4 Phase 4D-E: Rematerialization Worker Optimization", () => {
       await db.execute(
         `INSERT INTO opportunities (id, company_id, canonical_title, location, fingerprint, lifecycle) VALUES (?, ?, ?, ?, ?, ?)`,
         [opp.jobHash, "comp_1", opp.role, opp.location, `fp_${opp.jobHash}`, "Discovered"]
+      );
+      await db.execute(
+        `INSERT OR IGNORE INTO canonical_opportunities (id, source, source_job_id, canonical_url) VALUES (?, 'test', ?, 'http')`,
+        [opp.jobHash, opp.jobHash]
       );
       await db.execute(
         `INSERT INTO documents (id, source_id, opportunity_id, content, payload_type, lifecycle) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -181,8 +192,8 @@ describe("RADAR V4 Phase 4D-E: Rematerialization Worker Optimization", () => {
 
       // Add a user decision override on opp 1
       await db.execute(
-        `INSERT INTO decisions (id, person_id, opportunity_id, action, reason) VALUES (?, ?, ?, ?, ?)`,
-        [`dec_${personId}_${sampleOpp1.jobHash}`, personId, sampleOpp1.jobHash, "PURSUE", "Strong alignment"]
+        `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, reason) VALUES (?, ?, ?, ?, ?, ?)`,
+        [`dec_${personId}_${sampleOpp1.jobHash}`, tenantId, personId, sampleOpp1.jobHash, "PURSUE", "Strong alignment"]
       );
 
       const report = await EvaluationRematerializer.rematerializeBatch(

@@ -1,13 +1,8 @@
-# AGENTS.md — RADAR Intelligence Rebuild
+# AGENTS.md — RADAR Intelligence Architecture
 
 ## READ THIS FIRST
 
-This file governs the production main branch and the intelligence rebuild branch:
-
-```text
-rebuild/intelligence-ground-up
-main
-```
+This file governs development across the repository.
 
 Before changing intelligence, dossier, evaluation, enrichment, narrative, candidate matching, company context, or related UI code, read:
 
@@ -18,9 +13,7 @@ docs/PRODUCT_MISSION.md
 That document is the detailed product contract. This file is the short operational contract.
 
 Use `docs/README.md` as the documentation index and `docs/ARCHITECTURE.md`
-for the current implementation. The canonical checkout is
-`C:\Users\swapn\Downloads\Radar V2` on `main`; keep an active backfill on its
-pinned worktree until it finishes. Keep documentation focused on the current
+for the current implementation. Keep documentation focused on the current
 implementation and operating procedures. This does not change the product mission below.
 
 ---
@@ -267,7 +260,7 @@ The following are product-owner-locked:
 - visible EXPLICIT vs INFERRED cues;
 - missing information triggers acquisition/inference/decision-hinge logic rather than automatic section deletion;
 - narrative variation is mandatory;
-- scraper capability is preserved during the rebuild.
+- scraper capability is preserved.
 
 An agent may not silently dilute or replace these principles.
 

@@ -16,7 +16,7 @@ For database mode, explicitly configure an isolated local database and supply
 `--context=<fingerprint> --job=<canonicalJobId>`. This is a developer preview;
 production serving uses authorized scope resolution and the active context.
 
-Generation uses `scripts/compose-staged-dossiers.ts` and the production staged
+Generation uses `npm run worker:dossiers` (`scripts/run-dossier-composition-worker.ts`) and the production staged
 services, including canonical decision validation, frozen inputs, durable
 checkpoints and factual review. There is no separate one-shot developer
 evaluation/composition engine.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import candidateProfileData from "@/data/candidate-profile.json";
+import { syntheticCandidateProfile as candidateProfileData } from "../fixtures/synthetic-candidate-profile";
 import { CandidateEvidenceGraph } from "@/lib/intelligence/execution/CandidateEvidenceGraph";
 import { TruthPreservingRewriteEngine } from "@/lib/intelligence/execution/TruthPreservingRewriteEngine";
 import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";

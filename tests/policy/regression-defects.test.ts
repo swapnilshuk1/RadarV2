@@ -9,7 +9,7 @@ import { describe, it, expect } from "vitest";
 import { runEngine, injectFreshRecords, clearInjectedRecords, invalidateEngineCache } from "@/lib/intelligence/engine";
 import { present } from "@/lib/intelligence/present";
 import { CandidateProjectionBuilderImpl } from "@/lib/intelligence/builders/CandidateProjectionBuilder";
-import { candidateProfile } from "@/data/candidate-profile";
+import { syntheticCandidateProfile as candidateProfile } from "../fixtures/synthetic-candidate-profile";
 
 // --- Defect 1: Provenance fallback removed ---
 

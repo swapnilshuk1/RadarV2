@@ -8,7 +8,7 @@ import { SqliteOpportunityQueries } from "@/data/sqlite/repositories/SqliteOppor
 import { resolveServingScope } from "@/lib/security/scope-resolver";
 import { computeEvaluationContextFingerprint } from "@/lib/domain/evaluation_fingerprint";
 import { computeCanonicalJobId } from "@/lib/domain/canonical_identity";
-import type { CandidateProfile } from "@/data/candidate-profile";
+import type { CandidateProfile } from "@/domain/candidate";
 import type { CandidateProjection } from "@/lib/domain/candidate_projection";
 
 class TestSqliteAdapter implements DatabaseAdapter {

@@ -7,15 +7,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: [
-      "dist",
-      ".output",
-      ".vinxi",
-      "scripts/golden-trace.js",
-      "scripts/run-golden-trace-for.js",
-      "scripts/overlap5.ts",
-      "scripts/trace-error3.ts",
-    ],
+    ignores: ["dist", ".output", ".vinxi"],
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
@@ -30,6 +22,7 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      "react-hooks/exhaustive-deps": "error",
       "no-restricted-imports": [
         "error",
         {

@@ -62,11 +62,11 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
     }
   });
 
-  it("4. deploy.sh delegates to the canonical exact-SHA deployment command", () => {
-    const deployShPath = path.resolve(process.cwd(), "deploy.sh");
-    const content = fs.readFileSync(deployShPath, "utf-8");
-
-    expect(content).toContain("scripts/deploy.ts");
+  it("4. deploy.sh and legacy shell wrappers are removed; scripts/deploy.ts is the canonical deployment entrypoint", () => {
+    expect(fs.existsSync(path.resolve(process.cwd(), "deploy.sh"))).toBe(false);
+    expect(fs.existsSync(path.resolve(process.cwd(), "remote_deploy.sh"))).toBe(false);
+    expect(fs.existsSync(path.resolve(process.cwd(), "scripts/deploy.ps1"))).toBe(false);
+    expect(fs.existsSync(path.resolve(process.cwd(), "scripts/deploy.ts"))).toBe(true);
   });
 
   it("5. deploy.ts requires explicit target inputs, verified artifacts, and starts only web", () => {

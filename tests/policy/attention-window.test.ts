@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { DecisionPolicyEngine } from "../../src/lib/intelligence/policy/DecisionPolicyEngine";
 import { runEngine, injectFixtureRecords, clearFixtureRecords } from "../../src/lib/intelligence/engine";
 import { CandidateProjectionBuilderImpl } from "../../src/lib/intelligence/builders/CandidateProjectionBuilder";
-import { candidateProfile } from "../../src/data/candidate-profile";
+import { syntheticCandidateProfile as candidateProfile } from "../fixtures/synthetic-candidate-profile";
 import { rawOpportunities } from "../../src/data/opportunity-fixtures";
 import type { 
   IdentityAssessment, 

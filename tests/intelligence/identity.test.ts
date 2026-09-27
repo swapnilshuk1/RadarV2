@@ -11,7 +11,7 @@ import { CandidateEvidenceGraph } from "../../src/lib/intelligence/execution/Can
 import { ExecutionEvidenceGate } from "../../src/lib/intelligence/execution/ExecutionEvidenceGate";
 import { TruthPreservingRewriteEngine } from "../../src/lib/intelligence/execution/TruthPreservingRewriteEngine";
 import { ExecutionEngine } from "../../src/lib/intelligence/engines/ExecutionEngine";
-import candidateProfileData from "../../src/data/candidate-profile.json";
+import { syntheticCandidateProfile as candidateProfileData } from "../fixtures/synthetic-candidate-profile";
 import { JobProjection } from "../../src/domain/job_projection";
 import {
   ExecutionPackage,
@@ -21,7 +21,29 @@ import {
 } from "../../src/lib/intelligence/execution/types";
 
 describe("Candidate Truth-Preservation Architecture (Phase 8.2B Hardened)", () => {
-  const evidenceGraph = new CandidateEvidenceGraph(candidateProfileData);
+  const candidateProfile = {
+    ...candidateProfileData,
+    evidence: [
+      ...candidateProfileData.evidence,
+      { type: "Leadership", proof: "Led a 40-member cross-functional team across 13 markets with an $8M budget at Ford, BMW, and TVS Motor Company (₹36 Cr) within 12 months.", verbatim: "Led a 40-member cross-functional team across 13 markets with an $8M budget at Ford, BMW, and TVS Motor Company (₹36 Cr) within 12 months." },
+      { type: "Technology", proof: "Directed enterprise CRM and CDP transformation using Salesforce Marketing Cloud across 13 markets within 12 months.", verbatim: "Directed enterprise CRM and CDP transformation using Salesforce Marketing Cloud across 13 markets within 12 months." }
+    ],
+    experience: {
+      ...candidateProfileData.experience,
+      achievements: [
+        ...(candidateProfileData.experience?.achievements || []),
+        "Scaled revenue to ₹36 Cr across 13 regions at Ford and BMW within 12 months",
+        "Led 40-member team at TVS Motor Company",
+        "Implemented Salesforce CRM and CDP platforms across 13 markets within 12 months"
+      ]
+    },
+    capabilities: {
+      ...candidateProfileData.capabilities,
+      crm: ["CRM", "Salesforce", "CRM Strategy"],
+      tech: ["CDP", "Performance Marketing"]
+    }
+  };
+  const evidenceGraph = new CandidateEvidenceGraph(candidateProfile);
 
   const baseJob: JobProjection = {
     jobHash: "test_job_123",
@@ -34,6 +56,11 @@ describe("Candidate Truth-Preservation Architecture (Phase 8.2B Hardened)", () =
     commercialScope: { value: "GLOBAL", confidence: 0.9, reasoning: "Global test" },
     mandateFit: { score: 85, summary: "Strong fit", confidence: 0.85 },
     capabilities: [{ name: "CRM Transformation" }, { name: "Commercial Growth" }],
+    capabilityRequirements: [{
+      capability: "CRM Transformation",
+      sourceQuotes: ["Lead enterprise CRM and CDP transformation across markets"],
+      evidenceIds: ["req_crm_1"]
+    }],
     boardExposure: { value: "HIGH", confidence: 0.9, reasoning: "Board test" },
     teamScale: { value: "DIRECT_50_PLUS", confidence: 0.9, reasoning: "Scale test" },
     location: "Bengaluru",

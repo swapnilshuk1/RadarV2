@@ -26,9 +26,13 @@ conditions, previous release and active-context rollback pointer. Verify that al
 workers can access the existing payload/profile stores on the intended host.
 
 Current v8 rollout requires operational context search and the configured model
-providers. Google ADC must work under the production process identity. Keys being
-present locally do not establish production access or quota. Keep credentials
-outside Git and release archives.
+providers. Google ADC must work under the production process identity. For Bedrock
+Mantle intelligence models, configure `BEDROCK_MANTLE_API_KEY` or provide an absolute
+external path via `BEDROCK_MANTLE_KEY_FILE=/absolute/external/secret/path`. All
+production credentials (API keys, service account files, Mantle keys) must reside
+strictly outside deployment artifacts and repository trees. Keys being present
+locally do not establish production access or quota. Keep credentials outside Git
+and release archives.
 
 `scripts/deploy.ts` and older deployment helpers can perform live writes and
 restarts. Their presence is not authorization to execute them. Production server,

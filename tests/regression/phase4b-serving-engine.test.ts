@@ -103,14 +103,14 @@ describe("RADAR V4 Phase 4B — Canonical Intrinsic Evaluation & Dynamic Serving
     expect(served.engineRecommendation.engineVerdict).toBe("PURSUE");
     expect(served.engineRecommendation.verb0).toBe("PURSUE");
     expect(served.engineRecommendation.qualityScore).toBe(94.5);
-    expect(served.effectiveDecision).toBe("ENGINE_PURSUIT");
+    expect(served.effectiveDecision).toBe("PURSUE");
     expect(served.reviewWorkflowState).toBe("UNREVIEWED");
     expect(served.displayScore).toBe("95%");
     expect(served.uiBadge).toEqual({ label: "Recommended", variant: "signal" });
   });
 
   // Test 2: Dynamic headspace downgrade (PURSUE -> CONSIDER when activePursuits >= attentionWindow)
-  it("Test 2: dynamically downgrades PURSUE to CONSIDER when activePursuits >= attentionWindow", () => {
+  it("Test 2: preserves engine recommendation across headspace saturation", () => {
     const unsaturatedCtx: CandidateServingContext = {
       personId: "person_swapnil_001",
       attentionWindow: 6,
@@ -125,14 +125,13 @@ describe("RADAR V4 Phase 4B — Canonical Intrinsic Evaluation & Dynamic Serving
     const servedUnsaturated = serveEvaluation(sampleCanonicalIntrinsic, unsaturatedCtx, sampleOppContext, null);
     expect(servedUnsaturated.engineRecommendation.engineVerdict).toBe("PURSUE");
     expect(servedUnsaturated.decision).toBe("PURSUE");
-    expect(servedUnsaturated.effectiveDecision).toBe("ENGINE_PURSUIT");
+    expect(servedUnsaturated.effectiveDecision).toBe("PURSUE");
 
     const servedSaturated = serveEvaluation(sampleCanonicalIntrinsic, saturatedCtx, sampleOppContext, null);
-    expect(servedSaturated.engineRecommendation.engineVerdict).toBe("CONSIDER");
-    expect(servedSaturated.decision).toBe("CONSIDER");
-    expect(servedSaturated.effectiveDecision).toBe("ENGINE_CONSIDER");
+    expect(servedSaturated.engineRecommendation.engineVerdict).toBe("PURSUE");
+    expect(servedSaturated.decision).toBe("PURSUE");
+    expect(servedSaturated.effectiveDecision).toBe("PURSUE");
     expect(servedSaturated.engineRecommendation.verb0).toBe("PURSUE"); // Intrinsic verb0 remains immutable PURSUE
-    expect(servedSaturated.recommendation).toContain("You are at capacity (6/6 active pursuits)");
   });
 
   // Test 3: Intrinsic non-PURSUE immunity (CONSIDER is NEVER downgraded to PASS)
@@ -154,7 +153,7 @@ describe("RADAR V4 Phase 4B — Canonical Intrinsic Evaluation & Dynamic Serving
 
     const served = serveEvaluation(intrinsicConsider, saturatedCtx, sampleOppContext, null);
     expect(served.engineRecommendation.engineVerdict).toBe("CONSIDER");
-    expect(served.effectiveDecision).toBe("ENGINE_CONSIDER");
+    expect(served.effectiveDecision).toBe("CONSIDER");
     expect(served.engineRecommendation.verb0).toBe("CONSIDER");
   });
 
@@ -177,7 +176,7 @@ describe("RADAR V4 Phase 4B — Canonical Intrinsic Evaluation & Dynamic Serving
 
     const served = serveEvaluation(intrinsicPass, candCtx, sampleOppContext, null);
     expect(served.engineRecommendation.engineVerdict).toBe("PASS");
-    expect(served.effectiveDecision).toBe("ENGINE_PASS");
+    expect(served.effectiveDecision).toBe("PASS");
   });
 
   // Test 5: User override reconciliation: intrinsic PURSUE + user PASS -> effective USER_PASSED
@@ -191,7 +190,7 @@ describe("RADAR V4 Phase 4B — Canonical Intrinsic Evaluation & Dynamic Serving
     };
 
     const served = serveEvaluation(sampleCanonicalIntrinsic, candCtx, sampleOppContext, userPass);
-    expect(served.effectiveDecision).toBe("USER_PASSED");
+    expect(served.effectiveDecision).toBe("PASS");
     expect(served.decision).toBe("PASS");
     expect(served.engineRecommendation.engineVerdict).toBe("PURSUE"); // Engine's recommendation preserved
   });
@@ -211,7 +210,7 @@ describe("RADAR V4 Phase 4B — Canonical Intrinsic Evaluation & Dynamic Serving
     };
 
     const served = serveEvaluation(intrinsicConsider, candCtx, sampleOppContext, userPursue);
-    expect(served.effectiveDecision).toBe("PREFERENCE_OVERRIDE");
+    expect(served.effectiveDecision).toBe("PURSUE");
     expect(served.decision).toBe("PURSUE");
   });
 
@@ -232,7 +231,7 @@ describe("RADAR V4 Phase 4B — Canonical Intrinsic Evaluation & Dynamic Serving
     };
 
     const served = serveEvaluation(intrinsicVetoed, candCtx, sampleOppContext, userPursue);
-    expect(served.effectiveDecision).toBe("VETO_OVERRIDE");
+    expect(served.effectiveDecision).toBe("PURSUE");
     expect(served.decision).toBe("PURSUE");
     expect(served.engineRecommendation.vetoed).toBe(true);
   });
@@ -282,10 +281,9 @@ describe("RADAR V4 Phase 4B — Canonical Intrinsic Evaluation & Dynamic Serving
     };
 
     const served = serveEvaluation(sampleCanonicalIntrinsic, saturatedCtx, sampleOppContext, null);
-    expect(served.recommendation).toContain("You are at capacity (6/6 active pursuits)");
+    expect(served.recommendation).toBe(originalProse);
     // Cached intrinsic object must remain completely pristine!
     expect(sampleCanonicalIntrinsic.baseNarrative.baseRecommendationProse).toBe(originalProse);
-    expect(sampleCanonicalIntrinsic.baseNarrative.baseRecommendationProse).not.toContain("You are at capacity");
   });
 
   // Test 13: Audit trace preservation: served recommendation preserves verb0 and evaluationTimeFinalVerb
