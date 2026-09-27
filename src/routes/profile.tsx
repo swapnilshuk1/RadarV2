@@ -5,10 +5,12 @@ import {
   getPipelineStatusFn,
   saveIntentFn,
   getLatestIntentFn,
+  getProfileOverviewFn,
   getDefaultProfileScopeFn
 } from "../lib/intelligence/document-server";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 import { useAttentionPreference } from "../lib/attention-store";
+import { getUserPreferencesFn } from "../lib/intelligence/preferences-server";
 import { PROFILE_PIPELINE_STAGES, isIntentRequiredProfileState, resolveProfilePipelineStepState } from "../lib/intelligence/profile-pipeline-presentation";
 import { resolveIntentActivationPresentation } from "../lib/intelligence/profile-intent-presentation";
 
@@ -24,8 +26,12 @@ export const Route = createFileRoute("/profile")({
     const deps = { tenantId: typeof raw.tenantId === "string" ? raw.tenantId : undefined, personId: typeof raw.personId === "string" ? raw.personId : undefined };
     if (Boolean(deps.tenantId) !== Boolean(deps.personId)) throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
     const scope = deps.tenantId && deps.personId ? { tenantId: deps.tenantId, personId: deps.personId } : await getDefaultProfileScopeFn();
-    const intent = await getLatestIntentFn({ data: scope });
-    return { intent, scope };
+    const [intent, overview, preferences] = await Promise.all([
+      getLatestIntentFn({ data: scope }),
+      getProfileOverviewFn({ data: scope }),
+      getUserPreferencesFn(),
+    ]);
+    return { intent, scope, overview, initialAttentionWindow: preferences.preferences.attentionWindow };
   },
   component: ProfileRoute
 });
@@ -36,7 +42,7 @@ function ProfileRoute() {
 }
 
 function ProfilePage() {
-  const { intent, scope } = Route.useLoaderData();
+  const { intent, scope, overview, initialAttentionWindow } = Route.useLoaderData();
   const requireScope = useCallback(() => {
     return scope;
   }, [scope]);
@@ -44,7 +50,7 @@ function ProfilePage() {
   const router = useRouter();
   const navigate = useNavigate();
 
-  const { attentionWindow, setAttentionWindow } = useAttentionPreference();
+  const { attentionWindow, setAttentionWindow, saveStatus } = useAttentionPreference(initialAttentionWindow);
   const { progress, markEvidenceProvided, markEvidenceSkipped, markIntentSet, markIntentSkipped } = useOnboarding();
 
   const isEvidenceStage = progress.orientationSeen && progress.evidenceStatus === "pending";
@@ -67,11 +73,12 @@ function ProfilePage() {
   // Upload & Pipeline state
   const [pasteText, setPasteText] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [activeDocId, setActiveDocId] = useState<string | null>(null);
-  const [pipelineStage, setPipelineStage] = useState<string | null>(null);
-  const [pipelineStatus, setPipelineStatus] = useState<string | null>(null);
+  const [activeDocId, setActiveDocId] = useState<string | null>(overview.document?.id || null);
+  const [pipelineStage, setPipelineStage] = useState<string | null>(overview.document?.stage || null);
+  const [pipelineStatus, setPipelineStatus] = useState<string | null>(overview.document?.status || null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const displayedPipelineStage = intent ? "COMPLETED" : pipelineStage;
 
   // Poll pipeline stage status when a document upload is in progress
   useEffect(() => {
@@ -201,7 +208,7 @@ function ProfilePage() {
       if (!presentation.persisted) throw new Error(presentation.message);
       markIntentSet();
       await router.invalidate();
-      if (presentation.navigateHome) navigate({ to: "/", search: scope });
+      if (presentation.navigateHome) navigate({ to: "/" });
     } catch (err: any) {
       console.error("Save intent failed:", err);
     } finally {
@@ -224,7 +231,7 @@ function ProfilePage() {
 
   let headerEyebrow = "◆ EXECUTIVE ADVISORY PROFILE";
   let headerTitle = "Executive Profile & Intent";
-  let headerSubtitle = "Upload your executive résumé (PDF, Word DOCX, Plain Text) to extract immutable evidence claims, and explicitly configure your target career intent.";
+  let headerSubtitle = "Upload your executive résumé (PDF, Word DOCX, Plain Text) to use your career evidence and set your next career direction.";
 
   if (isEvidenceStage) {
     headerEyebrow = "◆ STAGE 1 — CAREER EVIDENCE";
@@ -247,7 +254,7 @@ function ProfilePage() {
           {headerTitle}
         </h1>
         <p className="mt-3 font-serif text-[15px] italic text-muted-foreground max-w-3xl leading-relaxed">
-          {headerSubtitle}
+          {overview.name} · {headerSubtitle}
         </p>
       </div>
 
@@ -285,6 +292,9 @@ function ProfilePage() {
             </div>
           )}
 
+          <div role="status" className="rounded border p-3 text-sm">
+            {overview.document ? <><strong>Current résumé: {overview.document.filename}</strong><p>{overview.document.status === "COMPLETED" ? "Career evidence ready" : overview.document.status === "FAILED" ? "Processing failed — upload again to retry" : "Résumé processing in progress"}</p>{overview.document.errorMessage && <p>{overview.document.errorMessage}</p>}</> : "No résumé uploaded yet."}
+          </div>
           {/* Native File Upload Dropzone */}
           <div className="border border-dashed border-border/80 rounded-sm p-8 text-center space-y-4 bg-muted/10 hover:border-foreground transition-all cursor-pointer">
             <div className="mono text-[22px]">📄</div>
@@ -313,7 +323,7 @@ function ProfilePage() {
               htmlFor="resume-file-input"
               className="mono inline-block cursor-pointer py-2.5 px-5 rounded-sm border border-foreground bg-foreground text-background text-[11px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
             >
-              Choose PDF / DOCX File
+              Choose résumé file
             </label>
             {selectedFile && (
               <p className="mono text-[11px] text-emerald-800 font-bold mt-2">
@@ -375,7 +385,7 @@ function ProfilePage() {
               </span>
               <div className="space-y-2">
                 {stages.map((st) => {
-                  const stepState = resolveProfilePipelineStepState(pipelineStage, st.id);
+                  const stepState = resolveProfilePipelineStepState(displayedPipelineStage, st.id);
                   const isDone = stepState === "complete";
                   const isCurrent = stepState === "current";
                   return (
@@ -395,7 +405,7 @@ function ProfilePage() {
                   );
                 })}
               </div>
-              {isIntentRequiredProfileState(pipelineStage) && (
+              {isIntentRequiredProfileState(displayedPipelineStage) && (
                 <p className="mt-3 text-sm text-caution">Profile evidence is ready. Save explicit career intent before recommendation evaluation can begin.</p>
               )}
             </div>
@@ -511,12 +521,12 @@ function ProfilePage() {
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                   <option key={n} value={n}>
-                    {n} {n === 6 ? "(Default — 6 Opportunities)" : `Opportunity${n > 1 ? "s" : ""}`}
+                    {n} {n === 6 ? "(Default — 6 Opportunities)" : n === 1 ? "Opportunity" : "Opportunities"}
                   </option>
                 ))}
               </select>
               <p className="text-[11px] text-muted-foreground mt-1">
-                Controls presentation density without restricting access to the broader pipeline.
+                Sets how many opportunities appear at once. Changes save automatically for your account.
               </p>
             </div>
 
@@ -544,6 +554,7 @@ function ProfilePage() {
               </div>
             )}
 
+            {saveStatus && <p role="status" className="text-sm">{saveStatus}</p>}
             {intentSavedMsg && (
               <p className={`mono text-[11px] font-bold text-center mt-2 ${intentActivationPending ? "text-caution" : "text-emerald-800"}`}>
                 ✓ {intentSavedMsg}

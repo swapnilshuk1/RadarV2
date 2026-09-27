@@ -60,7 +60,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       "tenant-security",
       "serving-pagination",
       "editorial-governance",
-      "dossier-v2-merge-gate",
+      "staged-dossier-merge-gate",
       "gate-0-safety",
       "runtime-release-safety",
     ]);

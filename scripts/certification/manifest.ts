@@ -95,15 +95,13 @@ export const certificationManifest = [
     ],
   },
   {
-    id: "dossier-v2-merge-gate",
-    name: "Dossier V2 Merge-Gate Integrity",
+    id: "staged-dossier-merge-gate",
+    name: "Staged Dossier Merge-Gate Integrity",
     description:
       "Exact evaluated identity/scalar attachment, source trust, presentation provenance, and account isolation",
     files: [
-      "tests/intelligence/opportunity-version-pinning.test.ts",
       "tests/pipeline/EvaluationWorker.test.ts",
       "tests/intelligence/context-materialization.test.ts",
-      "tests/editorial/editorial-proposition-composer.test.ts",
       "tests/security/decisions-account-isolation.test.ts",
       "tests/intelligence/staged-decision.test.ts",
       "tests/intelligence/staged-production-integration.test.ts",

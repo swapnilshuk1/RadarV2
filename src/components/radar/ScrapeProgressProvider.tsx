@@ -17,6 +17,8 @@ export interface CanonicalScrapeState {
   stage: ScrapeStage;
   opportunitiesFound: number;
   evaluatedCount: number;
+  enrichedCount?: number;
+  errorMessage?: string | null;
   remainingCount: number;
   sources: Record<string, "pending" | "searching" | "completed" | "failed">;
   portalHealth?: Record<string, any>;
@@ -53,7 +55,7 @@ function currentCandidateScope() {
   const params = new URLSearchParams(window.location.search);
   const tenantId = params.get("tenantId") || undefined;
   const personId = params.get("personId") || undefined;
-  return tenantId && personId ? { tenantId, personId } : {};
+  return { tenantId, personId };
 }
 
 export function ScrapeProgressProvider({ children }: { children: React.ReactNode }) {
@@ -67,6 +69,7 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
 
   const router = useRouter();
   const location = useLocation();
+  const scopeKey = JSON.stringify(currentCandidateScope());
 
   // Helper to sync canonical state from server response
   const syncServerState = useCallback((data: any) => {
@@ -81,6 +84,9 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
       stage: data.stage || "discover",
       opportunitiesFound: data.opportunitiesFound || 0,
       evaluatedCount: data.evaluatedCount || 0,
+      enrichedCount: data.enrichedCount || 0,
+      errorMessage: data.errorMessage,
+      recentActivities: data.recentActivities || [],
       remainingCount: data.remainingCount || 0,
       sources: data.sources || { LinkedIn: "pending", Naukri: "pending", Indeed: "pending" },
       portalHealth: data.portalHealth || {},
@@ -108,7 +114,7 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
     }
     void hydrate();
     return () => { mounted = false; };
-  }, [location.href, syncServerState]);
+  }, [scopeKey, syncServerState]);
 
   // 2. Reconciliation Polling Loop while Run is Active
   useEffect(() => {

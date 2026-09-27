@@ -6,15 +6,10 @@ import { evaluateAttentionGate } from "./AttentionGate";
 import { runEngineSingleIntrinsic } from "./engine";
 import { validateEvaluationConsistency } from "../domain/evaluation_fingerprint";
 import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
-import type { CanonicalDossierPresentationV2 } from "../domain/dossier_presentation";
-import {
-  buildEvaluatedPresentationV2,
-  buildUnavailablePresentationV2,
-} from "./dossier/CanonicalDossierPresentationMaterializer";
-import { SqliteDossierPresentationStore } from "../../data/sqlite/repositories/SqliteDossierPresentationStore";
 import type { MaterializedEvaluation } from "../domain/evaluation_context";
 import { resolveExactCandidateProjectionForScope } from "../../data/sqlite/repositories/profile-projection-version";
-import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
+import { EvaluationWorkScheduler } from "./EvaluationWorkScheduler";
+import { supportsStagedPolicy } from "./staged/stagedPolicy";
 
 export interface ContextMaterializationResult {
   examined: number;
@@ -79,7 +74,17 @@ export async function materializeExistingCanonicalPool(
   );
   const candidateRows: Array<[unknown, ...unknown[]]> = [];
   const evaluations: MaterializedEvaluation[] = [];
-  const presentations: CanonicalDossierPresentationV2[] = [];
+  const stagedScheduler = supportsStagedPolicy(prepared.context.policyVersion)
+    ? new EvaluationWorkScheduler(db)
+    : null;
+  const stagedWork: Array<{
+    tenantId: string;
+    personId: string;
+    searchPlanId: string;
+    canonicalJobId: string;
+    opportunityVersion: string;
+    evaluationContextFingerprint: string;
+  }> = [];
   let eligibleCandidates = 0;
 
   for (const row of rows) {
@@ -113,6 +118,22 @@ export async function materializeExistingCanonicalPool(
     ]);
     if (gate.decision !== "CANDIDATE") continue;
     eligibleCandidates++;
+
+    if (stagedScheduler) {
+      // The requirement has a foreign-key relationship to this plan's
+      // candidate association. Persist the association below before adding
+      // durable staged work; otherwise profile activation fails for a valid
+      // saved intent with a SQLite FK error.
+      stagedWork.push({
+        tenantId: scope.tenantId,
+        personId: scope.personId,
+        searchPlanId: prepared.plan.id,
+        canonicalJobId: row.canonical_job_id,
+        opportunityVersion: row.opportunity_version,
+        evaluationContextFingerprint: prepared.context.contextFingerprint,
+      });
+      continue;
+    }
 
     const isAcquired = row.acquisition_status === "ACQUIRED";
     const isLifecycleActive = row.lifecycle_state === "ACTIVE";
@@ -162,52 +183,12 @@ export async function materializeExistingCanonicalPool(
       validateEvaluationConsistency(evaluation);
       evaluations.push(evaluation);
 
-      const presentationEvidence = JobProjectionBuilder.extractPresentationEvidenceForPresentation(
-        row.raw_content,
-        row.opportunity_version,
-        [],
-      );
-      if (presentationEvidence.evidence.length > 0 || presentationEvidence.qualifications.length > 0) {
-        const presentation = buildUnavailablePresentationV2({
-          identity: {
-            tenantId: scope.tenantId,
-            personId: scope.personId,
-            canonicalJobId: row.canonical_job_id,
-            opportunityVersion: row.opportunity_version,
-            evaluationContextFingerprint: prepared.context.contextFingerprint,
-          },
-          reasonCode: "NOT_EVALUABLE",
-          presentationEvidence: {
-            roleWorkEvidence: presentationEvidence.evidence,
-            presentationQualificationEvidence: presentationEvidence.qualifications,
-          },
-          generatedAt: evaluatedAt,
-        });
-        presentations.push(presentation);
-      }
       continue;
     }
     const artifact = runEngineSingleIntrinsic(source.jobHash, projection, 0, [source]);
     if (!artifact) {
       throw new Error(`[ContextMaterialization] Intrinsic evaluation artifact missing for ${row.canonical_job_id}`);
     }
-    const presentationEvidence = JobProjectionBuilder.extractPresentationEvidenceForPresentation(
-      row.raw_content,
-      row.opportunity_version,
-      Array.isArray(artifact.jobProjection?.capabilities) ? artifact.jobProjection.capabilities : [],
-    );
-    const evaluatorRoleWorkEvidence = Array.isArray(artifact.jobProjection?.roleWorkEvidence)
-      ? artifact.jobProjection.roleWorkEvidence
-      : [];
-    artifact.jobProjection = {
-      ...artifact.jobProjection,
-      // Retain exact evaluator-side IDs before adding presentation extraction;
-      // canonical decision trace references must stay resolvable.
-      roleWorkEvidence: [...evaluatorRoleWorkEvidence, ...presentationEvidence.evidence.filter((item) =>
-        !evaluatorRoleWorkEvidence.some((existing: { id?: string }) => existing.id === item.id),
-      )],
-      presentationQualificationEvidence: presentationEvidence.qualifications,
-    };
     const isGenuinelySparse = artifact.record?.verb === "SPARSE_SPEC"
       || (row.evidence_state === "GENUINELY_SPARSE" && isAcquired && row.acquisition_quality === "COMPLETE");
     const evaluationState = isGenuinelySparse
@@ -238,43 +219,6 @@ export async function materializeExistingCanonicalPool(
     validateEvaluationConsistency(evaluation);
     evaluations.push(evaluation);
 
-    if (evaluationState === "EVALUATED") {
-      const presentation = buildEvaluatedPresentationV2({
-        identity: {
-          tenantId: scope.tenantId,
-          personId: scope.personId,
-          canonicalJobId: row.canonical_job_id,
-          opportunityVersion: row.opportunity_version,
-          evaluationContextFingerprint: prepared.context.contextFingerprint,
-        },
-        artifact,
-        candidateProjection: projection,
-        presentationEvidence: {
-          roleWorkEvidence: presentationEvidence.evidence,
-          presentationQualificationEvidence: presentationEvidence.qualifications,
-        },
-        evaluationFingerprint: canonicalPayload.evaluationInputHash,
-        generatedAt: evaluatedAt,
-      });
-      presentations.push(presentation);
-    } else if (presentationEvidence.evidence.length > 0 || presentationEvidence.qualifications.length > 0) {
-      const presentation = buildUnavailablePresentationV2({
-        identity: {
-          tenantId: scope.tenantId,
-          personId: scope.personId,
-          canonicalJobId: row.canonical_job_id,
-          opportunityVersion: row.opportunity_version,
-          evaluationContextFingerprint: prepared.context.contextFingerprint,
-        },
-        reasonCode: evaluationState,
-        presentationEvidence: {
-          roleWorkEvidence: presentationEvidence.evidence,
-          presentationQualificationEvidence: presentationEvidence.qualifications,
-        },
-        generatedAt: evaluatedAt,
-      });
-      presentations.push(presentation);
-    }
   }
 
   await db.transaction(async (tx) => {
@@ -337,11 +281,13 @@ export async function materializeExistingCanonicalPool(
       );
     }
 
-    const presentationStore = new SqliteDossierPresentationStore(tx);
-    for (const presentation of presentations) {
-      await presentationStore.savePresentation(presentation);
-    }
   });
 
-  return { examined: rows.length, candidates: eligibleCandidates, materialized: evaluations.length };
+  // Queue only after the candidate rows commit. New captured opportunities use
+  // the same scheduler in ingestion/reconciliation, so the staged GLM →
+  // dossier → Gemini sequence is now durable for both activation backfills
+  // and fresh scrape arrivals.
+  for (const work of stagedWork) await stagedScheduler!.ensureWork(work);
+
+  return { examined: rows.length, candidates: eligibleCandidates, materialized: stagedScheduler ? eligibleCandidates : evaluations.length };
 }

@@ -177,6 +177,7 @@ function Shortlist() {
 
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [extraScraped, setExtraScraped] = useState(0);
+  const [decisionStatus, setDecisionStatus] = useState<string | null>(null);
   const router = useRouter();
 
   const sourceCounts = useMemo(() => {
@@ -224,22 +225,27 @@ function Shortlist() {
     }
   };
 
-  const decide = (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
+  const decide = async (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
     // UNKNOWN is presentation of absent evaluation, never an action to persist.
     if (verb === "UNKNOWN") return;
     const openTime = openedTimes[jobHash];
     const duration = openTime ? Date.now() - openTime : 0;
     logTelemetry(jobHash, verb, duration);
 
-    recordDecision(jobHash, verb, reviewedFingerprint);
-    void router.invalidate();
-    setOpen((cur) => (cur === jobHash ? null : cur));
-
-    setOpenedTimes((prev) => {
-      const next = { ...prev };
-      delete next[jobHash];
-      return next;
-    });
+    setDecisionStatus(null);
+    try {
+      await recordDecision(jobHash, verb, reviewedFingerprint);
+      await router.invalidate();
+      setDecisionStatus(`Your decision is saved as ${verb}.`);
+      setOpen((cur) => (cur === jobHash ? null : cur));
+      setOpenedTimes((prev) => {
+        const next = { ...prev };
+        delete next[jobHash];
+        return next;
+      });
+    } catch {
+      setDecisionStatus("RADAR could not save your decision. Please try again.");
+    }
   };
 
   const { runState, startScrape, isStarting, restore } = useScrapeProgress();
@@ -401,6 +407,8 @@ function Shortlist() {
             </div>
           </section>
         )}
+
+        {decisionStatus && <p role="status" className="mb-4 text-sm text-muted-foreground">{decisionStatus}</p>}
 
         {/* ────────────────────────────────────────────────────────────────────────
             SHORTLIST QUEUE
@@ -622,7 +630,7 @@ function Shortlist() {
       {/* ────────────────────────────────────────────────────────────────────────
           FLOATING FOOTER STATUS BAR
           ──────────────────────────────────────────────────────────────────────── */}
-      <div className="floating-dock gap-4 pointer-events-auto">
+      {open === null && <div className="floating-dock gap-4 pointer-events-auto">
         <button
           type="button"
           onClick={() => {
@@ -658,7 +666,7 @@ function Shortlist() {
         <span className="dock-text text-emerald-600 dark:text-emerald-400 font-bold">
           → {selectedCategoryId === "all" ? (metrics?.discoveryMetrics?.actionableReviewQueue ?? activeOps.length) : (metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? activeOps.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? activeOps.length)} to review
         </span>
-      </div>
+      </div>}
     </div>
   );
 }

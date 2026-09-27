@@ -14,22 +14,13 @@ describe("editorial composition boundary", () => {
     expect(route).not.toMatch(/new\s+BriefCompositionEngine/);
   });
 
-  it("keeps the V2 materializer independent of legacy narrative and evaluation engines", () => {
-    const materializer = source("src/lib/intelligence/dossier/CanonicalDossierPresentationMaterializer.ts");
-    expect(materializer).not.toMatch(/BriefCompositionEngine/);
-    expect(materializer).not.toMatch(/ExecutionEngine/);
-    expect(materializer).not.toMatch(/AdvisoryConstitution/);
-    expect(materializer).not.toMatch(/CapabilityAssessmentEngine/);
-    expect(materializer).toMatch(/composeEditorialIntelligenceV2/);
-  });
-
-  it("uses V2 materialization on both current canonical materialization paths", () => {
-    const worker = source("src/lib/intelligence/EvaluationWorker.ts");
-    const contextMaterialization = source("src/lib/intelligence/context-materialization.ts");
-    for (const implementation of [worker, contextMaterialization]) {
-      expect(implementation).toMatch(/buildEvaluatedPresentationV2/);
-      expect(implementation).toMatch(/buildUnavailablePresentationV2/);
-      expect(implementation).not.toMatch(/buildCanonicalDossierPresentation\s*\(/);
+  it("keeps the retired deterministic dossier path out of runtime serving", () => {
+    for (const path of [
+      "src/lib/intelligence/EvaluationWorker.ts",
+      "src/lib/intelligence/context-materialization.ts",
+      "src/routes/opportunity.$jobHash.tsx",
+    ]) {
+      expect(source(path)).not.toMatch(/dossier-v2|DossierPresentationV2|CanonicalDossierV2/);
     }
   });
 });

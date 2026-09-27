@@ -71,7 +71,25 @@ export async function resolveScope(
   }
 
   const authContext = await authenticateTenantMembership(userId, tenantId, db);
-  return authorizePersonScope(authContext, requestedPersonId || userId, db, requiredPermission);
+  const scope = await authorizePersonScope(authContext, requestedPersonId || userId, db, requiredPermission);
+
+  // Serving requests are coalesced by scope. Bind the currently active plan
+  // before they reach that layer so a plan activation can never reuse an
+  // in-flight response from the previous candidate population.
+  const active = await db.one<{ search_plan_id: string; context_fingerprint: string }>(
+    `SELECT aec.search_plan_id, aec.context_fingerprint
+     FROM active_evaluation_contexts aec
+     JOIN search_plans sp ON sp.id = aec.search_plan_id
+       AND sp.tenant_id = aec.tenant_id
+       AND sp.person_id = aec.person_id
+     WHERE aec.tenant_id = ? AND aec.person_id = ? AND sp.status = 'active'
+     ORDER BY aec.activated_at DESC
+     LIMIT 1`,
+    [scope.tenantId, scope.personId],
+  );
+  return active
+    ? { ...scope, activeSearchPlanId: active.search_plan_id, activeEvaluationContextId: active.context_fingerprint }
+    : scope;
 }
 
 import { SingleflightOpportunityQueries } from "./serving/singleflight";

@@ -6,6 +6,7 @@ import {
   EvaluationRuntimeControl,
   type EvaluationRuntimeState,
 } from "./EvaluationRuntimeControl";
+import { EvaluationWorker } from "./EvaluationWorker";
 
 export interface EvaluatorTelemetrySnapshot {
   control: {
@@ -89,7 +90,7 @@ function requestedCandidateScope(data?: CandidateScopeRequest) {
 
 async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getDatabaseAdapter>, requested?: CandidateScopeRequest) {
   const scopeRequest = requestedCandidateScope(requested);
-  const { scope } = await resolveServingScope(userId, scopeRequest?.tenantId, db, scopeRequest?.personId);
+  const { scope, activeContext } = await resolveServingScope(userId, scopeRequest?.tenantId, db, scopeRequest?.personId);
   const membership = await db.one<{ role: string }>(
     `SELECT role
      FROM memberships
@@ -104,7 +105,7 @@ async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getD
   // This controls a process-global daemon. Keep the operator boundary strict,
   // but source it from the active tenant membership rather than the profile
   // role cached in the browser session.
-  return { scope, canControl: membership.role === "admin" };
+  return { scope, activeContext, canControl: membership.role === "admin" };
 }
 
 async function snapshotForUser(user: { id: string; role?: string }, requested?: CandidateScopeRequest): Promise<EvaluatorTelemetrySnapshot> {
@@ -294,12 +295,21 @@ export const controlEvaluatorFn = createServerFn({ method: "POST" })
     }
     const control = new EvaluationRuntimeControl(db);
 
+    const access = await resolveEvaluatorAccess(user.id, db, data);
     if (data.action === "pause") {
-      await control.set((await resolveEvaluatorAccess(user.id, db, data)).scope, "PAUSED", user.id);
+      await control.set(access.scope, "PAUSED", user.id);
     } else if (data.action === "stop") {
-      await control.set((await resolveEvaluatorAccess(user.id, db, data)).scope, "STOPPED", user.id);
+      await control.set(access.scope, "STOPPED", user.id);
     } else {
-      await control.set((await resolveEvaluatorAccess(user.id, db, data)).scope, "RUNNING", user.id);
+      await control.set(access.scope, "RUNNING", user.id);
+      // The control is an operational recovery action, not merely a desired
+      // state toggle. Claim one due staged job now; the supervised worker then
+      // continues the durable queue.
+      if (!access.activeContext) throw new AuthError("NO_ACTIVE_EVALUATION_CONTEXT", 409);
+      await new EvaluationWorker(db, "ui-evaluator-resume").pollAndProcessNext(
+        "staged",
+        access.activeContext.contextFingerprint,
+      );
     }
 
     return snapshotForUser(user, data);

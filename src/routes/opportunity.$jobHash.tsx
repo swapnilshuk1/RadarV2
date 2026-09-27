@@ -1,5 +1,5 @@
 import { createFileRoute, notFound, useRouter, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   type DecisionVerb,
   type ServedOpportunity,
@@ -8,12 +8,11 @@ import {
   isUnmaterialized,
   isUnavailable,
 } from "../data/opportunity-fixtures";
-import { getOpportunityDetailsFn } from "../lib/intelligence/opportunity-server";
+import { getOpportunityDetailsFn, requestDetailedDossierFn, requestFactualVerificationFn } from "../lib/intelligence/opportunity-server";
 import { useDecisions } from "../lib/decisions-store";
 import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";
 import { ReadingSurface } from "@/components/radar/opportunity/surfaces/ReadingSurface";
 import { ExecutiveBriefingSurface } from "@/components/radar/opportunity/surfaces/ExecutiveBriefingSurface";
-import { CanonicalDossierV2Surface } from "@/components/radar/opportunity/surfaces/CanonicalDossierV2Surface";
 import { DossierView } from "@/dossier/DossierView";
 import { isExternalPostingUrl } from "@/lib/acquisition/external-posting-url";
 
@@ -38,15 +37,6 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
       };
     }
     const o = loaderData.opportunity;
-    if (o.dossierPresentationV2) {
-      const hero = o.dossierPresentationV2.composition.sections.hero;
-      return {
-        meta: [
-          { title: `${o.role} at ${o.company} - RADAR Executive Dossier` },
-          { name: "description", content: hero.headline || `${o.role} executive dossier` },
-        ],
-      };
-    }
     if (!isEvaluated(o)) {
       return { meta: [{ title: `${o.evaluationState} - RADAR Dossier` }] };
     }
@@ -67,6 +57,10 @@ export function OpportunityBriefView() {
   const scope = Route.useSearch() as { tenantId?: string; personId?: string };
   const { decisions, decide: recordDecision } = useDecisions(scope);
   const router = useRouter();
+  const [decisionStatus, setDecisionStatus] = useState<string | null>(null);
+  const [decisionPending, setDecisionPending] = useState(false);
+  const [dossierRequestPending, setDossierRequestPending] = useState(false);
+  const [verificationRequestPending, setVerificationRequestPending] = useState(false);
   const waitingForReview =
     isEvaluated(o) &&
     (o.memoReviewState === "preparing" ||
@@ -106,14 +100,76 @@ export function OpportunityBriefView() {
 
   const dossierState = resolveDossierDecisionState(o, decisions[o.jobHash]);
 
-  const decide = (verb: DecisionVerb) => {
-    recordDecision(o.jobHash, verb, dossierState.evaluationFingerprint);
-    router.invalidate();
+  const decide = async (verb: DecisionVerb) => {
+    setDecisionPending(true);
+    setDecisionStatus(null);
+    try {
+      await recordDecision(o.jobHash, verb, dossierState.evaluationFingerprint);
+      await router.invalidate();
+      setDecisionStatus(`Your decision is saved as ${verb}.`);
+    } catch {
+      setDecisionStatus("RADAR could not save your decision. Please try again.");
+    } finally {
+      setDecisionPending(false);
+    }
   };
+
+  const requestDetailedDossier = async () => {
+    setDossierRequestPending(true);
+    setDecisionStatus(null);
+    try {
+      const result = await requestDetailedDossierFn({ data: { jobHash: o.jobHash, ...scope } });
+      setDecisionStatus(
+        result.state === "QUEUED_EVALUATION"
+          ? "GLM evaluation has been queued. RADAR will prepare the dossier after evaluation completes."
+          : result.state === "QUEUED_DOSSIER"
+            ? "Detailed dossier preparation has been queued. Gemini verification follows the draft."
+            : result.state === "QUEUED_GEMINI_REVIEW"
+              ? "The GLM draft exists. Gemini factual verification is queued."
+              : result.state === "ALREADY_COMPLETED"
+                ? "The reviewed detailed dossier is already available."
+                : "This PASS evaluation does not require a detailed dossier.",
+      );
+      await router.invalidate();
+    } catch (error) {
+      setDecisionStatus(error instanceof Error ? error.message : "RADAR could not queue the detailed dossier.");
+    } finally {
+      setDossierRequestPending(false);
+    }
+  };
+
+  const requestFactualVerification = async () => {
+    setVerificationRequestPending(true);
+    setDecisionStatus(null);
+    try {
+      const result = await requestFactualVerificationFn({ data: { jobHash: o.jobHash, ...scope } });
+      setDecisionStatus(
+        result.state === "QUEUED_GEMINI_REVIEW"
+          ? "Gemini factual verification has been queued for this GLM draft."
+          : result.state === "QUEUED_DOSSIER"
+            ? "The GLM detailed dossier is being prepared before Gemini verification."
+            : result.state === "QUEUED_EVALUATION"
+              ? "GLM evaluation has been queued before detailed dossier preparation."
+              : result.state === "ALREADY_COMPLETED"
+                ? "This dossier has already completed Gemini factual verification."
+                : "This PASS evaluation does not require a detailed dossier.",
+      );
+      await router.invalidate();
+    } catch (error) {
+      setDecisionStatus(error instanceof Error ? error.message : "RADAR could not queue Gemini factual verification.");
+    } finally {
+      setVerificationRequestPending(false);
+    }
+  };
+
+  const decisionFeedback = decisionStatus ? (
+    <p role="status" className="memo-container py-2 text-sm text-muted-foreground">{decisionStatus}</p>
+  ) : null;
 
   if (isEvaluated(o) && o.richDossier) {
     return (
       <>
+        {decisionFeedback}
         <div className="memo-container flex flex-wrap items-center justify-between gap-4 py-4">
           <Link to="/" search={scope} className="text-primary hover:underline">
             Return to Shortlist
@@ -124,7 +180,8 @@ export function OpportunityBriefView() {
                 key={verb}
                 className="rounded border px-3 py-2"
                 aria-pressed={dossierState.selectedActionForControls === verb}
-                onClick={() => decide(verb)}
+                disabled={decisionPending}
+                onClick={() => void decide(verb)}
               >
                 {verb}
               </button>
@@ -158,6 +215,7 @@ export function OpportunityBriefView() {
   if (isEvaluated(o) && o.memoReviewState === "preparing") {
     return (
       <div className="memo-container py-16">
+        {decisionFeedback}
         <Link to="/" search={scope}>Return to Shortlist</Link>
         <h1 className="font-serif text-3xl mt-6">{o.role}</h1>
         <p>
@@ -166,13 +224,22 @@ export function OpportunityBriefView() {
         <p role="status" className="mt-6">
           Evaluation complete. Your memo is being prepared.
         </p>
+        <button
+          type="button"
+          disabled={verificationRequestPending}
+          onClick={() => void requestFactualVerification()}
+          className="mt-4 rounded border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
+        >
+          {verificationRequestPending ? "Requesting…" : "Request Gemini factual verification"}
+        </button>
         <div className="flex gap-2 mt-6" aria-label="Your decision">
           {(["PURSUE", "CONSIDER", "PASS"] as const).map((verb) => (
             <button
               key={verb}
               className="rounded border px-3 py-2"
               aria-pressed={dossierState.selectedActionForControls === verb}
-              onClick={() => decide(verb)}
+              disabled={decisionPending}
+              onClick={() => void decide(verb)}
             >
               {verb}
             </button>
@@ -190,6 +257,7 @@ export function OpportunityBriefView() {
   if (isEvaluated(o) && o.memoReviewState === "preparation_attention") {
     return (
       <div className="memo-container py-16">
+        {decisionFeedback}
         <Link to="/" search={scope}>Return to Shortlist</Link>
         <h1 className="font-serif text-3xl mt-6">{o.role}</h1>
         <p>
@@ -199,13 +267,22 @@ export function OpportunityBriefView() {
           Evaluation is complete, but memo preparation needs attention. Your opportunity and
           decisions remain available while the composition job is inspected or retried.
         </p>
+        <button
+          type="button"
+          disabled={dossierRequestPending}
+          onClick={() => void requestDetailedDossier()}
+          className="mt-4 rounded border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
+        >
+          {dossierRequestPending ? "Requesting…" : "Request detailed dossier"}
+        </button>
         <div className="flex gap-2 mt-6" aria-label="Your decision">
           {(["PURSUE", "CONSIDER", "PASS"] as const).map((verb) => (
             <button
               key={verb}
               className="rounded border px-3 py-2"
               aria-pressed={dossierState.selectedActionForControls === verb}
-              onClick={() => decide(verb)}
+              disabled={decisionPending}
+              onClick={() => void decide(verb)}
             >
               {verb}
             </button>
@@ -232,27 +309,20 @@ export function OpportunityBriefView() {
           The memo is temporarily unavailable while factual corrections are reviewed. Your
           opportunity and decisions are preserved.
         </p>
+        <button
+          type="button"
+          disabled={verificationRequestPending}
+          onClick={() => void requestFactualVerification()}
+          className="mt-4 rounded border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
+        >
+          {verificationRequestPending ? "Requesting…" : "Request Gemini factual verification"}
+        </button>
         {isExternalPostingUrl(o.applyUrl) && (
           <a href={o.applyUrl} target="_blank" rel="noopener noreferrer">
             View job posting
           </a>
         )}
       </div>
-    );
-  }
-
-  if (o.dossierPresentationV2) {
-    return (
-      <CanonicalDossierV2Surface
-        opportunity={o}
-        presentation={o.dossierPresentationV2}
-        neighbors={neighbors}
-        currentIndex={currentIndex}
-        totalCount={totalCount}
-        decide={decide}
-        dossierState={dossierState}
-        scope={scope}
-      />
     );
   }
 
@@ -277,6 +347,7 @@ export function OpportunityBriefView() {
   if (presentation) {
     return (
       <>
+        {decisionFeedback}
         <div className="hidden lg:block">
           <ReadingSurface
             opportunity={evalOpp}
@@ -342,6 +413,14 @@ export function OpportunityBriefView() {
         <p className="text-sm text-muted-foreground">
           Detailed dossier not materialized for this evaluation.
         </p>
+        <button
+          type="button"
+          disabled={dossierRequestPending}
+          onClick={() => void requestDetailedDossier()}
+          className="rounded border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
+        >
+          {dossierRequestPending ? "Requesting…" : "Request detailed dossier"}
+        </button>
       </section>
 
       <section className="memo-card space-y-3" aria-label="Your decision">

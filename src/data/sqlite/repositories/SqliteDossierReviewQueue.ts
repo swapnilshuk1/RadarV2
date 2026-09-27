@@ -5,7 +5,7 @@ import { DOSSIER_COMPOSITION_RECIPE, reviewFingerprint } from "@/dossier/factual
 import { assertMemoIntegrity } from "@/dossier/memo-integrity";
 import { validateComposition, validateClaims } from "@/dossier/grounding";
 import type { ProductionStagedIdentity } from "@/lib/intelligence/staged/ProductionStagedInputAdapter";
-import type { DossierPresentationIdentity } from "./SqliteDossierPresentationStore";
+import type { DossierPresentationIdentity } from "./SqliteRichDossierStore";
 
 export const DRAFT_DOSSIER_VERSION = "dossier-v4.1-draft";
 export interface ReviewJob {
@@ -89,6 +89,18 @@ export class SqliteDossierReviewQueue {
       `SELECT * FROM dossier_review_jobs WHERE ${exact}`,
       params(identity, fp),
     );
+  }
+  /** Retry only the exact factual-review job that reached attention. */
+  async retryAttention(identity: DossierPresentationIdentity, fp: string): Promise<boolean> {
+    const now = this.now();
+    const result = await this.db.execute(
+      `UPDATE dossier_review_jobs
+       SET status='pending',attempts=0,next_attempt_at=?,lease_token=NULL,lease_until=NULL,
+           last_error=NULL,withheld=0,updated_at=?
+       WHERE ${exact} AND status='needs_attention'`,
+      [now, now, ...params(identity, fp)],
+    );
+    return result.rowsAffected > 0;
   }
   async getDraft(identity: DossierPresentationIdentity, fp: string): Promise<Dossier | null> {
     const row = await this.find(identity, fp);

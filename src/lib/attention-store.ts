@@ -3,7 +3,8 @@ import { getUserPreferencesFn, saveUserPreferencesFn, sanitizeAttentionWindow } 
 
 const LOCAL_STORAGE_KEY = "radar_attention_window";
 
-export function useAttentionPreference() {
+export function useAttentionPreference(initialAttentionWindow?: number) {
+  const [saveStatus, setSaveStatus] = useState("");
   const [attentionWindow, setAttentionWindowState] = useState<number>(() => {
     if (typeof window !== "undefined") {
       const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -11,7 +12,7 @@ export function useAttentionPreference() {
         return sanitizeAttentionWindow(cached);
       }
     }
-    return 6;
+    return sanitizeAttentionWindow(initialAttentionWindow ?? 6);
   });
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export function useAttentionPreference() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialAttentionWindow]);
 
   const setAttentionWindow = (val: number) => {
     const sanitized = sanitizeAttentionWindow(val);
@@ -40,7 +41,9 @@ export function useAttentionPreference() {
     if (typeof window !== "undefined") {
       localStorage.setItem(LOCAL_STORAGE_KEY, String(sanitized));
     }
-    saveUserPreferencesFn({ data: { attentionWindow: sanitized } }).catch((err) => {
+    setSaveStatus("Saving display preference…");
+    saveUserPreferencesFn({ data: { attentionWindow: sanitized } }).then(() => setSaveStatus("Display preference saved.")).catch((err) => {
+      setSaveStatus("Display preference could not be saved. Please try again.");
       console.warn("[useAttentionPreference] Save error:", err);
     });
   };
@@ -48,5 +51,6 @@ export function useAttentionPreference() {
   return {
     attentionWindow,
     setAttentionWindow,
+    saveStatus,
   };
 }

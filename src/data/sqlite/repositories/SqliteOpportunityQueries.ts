@@ -68,7 +68,6 @@ import {
   type CategoryId,
 } from "../../../lib/domain/category_taxonomy";
 import { type ActiveServingContext } from "../../../lib/security/scope-resolver";
-import { SqliteDossierPresentationStore } from "./SqliteDossierPresentationStore";
 import { SqliteRichDossierStore } from "./SqliteRichDossierStore";
 import { DRAFT_DOSSIER_VERSION, SqliteDossierReviewQueue } from "./SqliteDossierReviewQueue";
 import { PREPARING_DOSSIER_VERSION, SqliteDossierCompositionQueue } from "./SqliteDossierCompositionQueue";
@@ -1080,7 +1079,6 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
 
     if (!row) return null;
 
-    const presentationStore = new SqliteDossierPresentationStore(this.db);
     const presentationIdentity = {
       tenantId: scope.tenantId,
       personId: scope.personId,
@@ -1124,12 +1122,6 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         effectiveDecision: readModel.effectiveDecision,
         reviewState: readModel.reviewState,
       };
-      if (unavailState === "SPARSE_SPEC" || unavailState === "NOT_EVALUABLE") {
-        const presentationV2 = await presentationStore.getPresentation(presentationIdentity, null);
-        if (presentationV2 && presentationV2.evaluation.state === unavailState) {
-          unavailOpp.dossierPresentationV2 = presentationV2;
-        }
-      }
       return unavailOpp;
     }
 
@@ -1502,20 +1494,6 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     opp.effectiveDecision = readModel.effectiveDecision as EffectiveDecision;
     (opp as EvaluatedOpportunity & { reviewState: CanonicalReviewState }).reviewState =
       readModel.reviewState;
-
-    const presentationV2 = await presentationStore.getPresentation(
-      presentationIdentity,
-      row.evaluation_fingerprint,
-    );
-    if (
-      presentationV2 &&
-      presentationV2.evaluation.state === "EVALUATED" &&
-      presentationV2.evaluation.fingerprint === row.evaluation_fingerprint &&
-      presentationV2.evaluation.verdict === row.engine_decision &&
-      presentationV2.evaluation.score === row.quality_score
-    ) {
-      opp.dossierPresentationV2 = presentationV2;
-    }
 
     return opp;
   }

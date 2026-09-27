@@ -149,4 +149,12 @@ describe("M9.3 Canonical Decision Write-Path", () => {
     const map = await decisionsStore.getUserDecisions(PERSON_A, TENANT_A);
     expect(map["job_1"]).toBeUndefined();
   });
+
+  it("accepts the canonical dossier identifier while preserving the active population check", async () => {
+    await decisionsStore.recordAuthorizedUserDecision(PERSON_A, TENANT_A, "canon_hash_1", "PURSUE");
+    expect((await decisionsStore.getUserDecisions(PERSON_A, TENANT_A))["job_1"]?.verb).toBe("PURSUE");
+
+    await decisionsStore.deleteUserDecision(PERSON_A, "canon_hash_1", TENANT_A);
+    expect((await decisionsStore.getUserDecisions(PERSON_A, TENANT_A))["job_1"]).toBeUndefined();
+  });
 });

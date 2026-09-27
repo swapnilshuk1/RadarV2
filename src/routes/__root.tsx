@@ -106,42 +106,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       /\.(css|js|gif|png|jpg|jpeg|ico|svg|woff|woff2|ttf|eot)$/i.test(location.pathname);
     if (isPublicRoute) return;
 
-    try {
-      const user = await getSessionUserFn();
-      if (!user) {
-        if (typeof window !== "undefined") {
-          if (!sessionStorage.getItem("radar_session")) {
-            throw redirect({ to: '/login' });
-          }
-        } else {
-          throw redirect({ to: '/login' });
-        }
-      }
-    } catch (e: any) {
-      if (isRedirect(e)) throw e;
-      if (typeof window !== "undefined") {
-        if (!sessionStorage.getItem("radar_session")) {
-          throw redirect({ to: '/login' });
-        }
-      } else {
-        throw redirect({ to: '/login' });
-      }
-    }
+    const user = await getSessionUserFn();
+    if (!user) throw redirect({ to: "/login" });
+
   },
   loader: async ({ location }) => {
     try {
       const user = await getSessionUserFn();
-      if (!user) return { metrics: null };
+      if (!user) return { metrics: null, user: null };
       const raw = location.search as { tenantId?: unknown; personId?: unknown };
       const scope = {
         tenantId: typeof raw.tenantId === "string" ? raw.tenantId : undefined,
         personId: typeof raw.personId === "string" ? raw.personId : undefined,
       };
-      if (Boolean(scope.tenantId) !== Boolean(scope.personId)) return { metrics: null };
+      if (Boolean(scope.tenantId) !== Boolean(scope.personId)) return { metrics: null, user };
       const metrics = await getShortlistMetricsFn({ data: scope });
-      return { metrics };
+      return { metrics, user };
     } catch {
-      return { metrics: null };
+      return { metrics: null, user: null };
     }
   },
   head: () => ({
@@ -190,11 +172,10 @@ function GlobalHeader() {
   const location = useLocation();
   const navigate = useNavigate();
   const { resetOnboarding } = useOnboarding();
-  const [sessionName, setSessionName] = useState<string | null>(null);
   const [isDev, setIsDev] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
-  const totalActiveCount = data?.metrics?.totalScreened ?? 3007;
+  const totalActiveCount = data?.metrics?.totalScreened;
   const rawSearch = location.search as { tenantId?: unknown; personId?: unknown };
   const candidateScope =
     typeof rawSearch.tenantId === "string" && typeof rawSearch.personId === "string"
@@ -205,13 +186,7 @@ function GlobalHeader() {
     if (typeof window !== "undefined") {
       setIsDev(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
       setIsDark(document.documentElement.classList.contains("dark"));
-      const sessionStr = sessionStorage.getItem("radar_session");
-      if (sessionStr) {
-        try {
-          const session = JSON.parse(sessionStr);
-          setSessionName(session.name);
-        } catch {}
-      }
+
     }
   }, []);
 
@@ -228,7 +203,7 @@ function GlobalHeader() {
     }
   };
 
-  const name = sessionName || "Executive";
+  const name = data?.user?.name || "Executive";
   const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "SS";
 
   const isSelected = (path: string) => {
@@ -246,7 +221,7 @@ function GlobalHeader() {
           </Link>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.62rem] font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            {totalActiveCount.toLocaleString()} ACTIVE
+            {totalActiveCount == null ? "Count unavailable" : `${totalActiveCount.toLocaleString()} screened`}
           </span>
         </div>
 

@@ -337,6 +337,33 @@ export async function abortScrapeState(runId: string, force = false) {
   }
 }
 
+async function canonicalProgress(run: import("../../data/sqlite/repositories/SqliteScrapeRunStore").ScrapeRun) {
+  const disk = buildCanonicalRunData(run.id);
+  const db = getDatabaseAdapter();
+  const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
+  const enrichment = await new EnrichmentQueue().getRunStats(run.id);
+  const evaluation = await db.one<{total: number; completed: number; failed: number}>(
+    `SELECT COUNT(*) AS total,
+      SUM(CASE WHEN er.status='SATISFIED' THEN 1 ELSE 0 END) AS completed,
+      SUM(CASE WHEN er.status='FAILED' THEN 1 ELSE 0 END) AS failed
+     FROM scrape_run_evaluation_requirements r JOIN evaluation_requirements er ON er.id=r.evaluation_requirement_id
+     WHERE r.run_id=? AND er.tenant_id=? AND er.person_id=?`, [run.id, run.tenantId, run.personId]);
+  const active = ["queued", "initializing", "waiting_for_confirmation", "running", "stopping", "enriching", "completing"].includes(run.status);
+  return {
+    runId: run.id, tenantId: run.tenantId, personId: run.personId,
+    status: run.status, isActive: active,
+    stage: run.status === "completed" ? "complete" : run.status === "aborted" ? "stopped" : run.status,
+    opportunitiesFound: Math.max(run.totalDiscovered, disk?.opportunitiesFound || 0),
+    enrichedCount: enrichment.completed,
+    evaluatedCount: Number(evaluation?.completed || 0),
+    remainingCount: Math.max(0, Number(evaluation?.total || 0) - Number(evaluation?.completed || 0) - Number(evaluation?.failed || 0)),
+    sources: disk?.sources || Object.fromEntries(run.portalTargets.map(portal => [portal, "pending"])),
+    portalHealth: disk?.portalHealth || {}, recentActivities: disk?.recentActivities || [],
+    errorMessage: run.errorMessage,
+    startedAt: run.startedAt || run.createdAt, updatedAt: run.updatedAt, finishedAt: run.finishedAt || undefined,
+  };
+}
+
 export const getActiveScrapeFn = createServerFn({ method: "GET" })
   .validator((data?: CandidateScopeRequest) => data)
   .handler(async ({ data }) => {
@@ -344,7 +371,8 @@ export const getActiveScrapeFn = createServerFn({ method: "GET" })
     const { resolveServingScope } = await import("../security/scope-resolver");
     const requested = requestedCandidateScope(data);
     const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
-    return getRepositories().scrapeRuns.getLatestRun(scope);
+    const run = await getRepositories().scrapeRuns.getLatestRun(scope);
+    return run ? canonicalProgress(run) : null;
   });
 
 export const getLatestRunFn = createServerFn({ method: "GET" })
@@ -360,31 +388,7 @@ export const getLatestRunFn = createServerFn({ method: "GET" })
     const latestDbRun = await repos.scrapeRuns.getLatestRun(scope);
     if (!latestDbRun) return null;
 
-    // 2. Hydrate canonical run data (fall back to disk manifest if available for local activity details)
-    const diskData = buildCanonicalRunData(latestDbRun.id);
-    if (diskData) {
-      return {
-        ...diskData,
-        status: latestDbRun.status,
-        opportunitiesFound: Math.max(diskData.opportunitiesFound || 0, latestDbRun.totalDiscovered),
-      };
-    }
-
-    return {
-      runId: latestDbRun.id,
-      status: latestDbRun.status,
-      isActive: ["queued", "initializing", "running", "waiting_for_confirmation"].includes(latestDbRun.status),
-      stage: latestDbRun.status === "completed" ? "complete" : latestDbRun.status,
-      opportunitiesFound: latestDbRun.totalDiscovered,
-      evaluatedCount: latestDbRun.totalEnqueued,
-      remainingCount: 0,
-      sources: {},
-      startedAt: latestDbRun.startedAt || latestDbRun.createdAt,
-      updatedAt: latestDbRun.updatedAt,
-      finishedAt: latestDbRun.finishedAt || undefined,
-      portalHealth: {},
-      recentActivities: [],
-    };
+    return canonicalProgress(latestDbRun);
   });
 
 export const getRunProgressFn = createServerFn({ method: "GET" })
@@ -402,29 +406,7 @@ export const getRunProgressFn = createServerFn({ method: "GET" })
       throw new TenantIsolationError(`Scrape run '${data.runId}' not found or unauthorized for current tenant/person.`);
     }
 
-    const diskData = getRunProgressState(data.runId);
-    if (diskData) {
-      return {
-        ...diskData,
-        status: dbRun.status,
-      };
-    }
-
-    return {
-      runId: dbRun.id,
-      status: dbRun.status,
-      isActive: ["queued", "initializing", "running", "waiting_for_confirmation"].includes(dbRun.status),
-      stage: dbRun.status === "completed" ? "complete" : dbRun.status,
-      opportunitiesFound: dbRun.totalDiscovered,
-      evaluatedCount: dbRun.totalEnqueued,
-      remainingCount: 0,
-      sources: {},
-      startedAt: dbRun.startedAt || dbRun.createdAt,
-      updatedAt: dbRun.updatedAt,
-      finishedAt: dbRun.finishedAt || undefined,
-      portalHealth: {},
-      recentActivities: [],
-    };
+    return canonicalProgress(dbRun);
   });
 
 export const confirmScrapeFn = createServerFn({ method: "POST" })
@@ -474,8 +456,12 @@ export const abortScrapeFn = createServerFn({ method: "POST" })
       throw new TenantIsolationError(`Cannot abort run '${data.runId}': unauthorized or not found.`);
     }
 
-    await repos.scrapeRuns.updateRunStatus(scope, data.runId, "stopping");
-    const result = abortScrapeState(data.runId);
+    // Repeating Stop explicitly cancels an interrupted stopping run. Queued work
+    // has no browser to wait for. Terminal state fences any late worker writes.
+    const cancel = dbRun.status === "queued" || dbRun.status === "stopping";
+    const changed = await repos.scrapeRuns.updateRunStatus(scope, data.runId, cancel ? "aborted" : "stopping");
+    if (!changed) return { success: true, status: dbRun.status };
+    const result = await abortScrapeState(data.runId, cancel);
     return result;
   });
 

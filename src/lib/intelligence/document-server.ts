@@ -26,7 +26,7 @@ const uploadSchema = z.object({ tenantId: z.string().min(1), personId: z.string(
 });
 const intentSchema = z.object({ tenantId: z.string().min(1), personId: z.string().min(1), currency: z.enum(["INR", "USD", "EUR", "GBP"]).optional(), targetSalaryAmount: z.number().finite().nonnegative().max(10_000_000_000).optional(), minSalaryUsd: z.number().finite().nonnegative().max(10_000_000_000).optional(), preferredLocations: z.array(z.string().trim().min(1).max(120)).max(20), targetTitles: z.array(z.string().trim().min(1).max(160)).max(20), preferredWorkModel: z.enum(["HYBRID", "REMOTE", "ON_SITE", "ANY"]).optional(), travelTolerance: z.enum(["HIGH", "MEDIUM", "LOW"]).optional() });
 
-export async function authorizeCandidate(userId: string, tenantId: string, personId: string, permission: "read:person" | "write:person") {
+async function authorizeCandidate(userId: string, tenantId: string, personId: string, permission: "read:person" | "write:person") {
   const db = getDatabaseAdapter();
   const auth = await authenticateTenantMembership(userId, tenantId, db);
   return authorizePersonScope(auth, personId, db, permission);
@@ -172,4 +172,15 @@ export const getLatestIntentFn = createServerFn({ method: "GET" })
     const repos = getRepositories();
     const intent = await repos.documents.getLatestCareerIntent(scope);
     return intent || null;
+  });
+
+/** Resume profile presentation from durable, authorized candidate state. */
+export const getProfileOverviewFn = createServerFn({ method: "GET" })
+  .validator((data: { tenantId: string; personId: string }) => data)
+  .handler(async ({ data }) => {
+    const user = await requireAuthUser();
+    const scope = await authorizeCandidate(user.id, data.tenantId, data.personId, "read:person");
+    const person = await getDatabaseAdapter().one<{ name: string }>("SELECT name FROM people WHERE tenant_id=? AND id=?", [scope.tenantId, scope.personId]);
+    const document = await getRepositories().documents.getLatestDocumentForPerson(scope);
+    return { name: person?.name || "Candidate", document: document ? { id: document.id, filename: document.filename, status: document.status, stage: document.stage, errorMessage: document.errorMessage } : null };
   });

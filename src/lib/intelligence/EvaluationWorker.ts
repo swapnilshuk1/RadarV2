@@ -5,16 +5,9 @@ import { runEngineSingleIntrinsic } from "./engine";
 import { validateCandidateProjection } from "../domain/candidate_projection";
 import { validateEvaluationConsistency } from "@/lib/domain/evaluation_fingerprint";
 import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
-import type { CanonicalDossierPresentationV2 } from "@/lib/domain/dossier_presentation";
-import {
-  buildEvaluatedPresentationV2,
-  buildUnavailablePresentationV2,
-} from "./dossier/CanonicalDossierPresentationMaterializer";
-import { SqliteDossierPresentationStore } from "@/data/sqlite/repositories/SqliteDossierPresentationStore";
 import type { EvaluationContext } from "@/lib/domain/evaluation_context";
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
 import { resolveExactCandidateProjectionForScope } from "@/data/sqlite/repositories/profile-projection-version";
-import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
 import { createBedrockGlmResearchModel } from "@/lib/model/bedrock-glm-research-model";
 import { ProductionStagedEvaluationService } from "./staged/ProductionStagedEvaluationService";
 import { StagedServingPublisher } from './staged/StagedServingPublisher';
@@ -400,31 +393,7 @@ export class EvaluationWorker {
         const materialized = materializeCanonicalPayload(unavailable);
         validateEvaluationConsistency(materialized);
 
-        let dossierPresentationV2: CanonicalDossierPresentationV2 | null = null;
-        const presentationEvidence = JobProjectionBuilder.extractPresentationEvidenceForPresentation(
-          versionRow.raw_content,
-          job.opportunityVersion,
-          [],
-        );
-        if (presentationEvidence.evidence.length > 0 || presentationEvidence.qualifications.length > 0) {
-          dossierPresentationV2 = buildUnavailablePresentationV2({
-            identity: {
-              tenantId: job.tenantId,
-              personId: job.personId,
-              canonicalJobId: job.canonicalJobId,
-              opportunityVersion: job.opportunityVersion,
-              evaluationContextFingerprint: job.evaluationContextFingerprint,
-            },
-            reasonCode: "NOT_EVALUABLE",
-            presentationEvidence: {
-              roleWorkEvidence: presentationEvidence.evidence,
-              presentationQualificationEvidence: presentationEvidence.qualifications,
-            },
-            generatedAt: evaluatedAt,
-          });
-        }
-
-        return await this.commitEvaluationMaterialization(job, materialized, dossierPresentationV2);
+        return await this.commitEvaluationMaterialization(job, materialized);
       }
       const projection = rawProjection;
 
@@ -446,29 +415,6 @@ export class EvaluationWorker {
       if (!artifact) {
         throw new Error(`[EvaluationWorker] Intrinsic evaluation artifact missing for ${job.canonicalJobId}`);
       }
-
-      // Phase 3A: retain the already-frozen presentation evidence beside the
-      // exact intrinsic projection. It remains unavailable to evaluation
-      // engines, but lets the evaluator's existing capability mapping carry
-      // stable job-side provenance into its persisted trace.
-      const presentationEvidence = JobProjectionBuilder.extractPresentationEvidenceForPresentation(
-        versionRow.raw_content,
-        job.opportunityVersion,
-        Array.isArray(artifact.jobProjection?.capabilities) ? artifact.jobProjection.capabilities : [],
-      );
-      const evaluatorRoleWorkEvidence = Array.isArray(artifact.jobProjection?.roleWorkEvidence)
-        ? artifact.jobProjection.roleWorkEvidence
-        : [];
-      artifact.jobProjection = {
-        ...artifact.jobProjection,
-        // Never discard evidence IDs the evaluator used to produce its trace.
-        // Presentation extraction is additive, so persisted trace references
-        // continue to resolve against the exact scored projection.
-        roleWorkEvidence: [...evaluatorRoleWorkEvidence, ...presentationEvidence.evidence.filter((item) =>
-          !evaluatorRoleWorkEvidence.some((existing: { id?: string }) => existing.id === item.id),
-        )],
-        presentationQualificationEvidence: presentationEvidence.qualifications,
-      };
 
       const isGenuinelySparse =
         artifact.record?.verb === "SPARSE_SPEC" ||
@@ -500,44 +446,7 @@ export class EvaluationWorker {
       const isVetoed = Boolean(artifact.record?.vetoed ?? false);
       const vetoedScalar = isVetoed ? 1 : 0;
 
-      let dossierPresentationV2: CanonicalDossierPresentationV2 | null = null;
-      if (evaluationState === "EVALUATED") {
-        dossierPresentationV2 = buildEvaluatedPresentationV2({
-          identity: {
-            tenantId: job.tenantId,
-            personId: job.personId,
-            canonicalJobId: job.canonicalJobId,
-            opportunityVersion: job.opportunityVersion,
-            evaluationContextFingerprint: job.evaluationContextFingerprint,
-          },
-          artifact,
-          candidateProjection: projection,
-          presentationEvidence: {
-            roleWorkEvidence: presentationEvidence.evidence,
-            presentationQualificationEvidence: presentationEvidence.qualifications,
-          },
-          evaluationFingerprint: canonicalPayload.evaluationInputHash,
-          generatedAt: evaluatedAt,
-        });
-      } else if (presentationEvidence.evidence.length > 0 || presentationEvidence.qualifications.length > 0) {
-        dossierPresentationV2 = buildUnavailablePresentationV2({
-          identity: {
-            tenantId: job.tenantId,
-            personId: job.personId,
-            canonicalJobId: job.canonicalJobId,
-            opportunityVersion: job.opportunityVersion,
-            evaluationContextFingerprint: job.evaluationContextFingerprint,
-          },
-          reasonCode: evaluationState,
-          presentationEvidence: {
-            roleWorkEvidence: presentationEvidence.evidence,
-            presentationQualificationEvidence: presentationEvidence.qualifications,
-          },
-          generatedAt: evaluatedAt,
-        });
-      }
-
-      return await this.commitEvaluationMaterialization(job, materialized, dossierPresentationV2);
+      return await this.commitEvaluationMaterialization(job, materialized);
     } catch (err: any) {
       const modelFailure = classifyModelFailure(err);
       if (modelFailure.transient) {
@@ -677,7 +586,6 @@ export class EvaluationWorker {
   private async commitEvaluationMaterialization(
     job: ClaimedJob,
     materialized: any,
-    dossierPresentationV2?: CanonicalDossierPresentationV2 | null,
   ): Promise<WorkerProcessingResult> {
     const result = await this.db.transaction<WorkerProcessingResult>(async (tx) => {
       const leaseCheck = await tx.one<{ id: string }>(
@@ -726,11 +634,6 @@ export class EvaluationWorker {
           materialized.vetoed ? 1 : 0,
         ]
       );
-
-      if (dossierPresentationV2) {
-        const presentationStore = new SqliteDossierPresentationStore(tx);
-        await presentationStore.savePresentation(dossierPresentationV2);
-      }
 
       const completeRes = await tx.execute(
         `UPDATE evaluation_jobs

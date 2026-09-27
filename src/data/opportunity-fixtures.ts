@@ -42,7 +42,6 @@ export type OpportunitySource = {
   | "hiringRisk"
   | "alternativePath"
   | "dossierPresentation"
-  | "dossierPresentationV2"
 > & {
   rawText?: string;
   normalizedText?: string;
@@ -154,7 +153,6 @@ export type EvaluatedOpportunity = {
   uiBadge?: { label: string; variant: "signal" | "caution" | "pass" | "muted" };
   /** Optional evaluation-time presentation only; canonical scalars remain authoritative. */
   dossierPresentation?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV1;
-  dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
   richDossier?: import('@/dossier/contracts').Dossier;
   memoReviewState?: 'preparing' | 'preparation_attention' | 'pending' | 'review_attention' | 'reviewed' | 'withheld';
 };
@@ -568,7 +566,6 @@ export type UnavailableOpportunity = {
   reviewState?: import("../domain/decision_v4").CanonicalReviewState;
   evaluationContextFingerprint?: string | null;
   evaluationFingerprint?: string | null;
-  dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
 };
 
 export type UnmaterializedOpportunity = {
@@ -586,7 +583,6 @@ export type UnmaterializedOpportunity = {
   reviewState?: import("../domain/decision_v4").CanonicalReviewState;
   evaluationContextFingerprint?: string | null;
   evaluationFingerprint?: string | null;
-  dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
 };
 
 export type ServedOpportunity = EvaluatedOpportunity | UnavailableOpportunity | UnmaterializedOpportunity;

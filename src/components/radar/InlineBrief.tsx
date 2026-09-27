@@ -27,6 +27,10 @@ export function InlineBrief({ opportunity: o, dossier, onDecide }: {
   const presentation = dossier?.dossierPresentation;
   const brief = asPersistedBrief(presentation?.brief);
   const headline = brief?.headline ?? brief?.executiveThesis?.headline ?? brief?.memory?.retentionSentence;
+  // A reviewed rich memo is already persisted canonical advisory content. Use
+  // its thesis when the older compact-presentation artifact is absent; never
+  // reconstruct a summary from browser-side evaluation fields.
+  const persistedThesis = dossier?.richDossier?.executiveThesis.text;
   const proceedIf = brief?.whyItWorks ?? brief?.oneMinuteTLDR?.whyPursue?.[0];
   const pauseIf = brief?.watchFor ?? brief?.oneMinuteTLDR?.watchFor?.[0];
   const bottomLine = brief?.pursuitStrategy?.bottomLine ?? brief?.oneMinuteTLDR?.bottomLine;
@@ -40,7 +44,7 @@ export function InlineBrief({ opportunity: o, dossier, onDecide }: {
     <div className="lg:col-span-7 flex flex-col justify-between min-w-0 space-y-4">
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2 pb-1"><span className="label-mono font-medium text-muted-foreground text-[0.68rem]">◆ Executive brief</span><span className="font-display text-base text-primary font-normal">{engineVerdict}</span></div>
-        {presentation ? <>{headline && <p className="mt-2 font-display text-xl sm:text-2xl leading-snug text-foreground font-normal">{headline}</p>}{bottomLine && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{bottomLine}</p>}</> : <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Detailed briefing not materialized for this evaluation.</p>}
+        {presentation || persistedThesis ? <>{(headline ?? persistedThesis) && <p className="mt-2 font-display text-xl sm:text-2xl leading-snug text-foreground font-normal">{headline ?? persistedThesis}</p>}{bottomLine && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{bottomLine}</p>}</> : <p className="mt-2 text-sm leading-relaxed text-muted-foreground">A detailed memo is not available for this evaluation yet.</p>}
       </div>
       {presentation && (proceedIf || pauseIf) && <div className="grid gap-3 sm:grid-cols-2 pt-2">
         {proceedIf && <div className="border-l-2 border-emerald-500 bg-emerald-500/[0.04] p-3 rounded-r-md"><p className="label-mono text-emerald-600 dark:text-emerald-400 font-bold text-[0.68rem] uppercase">Proceed if</p><p className="mt-1 text-xs leading-relaxed text-foreground font-normal">{proceedIf}</p></div>}

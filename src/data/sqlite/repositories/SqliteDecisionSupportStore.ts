@@ -46,9 +46,9 @@ export class SqliteDecisionSupportStore implements DecisionSupportStore {
         AND me.evaluation_context_fingerprint = aec.context_fingerprint
        WHERE aec.tenant_id = ?
          AND aec.person_id = ?
-         AND co.source_job_id = ?
+         AND (co.source_job_id = ? OR co.id = ?)
        LIMIT 1`,
-        [tenantId, personId, jobHash],
+        [tenantId, personId, jobHash, jobHash],
       );
       if (!artifact) {
         throw new Error(`OUT_OF_SCOPE_OPPORTUNITY: ${jobHash} is not in the authenticated canonical population.`);
@@ -99,10 +99,12 @@ export class SqliteDecisionSupportStore implements DecisionSupportStore {
       throw new Error("tenantId is strictly required for canonical decisions");
     }
     
-    // Resolve canonical_job_id from opportunityId (source_job_id)
+    // Resolve either identifier accepted by the dossier route. The scoped
+    // decision record remains keyed by canonical_job_id, so this does not
+    // widen the tenant or person population.
     const canonical = await this.db.one<{ id: string }>(
-      `SELECT id FROM canonical_opportunities WHERE source_job_id = ?`,
-      [opportunityId]
+      `SELECT id FROM canonical_opportunities WHERE source_job_id = ? OR id = ?`,
+      [opportunityId, opportunityId]
     );
     if (!canonical) return;
 
