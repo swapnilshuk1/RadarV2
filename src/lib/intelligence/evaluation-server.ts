@@ -6,7 +6,6 @@ import {
   EvaluationRuntimeControl,
   type EvaluationRuntimeState,
 } from "./EvaluationRuntimeControl";
-import { EvaluationWorker } from "./EvaluationWorker";
 
 // Evaluation-stage GLM calls are hard-capped at 120s. Give telemetry 15s of
 // grace for the terminal write, then treat a lingering `running` row as stale.
@@ -70,22 +69,6 @@ export interface EvaluatorTelemetrySnapshot {
   }>;
 }
 
-/** A captured-job evaluation is bound to a durable scrape run. */
-function capturedJobPredicate(jobAlias: string): string {
-  return `EXISTS (
-    SELECT 1
-    FROM evaluation_requirements er
-    JOIN scrape_run_evaluation_requirements srer
-      ON srer.evaluation_requirement_id=er.id
-    WHERE er.tenant_id=${jobAlias}.tenant_id
-      AND er.person_id=${jobAlias}.person_id
-      AND er.search_plan_id=${jobAlias}.search_plan_id
-      AND er.canonical_job_id=${jobAlias}.canonical_job_id
-      AND er.opportunity_version=${jobAlias}.opportunity_version
-      AND er.evaluation_context_fingerprint=${jobAlias}.evaluation_context_fingerprint
-  )`;
-}
-
 type CandidateScopeRequest = { tenantId?: string; personId?: string };
 function requestedCandidateScope(data?: CandidateScopeRequest) {
   if (Boolean(data?.tenantId) !== Boolean(data?.personId)) throw new AuthError("CANDIDATE_SCOPE_INCOMPLETE", 400);
@@ -114,8 +97,9 @@ async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getD
 
 async function snapshotForUser(user: { id: string; role?: string }, requested?: CandidateScopeRequest): Promise<EvaluatorTelemetrySnapshot> {
   const db = getDatabaseAdapter();
-  const { scope, canControl } = await resolveEvaluatorAccess(user.id, db, requested);
+  const { scope, activeContext, canControl } = await resolveEvaluatorAccess(user.id, db, requested);
   const runtime = await new EvaluationRuntimeControl(db).get(scope);
+  const activeContextFingerprint = activeContext?.contextFingerprint ?? null;
 
   const telemetryNow = Date.now();
   const staleInvocationBefore = telemetryNow - EVALUATION_INVOCATION_STALE_MS;
@@ -133,9 +117,10 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
   const statusRows = await db.many<{ status: string; n: number }>(
     `SELECT ej.status AS status,COUNT(*) AS n
      FROM evaluation_jobs AS ej
-     WHERE ej.tenant_id=? AND ej.person_id=? AND ${capturedJobPredicate("ej")}
+     WHERE ej.tenant_id=? AND ej.person_id=?
+       AND ej.evaluation_context_fingerprint=?
      GROUP BY ej.status`,
-    [scope.tenantId, scope.personId],
+    [scope.tenantId, scope.personId, activeContextFingerprint],
   );
   const counts = Object.fromEntries(statusRows.map((row) => [row.status, Number(row.n)]));
 
@@ -143,8 +128,9 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
     `SELECT MAX(ej.completed_at) AS completed_at
      FROM evaluation_jobs AS ej
      WHERE ej.tenant_id=? AND ej.person_id=? AND ej.status='staged_completed'
-       AND ${capturedJobPredicate("ej")}`,
-    [scope.tenantId, scope.personId],
+       AND ej.evaluation_context_fingerprint=?
+`,
+    [scope.tenantId, scope.personId, activeContextFingerprint],
   );
 
   const activeRows = await db.many<{
@@ -166,9 +152,9 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
             END AS reclaimable
      FROM evaluation_jobs AS ej
      WHERE tenant_id=? AND person_id=? AND status='staged_processing'
-       AND ${capturedJobPredicate("ej")}
+       AND evaluation_context_fingerprint=?
      ORDER BY COALESCE(first_claimed_at,created_at),created_at`,
-    [scope.tenantId, scope.personId],
+    [scope.tenantId, scope.personId, activeContextFingerprint],
   );
 
   const processingStateJobs = await Promise.all(
@@ -246,10 +232,10 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
      FROM model_invocations AS mi
      JOIN evaluation_jobs AS ej ON ej.id=mi.evaluation_job_id
      WHERE mi.tenant_id=? AND mi.person_id=? AND mi.pipeline='evaluation'
-       AND ${capturedJobPredicate("ej")}
+       AND ej.evaluation_context_fingerprint=?
      ORDER BY mi.started_at DESC
      LIMIT 30`,
-    [scope.tenantId, scope.personId],
+    [scope.tenantId, scope.personId, activeContextFingerprint],
   );
 
   return {
@@ -318,14 +304,10 @@ export const controlEvaluatorFn = createServerFn({ method: "POST" })
     } else if (data.action === "stop") {
       await control.set(access.scope, "STOPPED", user.id);
     } else {
-      await control.set(access.scope, "RUNNING", user.id);
-      // The control is an operational recovery action, not merely a desired
-      // state toggle. Claim one due staged job now; the supervised worker then
-      // continues the durable queue.
       if (!access.activeContext) throw new AuthError("NO_ACTIVE_EVALUATION_CONTEXT", 409);
-      await new EvaluationWorker(db, "ui-evaluator-resume").pollAndProcessNext(
-        access.activeContext.contextFingerprint,
-      );
+      await control.set(access.scope, "RUNNING", user.id);
+      // The supervised evaluation daemon owns queue claims. The request must
+      // return immediately instead of executing a model call inside HTTP.
     }
 
     return snapshotForUser(user, data);

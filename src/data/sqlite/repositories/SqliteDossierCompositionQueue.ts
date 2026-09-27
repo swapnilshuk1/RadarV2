@@ -4,6 +4,7 @@ import { DOSSIER_COMPOSITION_RECIPE } from "@/dossier/factual-review-integrity";
 import type { ProductionStagedIdentity } from "@/lib/intelligence/staged/ProductionStagedInputAdapter";
 
 export const PREPARING_DOSSIER_VERSION = "dossier-preparing-v1";
+export const DOSSIER_COMPOSITION_LEASE_MS = 180_000;
 
 export interface DossierCompositionJob {
   id: string;
@@ -131,11 +132,11 @@ export class SqliteDossierCompositionQueue {
            )
            AND (
              (status IN ('pending','retry') AND next_attempt_at<=?)
-             OR (status='processing' AND lease_until<=?)
+             OR (status='processing' AND (lease_until IS NULL OR lease_until<=? OR updated_at<=?))
            )
          ORDER BY next_attempt_at,created_at
          LIMIT 1`,
-        [DOSSIER_COMPOSITION_RECIPE, now, now],
+        [DOSSIER_COMPOSITION_RECIPE, now, now, now - DOSSIER_COMPOSITION_LEASE_MS],
       );
       if (!row) return null;
       const updated = await tx.execute(
@@ -143,16 +144,16 @@ export class SqliteDossierCompositionQueue {
          SET status='processing',lease_token=?,lease_until=?,updated_at=?
          WHERE id=? AND (
            (status IN ('pending','retry') AND next_attempt_at<=?)
-           OR (status='processing' AND lease_until<=?)
+           OR (status='processing' AND (lease_until IS NULL OR lease_until<=? OR updated_at<=?))
          )`,
-        [token, now + 15 * 60_000, now, row.id, now, now],
+        [token, now + DOSSIER_COMPOSITION_LEASE_MS, now, row.id, now, now, now - DOSSIER_COMPOSITION_LEASE_MS],
       );
       if (!updated.rowsAffected) return null;
       return {
         ...row,
         status: "processing",
         lease_token: token,
-        lease_until: now + 15 * 60_000,
+        lease_until: now + DOSSIER_COMPOSITION_LEASE_MS,
       };
     });
   }
@@ -163,7 +164,7 @@ export class SqliteDossierCompositionQueue {
       `UPDATE dossier_composition_jobs
        SET lease_until=?,updated_at=?
        WHERE id=? AND status='processing' AND lease_token=? AND lease_until>?`,
-      [now + 15 * 60_000, now, job.id, job.lease_token, now],
+      [now + DOSSIER_COMPOSITION_LEASE_MS, now, job.id, job.lease_token, now],
     );
     if (!updated.rowsAffected) throw new Error("DOSSIER_COMPOSITION_LEASE_LOST");
   }

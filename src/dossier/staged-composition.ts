@@ -15,7 +15,6 @@ import type { StagedResearchInput } from "./staged-role";
 import type { StagedDecisionResult } from "./staged-decision-contract";
 import { validateClaims } from "./grounding";
 import {
-  MemoPlanRepair,
   validateMemoPlan,
   validateMemoSectionCoverage,
 } from "./memo-integrity";
@@ -101,9 +100,12 @@ function compactMemoRepairInput(
   staged: StagedDecisionResult,
 ) {
   if (repair.editorial || !previous || !repair.sections.length) {
+    const previousEditorial = previous
+      ? { rationale: previous.rationale, narrativePlan: previous.narrativePlan }
+      : undefined;
     return {
       input: packet,
-      previous,
+      previous: repair.editorial && !repair.sections.length ? previousEditorial : previous,
       repair: repair.issue,
       repairSections: repair.sections,
       repairEditorial: repair.editorial,
@@ -208,9 +210,9 @@ function inspectDraft(
     validateMemoPlan(research, staged);
   } catch (error) {
     editorial = true;
-    if (error instanceof MemoPlanRepair) {
-      error.sections.forEach((section) => sections.add(section as MemoSection));
-    }
+    // A plan-coverage defect is repaired in the plan first. Do not regenerate
+    // memo prose in the same call: the repaired plan is revalidated against the
+    // existing memo and only then are genuinely incomplete sections repaired.
     issues.push(String(error));
   }
   let memo = draft.memo;
