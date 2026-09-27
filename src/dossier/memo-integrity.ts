@@ -10,6 +10,8 @@ export type MemoPlanRepairTargets = {
   sections: MemoPlanSection[];
   requirementIds: string[];
   resolutionFields: string[];
+  allowedRequirementIds?: string[];
+  allowedResolutionFields?: string[];
 };
 
 export class MemoPlanRepair extends Error {
@@ -102,6 +104,18 @@ export function validateTargetedPlanRepair(
   const allowedSections = new Set(targets.sections);
   const targetRequirements = new Set(targets.requirementIds);
   const targetFields = new Set(targets.resolutionFields);
+  const allowedRequirementIds = new Set(
+    targets.allowedRequirementIds ?? [
+      ...previousPoints.flatMap((point) => point.requirementIds),
+      ...targets.requirementIds,
+    ],
+  );
+  const allowedResolutionFields = new Set(
+    targets.allowedResolutionFields ?? [
+      ...previousPoints.flatMap((point) => point.resolutionFields),
+      ...targets.resolutionFields,
+    ],
+  );
   const nextById = new Map(nextPoints.map((point) => [point.id, point]));
 
   for (const prior of previousPoints) {
@@ -135,10 +149,10 @@ export function validateTargetedPlanRepair(
   for (const point of nextPoints.filter((point) => !previousIds.has(point.id))) {
     if (!allowedSections.has(point.section))
       throw new Error(`MEMO_PLAN_REPAIR_NEW_POINT_WRONG_SECTION:${point.section}`);
-    if (point.requirementIds.some((id) => !targetRequirements.has(id)))
-      throw new Error("MEMO_PLAN_REPAIR_NEW_POINT_UNREQUESTED_REQUIREMENT");
-    if (point.resolutionFields.some((field) => !targetFields.has(field)))
-      throw new Error("MEMO_PLAN_REPAIR_NEW_POINT_UNREQUESTED_FIELD");
+    // New repair points may use any canonical requirement/resolution reference;
+    // the provider schema and the full plan validator bind those IDs to the
+    // immutable staged-decision catalog. What makes this a targeted repair is
+    // that every new point must carry at least one explicit missing target.
     if (
       !point.requirementIds.some((id) => targetRequirements.has(id)) &&
       !point.resolutionFields.some((field) => targetFields.has(field))

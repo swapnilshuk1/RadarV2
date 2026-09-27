@@ -92,6 +92,28 @@ describe("executive memo coverage", () => {
       }),
     ).toThrow("MEMO_PLAN_REPAIR_ADDED_UNREQUESTED_FIELD");
   });
+  it("allows a new targeted repair point to reuse already validated references", () => {
+    const previous = structuredClone(dossier().narrativePlan);
+    const existingRequirement = previous.memoPoints!
+      .flatMap((point) => point.requirementIds)
+      .find(Boolean)!;
+    const next = structuredClone(previous);
+    next.memoPoints!.push({
+      id: "repair-company-size",
+      section: "decisionConditions",
+      point: "Clarify company size before deciding.",
+      claimIds: [],
+      requirementIds: [existingRequirement],
+      resolutionFields: ["companySize"],
+    });
+    expect(() =>
+      validateTargetedPlanRepair(previous, next, {
+        sections: ["decisionConditions"],
+        requirementIds: [],
+        resolutionFields: ["companySize"],
+      }),
+    ).not.toThrow();
+  });
   it("rejects a plan altered after factual and editorial review", () => {
     const value = dossier();
     value.narrativePlan.memoPoints![0].point = "A different argument";
