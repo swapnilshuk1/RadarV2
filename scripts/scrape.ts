@@ -409,7 +409,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
   const runtimeOpts = resolveScraperRuntimeOptions(process.argv.slice(2), process.env);
   const explicitScoped = runtimeOpts.mode === "SCOPED" || process.argv.includes("--scoped");
-  const hasTenant = Boolean(opts.authContext?.tenantId || runtimeOpts.tenantId);
+  const hasTenant = Boolean(opts.scope?.tenantId || opts.authContext?.tenantId || runtimeOpts.tenantId);
   const hasPerson = Boolean(opts.scope?.personId || runtimeOpts.personId);
 
   // Partial SCOPED identity must fail closed BEFORE any browser launch
