@@ -1,11 +1,11 @@
 import type { DatabaseAdapter } from "@/data/database";
 import { ModelProviderUnavailableError } from "../../model/provider-unavailable";
 import type { ReasoningModel } from "@/dossier/contracts";
-import { DOSSIER_COMPOSITION_RECIPE } from "@/dossier/factual-review-integrity";
-import { durableDossierModel, checkpointHash } from "./DurableDossierModel";
+import { durableDossierModel } from "./DurableDossierModel";
 import { composeStagedDossier, composeStagedDraft } from "@/dossier/staged-composition";
 import type { Dossier } from "@/dossier/contracts";
 import { SqliteDossierReviewQueue } from "@/data/sqlite/repositories/SqliteDossierReviewQueue";
+import { compositionCheckpointScope } from "@/data/sqlite/repositories/SqliteDossierCompositionQueue";
 import {
   assertCanonicalDecisionTrace,
   createStagedEvaluationFingerprint,
@@ -76,14 +76,7 @@ export class ProductionStagedDossierService {
     if (frozen.fingerprint !== evaluation.inputFingerprint)
       throw new Error("DOSSIER_FROZEN_INPUT_MISMATCH");
     try {
-      const scope = checkpointHash({
-        tenantId: identity.tenantId,
-        personId: identity.personId,
-        canonicalJobId: identity.canonicalJobId,
-        opportunityVersion: identity.opportunityVersion,
-        evaluationFingerprint,
-        recipe: DOSSIER_COMPOSITION_RECIPE,
-      });
+      const scope = compositionCheckpointScope(identity, evaluationFingerprint);
       const writer = durableDossierModel(this.db, scope, this.model);
       const composed = options.draftOnly
         ? await composeStagedDraft(frozen, staged, writer, onStage)

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseAdapter } from "@/data/database";
 import { DOSSIER_COMPOSITION_RECIPE } from "@/dossier/factual-review-integrity";
+import { checkpointHash } from "@/lib/intelligence/staged/DurableDossierModel";
 import type { ProductionStagedIdentity } from "@/lib/intelligence/staged/ProductionStagedInputAdapter";
 
 export const PREPARING_DOSSIER_VERSION = "dossier-preparing-v1";
@@ -35,6 +36,20 @@ export function compositionJobIdentity(job: DossierCompositionJob): ProductionSt
     evaluationContextFingerprint: job.evaluation_context_fingerprint,
     profileVersion: job.profile_version,
   };
+}
+
+export function compositionCheckpointScope(
+  identity: Omit<ProductionStagedIdentity, "profileVersion">,
+  evaluationFingerprint: string,
+): string {
+  return checkpointHash({
+    tenantId: identity.tenantId,
+    personId: identity.personId,
+    canonicalJobId: identity.canonicalJobId,
+    opportunityVersion: identity.opportunityVersion,
+    evaluationFingerprint,
+    recipe: DOSSIER_COMPOSITION_RECIPE,
+  });
 }
 
 function identityKey(
@@ -117,32 +132,43 @@ export class SqliteDossierCompositionQueue {
     );
   }
 
-  /** Explicit recovery action for one exact terminal composition job. */
+  /** Explicit recovery action for one exact terminal composition job.
+   * A terminal retry starts a fresh semantic repair cycle. Resumable memo
+   * checkpoints for this exact immutable dossier scope are therefore cleared,
+   * while model invocation audit and evaluation truth remain untouched. */
   async retryAttention(
     identity: Omit<ProductionStagedIdentity, "profileVersion">,
     evaluationFingerprint: string,
   ): Promise<boolean> {
     const now = this.now();
-    const result = await this.db.execute(
-      `UPDATE dossier_composition_jobs
-       SET status='pending',attempts=0,next_attempt_at=?,lease_token=NULL,lease_until=NULL,
-           last_error=NULL,updated_at=?
-       WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=?
-         AND evaluation_context_fingerprint=? AND evaluation_fingerprint=? AND recipe=?
-         AND status='needs_attention'`,
-      [
-        now,
-        now,
-        identity.tenantId,
-        identity.personId,
-        identity.canonicalJobId,
-        identity.opportunityVersion,
-        identity.evaluationContextFingerprint,
-        evaluationFingerprint,
-        DOSSIER_COMPOSITION_RECIPE,
-      ],
-    );
-    return result.rowsAffected > 0;
+    const scope = compositionCheckpointScope(identity, evaluationFingerprint);
+    return this.db.transaction(async (tx) => {
+      const result = await tx.execute(
+        `UPDATE dossier_composition_jobs
+         SET status='pending',attempts=0,next_attempt_at=?,lease_token=NULL,lease_until=NULL,
+             last_error=NULL,updated_at=?
+         WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=?
+           AND evaluation_context_fingerprint=? AND evaluation_fingerprint=? AND recipe=?
+           AND status='needs_attention'`,
+        [
+          now,
+          now,
+          identity.tenantId,
+          identity.personId,
+          identity.canonicalJobId,
+          identity.opportunityVersion,
+          identity.evaluationContextFingerprint,
+          evaluationFingerprint,
+          DOSSIER_COMPOSITION_RECIPE,
+        ],
+      );
+      if (!result.rowsAffected) return false;
+      await tx.execute(
+        `DELETE FROM dossier_model_checkpoints WHERE scope_fingerprint=?`,
+        [scope],
+      );
+      return true;
+    });
   }
 
   async claim(): Promise<DossierCompositionJob | null> {

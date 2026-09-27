@@ -16,6 +16,7 @@ import type { StagedDecisionResult } from "./staged-decision-contract";
 import { validateClaims } from "./grounding";
 import {
   MemoPlanRepair,
+  type MemoPlanRepairAssignment,
   validateMemoPlan,
   validateMemoSectionCoverage,
   validateTargetedPlanRepair,
@@ -101,6 +102,7 @@ type Repair = {
   planOnly?: boolean;
   missingRequirementIds?: string[];
   missingResolutionFields?: string[];
+  targetAssignments?: MemoPlanRepairAssignment[];
 };
 const sectionKeys = Object.keys(compositionSchema.shape) as MemoSection[];
 
@@ -133,6 +135,7 @@ function compactMemoRepairInput(
       repairEditorial: true,
       missingRequirementIds: [...missingRequirementIds],
       missingResolutionFields: [...missingResolutionFields],
+      targetAssignments: repair.targetAssignments ?? [],
     };
   }
 
@@ -256,6 +259,7 @@ function inspectDraft(
           issue: error.message,
           missingRequirementIds: error.missingRequirementIds,
           missingResolutionFields: error.missingResolutionFields,
+          targetAssignments: error.targetAssignments,
         },
         draft,
       };
@@ -318,7 +322,7 @@ async function writeMemo(
     const instruction = repair
       ? memoWritingInstruction +
         (repair.planOnly
-          ? "\nPLAN-ONLY REPAIR MODE: Return only narrativePlan.memoPoints, and only points in repairSections. For an existing point ID, preserve its text, claimIds, and existing references; only add the requested missingRequirementIds/missingResolutionFields. New points are allowed only when needed to attach requested targets. Do not return or alter any other plan fields, memo prose, rationale, or unrelated references."
+          ? "\nPLAN-ONLY REPAIR MODE: Return only narrativePlan.memoPoints, and only points in repairSections. targetAssignments is authoritative: every target must appear in one of its allowed sections in this single response. For an existing point ID, preserve its text, claimIds, and existing references; only add requested targets. New points are allowed only when needed to satisfy targetAssignments. Do not return or alter any other plan fields, memo prose, rationale, or unrelated references."
           : "\nREPAIR MODE: Return ONLY the blocks requested by the response schema. Other blocks are application-preserved; do not regenerate them. Keep narrative point IDs and unaffected assignments stable. Correct every listed issue.")
       : memoWritingInstruction;
     const response = await writer.generate(
@@ -339,6 +343,7 @@ async function writeMemo(
     if (repair) {
       const patch = schema.safeParse(response);
       if (!patch.success) {
+        await writer.discardResponse?.(response);
         repair = { ...repair, issue: repair.issue + "; Patch schema: " + patch.error.message };
         continue;
       }
@@ -349,6 +354,7 @@ async function writeMemo(
         const priorById = new Map(priorPoints.map((point) => [point.id, point]));
         const returned = memoPlanPatchSchema.parse(patch.data.narrativePlan).memoPoints;
         if (returned.some((point) => !allowed.has(point.section as MemoSection))) {
+          await writer.discardResponse?.(response);
           repair = {
             ...repair,
             issue: repair.issue + "; Plan patch returned a memoPoint outside repairSections",
@@ -360,6 +366,7 @@ async function writeMemo(
           return existing && !allowed.has(existing.section as MemoSection);
         });
         if (invalidIdentity) {
+          await writer.discardResponse?.(response);
           repair = {
             ...repair,
             issue: repair.issue + "; Plan patch attempted to reuse an unaffected memoPoint id",
@@ -377,10 +384,12 @@ async function writeMemo(
             sections: repair.sections,
             requirementIds: repair.missingRequirementIds ?? [],
             resolutionFields: repair.missingResolutionFields ?? [],
+            assignments: repair.targetAssignments,
             allowedRequirementIds: staged.trace.requirements.map((requirement) => requirement.id),
             allowedResolutionFields: staged.trace.resolutions.map((resolution) => resolution.field),
           });
         } catch (error) {
+          await writer.discardResponse?.(response);
           repair = { ...repair, issue: repair.issue + "; " + String(error) };
           continue;
         }
@@ -399,6 +408,11 @@ async function writeMemo(
     } else value = response;
     const checked = inspectDraft(value, frozen, staged);
     if ("result" in checked) return checked.result;
+    // Structurally valid is not enough for durable reuse. A response that still
+    // needs semantic repair remains useful in-memory for the next patch, but its
+    // checkpoint must be removed so a later queue retry cannot replay it as if
+    // it had been accepted.
+    await writer.discardResponse?.(response);
     if (checked.draft) value = checked.draft;
     repair = checked.repair;
     onStage("Correcting only the affected memo blocks");

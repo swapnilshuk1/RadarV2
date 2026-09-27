@@ -27,7 +27,7 @@ import { readAcquisitionFeed } from "../../src/lib/intelligence/server/acquisiti
 import { stagedEvaluation, evaluationFingerprint, dossier } from "../fixtures/staged-rich-dossier";
 import { RICH_DOSSIER_VERSION } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";
 import { SqliteDossierReviewQueue } from "../../src/data/sqlite/repositories/SqliteDossierReviewQueue";
-import { PREPARING_DOSSIER_VERSION, SqliteDossierCompositionQueue } from "../../src/data/sqlite/repositories/SqliteDossierCompositionQueue";
+import { PREPARING_DOSSIER_VERSION, SqliteDossierCompositionQueue, compositionCheckpointScope } from "../../src/data/sqlite/repositories/SqliteDossierCompositionQueue";
 import { DossierReviewWorker } from "../../src/lib/intelligence/staged/DossierReviewWorker";
 import { DossierCompositionWorker } from "../../src/lib/intelligence/staged/DossierCompositionWorker";
 import { ProductionStagedDossierService } from "../../src/lib/intelligence/staged/ProductionStagedDossierService";
@@ -219,10 +219,24 @@ describe("rich staged serving activation", () => {
     expect(await db.one(`SELECT status FROM dossier_composition_jobs WHERE evaluation_context_fingerprint='stale-context'`)).toEqual({ status: "pending" });
   });
 
-  it("requeues only an exact terminal composition job", async () => {
+  it("requeues only an exact terminal composition job and clears only its resumable cache", async () => {
     const queue = new SqliteDossierCompositionQueue(db, () => 25_000);
     await queue.enqueue(identity, evaluationFingerprint);
+    const scope = compositionCheckpointScope(identity, evaluationFingerprint);
+    await db.execute(
+      "INSERT INTO dossier_model_checkpoints(scope_fingerprint,request_fingerprint,response_json,response_fingerprint) VALUES(?,?,?,?)",
+      [scope, "failed-request", "{}", "failed-response"],
+    );
+    await db.execute(
+      "INSERT INTO dossier_model_checkpoints(scope_fingerprint,request_fingerprint,response_json,response_fingerprint) VALUES(?,?,?,?)",
+      ["other-scope", "other-request", "{}", "other-response"],
+    );
+
     expect(await queue.retryAttention(identity, evaluationFingerprint)).toBe(false);
+    expect(
+      await db.one("SELECT COUNT(*) n FROM dossier_model_checkpoints WHERE scope_fingerprint=?", [scope]),
+    ).toEqual({ n: 1 });
+
     await db.execute(
       "UPDATE dossier_composition_jobs SET status='needs_attention',attempts=3,last_error='contract failure',lease_token='stale',lease_until=99",
     );
@@ -235,6 +249,12 @@ describe("rich staged serving activation", () => {
       lease_until: null,
       next_attempt_at: 25_000,
     });
+    expect(
+      await db.one("SELECT COUNT(*) n FROM dossier_model_checkpoints WHERE scope_fingerprint=?", [scope]),
+    ).toEqual({ n: 0 });
+    expect(
+      await db.one("SELECT COUNT(*) n FROM dossier_model_checkpoints WHERE scope_fingerprint='other-scope'"),
+    ).toEqual({ n: 1 });
     expect(await queue.claim()).toMatchObject({
       evaluation_fingerprint: evaluationFingerprint,
       status: "processing",

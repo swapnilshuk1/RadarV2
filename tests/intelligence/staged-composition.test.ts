@@ -302,6 +302,42 @@ describe("staged dossier editorial boundary", () => {
       (await db.one<{ n: number }>("SELECT COUNT(*) n FROM dossier_model_checkpoints"))!.n,
     ).toBe(1);
   });
+  it("does not persist semantically rejected memo responses across queue retries", async () => {
+    const db = new SqliteAdapter(new Database(":memory:"));
+    await setupLineageTestFixture(db);
+    let repaired = false;
+    let calls = 0;
+    const rawModel = {
+      id: "memo-semantic-retry",
+      version: "1",
+      async generate() {
+        calls++;
+        if (repaired) return draft();
+        const invalid = draft();
+        invalid.narrativePlan.memoPoints = invalid.narrativePlan.memoPoints!.filter(
+          (point) => point.section !== "candidateFit",
+        );
+        return invalid;
+      },
+    };
+    const model = durableDossierModel(db, "memo-semantic-retry-scope", rawModel);
+
+    await expect(composeStagedDraft(frozen, stagedEvaluation, model)).rejects.toThrow();
+    expect(calls).toBe(4);
+    expect(
+      (await db.one<{ n: number }>("SELECT COUNT(*) n FROM dossier_model_checkpoints"))!.n,
+    ).toBe(0);
+
+    repaired = true;
+    const beforeRetry = calls;
+    const result = await composeStagedDraft(frozen, stagedEvaluation, model);
+    expect(calls).toBe(beforeRetry + 1);
+    expect(result.narrativePlan.memoPoints!.some((point) => point.section === "candidateFit")).toBe(true);
+    expect(
+      (await db.one<{ n: number }>("SELECT COUNT(*) n FROM dossier_model_checkpoints"))!.n,
+    ).toBe(1);
+  });
+
   it("pauses on reviewer infrastructure failure without exposing provider bodies", async () => {
     const reviewer = createGeminiFactualReviewModel({
       projectId: "test-project",
