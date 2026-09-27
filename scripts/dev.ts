@@ -25,6 +25,13 @@ function processSpecs(databaseTarget: string): ManagedProcess[] {
   return [
     { name: "vite", command: viteCommand, args: ["vite", "--strictPort", "--port", "3000"], restart: false },
     {
+      name: "scrape",
+      command: process.execPath,
+      args: ["--import", "tsx", "scripts/run-scrape-worker.ts"],
+      env: workerEnv,
+      restart: true,
+    },
+    {
       name: "evaluation",
       command: process.execPath,
       args: ["--import", "tsx", "scripts/run-evaluation-worker.ts"],

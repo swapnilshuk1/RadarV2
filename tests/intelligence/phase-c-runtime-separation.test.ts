@@ -32,6 +32,7 @@ describe("Phase C runtime separation", () => {
     expect(source("scripts/scrape.ts")).toContain("opts.scope?.tenantId || opts.authContext?.tenantId");
     expect(evaluator).toContain("process.once(\"SIGTERM\"");
     expect(evaluator).toContain("daemon.start()");
+    expect(source("scripts/dev.ts")).toContain('args: ["--import", "tsx", "scripts/run-scrape-worker.ts"]');
   });
 
   it("classifies operational and invalid-output model failures differently", () => {
