@@ -764,7 +764,7 @@ describe("staged dossier editorial boundary", () => {
     ).rejects.toThrow("Unavailable");
     expect(writer.generate).toHaveBeenCalledTimes(1);
   });
-  it("repairs missing career-capital plan coverage together with the affected memo sections", async () => {
+  it("repairs missing career-capital plan coverage without rewriting memo prose", async () => {
     const material = {
       material: true,
       candidateClaimIds: [],
@@ -803,12 +803,13 @@ describe("staged dossier editorial boundary", () => {
           expect.arrayContaining(["opportunityValue", "decisionConditions"]),
         );
         expect(input.repairEditorial).toBe(true);
+        expect(input.missingRequirementIds).toEqual([]);
+        expect(input.missingResolutionFields).toEqual(["reportingLine"]);
         return {
-          rationale: repaired.rationale,
-          narrativePlan: repaired.narrativePlan,
-          memo: {
-            opportunityValue: repaired.memo.opportunityValue,
-            decisionConditions: repaired.memo.decisionConditions,
+          narrativePlan: {
+            memoPoints: repaired.narrativePlan.memoPoints!.filter((point) =>
+              ["opportunityValue", "decisionConditions"].includes(point.section),
+            ),
           },
         };
       },
@@ -825,7 +826,77 @@ describe("staged dossier editorial boundary", () => {
         }),
       ]),
     );
-    expect(result.opportunityValue[0].text).toContain("reporting line");
+    expect(result.opportunityValue).toEqual(initial.memo.opportunityValue);
+  });
+
+  it("repairs a missing requirement generically before repairing only the affected memo section", async () => {
+    const stagedWithRequirement = structuredClone(stagedEvaluation) as any;
+    const roleRequirement = structuredClone(stagedWithRequirement.trace.role.requirements[0]);
+    const mappedRequirement = structuredClone(stagedWithRequirement.trace.requirements[0]);
+    stagedWithRequirement.trace.role.requirements.push({
+      ...roleRequirement,
+      id: "REQ-002",
+      requirement: "Enterprise leadership",
+    });
+    stagedWithRequirement.trace.requirements.push({
+      ...mappedRequirement,
+      id: "REQ-002",
+      requirement: "Enterprise leadership",
+      screeningSupportQuoteIds: ["REQ-002:Q1"],
+    });
+
+    const initial = draft();
+    let calls = 0;
+    const writer = {
+      id: "requirement-coverage-repair",
+      version: "1",
+      async generate(_instruction: string, input: any) {
+        calls++;
+        if (calls === 1) return initial;
+        if (calls === 2) {
+          expect(input.repair).toContain("MEMO_PLAN_REQUIREMENT_COVERAGE");
+          expect(input.repairSections).toEqual(["candidateFit"]);
+          expect(input.missingRequirementIds).toEqual(["REQ-002"]);
+          expect(input.missingResolutionFields).toEqual([]);
+          const fitPoint = initial.narrativePlan.memoPoints!.find(
+            (point) => point.section === "candidateFit",
+          )!;
+          return {
+            narrativePlan: {
+              memoPoints: [
+                {
+                  ...fitPoint,
+                  requirementIds: [...fitPoint.requirementIds, "REQ-002"],
+                },
+              ],
+            },
+          };
+        }
+        expect(input.repair).toContain("MEMO_FIT_COVERAGE_INVALID");
+        expect(input.repairSections).toEqual(["candidateFit"]);
+        return {
+          memo: {
+            candidateFit: initial.memo.candidateFit.map((row, index) =>
+              index === 0
+                ? { ...row, requirementIds: [...row.requirementIds, "REQ-002"] }
+                : row,
+            ),
+          },
+        };
+      },
+    };
+
+    const result = await composeStagedDraft(frozen, stagedWithRequirement, writer);
+    expect(calls).toBe(3);
+    expect(
+      result.narrativePlan.memoPoints!.some(
+        (point) =>
+          point.section === "candidateFit" && point.requirementIds.includes("REQ-002"),
+      ),
+    ).toBe(true);
+    expect(result.candidateFit.some((row) => row.requirementIds.includes("REQ-002"))).toBe(true);
+    expect(result.opportunityValue).toEqual(initial.memo.opportunityValue);
+    expect(result.executiveThesis).toEqual(initial.memo.executiveThesis);
   });
 
   it("returns plan and copy defects together before paying for review", async () => {

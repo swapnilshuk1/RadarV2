@@ -7,6 +7,7 @@ import { runtimeLog } from "./runtime-log";
 
 /** A global repair is crash recovery, not a per-poll health check. */
 export const GLOBAL_RECONCILIATION_INTERVAL_MS = 5 * 60_000;
+export const MAX_IDLE_POLL_INTERVAL_MS = 30_000;
 
 export class EvaluationDaemon {
   private readonly workers: EvaluationWorker[];
@@ -46,10 +47,9 @@ export class EvaluationDaemon {
 
     runtimeLog("info", "evaluation_daemon_started", { pollIntervalMs: this.pollIntervalMs, workers: this.workers.length });
 
-    const loop = async (worker: EvaluationWorker, slot: number) => {
+    const loop = async (worker: EvaluationWorker, slot: number, idlePolls = 0) => {
       if (signal.aborted) return;
       try {
-
         const result = await worker.pollAndProcessNext();
         if (signal.aborted) return;
 
@@ -63,9 +63,14 @@ export class EvaluationDaemon {
           if (result.error) {
             runtimeLog("warn", "evaluation_job_error", { slot, jobId: result.jobId, status: result.status });
           }
-          setTimeout(() => void loop(worker, slot), 0);
+          setTimeout(() => void loop(worker, slot, 0), 0);
         } else {
-          setTimeout(() => void loop(worker, slot), this.pollIntervalMs);
+          const nextIdlePolls = Math.min(idlePolls + 1, 4);
+          const idleDelayMs = Math.min(
+            this.pollIntervalMs * 2 ** nextIdlePolls,
+            MAX_IDLE_POLL_INTERVAL_MS,
+          );
+          setTimeout(() => void loop(worker, slot, nextIdlePolls), idleDelayMs);
         }
       } catch (err: any) {
         if (signal.aborted) return;
@@ -75,11 +80,11 @@ export class EvaluationDaemon {
           // not idle this worker slot through provider backoff: it can claim
           // unrelated eligible work immediately.
           runtimeLog("warn", "evaluation_model_retry_released", { slot, code: modelFailure.code });
-          setTimeout(() => void loop(worker, slot), 0);
+          setTimeout(() => void loop(worker, slot, 0), 0);
           return;
         }
         runtimeLog("error", "evaluation_daemon_error", { slot, code: modelFailure.code });
-        setTimeout(() => void loop(worker, slot), this.pollIntervalMs);
+        setTimeout(() => void loop(worker, slot, idlePolls), this.pollIntervalMs);
       }
     };
 
@@ -88,7 +93,7 @@ export class EvaluationDaemon {
     void this.reconcileActiveRuns("startup").finally(() => {
       if (!signal.aborted)
         this.workers.forEach((worker, index) => {
-          void loop(worker, index + 1);
+          void loop(worker, index + 1, 0);
         });
     });
   }

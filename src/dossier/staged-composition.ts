@@ -15,8 +15,10 @@ import type { StagedResearchInput } from "./staged-role";
 import type { StagedDecisionResult } from "./staged-decision-contract";
 import { validateClaims } from "./grounding";
 import {
+  MemoPlanRepair,
   validateMemoPlan,
   validateMemoSectionCoverage,
+  validateTargetedPlanRepair,
 } from "./memo-integrity";
 import {
   memoWritingInstruction,
@@ -39,6 +41,9 @@ export const memoDraftSchema = z
     narrativePlan: narrativePlanSchema.extend({ memoPoints: z.array(memoPointSchema).min(1) }),
     memo: compositionSchema,
   })
+  .strict();
+const memoPlanPatchSchema = z
+  .object({ memoPoints: z.array(memoPointSchema).min(1) })
   .strict();
 export function bindStagedEditorial(
   frozen: StagedResearchInput,
@@ -89,7 +94,14 @@ export function bindStagedEditorial(
 }
 
 type Draft = z.infer<typeof memoDraftSchema>;
-type Repair = { sections: MemoSection[]; editorial: boolean; issue: string };
+type Repair = {
+  sections: MemoSection[];
+  editorial: boolean;
+  issue: string;
+  planOnly?: boolean;
+  missingRequirementIds?: string[];
+  missingResolutionFields?: string[];
+};
 const sectionKeys = Object.keys(compositionSchema.shape) as MemoSection[];
 
 function compactMemoRepairInput(
@@ -99,6 +111,31 @@ function compactMemoRepairInput(
   frozen: StagedResearchInput,
   staged: StagedDecisionResult,
 ) {
+  if (repair.planOnly && previous) {
+    const missingRequirementIds = new Set(repair.missingRequirementIds ?? []);
+    const missingResolutionFields = new Set(repair.missingResolutionFields ?? []);
+    return {
+      input: {
+        fixedDecision: packet.fixedDecision,
+        requirements: staged.trace.requirements.filter((requirement) =>
+          missingRequirementIds.has(requirement.id),
+        ),
+        referenceScope: staged.trace.resolutions.filter((resolution) =>
+          missingResolutionFields.has(resolution.field),
+        ),
+        assignedMemoPoints: previous.narrativePlan.memoPoints.filter((point) =>
+          repair.sections.includes(point.section as MemoSection),
+        ),
+      },
+      previous: { narrativePlan: previous.narrativePlan },
+      repair: repair.issue,
+      repairSections: repair.sections,
+      repairEditorial: true,
+      missingRequirementIds: [...missingRequirementIds],
+      missingResolutionFields: [...missingResolutionFields],
+    };
+  }
+
   if (repair.editorial || !previous || !repair.sections.length) {
     const previousEditorial = previous
       ? { rationale: previous.rationale, narrativePlan: previous.narrativePlan }
@@ -210,9 +247,19 @@ function inspectDraft(
     validateMemoPlan(research, staged);
   } catch (error) {
     editorial = true;
-    // A plan-coverage defect is repaired in the plan first. Do not regenerate
-    // memo prose in the same call: the repaired plan is revalidated against the
-    // existing memo and only then are genuinely incomplete sections repaired.
+    if (error instanceof MemoPlanRepair) {
+      return {
+        repair: {
+          sections: error.sections as MemoSection[],
+          editorial: true,
+          planOnly: true,
+          issue: error.message,
+          missingRequirementIds: error.missingRequirementIds,
+          missingResolutionFields: error.missingResolutionFields,
+        },
+        draft,
+      };
+    }
     issues.push(String(error));
   }
   let memo = draft.memo;
@@ -254,10 +301,14 @@ async function writeMemo(
   for (let attempt = 0; attempt < 4; attempt++) {
     const shape: z.ZodRawShape = {};
     if (repair?.editorial) {
-      shape.rationale = memoDraftSchema.shape.rationale;
-      shape.narrativePlan = memoDraftSchema.shape.narrativePlan;
+      if (repair.planOnly) {
+        shape.narrativePlan = memoPlanPatchSchema;
+      } else {
+        shape.rationale = memoDraftSchema.shape.rationale;
+        shape.narrativePlan = memoDraftSchema.shape.narrativePlan;
+      }
     }
-    if (repair?.sections.length)
+    if (repair?.sections.length && !repair.planOnly)
       shape.memo = compositionSchema
         .pick(
           Object.fromEntries(repair.sections.map((k) => [k, true])) as Record<MemoSection, true>,
@@ -266,7 +317,9 @@ async function writeMemo(
     const schema = repair ? z.object(shape).strict() : memoDraftSchema;
     const instruction = repair
       ? memoWritingInstruction +
-        "\nREPAIR MODE: Return ONLY the blocks requested by the response schema. Other blocks are application-preserved; do not regenerate them. Keep narrative point IDs and unaffected assignments stable. Correct every listed issue."
+        (repair.planOnly
+          ? "\nPLAN-ONLY REPAIR MODE: Return only narrativePlan.memoPoints, and only points in repairSections. For an existing point ID, preserve its text, claimIds, and existing references; only add the requested missingRequirementIds/missingResolutionFields. New points are allowed only when needed to attach requested targets. Do not return or alter any other plan fields, memo prose, rationale, or unrelated references."
+          : "\nREPAIR MODE: Return ONLY the blocks requested by the response schema. Other blocks are application-preserved; do not regenerate them. Keep narrative point IDs and unaffected assignments stable. Correct every listed issue.")
       : memoWritingInstruction;
     const response = await writer.generate(
       instruction,
@@ -290,11 +343,57 @@ async function writeMemo(
         continue;
       }
       const prior = value as Partial<Draft> | undefined;
-      value = {
-        rationale: patch.data.rationale ?? prior?.rationale,
-        narrativePlan: patch.data.narrativePlan ?? prior?.narrativePlan,
-        memo: { ...prior?.memo, ...patch.data.memo },
-      };
+      if (repair.planOnly && prior?.narrativePlan && patch.data.narrativePlan) {
+        const allowed = new Set(repair.sections);
+        const priorPoints = prior.narrativePlan.memoPoints ?? [];
+        const priorById = new Map(priorPoints.map((point) => [point.id, point]));
+        const returned = memoPlanPatchSchema.parse(patch.data.narrativePlan).memoPoints;
+        if (returned.some((point) => !allowed.has(point.section as MemoSection))) {
+          repair = {
+            ...repair,
+            issue: repair.issue + "; Plan patch returned a memoPoint outside repairSections",
+          };
+          continue;
+        }
+        const invalidIdentity = returned.some((point) => {
+          const existing = priorById.get(point.id);
+          return existing && !allowed.has(existing.section as MemoSection);
+        });
+        if (invalidIdentity) {
+          repair = {
+            ...repair,
+            issue: repair.issue + "; Plan patch attempted to reuse an unaffected memoPoint id",
+          };
+          continue;
+        }
+        const mergedById = new Map(priorPoints.map((point) => [point.id, point]));
+        returned.forEach((point) => mergedById.set(point.id, point));
+        const nextPlan = {
+          ...prior.narrativePlan,
+          memoPoints: [...mergedById.values()],
+        };
+        try {
+          validateTargetedPlanRepair(prior.narrativePlan, nextPlan, {
+            sections: repair.sections,
+            requirementIds: repair.missingRequirementIds ?? [],
+            resolutionFields: repair.missingResolutionFields ?? [],
+          });
+        } catch (error) {
+          repair = { ...repair, issue: repair.issue + "; " + String(error) };
+          continue;
+        }
+        value = {
+          rationale: prior.rationale,
+          narrativePlan: nextPlan,
+          memo: prior.memo,
+        };
+      } else {
+        value = {
+          rationale: patch.data.rationale ?? prior?.rationale,
+          narrativePlan: patch.data.narrativePlan ?? prior?.narrativePlan,
+          memo: { ...prior?.memo, ...patch.data.memo },
+        };
+      }
     } else value = response;
     const checked = inspectDraft(value, frozen, staged);
     if ("result" in checked) return checked.result;

@@ -145,10 +145,28 @@ export const requestDetailedDossierFn = createServerFn({ method: "POST" })
     if (staged.decision === "PASS") return { state: "PASS_NO_DOSSIER" as const, jobId: null };
     const evaluation = parseCanonicalStagedDecisionResult(staged.evaluation);
     const fingerprint = createStagedEvaluationFingerprint({ evaluationContextFingerprint: staged.evaluationContextFingerprint, inputFingerprint: staged.inputFingerprint, evaluation });
-    const review = await new SqliteDossierReviewQueue(db).find(identity, fingerprint);
+    const reviewQueue = new SqliteDossierReviewQueue(db);
+    const review = await reviewQueue.find(identity, fingerprint);
     if (review?.status === "completed") return { state: "ALREADY_COMPLETED" as const, jobId: review.id };
+    if (review?.status === "needs_attention") {
+      await reviewQueue.retryAttention(identity, fingerprint);
+      return { state: "QUEUED_GEMINI_REVIEW" as const, jobId: review.id };
+    }
     if (review) return { state: "QUEUED_GEMINI_REVIEW" as const, jobId: review.id };
-    const jobId = await new SqliteDossierCompositionQueue(db).enqueue({ ...identity, profileVersion: row.profile_version }, fingerprint);
+
+    const compositionQueue = new SqliteDossierCompositionQueue(db);
+    const existingComposition = await compositionQueue.find(identity, fingerprint);
+    if (existingComposition?.status === "needs_attention") {
+      await compositionQueue.retryAttention(identity, fingerprint);
+      return { state: "QUEUED_DOSSIER" as const, jobId: existingComposition.id };
+    }
+    if (existingComposition) {
+      return { state: "QUEUED_DOSSIER" as const, jobId: existingComposition.id };
+    }
+    const jobId = await compositionQueue.enqueue(
+      { ...identity, profileVersion: row.profile_version },
+      fingerprint,
+    );
     return { state: "QUEUED_DOSSIER" as const, jobId };
   });
 

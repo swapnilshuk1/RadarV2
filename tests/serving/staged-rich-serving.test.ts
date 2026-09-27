@@ -219,6 +219,28 @@ describe("rich staged serving activation", () => {
     expect(await db.one(`SELECT status FROM dossier_composition_jobs WHERE evaluation_context_fingerprint='stale-context'`)).toEqual({ status: "pending" });
   });
 
+  it("requeues only an exact terminal composition job", async () => {
+    const queue = new SqliteDossierCompositionQueue(db, () => 25_000);
+    await queue.enqueue(identity, evaluationFingerprint);
+    expect(await queue.retryAttention(identity, evaluationFingerprint)).toBe(false);
+    await db.execute(
+      "UPDATE dossier_composition_jobs SET status='needs_attention',attempts=3,last_error='contract failure',lease_token='stale',lease_until=99",
+    );
+    expect(await queue.retryAttention(identity, evaluationFingerprint)).toBe(true);
+    expect(await queue.find(identity, evaluationFingerprint)).toMatchObject({
+      status: "pending",
+      attempts: 0,
+      last_error: null,
+      lease_token: null,
+      lease_until: null,
+      next_attempt_at: 25_000,
+    });
+    expect(await queue.claim()).toMatchObject({
+      evaluation_fingerprint: evaluationFingerprint,
+      status: "processing",
+    });
+  });
+
   it("leases composition independently and records draft persistence before publication", async () => {
     await db.execute(`UPDATE active_evaluation_contexts SET context_fingerprint='e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65' WHERE tenant_id='tenant_A' AND person_id='person_A' AND search_plan_id='plan_A'`);
     const queue=new SqliteDossierCompositionQueue(db);

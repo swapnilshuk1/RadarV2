@@ -23,7 +23,10 @@ if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 8)
   throw new Error("DOSSIER_JOB_CONCURRENCY_INVALID");
 
 const workers = Array.from({ length: concurrency }, () => new DossierCompositionWorker(db));
+const BASE_IDLE_POLL_MS = 3_000;
+const MAX_IDLE_POLL_MS = 30_000;
 let stopping = false;
+let idlePolls = 0;
 process.on("SIGINT", () => {
   stopping = true;
 });
@@ -35,7 +38,11 @@ do {
   const results = await Promise.all(workers.map((worker) => worker.pollOnce()));
   for (const result of results) if (result) runtimeLog("info", "dossier_composition_processed", { status: result.status });
   if (process.argv.includes("--once")) break;
-  if (!stopping && results.every((result) => result === null)) {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+  if (results.some((result) => result !== null)) {
+    idlePolls = 0;
+  } else if (!stopping) {
+    const idleDelayMs = Math.min(BASE_IDLE_POLL_MS * 2 ** idlePolls, MAX_IDLE_POLL_MS);
+    idlePolls = Math.min(idlePolls + 1, 4);
+    await new Promise((resolve) => setTimeout(resolve, idleDelayMs));
   }
 } while (!stopping);

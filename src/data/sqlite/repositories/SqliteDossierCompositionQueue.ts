@@ -117,6 +117,34 @@ export class SqliteDossierCompositionQueue {
     );
   }
 
+  /** Explicit recovery action for one exact terminal composition job. */
+  async retryAttention(
+    identity: Omit<ProductionStagedIdentity, "profileVersion">,
+    evaluationFingerprint: string,
+  ): Promise<boolean> {
+    const now = this.now();
+    const result = await this.db.execute(
+      `UPDATE dossier_composition_jobs
+       SET status='pending',attempts=0,next_attempt_at=?,lease_token=NULL,lease_until=NULL,
+           last_error=NULL,updated_at=?
+       WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=?
+         AND evaluation_context_fingerprint=? AND evaluation_fingerprint=? AND recipe=?
+         AND status='needs_attention'`,
+      [
+        now,
+        now,
+        identity.tenantId,
+        identity.personId,
+        identity.canonicalJobId,
+        identity.opportunityVersion,
+        identity.evaluationContextFingerprint,
+        evaluationFingerprint,
+        DOSSIER_COMPOSITION_RECIPE,
+      ],
+    );
+    return result.rowsAffected > 0;
+  }
+
   async claim(): Promise<DossierCompositionJob | null> {
     const now = this.now();
     const token = randomUUID();
