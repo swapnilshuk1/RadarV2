@@ -302,7 +302,20 @@ async function writeMemo(
   let value: unknown = previous,
     repair = requested,
     lastResponse: unknown;
-  for (let attempt = 0; attempt < 4; attempt++) {
+  let planRepairAttempts = 0;
+  let memoRepairAttempts = 0;
+  let generationAttempt = 0;
+  while (true) {
+    if (repair?.planOnly) {
+      if (planRepairAttempts >= 3) break;
+      planRepairAttempts++;
+    } else if (repair) {
+      if (memoRepairAttempts >= 3) break;
+      memoRepairAttempts++;
+    } else if (generationAttempt > 0) {
+      break;
+    }
+    generationAttempt++;
     const shape: z.ZodRawShape = {};
     if (repair?.editorial) {
       if (repair.planOnly) {
@@ -337,7 +350,7 @@ async function writeMemo(
           )
         : packet,
       outputSchemaFor(writer, schema),
-      { stage: repair ? "memo-repair" : "memo-draft", attempt: attempt + 1 },
+      { stage: repair ? "memo-repair" : "memo-draft", attempt: generationAttempt },
     );
     lastResponse = response;
     if (repair) {

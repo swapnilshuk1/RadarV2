@@ -12,6 +12,7 @@ import { compositionSchema } from "../../src/dossier/contracts";
 import { allPassages } from "../../src/dossier/grounding";
 import { propose } from "../../src/dossier/evidence";
 import { assertFactualReviewProvenance } from "../../src/dossier/factual-review-integrity";
+import { validateTargetedPlanRepair } from "../../src/dossier/memo-integrity";
 import {
   bindStagedEditorial,
   composeStagedDossier,
@@ -182,6 +183,91 @@ const accept = (input: any) => ({
   defects: [],
   suggestions: [],
 });
+describe("targeted memo-plan repair", () => {
+  it("adds an exact missing requirement without rewriting existing plan content", () => {
+    const previous = structuredClone(seed.narrativePlan);
+    const next = structuredClone(previous);
+    const fit = next.memoPoints!.find((point) => point.section === "candidateFit")!;
+    fit.requirementIds = [...fit.requirementIds, "REQ-002"];
+
+    expect(() =>
+      validateTargetedPlanRepair(previous, next, {
+        sections: ["candidateFit"],
+        requirementIds: ["REQ-002"],
+        resolutionFields: [],
+        assignments: [
+          { kind: "requirement", id: "REQ-002", sections: ["candidateFit"] },
+        ],
+        allowedRequirementIds: ["REQ-001", "REQ-002"],
+        allowedResolutionFields: [],
+      }),
+    ).not.toThrow();
+  });
+
+  it("adds an exact missing resolution field only in an allowed section", () => {
+    const previous = structuredClone(seed.narrativePlan);
+    const next = structuredClone(previous);
+    const conditions = next.memoPoints!.find(
+      (point) => point.section === "decisionConditions",
+    )!;
+    conditions.resolutionFields = [...conditions.resolutionFields, "reportingLine"];
+
+    expect(() =>
+      validateTargetedPlanRepair(previous, next, {
+        sections: ["decisionConditions"],
+        requirementIds: [],
+        resolutionFields: ["reportingLine"],
+        assignments: [
+          {
+            kind: "resolutionField",
+            id: "reportingLine",
+            sections: ["decisionConditions"],
+          },
+        ],
+        allowedRequirementIds: ["REQ-001"],
+        allowedResolutionFields: ["reportingLine"],
+      }),
+    ).not.toThrow();
+  });
+
+  it("rejects unrelated rewrites and unrelated reference additions", () => {
+    const previous = structuredClone(seed.narrativePlan);
+
+    const rewritten = structuredClone(previous);
+    rewritten.memoPoints![0].point = "Rewrite the existing plan";
+    expect(() =>
+      validateTargetedPlanRepair(previous, rewritten, {
+        sections: ["candidateFit"],
+        requirementIds: ["REQ-002"],
+        resolutionFields: [],
+        assignments: [
+          { kind: "requirement", id: "REQ-002", sections: ["candidateFit"] },
+        ],
+        allowedRequirementIds: ["REQ-001", "REQ-002"],
+        allowedResolutionFields: [],
+      }),
+    ).toThrow("MEMO_PLAN_REPAIR_REWROTE_POINT");
+
+    const unrelated = structuredClone(previous);
+    unrelated.memoPoints![0].requirementIds = [
+      ...unrelated.memoPoints![0].requirementIds,
+      "REQ-UNRELATED",
+    ];
+    expect(() =>
+      validateTargetedPlanRepair(previous, unrelated, {
+        sections: ["candidateFit"],
+        requirementIds: ["REQ-002"],
+        resolutionFields: [],
+        assignments: [
+          { kind: "requirement", id: "REQ-002", sections: ["candidateFit"] },
+        ],
+        allowedRequirementIds: ["REQ-001", "REQ-002", "REQ-UNRELATED"],
+        allowedResolutionFields: [],
+      }),
+    ).toThrow("MEMO_PLAN_REPAIR_ADDED_UNREQUESTED_REQUIREMENT");
+  });
+});
+
 describe("staged dossier editorial boundary", () => {
   it("carries earlier repair constraints forward instead of oscillating between defects", async () => {
     let calls = 0;
