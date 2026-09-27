@@ -115,9 +115,11 @@ export function OpportunityBriefView() {
     try {
       const result = await requestDetailedDossierFn({ data: { jobHash: o.jobHash, ...scope } });
       setDecisionStatus(
-        result.state === "QUEUED_EVALUATION"
-          ? "GLM evaluation has been queued. RADAR will prepare the dossier after evaluation completes."
-          : result.state === "QUEUED_DOSSIER"
+        result.state === "ENRICHMENT_REQUIRED"
+          ? "This opportunity has no current enrichment artifact, so RADAR cannot queue evaluation yet. Re-capture or enrich the opportunity first."
+          : result.state === "QUEUED_EVALUATION"
+            ? "GLM evaluation has been queued. RADAR will prepare the dossier after evaluation completes."
+            : result.state === "QUEUED_DOSSIER"
             ? "Detailed dossier preparation has been queued. Gemini verification follows the draft."
             : result.state === "QUEUED_GEMINI_REVIEW"
               ? "The GLM draft exists. Gemini factual verification is queued."
@@ -143,6 +145,8 @@ export function OpportunityBriefView() {
           ? "Gemini factual verification has been queued for this GLM draft."
           : result.state === "QUEUED_DOSSIER"
             ? "The GLM detailed dossier is being prepared before Gemini verification."
+            : result.state === "ENRICHMENT_REQUIRED"
+            ? "This opportunity has no current enrichment artifact, so evaluation and Gemini review cannot be queued yet."
             : result.state === "QUEUED_EVALUATION"
               ? "GLM evaluation has been queued before detailed dossier preparation."
               : result.state === "ALREADY_COMPLETED"

@@ -153,12 +153,16 @@ export async function materializeExistingCanonicalPool(
   });
 
   const scheduler = new EvaluationWorkScheduler(db);
-  for (const work of stagedWork) await scheduler.ensureWork(work);
+  let queued = 0;
+  for (const work of stagedWork) {
+    const scheduled = await scheduler.ensureWork(work);
+    if (scheduled.requirementStatus !== "NO_ENRICHMENT") queued++;
+  }
 
   return {
     examined: rows.length,
     candidates: eligibleCandidates,
     materialized: eligibleCandidates,
-    queued: stagedWork.length,
+    queued,
   };
 }

@@ -819,10 +819,14 @@ export class CanonicalIngestionService {
         );
         candidatesProjected++;
 
-        // Persist evaluation obligations atomically with candidate projection.
-        // Invariant: Every Attention-Gate CANDIDATE creates a durable evaluation obligation.
-        // Candidate and requirement commit together or roll back together.
+        // Persist evaluation obligations only when their exact enrichment work exists.
+        // Candidate projection may exist independently; evaluator work may not.
         if (gateResult.decision === "CANDIDATE") {
+          // Staged-v8 evaluation has an exact enrichment dependency. Persist the
+          // candidate association even when enrichment is not requested, but do
+          // not create an obligation that no durable enrichment job can satisfy.
+          if (!enrichmentJobId) continue;
+
           const evalContext = await tx.one<{ context_fingerprint: string }>(
             `SELECT aec.context_fingerprint
              FROM active_evaluation_contexts aec

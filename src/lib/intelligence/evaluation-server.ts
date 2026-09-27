@@ -6,6 +6,7 @@ import {
   EvaluationRuntimeControl,
   type EvaluationRuntimeState,
 } from "./EvaluationRuntimeControl";
+import { EvaluationWorkScheduler } from "./EvaluationWorkScheduler";
 
 // Evaluation-stage GLM calls are hard-capped at 120s. Give telemetry 15s of
 // grace for the terminal write, then treat a lingering `running` row as stale.
@@ -305,6 +306,10 @@ export const controlEvaluatorFn = createServerFn({ method: "POST" })
       await control.set(access.scope, "STOPPED", user.id);
     } else {
       if (!access.activeContext) throw new AuthError("NO_ACTIVE_EVALUATION_CONTEXT", 409);
+      await new EvaluationWorkScheduler(db).retryRecoverableDeadLetters(
+        access.scope,
+        access.activeContext.contextFingerprint,
+      );
       await control.set(access.scope, "RUNNING", user.id);
       // The supervised evaluation daemon owns queue claims. The request must
       // return immediately instead of executing a model call inside HTTP.

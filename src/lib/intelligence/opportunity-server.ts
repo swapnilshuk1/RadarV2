@@ -140,6 +140,9 @@ export const requestDetailedDossierFn = createServerFn({ method: "POST" })
     const staged = await new SqliteStagedEvaluationStore(db).get(identity);
     if (!staged || staged.evaluationState !== "COMPLETED") {
       const work = await new EvaluationWorkScheduler(db).ensureWork(identity);
+      if (work.requirementStatus === "NO_ENRICHMENT") {
+        return { state: "ENRICHMENT_REQUIRED" as const, jobId: null };
+      }
       return { state: "QUEUED_EVALUATION" as const, jobId: work.jobId };
     }
     if (staged.decision === "PASS") return { state: "PASS_NO_DOSSIER" as const, jobId: null };

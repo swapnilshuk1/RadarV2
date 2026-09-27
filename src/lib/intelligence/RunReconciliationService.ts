@@ -160,6 +160,41 @@ export class RunReconciliationService {
     let requirementsHealed = 0;
     let jobsCreated = 0;
 
+    // 0. An evaluation obligation without exact enrichment work is invalid in
+    // staged-v8. Fresh ingestion creates enrichment first; context rematerialization
+    // must not leave permanent WAITING_ENRICHMENT rows behind.
+    await this.db.execute(
+      `DELETE FROM evaluation_jobs
+       WHERE status='staged_waiting_enrichment'
+         AND EXISTS (
+           SELECT 1 FROM evaluation_requirements er
+           WHERE er.tenant_id=evaluation_jobs.tenant_id
+             AND er.person_id=evaluation_jobs.person_id
+             AND er.search_plan_id=evaluation_jobs.search_plan_id
+             AND er.canonical_job_id=evaluation_jobs.canonical_job_id
+             AND er.opportunity_version=evaluation_jobs.opportunity_version
+             AND er.evaluation_context_fingerprint=evaluation_jobs.evaluation_context_fingerprint
+             AND er.status='WAITING_ENRICHMENT'
+             AND NOT EXISTS (
+               SELECT 1 FROM enrichment_jobs ej
+               WHERE ej.canonical_job_id=er.canonical_job_id
+                 AND ej.opportunity_version=er.opportunity_version
+                 AND ej.pipeline_version=er.required_enrichment_pipeline_version
+             )
+         )`,
+    );
+    const pruned = await this.db.execute(
+      `DELETE FROM evaluation_requirements
+       WHERE status='WAITING_ENRICHMENT'
+         AND NOT EXISTS (
+           SELECT 1 FROM enrichment_jobs ej
+           WHERE ej.canonical_job_id=evaluation_requirements.canonical_job_id
+             AND ej.opportunity_version=evaluation_requirements.opportunity_version
+             AND ej.pipeline_version=evaluation_requirements.required_enrichment_pipeline_version
+         )`,
+    );
+    requirementsHealed += pruned.rowsAffected;
+
     // 1. WAITING_ENRICHMENT -> READY when exact matching enrichment is COMPLETE
     const readyCandidates = await this.db.many<{
       id: string;
@@ -202,11 +237,6 @@ export class RunReconciliationService {
     for (const req of failedEnrichments) {
       requirementsHealed += await failEvaluationDependency(this.db, req.id, 'ENRICHMENT_FAILED');
     }
-
-    // Missing enrichment work is not an evaluation failure. Current ingestion
-    // creates enrichment durably before scheduling evaluation; historical or
-    // rematerialized candidates without an enrichment job simply remain
-    // WAITING_ENRICHMENT and must not create/dead-letter evaluator work.
 
     // 3. For all READY requirements, ensure evaluation job exists in appropriate state
     const readyReqs = await this.db.many<{
@@ -259,11 +289,8 @@ export class RunReconciliationService {
           [job.id]
         );
       } else if (job.status === "staged_dead_letter") {
-        await this.db.execute(
-          `UPDATE evaluation_requirements SET status = 'FAILED', blocked_reason = 'EVALUATION_JOB_DEAD_LETTER' WHERE id = ?`,
-          [req.id]
-        );
-        requirementsHealed++;
+        // Retry exhaustion is a parked evaluator state, not a source/dependency
+        // failure. Keep the requirement READY; Start/Resume owns explicit re-entry.
       } else if (job.status === "staged_completed") {
         const mat = await this.db.one<{ id: string }>(
           `SELECT id FROM staged_evaluations

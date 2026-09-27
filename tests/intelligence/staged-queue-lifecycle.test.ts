@@ -123,14 +123,16 @@ describe('staged enrichment dependency lifecycle', () => {
     expect(await db.one('SELECT COUNT(*) n FROM staged_evaluations')).toEqual({n:0});
   });
   it.each([false,true])('releases enrichment-ready work into the staged-v8 queue with existing job=%s', async existing => {
+    await enrichment('version','1.0.0','RUNNING');
     await new EvaluationWorkScheduler(db).ensureWork(identity);
     if (!existing) await db.execute('DELETE FROM evaluation_jobs');
-    await enrichment();
+    await db.execute(`UPDATE enrichment_jobs SET status='COMPLETE' WHERE canonical_job_id='job' AND opportunity_version='version' AND pipeline_version='1.0.0'`);
     await new EnrichmentQueue(db).releaseEvaluationRequirements('job','version');
     expect(await state()).toMatchObject({status:'staged_pending',requirement:'READY'});
     expect((await new EvaluationWorker(db).claimNextJob())?.evaluationContextFingerprint).toBe('staged-context');
   });
   it('does not release a different opportunity or pipeline dependency', async () => {
+    await enrichment('version','1.0.0','RUNNING');
     await new EvaluationWorkScheduler(db).ensureWork(identity);
     await enrichment('other-version');
     await enrichment('version','2.0.0');
@@ -138,17 +140,27 @@ describe('staged enrichment dependency lifecycle', () => {
     expect(await queue.releaseEvaluationRequirements('job','other-version')).toBe(0);
     expect(await queue.releaseEvaluationRequirements('job','version','2.0.0')).toBe(0);
     expect(await db.one(`SELECT status,blocked_reason FROM evaluation_requirements`)).toEqual({status:'WAITING_ENRICHMENT',blocked_reason:null});
-    expect(await db.one(`SELECT COUNT(*) n FROM evaluation_jobs`)).toEqual({n:0});
+    expect(await db.one(`SELECT COUNT(*) n FROM evaluation_jobs`)).toEqual({n:1});
+    expect(await state()).toMatchObject({status:'staged_waiting_enrichment',requirement:'WAITING_ENRICHMENT'});
     expect(await new EvaluationWorker(db).claimNextJob()).toBeNull();
   });
-  it('keeps a missing enrichment dependency out of the evaluator queue without dead-lettering it', async () => {
-    await new EvaluationWorkScheduler(db).ensureWork(identity);
-    await new RunReconciliationService(db).repairDanglingWork();
-    expect(await db.one(`SELECT status,blocked_reason FROM evaluation_requirements`)).toEqual({status:'WAITING_ENRICHMENT',blocked_reason:null});
+  it('does not manufacture an evaluation obligation when exact enrichment work is absent', async () => {
+    expect(await new EvaluationWorkScheduler(db).ensureWork(identity)).toMatchObject({
+      jobId:null,
+      queued:false,
+      requirementStatus:'NO_ENRICHMENT',
+    });
+    expect(await db.one(`SELECT COUNT(*) n FROM evaluation_requirements`)).toEqual({n:0});
     expect(await db.one(`SELECT COUNT(*) n FROM evaluation_jobs`)).toEqual({n:0});
-    await enrichment();
-    expect(await new EnrichmentQueue(db).releaseEvaluationRequirements('job','version')).toBe(1);
-    expect(await state()).toMatchObject({status:'staged_pending',requirement:'READY'});
+  });
+  it('prunes a historical waiting requirement that has no exact enrichment work', async () => {
+    await db.execute(`INSERT INTO evaluation_requirements(
+      id,tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,
+      evaluation_context_fingerprint,status,required_enrichment_pipeline_version
+    ) VALUES('orphan','tenant_A','person_A','plan_A','job','version','staged-context','WAITING_ENRICHMENT','1.0.0')`);
+    expect(await new RunReconciliationService(db).repairDanglingWork()).toMatchObject({requirementsHealed:1});
+    expect(await db.one(`SELECT COUNT(*) n FROM evaluation_requirements`)).toEqual({n:0});
+    expect(await db.one(`SELECT COUNT(*) n FROM evaluation_jobs`)).toEqual({n:0});
   });
   it('fails both dependency rows when enrichment permanently fails', async () => {
     await enrichment('version','1.0.0','RUNNING');

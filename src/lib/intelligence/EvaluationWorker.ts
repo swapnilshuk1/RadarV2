@@ -392,47 +392,9 @@ export class EvaluationWorker {
           };
         }
 
-        // Fail-Closed: Mark evaluation_requirement FAILED and fail referencing runs
-        await this.db.execute(
-          `UPDATE evaluation_requirements
-           SET status = 'FAILED', blocked_reason = 'EVALUATION_DEAD_LETTER:' || ?
-           WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?
-             AND canonical_job_id = ? AND opportunity_version = ?
-             AND evaluation_context_fingerprint = ?`,
-          [
-            errorMsg,
-            job.tenantId,
-            job.personId,
-            job.searchPlanId,
-            job.canonicalJobId,
-            job.opportunityVersion,
-            job.evaluationContextFingerprint,
-          ]
-        );
-
-        // Fail referencing scrape runs
-        await this.db.execute(
-          `UPDATE scrape_runs
-           SET status = 'failed', error_message = 'EVALUATION_DEAD_LETTER: ' || ?, finished_at = CURRENT_TIMESTAMP
-           WHERE id IN (
-             SELECT srer.run_id 
-             FROM scrape_run_evaluation_requirements srer
-             JOIN evaluation_requirements er ON srer.evaluation_requirement_id = er.id
-             WHERE er.tenant_id = ? AND er.person_id = ? AND er.search_plan_id = ?
-               AND er.canonical_job_id = ? AND er.opportunity_version = ?
-               AND er.evaluation_context_fingerprint = ?
-           ) AND status NOT IN ('completed', 'failed', 'aborted')`,
-          [
-            errorMsg,
-            job.tenantId,
-            job.personId,
-            job.searchPlanId,
-            job.canonicalJobId,
-            job.opportunityVersion,
-            job.evaluationContextFingerprint,
-          ]
-        );
-
+        // Retry exhaustion parks only this evaluation job. The requirement remains
+        // READY so an explicit Start/Resume can re-enter the same normal queue
+        // after a semantic/provider fix without fabricating a source failure.
         return {
           status: "dead_letter",
           jobId: job.id,
