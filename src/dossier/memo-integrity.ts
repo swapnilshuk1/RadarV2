@@ -6,10 +6,17 @@ import { parseCanonicalStagedDecisionResult } from "./staged-decision-integrity"
 
 type MemoPlanSection = (typeof memoSections)[number];
 
+export type MemoPlanRepairAssignment = {
+  kind: "requirement" | "resolutionField";
+  id: string;
+  sections: MemoPlanSection[];
+};
+
 export type MemoPlanRepairTargets = {
   sections: MemoPlanSection[];
   requirementIds: string[];
   resolutionFields: string[];
+  assignments?: MemoPlanRepairAssignment[];
   allowedRequirementIds?: string[];
   allowedResolutionFields?: string[];
 };
@@ -20,6 +27,7 @@ export class MemoPlanRepair extends Error {
     message: string,
     readonly missingRequirementIds: string[] = [],
     readonly missingResolutionFields: string[] = [],
+    readonly targetAssignments: MemoPlanRepairAssignment[] = [],
   ) {
     super(message);
     this.name = "MemoPlanRepair";
@@ -46,34 +54,25 @@ export function validateMemoPlan(
   const missingFitRequirementIds = [...requirements].filter(
     (id) => !points.some((p) => p.section === "candidateFit" && p.requirementIds.includes(id)),
   );
-  if (missingFitRequirementIds.length)
-    throw new MemoPlanRepair(
-      ["candidateFit"],
-      `MEMO_PLAN_REQUIREMENT_COVERAGE: candidateFit missing ${missingFitRequirementIds.join(", ")}`,
-      missingFitRequirementIds,
-    );
   const conditions = points.filter((p) => p.section === "decisionConditions");
   const requiredFields = staged.decision.decisionHinges.flatMap((h) => h.resolutionFields);
   const requiredIds = [
     ...staged.decision.decisionHinges.flatMap((h) => h.requirementIds),
     ...staged.decision.screeningDriverRequirementIds,
   ];
-  const missingFields = requiredFields.filter(
+  const missingFields = [...new Set(requiredFields)].filter(
     (f) => !conditions.some((p) => p.resolutionFields.includes(f)),
   );
-  const missingIds = requiredIds.filter(
+  const missingIds = [...new Set(requiredIds)].filter(
     (id) => !conditions.some((p) => p.requirementIds.includes(id)),
   );
-  if (missingFields.length || missingIds.length)
-    throw new MemoPlanRepair(
-      ["decisionConditions"],
-      `MEMO_PLAN_DECISION_COVERAGE: decisionConditions missing fields ${missingFields.join(", ")}; requirements ${missingIds.join(", ")}`,
-      missingIds,
-      missingFields,
-    );
-  const materialFields = Object.values(staged.decision.careerCapital)
-    .filter((a) => a.material)
-    .flatMap((a) => a.resolutionFields);
+  const materialFields = [
+    ...new Set(
+      Object.values(staged.decision.careerCapital)
+        .filter((a) => a.material)
+        .flatMap((a) => a.resolutionFields),
+    ),
+  ];
   const missingCareer = materialFields.filter(
     (f) =>
       !points.some(
@@ -82,13 +81,53 @@ export function validateMemoPlan(
           p.resolutionFields.includes(f),
       ),
   );
-  if (missingCareer.length)
+
+  const assignments: MemoPlanRepairAssignment[] = [
+    ...missingFitRequirementIds.map((id) => ({
+      kind: "requirement" as const,
+      id,
+      sections: ["candidateFit" as MemoPlanSection],
+    })),
+    ...missingIds.map((id) => ({
+      kind: "requirement" as const,
+      id,
+      sections: ["decisionConditions" as MemoPlanSection],
+    })),
+    ...missingFields.map((id) => ({
+      kind: "resolutionField" as const,
+      id,
+      sections: ["decisionConditions" as MemoPlanSection],
+    })),
+    ...missingCareer
+      .filter((id) => !missingFields.includes(id))
+      .map((id) => ({
+        kind: "resolutionField" as const,
+        id,
+        sections: ["opportunityValue", "decisionConditions"] as MemoPlanSection[],
+      })),
+  ];
+
+  if (assignments.length) {
+    const issues: string[] = [];
+    if (missingFitRequirementIds.length)
+      issues.push(`MEMO_PLAN_REQUIREMENT_COVERAGE: candidateFit missing ${missingFitRequirementIds.join(", ")}`);
+    if (missingFields.length || missingIds.length)
+      issues.push(
+        `MEMO_PLAN_DECISION_COVERAGE: decisionConditions missing fields ${missingFields.join(", ")}; requirements ${missingIds.join(", ")}`,
+      );
+    if (missingCareer.length)
+      issues.push(
+        `MEMO_PLAN_CAREER_COVERAGE: opportunityValue or decisionConditions missing ${missingCareer.join(", ")}`,
+      );
     throw new MemoPlanRepair(
-      ["opportunityValue", "decisionConditions"],
-      `MEMO_PLAN_CAREER_COVERAGE: opportunityValue or decisionConditions missing ${missingCareer.join(", ")}`,
-      [],
-      missingCareer,
+      [...new Set(assignments.flatMap((target) => target.sections))],
+      issues.join("; "),
+      [...new Set(assignments.filter((target) => target.kind === "requirement").map((target) => target.id))],
+      [...new Set(assignments.filter((target) => target.kind === "resolutionField").map((target) => target.id))],
+      assignments,
     );
+  }
+
 }
 
 export function validateTargetedPlanRepair(
@@ -104,6 +143,14 @@ export function validateTargetedPlanRepair(
   const allowedSections = new Set(targets.sections);
   const targetRequirements = new Set(targets.requirementIds);
   const targetFields = new Set(targets.resolutionFields);
+  const assignments = targets.assignments ?? [
+    ...targets.requirementIds.map((id) => ({ kind: "requirement" as const, id, sections: targets.sections })),
+    ...targets.resolutionFields.map((id) => ({ kind: "resolutionField" as const, id, sections: targets.sections })),
+  ];
+  const requirementTargetAllowed = (id: string, section: MemoPlanSection) =>
+    assignments.some((target) => target.kind === "requirement" && target.id === id && target.sections.includes(section));
+  const fieldTargetAllowed = (id: string, section: MemoPlanSection) =>
+    assignments.some((target) => target.kind === "resolutionField" && target.id === id && target.sections.includes(section));
   const allowedRequirementIds = new Set(
     targets.allowedRequirementIds ?? [
       ...previousPoints.flatMap((point) => point.requirementIds),
@@ -139,9 +186,9 @@ export function validateTargetedPlanRepair(
     const addedFields = candidate.resolutionFields.filter((field) => !prior.resolutionFields.includes(field));
     if ((addedRequirements.length || addedFields.length) && !allowedSections.has(candidate.section))
       throw new Error(`MEMO_PLAN_REPAIR_WRONG_SECTION:${candidate.section}`);
-    if (addedRequirements.some((id) => !targetRequirements.has(id)))
+    if (addedRequirements.some((id) => !requirementTargetAllowed(id, candidate.section)))
       throw new Error("MEMO_PLAN_REPAIR_ADDED_UNREQUESTED_REQUIREMENT");
-    if (addedFields.some((field) => !targetFields.has(field)))
+    if (addedFields.some((field) => !fieldTargetAllowed(field, candidate.section)))
       throw new Error("MEMO_PLAN_REPAIR_ADDED_UNREQUESTED_FIELD");
   }
 
@@ -154,20 +201,29 @@ export function validateTargetedPlanRepair(
     if (point.resolutionFields.some((field) => !allowedResolutionFields.has(field)))
       throw new Error("MEMO_PLAN_REPAIR_NEW_POINT_UNREQUESTED_FIELD");
     // The point may carry other canonical references for context, but it must
-    // exist because of this repair, not as an unrelated plan expansion.
+    // exist because of this repair and satisfy at least one requested mapping
+    // in a section that is valid for that mapping.
     if (
-      !point.requirementIds.some((id) => targetRequirements.has(id)) &&
-      !point.resolutionFields.some((field) => targetFields.has(field))
+      !point.requirementIds.some((id) => requirementTargetAllowed(id, point.section)) &&
+      !point.resolutionFields.some((field) => fieldTargetAllowed(field, point.section))
     )
       throw new Error("MEMO_PLAN_REPAIR_NEW_POINT_WITHOUT_TARGET");
   }
 
-  for (const id of targetRequirements)
-    if (!nextPoints.some((point) => allowedSections.has(point.section) && point.requirementIds.includes(id)))
-      throw new Error(`MEMO_PLAN_REPAIR_TARGET_REQUIREMENT_MISSING:${id}`);
-  for (const field of targetFields)
-    if (!nextPoints.some((point) => allowedSections.has(point.section) && point.resolutionFields.includes(field)))
-      throw new Error(`MEMO_PLAN_REPAIR_TARGET_FIELD_MISSING:${field}`);
+  for (const target of assignments) {
+    const covered = nextPoints.some((point) => {
+      if (!target.sections.includes(point.section)) return false;
+      return target.kind === "requirement"
+        ? point.requirementIds.includes(target.id)
+        : point.resolutionFields.includes(target.id);
+    });
+    if (!covered)
+      throw new Error(
+        target.kind === "requirement"
+          ? `MEMO_PLAN_REPAIR_TARGET_REQUIREMENT_MISSING:${target.id}`
+          : `MEMO_PLAN_REPAIR_TARGET_FIELD_MISSING:${target.id}`,
+      );
+  }
 }
 
 /** Storage and serving recheck coverage against the immutable decision, not prose. */
