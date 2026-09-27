@@ -342,12 +342,25 @@ async function canonicalProgress(run: import("../../data/sqlite/repositories/Sql
   const db = getDatabaseAdapter();
   const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
   const enrichment = await new EnrichmentQueue().getRunStats(run.id);
-  const evaluation = await db.one<{total: number; completed: number; failed: number}>(
-    `SELECT COUNT(*) AS total,
-      SUM(CASE WHEN er.status='SATISFIED' THEN 1 ELSE 0 END) AS completed,
-      SUM(CASE WHEN er.status='FAILED' THEN 1 ELSE 0 END) AS failed
-     FROM scrape_run_evaluation_requirements r JOIN evaluation_requirements er ON er.id=r.evaluation_requirement_id
-     WHERE r.run_id=? AND er.tenant_id=? AND er.person_id=?`, [run.id, run.tenantId, run.personId]);
+  const activeContext = run.searchPlanId
+    ? await db.one<{ context_fingerprint: string }>(
+        `SELECT context_fingerprint FROM active_evaluation_contexts
+         WHERE tenant_id=? AND person_id=? AND search_plan_id=?`,
+        [run.tenantId, run.personId, run.searchPlanId],
+      )
+    : null;
+  const evaluation = activeContext
+    ? await db.one<{total: number; completed: number; failed: number}>(
+        `SELECT COUNT(*) AS total,
+          SUM(CASE WHEN er.status='SATISFIED' THEN 1 ELSE 0 END) AS completed,
+          SUM(CASE WHEN er.status='FAILED' THEN 1 ELSE 0 END) AS failed
+         FROM scrape_run_evaluation_requirements r
+         JOIN evaluation_requirements er ON er.id=r.evaluation_requirement_id
+         WHERE r.run_id=? AND er.tenant_id=? AND er.person_id=? AND er.search_plan_id=?
+           AND er.evaluation_context_fingerprint=?`,
+        [run.id, run.tenantId, run.personId, run.searchPlanId, activeContext.context_fingerprint],
+      )
+    : { total: 0, completed: 0, failed: 0 };
   const active = ["queued", "initializing", "waiting_for_confirmation", "running", "stopping", "enriching", "completing"].includes(run.status);
   return {
     runId: run.id, tenantId: run.tenantId, personId: run.personId,
@@ -371,7 +384,7 @@ export const getActiveScrapeFn = createServerFn({ method: "GET" })
     const { resolveServingScope } = await import("../security/scope-resolver");
     const requested = requestedCandidateScope(data);
     const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
-    const run = await getRepositories().scrapeRuns.getLatestRun(scope);
+    const run = await getRepositories().scrapeRuns.getActiveRun(scope);
     return run ? canonicalProgress(run) : null;
   });
 
