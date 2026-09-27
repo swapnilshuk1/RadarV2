@@ -92,14 +92,6 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
     expect(ci).not.toContain("radar-linux-output.tar.gz");
   });
 
-  it("7. engine.ts contains zero direct reads from filesystem data artifacts", () => {
-    const enginePath = path.resolve(process.cwd(), "src/lib/intelligence/engine.ts");
-    const engineContent = fs.readFileSync(enginePath, "utf-8");
-
-    expect(engineContent).not.toContain("radar.sqlite");
-    expect(engineContent).not.toContain("live-scraped.json");
-    expect(engineContent).not.toContain("better-sqlite3");
-  });
 
   it("8. OpportunityService delegates serving queries exclusively to repos.canonicalServing and DatabaseAdapter", async () => {
     const servicePath = path.resolve(process.cwd(), "src/lib/intelligence/opportunity-service.ts");

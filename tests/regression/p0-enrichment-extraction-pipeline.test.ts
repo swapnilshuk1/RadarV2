@@ -4,7 +4,6 @@ import { JobProjectionBuilder } from "../../src/lib/intelligence/builders/JobPro
 import { CapabilityAssessmentEngine } from "../../src/lib/intelligence/engines/CapabilityAssessmentEngine";
 import { CandidateProjectionBuilderImpl } from "../../src/lib/intelligence/builders/CandidateProjectionBuilder";
 import { DecisionPolicyEngine } from "../../src/lib/intelligence/policy/DecisionPolicyEngine";
-import { invalidateEngineCache } from "../../src/lib/intelligence/engine";
 import type { DetailedCard } from "../../scripts/scraper/types";
 
 import { syntheticCandidateProfile as candidateProfile } from "../fixtures/synthetic-candidate-profile";
@@ -148,9 +147,6 @@ describe("RADAR V4 Pipeline Repair - Regression Suite", () => {
     expect(capEval.overallFit).toBeGreaterThan(0);
   });
 
-  it("Test 7: Enrichment completion triggers cache invalidation", () => {
-    expect(() => invalidateEngineCache()).not.toThrow();
-  });
 
   it("Test 8: Re-evaluation is idempotent and preserves user decisions structure", async () => {
     const extraction = await extract(mockFullCard, { mode: "deterministic" });

@@ -4,7 +4,6 @@ import { EnrichmentQueue } from "./scraper/persist/queue";
 import { extract } from "./scraper/extract/extractor";
 import { ingestIntoSqlite } from "./scraper/persist/ingest";
 import { writeExtraction, readExtractionIfFresh, writeLiveScraped, collectRecords } from "./scraper/persist/writer";
-import { invalidateEngineCache } from "../src/lib/intelligence/engine";
 import { EXTRACTOR_VERSION } from "./scraper/versions";
 import type { DetailedCard } from "./scraper/types";
 import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
@@ -257,15 +256,14 @@ export async function processJob(
       log(`Ingestion warnings for ${job.id}: ${report.warnings.join(", ")}`, "warn");
     }
 
-    // 3. Update system-of-record live-scraped.json & invalidate engine cache for auto re-evaluation
+    // 3. Update the live scraped corpus. Evaluation scheduling is durable and independent of this file cache.
     try {
       const records = collectRecords();
       if (records.length > 0) {
         writeLiveScraped(records);
       }
-      invalidateEngineCache();
     } catch (e: any) {
-      log(`[Enrich] Failed to update live-scraped.json or invalidate engine cache: ${e.message}`, "warn");
+      log(`[Enrich] Failed to update live-scraped.json: ${e.message}`, "warn");
     }
     
     // Ensure canonical_job_id and opportunity_version are set on enrichment_job before releasing requirements
