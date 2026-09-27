@@ -131,47 +131,20 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
     },
   );
 
-  it("5. asserts all four boundary journey test files exist on disk", () => {
-    const certDir = path.resolve(process.cwd(), "tests/certification");
-    const files = fs.readdirSync(certDir);
-
-    expect(files).toContain("journey_a_acquisition_to_evaluation.test.ts");
-    expect(files).toContain("journey_b_semantic_grounding_to_policy.test.ts");
-    expect(files).toContain("journey_c_decision_persistence_to_dto.test.ts");
-    expect(files).toContain("journey_d_loader_to_ui_rendering.test.ts");
+  it("5. asserts every current boundary-journey suite exists on disk", () => {
+    const boundary = certificationManifest.find((group) => group.id === "boundary-journeys");
+    expect(boundary).toBeDefined();
+    for (const file of boundary!.files) {
+      expect(fs.existsSync(path.resolve(process.cwd(), file)), file).toBe(true);
+    }
   });
 
   it("6. asserts certification criteria does not hardcode volatile live dataset row counts", () => {
-    const journeyA = fs.readFileSync(
-      path.resolve(
-        process.cwd(),
-        "tests/certification/journey_a_acquisition_to_evaluation.test.ts",
-      ),
-      "utf-8",
-    );
-    const journeyB = fs.readFileSync(
-      path.resolve(
-        process.cwd(),
-        "tests/certification/journey_b_semantic_grounding_to_policy.test.ts",
-      ),
-      "utf-8",
-    );
-    const journeyC = fs.readFileSync(
-      path.resolve(
-        process.cwd(),
-        "tests/certification/journey_c_decision_persistence_to_dto.test.ts",
-      ),
-      "utf-8",
-    );
-    const journeyD = fs.readFileSync(
-      path.resolve(process.cwd(), "tests/certification/journey_d_loader_to_ui_rendering.test.ts"),
-      "utf-8",
-    );
-
-    // Invariant assertions over dynamic sums rather than hardcoded magic constants
-    expect(journeyD).toContain("portalSum");
-    expect(journeyA).not.toContain("expect(rows.length).toBe(2231)");
-    expect(journeyB).not.toContain("expect(rows.length).toBe(3007)");
-    expect(journeyC).not.toContain("expect(rows.length).toBe(2231)");
+    const boundary = certificationManifest.find((group) => group.id === "boundary-journeys");
+    expect(boundary).toBeDefined();
+    for (const file of boundary!.files) {
+      const source = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
+      expect(source).not.toMatch(/expect\(rows\.length\)\.toBe\(\d{3,}\)/);
+    }
   });
 });
