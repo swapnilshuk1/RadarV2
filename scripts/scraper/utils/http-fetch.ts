@@ -406,6 +406,7 @@ export function extractJobFromHtml(
         codeRatio: 0,
         hasJobTitle: false,
         hasJobDescription: false,
+        boilerplateDetected: ["NO_SUBSTANTIVE_SANITIZED_DOM"],
         reasons: ["No targeted or sanitized DOM content found with >= 150 characters"]
       },
       outcome: "EXTRACTION_FAILURE",
