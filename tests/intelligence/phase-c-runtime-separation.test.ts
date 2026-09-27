@@ -28,6 +28,8 @@ describe("Phase C runtime separation", () => {
     expect(scraper).toContain("person_id");
     expect(scraper).toContain("portal_targets");
     expect(scraper).toContain("config_json");
+    expect(scraper).toContain("transitionRunStatus(scope, row.id, 'queued', 'initializing')");
+    expect(scraper).toContain("SCRAPE_WORKER_CLAIM_NOT_VISIBLE");
     expect(scraper).toContain("portals: portals.length ? portals : undefined");
     expect(source("scripts/scrape.ts")).toContain("opts.scope?.tenantId || opts.authContext?.tenantId");
     expect(evaluator).toContain("process.once(\"SIGTERM\"");

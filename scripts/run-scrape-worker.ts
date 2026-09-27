@@ -26,11 +26,13 @@ async function claimAndRun(): Promise<boolean> {
   );
   if (!row) return false;
   const scope = { tenantId: row.tenant_id, personId: row.person_id };
-  const claimed = await db.execute(
-    `UPDATE scrape_runs SET status='initializing',started_at=COALESCE(started_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=? AND person_id=? AND status='queued'`,
-    [row.id, scope.tenantId, scope.personId],
-  );
-  if (claimed.rowsAffected !== 1) return true;
+  const repos = getRepositories();
+  const claimed = await repos.scrapeRuns.transitionRunStatus(scope, row.id, 'queued', 'initializing');
+  if (!claimed) return true;
+  const claimedRun = await repos.scrapeRuns.getRun(scope, row.id);
+  if (claimedRun?.status !== 'initializing') {
+    throw new Error(`SCRAPE_WORKER_CLAIM_NOT_VISIBLE: durable status=${claimedRun?.status ?? 'missing'}`);
+  }
   try {
     // The durable run was authorized before enqueue. This worker consumes its
     // immutable tenant/person command and never fabricates an AuthContext.
@@ -59,7 +61,7 @@ async function claimAndRun(): Promise<boolean> {
     });
     await completion;
   } catch (error) {
-    await getRepositories().scrapeRuns.updateRunStatus(scope, row.id, "failed", error instanceof Error ? error.message : "SCRAPE_WORKER_FAILED");
+    await repos.scrapeRuns.updateRunStatus(scope, row.id, "failed", error instanceof Error ? error.message : "SCRAPE_WORKER_FAILED");
   }
   return true;
 }
