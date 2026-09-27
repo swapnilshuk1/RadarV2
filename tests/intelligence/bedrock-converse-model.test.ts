@@ -177,11 +177,11 @@ describe('Bedrock Converse JSON transport', () => {
     await expect(extractValidatedSourceClaims(model,{id:'invalid-json-jd',plane:'JD',title:'Role',locator:'test',text:'Lead growth.',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'},'JD-1-')).rejects.toThrow();
     expect(calls).toBe(4);
   });
-  it('reports empty source extraction distinctly after bounded local repairs', async () => {
+  it('stops repeated empty source extraction after one local repair', async () => {
     let attempts=0;
     const model:ReasoningModel={id:'empty-source-test',version:'1',async generate(){attempts++;return {claims:[]};}};
     await expect(extractValidatedSourceClaims(model,{id:'empty-jd',plane:'JD',title:'Captured page',locator:'test',text:'Navigation only',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'},'JD-1-')).rejects.toBeInstanceOf(EmptySourceEvidenceError);
-    expect(attempts).toBe(4);
+    expect(attempts).toBe(2);
   });
   it('sends the common structured request without putting a credential in its body', async () => {
     let url = ''; let init: RequestInit | undefined;

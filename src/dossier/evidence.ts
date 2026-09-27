@@ -112,10 +112,12 @@ export async function propose<T>(model: ReasoningModel, instruction: string, inp
 
     } catch (error) {
       if (error instanceof ModelProviderUnavailableError) throw error;
+      issue = error instanceof Error ? error.message : 'Invalid response';
+      const repeatedEmptySource = error instanceof EmptySourceEvidenceError && repairIssues.includes(issue);
       await model.discardResponse?.(previous);
+      if (repeatedEmptySource) throw error;
       lastError = error;
 
-      issue = error instanceof Error ? error.message : 'Invalid response';
       if (!repairIssues.includes(issue)) repairIssues.push(issue);
 
       console.warn(`Dossier proposal repair attempt ${attempt + 1}:`, issue);
