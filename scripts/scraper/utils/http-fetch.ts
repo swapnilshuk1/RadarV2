@@ -416,6 +416,42 @@ export function extractJobFromHtml(
   const rawHtml = matchedElement.html() || "";
   const rawText = matchedElement.text().replace(/\s+/g, " ").trim();
 
+  if (extractionMethod === "SANITIZED_DOM") {
+    const hasJobDocumentSignals = /responsibilities|requirements|qualifications|about the role|what you will do|what we(?:'re| are) looking for|experience required|years? of experience|role overview|job description/i.test(rawText);
+    const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const containsIdentity = (expected?: string) => {
+      if (!expected) return true;
+      const tokens = normalize(expected).split(" ").filter(token => token.length > 2);
+      if (!tokens.length) return true;
+      const haystack = normalize(rawText);
+      const matched = tokens.filter(token => haystack.includes(token)).length;
+      return matched >= Math.min(2, tokens.length);
+    };
+    if (!hasJobDocumentSignals || !containsIdentity(expectedTitle) || !containsIdentity(expectedCompany)) {
+      return {
+        success: false,
+        rawHtml,
+        rawText,
+        extractedTitle,
+        extractedCompany,
+        method: extractionMethod,
+        quality: {
+          tier: "NON_JOB",
+          confidence: 0.95,
+          wordCount: rawText.split(/\s+/).filter(Boolean).length,
+          characterCount: rawText.length,
+          codeRatio: 0,
+          hasJobTitle: containsIdentity(expectedTitle),
+          hasJobDescription: hasJobDocumentSignals,
+          boilerplateDetected: ["SANITIZED_BODY_NOT_JOB_DOCUMENT"],
+          reasons: ["Sanitized body lacks job-document structure or expected listing identity"],
+        },
+        outcome: "EXTRACTION_FAILURE",
+        error: "Sanitized body is not a trustworthy job document",
+      };
+    }
+  }
+
   // --- Tier 3: Content-Quality & Boilerplate Gate ---
   const quality = evaluateContentQuality(rawText, expectedTitle, expectedCompany);
 
