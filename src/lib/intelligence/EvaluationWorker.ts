@@ -86,6 +86,21 @@ export class EvaluationWorker {
        WHERE er.status = 'READY'
          AND ej.status IN ('staged_pending', 'staged_processing')
          AND COALESCE((SELECT desired_state FROM evaluation_runtime_control c WHERE c.tenant_id=ej.tenant_id AND c.person_id=ej.person_id), 'RUNNING') = 'RUNNING'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM search_plan_candidates newer_spc
+           JOIN opportunity_versions newer_ov
+             ON newer_ov.id = newer_spc.opportunity_version
+            AND newer_ov.canonical_job_id = newer_spc.canonical_job_id
+           JOIN opportunity_versions current_ov
+             ON current_ov.id = ej.opportunity_version
+            AND current_ov.canonical_job_id = ej.canonical_job_id
+           WHERE newer_spc.tenant_id = ej.tenant_id
+             AND newer_spc.person_id = ej.person_id
+             AND newer_spc.search_plan_id = ej.search_plan_id
+             AND newer_spc.canonical_job_id = ej.canonical_job_id
+             AND newer_ov.created_at > current_ov.created_at
+         )
          ${contextFingerprint
            ? 'AND ej.evaluation_context_fingerprint = ?'
            : `AND EXISTS (

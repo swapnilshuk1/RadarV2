@@ -168,6 +168,39 @@ describe('staged enrichment dependency lifecycle', () => {
     await new EnrichmentQueue(db).failEvaluationRequirements('job','version');
     expect(await state()).toMatchObject({status:'staged_dead_letter',requirement:'FAILED',blocked_reason:'ENRICHMENT_FAILED'});
   });
+  it('claims the newest projected version and prunes superseded non-completed work', async () => {
+    await db.execute(`UPDATE opportunity_versions
+      SET acquisition_status='ACQUIRED',lifecycle_state='ACTIVE',created_at='2026-01-01 00:00:00'
+      WHERE id='version'`);
+    await enrichment();
+    await new EvaluationWorkScheduler(db).ensureWork(identity);
+
+    const newerVersion='version-new';
+    const newerContent='Updated complete job description with materially corrected source evidence';
+    await db.execute(`INSERT INTO opportunity_versions(
+      id,canonical_job_id,content_hash,job_title,raw_content,acquisition_status,lifecycle_state,created_at
+    ) VALUES (?,?,?,?,?,'ACQUIRED','ACTIVE','2026-09-27 00:00:00')`,[
+      newerVersion,
+      'job',
+      computeContentHash({title:'Head of Growth',companyName:null,location:null,employmentType:null,rawContent:newerContent}),
+      'Head of Growth',
+      newerContent,
+    ]);
+    await db.execute(`INSERT INTO search_plan_candidates(
+      tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,attention_decision
+    ) VALUES ('tenant_A','person_A','plan_A','job',?,'CANDIDATE')`,[newerVersion]);
+    await enrichment(newerVersion);
+    await new EvaluationWorkScheduler(db).ensureWork({...identity,opportunityVersion:newerVersion});
+
+    const worker=new EvaluationWorker(db);
+    expect((await worker.claimNextJob())?.opportunityVersion).toBe(newerVersion);
+
+    await new RunReconciliationService(db).repairDanglingWork();
+    expect(await db.one(`SELECT COUNT(*) n FROM evaluation_jobs WHERE opportunity_version='version'`)).toEqual({n:0});
+    expect(await db.one(`SELECT COUNT(*) n FROM evaluation_requirements WHERE opportunity_version='version'`)).toEqual({n:0});
+    expect(await db.one(`SELECT status FROM evaluation_jobs WHERE opportunity_version=?`,[newerVersion])).toEqual({status:'staged_processing'});
+    expect(await db.one(`SELECT status FROM evaluation_requirements WHERE opportunity_version=?`,[newerVersion])).toEqual({status:'READY'});
+  });
   it('reconciliation creates a missing staged-v8 queue row', async () => {
     await enrichment();
     await new EvaluationWorkScheduler(db).ensureWork(identity);

@@ -160,6 +160,59 @@ export class RunReconciliationService {
     let requirementsHealed = 0;
     let jobsCreated = 0;
 
+    // A newer projected version supersedes obsolete executable/failed work for
+    // the same canonical opportunity in the active context. Completed history
+    // remains immutable; in-flight processing is never deleted underneath a worker.
+    await this.db.execute(
+      `DELETE FROM evaluation_jobs
+       WHERE status IN ('staged_pending','staged_waiting_enrichment','staged_dead_letter')
+         AND EXISTS (
+           SELECT 1
+           FROM active_evaluation_contexts aec
+           JOIN opportunity_versions current_ov
+             ON current_ov.id=evaluation_jobs.opportunity_version
+            AND current_ov.canonical_job_id=evaluation_jobs.canonical_job_id
+           JOIN search_plan_candidates newer_spc
+             ON newer_spc.tenant_id=evaluation_jobs.tenant_id
+            AND newer_spc.person_id=evaluation_jobs.person_id
+            AND newer_spc.search_plan_id=evaluation_jobs.search_plan_id
+            AND newer_spc.canonical_job_id=evaluation_jobs.canonical_job_id
+           JOIN opportunity_versions newer_ov
+             ON newer_ov.id=newer_spc.opportunity_version
+            AND newer_ov.canonical_job_id=newer_spc.canonical_job_id
+           WHERE aec.tenant_id=evaluation_jobs.tenant_id
+             AND aec.person_id=evaluation_jobs.person_id
+             AND aec.search_plan_id=evaluation_jobs.search_plan_id
+             AND aec.context_fingerprint=evaluation_jobs.evaluation_context_fingerprint
+             AND newer_ov.created_at > current_ov.created_at
+         )`,
+    );
+    const supersededRequirements = await this.db.execute(
+      `DELETE FROM evaluation_requirements
+       WHERE status IN ('READY','WAITING_ENRICHMENT','FAILED')
+         AND EXISTS (
+           SELECT 1
+           FROM active_evaluation_contexts aec
+           JOIN opportunity_versions current_ov
+             ON current_ov.id=evaluation_requirements.opportunity_version
+            AND current_ov.canonical_job_id=evaluation_requirements.canonical_job_id
+           JOIN search_plan_candidates newer_spc
+             ON newer_spc.tenant_id=evaluation_requirements.tenant_id
+            AND newer_spc.person_id=evaluation_requirements.person_id
+            AND newer_spc.search_plan_id=evaluation_requirements.search_plan_id
+            AND newer_spc.canonical_job_id=evaluation_requirements.canonical_job_id
+           JOIN opportunity_versions newer_ov
+             ON newer_ov.id=newer_spc.opportunity_version
+            AND newer_ov.canonical_job_id=newer_spc.canonical_job_id
+           WHERE aec.tenant_id=evaluation_requirements.tenant_id
+             AND aec.person_id=evaluation_requirements.person_id
+             AND aec.search_plan_id=evaluation_requirements.search_plan_id
+             AND aec.context_fingerprint=evaluation_requirements.evaluation_context_fingerprint
+             AND newer_ov.created_at > current_ov.created_at
+         )`,
+    );
+    requirementsHealed += supersededRequirements.rowsAffected;
+
     // 0. An evaluation obligation without exact enrichment work is invalid in
     // staged-v8. Fresh ingestion creates enrichment first; context rematerialization
     // must not leave permanent WAITING_ENRICHMENT rows behind.
