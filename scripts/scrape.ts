@@ -520,7 +520,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     evaluationProjection = "DEFERRED_NO_SEARCH_PLAN";
     log(`Running in offline unauthenticated mode: using manual/default keywords (${keywords.length} queries).`);
   }
-  
+
   const resolvedKeywords = keywords;
   const resolvedVariants = opts.variants || (resolvedPlan ? compileMultiLocationCoverageVariants(resolvedPlan, portals) : undefined);
   const variantsSignature = computeVariantsSignature(resolvedVariants);
@@ -757,11 +757,11 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               headless: runtimeOpts.headless,
             }
           );
-        } catch (err: any) { 
-          plog(`context launch failed: ${err.message}`, "error"); 
+        } catch (err: any) {
+          plog(`context launch failed: ${err.message}`, "error");
           mgr.updatePortalHealth(portal, { status: "error", details: err.message });
           mgr.recordActivity(`Error connecting to ${portal}: ${err.message}`);
-          
+
           const errCode = err?.code || "PORTAL_INITIALIZATION_FAILED";
           for (const u of mgr.manifest.units) {
             if (u.portal === portal && (u.status === "pending" || u.status === "running")) {
@@ -771,9 +771,9 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               });
             }
           }
-          return null; 
+          return null;
         }
-        
+
         runtime.contexts.set(portal, browserContext);
         const pageManager = new PageManager(portal, browserContext);
         runtime.pageManagers.set(portal, pageManager);
@@ -806,7 +806,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           authSession: authSession || undefined,
           logger: plog,
         });
-        
+
         if (sessionStatus === "error") {
           plog(`session error — skipping portal`, "warn");
           mgr.updatePortalHealth(portal, { status: "error", details: `Session error` });
@@ -1268,7 +1268,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         mgr.recordActivity(`Acquisition complete · Local run finalized as completed`);
       }
       const runDurationS = ((new Date().getTime() - new Date(mgr.manifest.startedAt).getTime()) / 1000).toFixed(1);
-      
+
       const { generateAcquisitionReport } = await import("./scraper/run/report");
       generateAcquisitionReport(mgr.runId);
 
@@ -1614,7 +1614,7 @@ export async function processUnit(
     });
     let cards: FeedCard[] = [];
     const pm = pageManager;
-    
+
     try {
       cards = await handler.listCards({
         runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
@@ -1661,11 +1661,11 @@ export async function processUnit(
       else if (msg.includes("navigat")) errorCategory = "Navigation";
       else if (msg.includes("selector")) errorCategory = "Selector";
       else if (msg.includes("blocked") || msg.includes("rate limit") || msg.includes("auth_expired") || msg.includes("429") || msg.includes("406")) errorCategory = "Blocked";
-      
+
       if (errorCategory === "Blocked") {
         mgr.updatePortalHealth(unit.portal, { status: "error", details: "Blocked by anti-bot", score: 0 });
       }
-      
+
       log(`listCards failed for ${unit.id} [${errorCategory}]: ${err.message}`, "error");
       outcome.status = "failed";
       outcome.warnings.push(`listCards failed: ${err.message}`);
@@ -2003,7 +2003,7 @@ export async function processUnit(
                 extractionMethod: "FALLBACK_CARD",
                 details: `Direct rich discovery payload (${feedCard.rawText.length} chars)`
               });
-            } 
+            }
             // Tier 2: Native Naukri Detail Acquisition (source truth before any external apply/ATS redirect)
             if (!usedNaukriRichDiscovery && !portalPauseTriggered && outcome.pausePortalQueue !== true) {
               enrichmentStatus = "NOT_APPLICABLE";
@@ -2144,7 +2144,7 @@ export async function processUnit(
                   failureClass: atsRes.failureClass,
                 };
               }
-            } 
+            }
 
           } else {
           let usedRichDiscovery = false;
@@ -2604,7 +2604,7 @@ export async function processUnit(
             evaluationEvidence: { state: "PENDING" },
             telemetry: { cardExtractMs: 0, detailExtractMs: detail.fetchDurationMs || 0, totalMs: detail.fetchDurationMs || 0 },
           };
-          
+
           writtenSnapshotPath = writeSnapshot(detailedCard);
           if (writtenSnapshotPath) {
             mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: writtenSnapshotPath });
@@ -2907,10 +2907,10 @@ export async function processUnit(
         }
       }
     }
-    
+
     const cardsParsed = cards.length;
     const classified = canonicalDuplicates + ledgerKnown + hardFiltered + identityFailed + integrityFailed + validationFailed + canonicalIngestFailed + novelAccepted + cancelledOrPruned;
-    
+
     if (classified !== cardsParsed) {
       log(`[AccountingInvariantViolation] cardsParsed=${cardsParsed}, classified=${classified} (Duplicates=${canonicalDuplicates}, Ledger=${ledgerKnown}, HardFiltered=${hardFiltered}, IdentityFailed=${identityFailed}, IntegrityFailed=${integrityFailed}, ValidationFailed=${validationFailed}, CanonicalIngestFailed=${canonicalIngestFailed}, NovelAccepted=${novelAccepted}, CancelledPruned=${cancelledOrPruned})`, "warn");
     }
@@ -2922,7 +2922,7 @@ export async function processUnit(
     const duplicates = canonicalDuplicates;
     const rejected = ledgerKnown + hardFiltered + identityFailed + integrityFailed + validationFailed + canonicalIngestFailed;
     const opportunities = novelAccepted;
-    
+
     outcome.detailCount = novelAcquired;
     outcome.opportunities = opportunities;
     outcome.factsCreated = 0; // Enriched downstream
@@ -2932,11 +2932,11 @@ export async function processUnit(
 
     let decision: "CONTINUE" | "STOP" = "CONTINUE";
     let reason = "DiscoveryRateAboveThreshold";
-    
+
     if (unit.definitionId) {
       const minSourceDiscoveryPerPage = 2; // threshold for a source page exposing too few listings
       const maxConsecutiveLowYield = 2; // stop after this many consecutive low-yield pages
-      
+
       // Gate 4: Source discovery yield measures unique valid portal identities exposed by this source work unit
       const uniqueSourceIdentities = new Set<string>();
       for (const card of cards) {
@@ -2951,7 +2951,7 @@ export async function processUnit(
       // must not inherit the coverage lane's low-yield streak.
       const yieldKey = acquisitionSurfaceKey(unit.variant, unit.portal, unit.keyword);
       let streak = mgr.lowYieldStreaks.get(yieldKey) || 0;
-      
+
       if (currentLowYield) {
         streak += 1;
         mgr.lowYieldStreaks.set(yieldKey, streak);
@@ -3123,7 +3123,7 @@ export async function processUnit(
   } finally {
     let terminalStatus: string = outcome.status;
     if (terminalStatus === "completed") terminalStatus = "done";
-    
+
     mgr.updateUnit(unit.id, { status: terminalStatus as any, finishedAt: new Date().toISOString() });
     mgr.journal.append({ type: "unit_done", unitId: unit.id, outcome });
   }
@@ -3162,9 +3162,9 @@ function printAcquisitionTelemetry(mgr: RunController) {
     let cardsSeen = 0;
     let duplicates = 0;
     let stopReason = "Exhausted";
-    
+
     const kw = units[0]?.keyword || defId;
-    
+
     for (const u of units) {
       if (u.status === "done" || u.status === "skipped_empty" || u.status === "failed") pagesCrawled++;
       if (u.decisionRecord) {
@@ -3174,7 +3174,7 @@ function printAcquisitionTelemetry(mgr: RunController) {
           stopReason = u.decisionRecord.reason;
         }
       }
-      
+
       const pStat = portalStats.get(u.portal);
       if (pStat) {
         pStat.pagesAttempted++;
@@ -3185,7 +3185,7 @@ function printAcquisitionTelemetry(mgr: RunController) {
         }
       }
     }
-    
+
     totalCards += cardsSeen;
     totalUnique += (cardsSeen - duplicates);
 
@@ -3203,7 +3203,7 @@ function printAcquisitionTelemetry(mgr: RunController) {
   console.log(`\n============================================================`);
   console.log(`                   PORTAL HEALTH SUMMARY`);
   console.log(`============================================================\n`);
-  
+
   portalStats.forEach((stats, portal) => {
     const avgLatency = stats.pagesAttempted > 0 ? (stats.totalMs / stats.pagesAttempted / 1000).toFixed(1) : "0.0";
     const health = mgr.manifest.portalHealth?.[portal]?.score ?? 100;
@@ -3232,9 +3232,9 @@ function printAcquisitionTelemetry(mgr: RunController) {
 function collectRecords(): unknown[] {
   const records: unknown[] = [];
   const seenJobHash = new Set<string>();
-  
+
   if (!fs.existsSync(EXTRACTION_DIR)) return records;
-  
+
   const files = fs.readdirSync(EXTRACTION_DIR);
   for (const f of files) {
     if (!f.endsWith(".json")) continue;
@@ -3244,7 +3244,7 @@ function collectRecords(): unknown[] {
       if (seenJobHash.has(parsed.jobHash)) continue;
       seenJobHash.add(parsed.jobHash);
       records.push(parsed);
-    } catch (err: any) { 
+    } catch (err: any) {
       console.error(`collectRecords error for ${f}:`, err);
     }
   }
@@ -3252,9 +3252,9 @@ function collectRecords(): unknown[] {
 }
 
 // Execute if run directly from the CLI
-const isMainModule = typeof process !== 'undefined' && 
-  process.argv && 
-  process.argv.length >= 2 && 
+const isMainModule = typeof process !== 'undefined' &&
+  process.argv &&
+  process.argv.length >= 2 &&
   (process.argv[1].endsWith('scrape.ts') || process.argv[1].endsWith('scrape')) &&
   process.env.npm_lifecycle_event !== 'dev' &&
   !process.argv[1].includes('node_modules');

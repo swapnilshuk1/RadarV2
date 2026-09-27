@@ -544,11 +544,10 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   const doExtract = async (execPage?: any) => {
     const targetPage = execPage || page;
     try {
+      // Let Chromium generate Sec-Fetch-* navigation headers. Manually
+      // overriding them causes Naukri to return an unhydrated app shell.
       await targetPage.setExtraHTTPHeaders({
         "Referer": ctx.searchUrl || "https://www.naukri.com/",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "same-origin",
       }).catch(() => {});
       // Do not suppress navigation failures. Continuing after a timed-out
       // navigation turns a useful transport signal into a later, opaque
@@ -586,9 +585,43 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
           failureClass: "HTTP_SERVER_ERROR" as FailureClass,
         };
       }
+
+      const browserTitle = await targetPage.title().catch(() => "");
+      const browserHtml = await targetPage.content().catch(() => "");
+      const browserState = classifyNaukriHtml(browserHtml, browserTitle);
+      if (browserState.state === "BLOCKED") {
+        ctx.logger(`[${ctx.portal}] Native detail blocked for ${url}: ${browserTitle || "access challenge"}`);
+        return {
+          fetched: false,
+          fetchError: browserTitle || "Native detail blocked",
+          fetchDurationMs: Date.now() - t0,
+          httpStatus,
+          failureClass: "BOT_CHALLENGE_BLOCK" as FailureClass,
+        };
+      }
       
       await jitter(400, 900);
-      await targetPage.waitForSelector(browserContentSelectors, { timeout: 6000 }).catch(() => {});
+      // Naukri detail pages hydrate after DOMContentLoaded. Waiting merely for
+      // <main> is insufficient because the shell appears before the JD. Wait
+      // for substantive *visible* job content so extraction cannot race the SPA.
+      await targetPage.waitForFunction(() => {
+        const selectors = [
+          "#jobs-desc",
+          "[class*='components_jd']",
+          "[class*='job-desc']",
+          "[class*='dang-inner-html']",
+          "[class*='JDSummary']",
+          "[class*='jobDescription']",
+        ];
+        const hasSubstantiveContainer = selectors.some((selector) =>
+          Array.from(document.querySelectorAll(selector)).some((node: any) =>
+            ((node.innerText || "") as string).replace(/\s+/g, " ").trim().length >= 200,
+          ),
+        );
+        if (hasSubstantiveContainer) return true;
+        const body = (document.body?.innerText || "").replace(/\s+/g, " ").trim();
+        return body.length >= 500 && /\bjob description\b/i.test(body);
+      }, { timeout: 10000 }).catch(() => {});
 
       const parts: { name: string; text: string; html: string }[] = [];
 
@@ -712,12 +745,14 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       } else {
         // Fallback to main or body
         const mainLoc = targetPage.locator("main, article, [role='main']").first();
-        const mainTxt = ((await mainLoc.textContent({ timeout: 1000 }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
+        const mainTxt = ((await mainLoc.innerText({ timeout: 1000 }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
         if (mainTxt.length >= 50) {
           rawText = mainTxt;
           rawHtml = (await mainLoc.innerHTML().catch(() => "")) || "";
         } else {
-          const bodyTxt = ((await targetPage.locator("body").textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+          // Visible text only: textContent includes Next.js/RSC script payloads and can
+          // turn an otherwise valid Naukri detail page into synthetic "JD" content.
+          const bodyTxt = ((await targetPage.locator("body").innerText().catch(() => "")) || "").replace(/\s+/g, " ").trim();
           if (bodyTxt.length >= 50) {
             rawText = bodyTxt;
             rawHtml = (await targetPage.locator("body").innerHTML().catch(() => "")) || "";
