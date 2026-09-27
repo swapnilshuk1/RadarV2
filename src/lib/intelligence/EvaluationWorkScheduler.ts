@@ -32,8 +32,9 @@ export class EvaluationWorkScheduler {
       [input.canonicalJobId,input.opportunityVersion],
     );
     const ready=enrichment?.status==='COMPLETE';
-    const requirementStatus=ready?'READY':'WAITING_ENRICHMENT';
-    const jobStatus=ready?'staged_pending':'staged_waiting_enrichment';
+    const failed=enrichment?.status==='FAILED';
+    const requirementStatus=failed?'FAILED':ready?'READY':'WAITING_ENRICHMENT';
+    const jobStatus=failed?'staged_dead_letter':ready?'staged_pending':'staged_waiting_enrichment';
     const suffix=createHash('sha256').update(input.evaluationContextFingerprint).digest('hex').slice(0,12);
     const jobId=`evaljob_${input.tenantId}_${input.searchPlanId}_${input.canonicalJobId}_${input.opportunityVersion}_${suffix}`.replace(/[^a-zA-Z0-9_-]/g,'_');
     const reqId=`evalreq_${input.tenantId}_${input.searchPlanId}_${input.canonicalJobId}_${input.opportunityVersion}_${suffix}`.replace(/[^a-zA-Z0-9_-]/g,'_');
@@ -52,13 +53,20 @@ export class EvaluationWorkScheduler {
         [input.tenantId,input.personId,input.searchPlanId,input.canonicalJobId,input.opportunityVersion,input.evaluationContextFingerprint],
       );
       if(requirement?.status==='FAILED'||requirement?.status==='SATISFIED') return requirement.status;
+      // No enrichment work means there is nothing for the evaluator queue to
+      // wait on. Keep the durable requirement pending, but do not manufacture
+      // an evaluator job that reconciliation would later dead-letter.
+      if(!enrichment) return requirementStatus;
       await tx.execute(
-        `INSERT INTO evaluation_jobs (id,tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,status,attempts,max_attempts,next_attempt_at)
-         VALUES (?,?,?,?,?,?,?, ?,0,3,CURRENT_TIMESTAMP)
+        `INSERT INTO evaluation_jobs (id,tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,status,attempts,max_attempts,next_attempt_at,last_error)
+         VALUES (?,?,?,?,?,?,?, ?,0,3,CURRENT_TIMESTAMP,?)
          ON CONFLICT(tenant_id,search_plan_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint)
-         DO UPDATE SET status='staged_pending'
-         WHERE evaluation_jobs.status='staged_waiting_enrichment' AND excluded.status='staged_pending'`,
-        [jobId,input.tenantId,input.personId,input.searchPlanId,input.canonicalJobId,input.opportunityVersion,input.evaluationContextFingerprint,jobStatus],
+         DO UPDATE SET status=CASE
+           WHEN excluded.status='staged_pending' AND evaluation_jobs.status='staged_waiting_enrichment' THEN 'staged_pending'
+           WHEN excluded.status='staged_dead_letter' THEN 'staged_dead_letter'
+           ELSE evaluation_jobs.status END,
+           last_error=CASE WHEN excluded.status='staged_dead_letter' THEN 'ENRICHMENT_FAILED' ELSE evaluation_jobs.last_error END`,
+        [jobId,input.tenantId,input.personId,input.searchPlanId,input.canonicalJobId,input.opportunityVersion,input.evaluationContextFingerprint,jobStatus,failed?'ENRICHMENT_FAILED':null],
       );
       return requirementStatus;
     });

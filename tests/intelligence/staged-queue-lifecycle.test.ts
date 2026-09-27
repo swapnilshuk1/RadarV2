@@ -137,19 +137,21 @@ describe('staged enrichment dependency lifecycle', () => {
     const queue = new EnrichmentQueue(db);
     expect(await queue.releaseEvaluationRequirements('job','other-version')).toBe(0);
     expect(await queue.releaseEvaluationRequirements('job','version','2.0.0')).toBe(0);
-    expect(await state()).toMatchObject({status:'staged_waiting_enrichment',requirement:'WAITING_ENRICHMENT'});
+    expect(await db.one(`SELECT status,blocked_reason FROM evaluation_requirements`)).toEqual({status:'WAITING_ENRICHMENT',blocked_reason:null});
+    expect(await db.one(`SELECT COUNT(*) n FROM evaluation_jobs`)).toEqual({n:0});
     expect(await new EvaluationWorker(db).claimNextJob()).toBeNull();
   });
-  it('reconciles a missing dependency to a matching terminal queue state without resurrection', async () => {
+  it('keeps a missing enrichment dependency out of the evaluator queue without dead-lettering it', async () => {
     await new EvaluationWorkScheduler(db).ensureWork(identity);
     await new RunReconciliationService(db).repairDanglingWork();
-    expect(await state()).toMatchObject({status:'staged_dead_letter',requirement:'FAILED',blocked_reason:'MISSING_ENRICHMENT_JOB'});
+    expect(await db.one(`SELECT status,blocked_reason FROM evaluation_requirements`)).toEqual({status:'WAITING_ENRICHMENT',blocked_reason:null});
+    expect(await db.one(`SELECT COUNT(*) n FROM evaluation_jobs`)).toEqual({n:0});
     await enrichment();
-    expect(await new EnrichmentQueue(db).releaseEvaluationRequirements('job','version')).toBe(0);
-    await new EvaluationWorkScheduler(db).ensureWork(identity);
-    expect(await state()).toMatchObject({status:'staged_dead_letter',requirement:'FAILED'});
+    expect(await new EnrichmentQueue(db).releaseEvaluationRequirements('job','version')).toBe(1);
+    expect(await state()).toMatchObject({status:'staged_pending',requirement:'READY'});
   });
   it('fails both dependency rows when enrichment permanently fails', async () => {
+    await enrichment('version','1.0.0','RUNNING');
     await new EvaluationWorkScheduler(db).ensureWork(identity);
     await new EnrichmentQueue(db).failEvaluationRequirements('job','version');
     expect(await state()).toMatchObject({status:'staged_dead_letter',requirement:'FAILED',blocked_reason:'ENRICHMENT_FAILED'});
@@ -162,8 +164,8 @@ describe('staged enrichment dependency lifecycle', () => {
     expect(await state()).toMatchObject({status:'staged_pending',requirement:'READY'});
   });
   it('never releases waiting work before the exact enrichment completes',async()=>{
-    await new EvaluationWorkScheduler(db).ensureWork(identity);
     await enrichment('version','1.0.0','RUNNING');
+    await new EvaluationWorkScheduler(db).ensureWork(identity);
     expect(await new EnrichmentQueue(db).releaseEvaluationRequirements('job','version')).toBe(0);
     expect(await state()).toMatchObject({status:'staged_waiting_enrichment',requirement:'WAITING_ENRICHMENT'});
   });

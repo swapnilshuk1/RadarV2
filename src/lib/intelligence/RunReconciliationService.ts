@@ -203,20 +203,10 @@ export class RunReconciliationService {
       requirementsHealed += await failEvaluationDependency(this.db, req.id, 'ENRICHMENT_FAILED');
     }
 
-    // 2b. WAITING_ENRICHMENT -> FAILED when NO matching enrichment job exists at all
-    const missingEnrichments = await this.db.many<{ id: string }>(
-      `SELECT er.id
-       FROM evaluation_requirements er
-       LEFT JOIN enrichment_jobs ej
-         ON er.canonical_job_id = ej.canonical_job_id
-        AND er.opportunity_version = ej.opportunity_version
-        AND er.required_enrichment_pipeline_version = ej.pipeline_version
-       WHERE er.status = 'WAITING_ENRICHMENT' AND ej.id IS NULL`
-    );
-
-    for (const req of missingEnrichments) {
-      requirementsHealed += await failEvaluationDependency(this.db, req.id, 'MISSING_ENRICHMENT_JOB');
-    }
+    // Missing enrichment work is not an evaluation failure. Current ingestion
+    // creates enrichment durably before scheduling evaluation; historical or
+    // rematerialized candidates without an enrichment job simply remain
+    // WAITING_ENRICHMENT and must not create/dead-letter evaluator work.
 
     // 3. For all READY requirements, ensure evaluation job exists in appropriate state
     const readyReqs = await this.db.many<{

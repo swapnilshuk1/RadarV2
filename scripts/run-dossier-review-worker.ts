@@ -6,7 +6,6 @@ import { DossierReviewWorker } from "../src/lib/intelligence/staged/DossierRevie
 import { createSqliteModelInvocationSink } from "../src/lib/model/model-invocation";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 
-const REVIEW_HEALTH_INTERVAL_MS = 5 * 60_000;
 const BASE_IDLE_POLL_MS = 5_000;
 const MAX_IDLE_POLL_MS = 30_000;
 
@@ -25,7 +24,6 @@ const worker = new DossierReviewWorker(
     }),
 );
 let stopping = false;
-let lastHealthCheckAt = 0;
 let idlePolls = 0;
 process.on("SIGINT", () => {
   stopping = true;
@@ -45,15 +43,6 @@ do {
       if (result.status === "needs_attention") runtimeLog("warn", "dossier_review_needs_attention", { status: result.status });
     }
     if (process.argv.includes("--once")) break;
-    const now = Date.now();
-    if (now - lastHealthCheckAt >= REVIEW_HEALTH_INTERVAL_MS) {
-      lastHealthCheckAt = now;
-      const health = await db.one<{ pending: number; attention: number; oldest: number | null }>(
-        `SELECT SUM(CASE WHEN status IN ('pending','retry','processing') THEN 1 ELSE 0 END) pending,SUM(CASE WHEN status='needs_attention' THEN 1 ELSE 0 END) attention,MIN(CASE WHEN status IN ('pending','retry','processing') THEN created_at END) oldest FROM dossier_review_jobs`,
-      );
-      if ((health?.attention ?? 0) > 0 || (health?.oldest && now - health.oldest > 3600_000))
-        runtimeLog("warn", "dossier_review_queue_attention", { pending: health?.pending ?? 0, attention: health?.attention ?? 0 });
-    }
   } catch {
     runtimeLog("error", "dossier_review_poll_error");
     if (process.argv.includes("--once")) {
