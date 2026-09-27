@@ -2,8 +2,6 @@ import { createFileRoute, notFound, useRouter, Link } from "@tanstack/react-rout
 import { useEffect, useState } from "react";
 import {
   type DecisionVerb,
-  type ServedOpportunity,
-  type EvaluatedOpportunity,
   isEvaluated,
   isUnmaterialized,
   isUnavailable,
@@ -11,8 +9,6 @@ import {
 import { getOpportunityDetailsFn, requestDetailedDossierFn, requestFactualVerificationFn } from "../lib/intelligence/opportunity-server";
 import { useDecisions } from "../lib/decisions-store";
 import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";
-import { ReadingSurface } from "@/components/radar/opportunity/surfaces/ReadingSurface";
-import { ExecutiveBriefingSurface } from "@/components/radar/opportunity/surfaces/ExecutiveBriefingSurface";
 import { DossierView } from "@/dossier/DossierView";
 import { isExternalPostingUrl } from "@/lib/acquisition/external-posting-url";
 
@@ -64,8 +60,7 @@ export function OpportunityBriefView() {
   const waitingForReview =
     isEvaluated(o) &&
     (o.memoReviewState === "preparing" ||
-      o.memoReviewState === "pending" ||
-      o.memoReviewState === "withheld");
+        o.memoReviewState === "withheld");
   useEffect(() => {
     if (!waitingForReview) return;
     let busy = false;
@@ -341,126 +336,88 @@ export function OpportunityBriefView() {
   if (!isEvaluated(o)) {
     return null;
   }
-  const evalOpp = o;
 
-  const presentation = evalOpp.dossierPresentation;
-  if (presentation) {
+  if (o.decision === "PASS" || o.engineRecommendation?.engineVerdict === "PASS") {
     return (
-      <>
+      <main className="memo-container py-10 space-y-6">
         {decisionFeedback}
-        <div className="hidden lg:block">
-          <ReadingSurface
-            opportunity={evalOpp}
-            brief={presentation.brief}
-            dossierState={dossierState}
-            decide={decide}
-            neighbors={neighbors}
-            currentIndex={currentIndex}
-            totalCount={totalCount}
-            jobProj={presentation.jobProjection}
-            executionPkg={presentation.executionPackage}
-            rawDimensions={[...presentation.rawDimensions]}
-            generatedAt={presentation.evaluatedAt ?? presentation.generatedAt}
-            evaluatedAt={presentation.evaluatedAt}
-            focusTopic={presentation.focusTopic}
-            whyRoleExists={presentation.whyRoleExists}
-            scope={scope}
-          />
-        </div>
-        <div className="lg:hidden">
-          <ExecutiveBriefingSurface
-            opportunity={evalOpp}
-            brief={presentation.brief}
-            dossierState={dossierState}
-            decide={decide}
-            neighbors={neighbors}
-            currentIndex={currentIndex}
-            totalCount={totalCount}
-            jobProj={presentation.jobProjection}
-            executionPkg={presentation.executionPackage}
-            whyRoleExists={presentation.whyRoleExists}
-            scope={scope}
-          />
-        </div>
-      </>
+        <Link to="/" search={scope} className="text-primary hover:underline">
+          Return to Shortlist
+        </Link>
+        <header className="border-b border-border pb-6">
+          <h1 className="mt-2 font-serif text-4xl text-foreground">{o.role}</h1>
+          <p className="mt-2 text-muted-foreground">{o.company} ? {o.location}</p>
+        </header>
+        <section className="memo-card space-y-3" aria-label="RADAR recommendation">
+          <p className="label-mono text-muted-foreground">RADAR recommendation</p>
+          <p className="text-2xl font-serif text-foreground">PASS</p>
+          <p className="text-sm text-muted-foreground">
+            Evaluation is complete. PASS opportunities stop here; no detailed dossier or Gemini review is generated.
+          </p>
+        </section>
+        <section className="memo-card space-y-3" aria-label="Your decision">
+          <p className="label-mono text-muted-foreground">Your decision</p>
+          <p className="text-sm text-muted-foreground">
+            {dossierState.userDecision ?? "No user decision recorded"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(["PURSUE", "CONSIDER", "PASS"] as DecisionVerb[]).map((verb) => (
+              <button
+                key={verb}
+                type="button"
+                onClick={() => void decide(verb)}
+                disabled={decisionPending}
+                className="memo-badge border border-border text-foreground hover:bg-surface-raised disabled:opacity-50"
+              >
+                {verb}
+              </button>
+            ))}
+          </div>
+        </section>
+        {isExternalPostingUrl(o.applyUrl) && (
+          <a href={o.applyUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            View job posting
+          </a>
+        )}
+      </main>
     );
   }
 
   return (
-    <main className="memo-container py-10 space-y-8">
+    <main className="memo-container py-10 space-y-6">
+      {decisionFeedback}
+      <Link to="/" search={scope} className="text-primary hover:underline">
+        Return to Shortlist
+      </Link>
       <header className="border-b border-border pb-6">
-        <p className="label-mono text-muted-foreground">Canonical evaluation dossier</p>
-        <h1 className="mt-2 font-serif text-4xl text-foreground">{evalOpp.role}</h1>
-        <p className="mt-2 text-muted-foreground">
-          {evalOpp.company} · {evalOpp.location}
-        </p>
+        <h1 className="mt-2 font-serif text-4xl text-foreground">{o.role}</h1>
+        <p className="mt-2 text-muted-foreground">{o.company} ? {o.location}</p>
       </header>
-
-      <section className="memo-card space-y-3" aria-label="Canonical recommendation">
-        <p className="label-mono text-muted-foreground">Engine recommendation</p>
-        <p className="text-2xl font-serif text-foreground">
-          {dossierState.engineVerdict ?? "Recommendation unavailable"}
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Fit index: {evalOpp.engineRecommendation?.qualityScore ?? "Unknown"}
-        </p>
-        <p className="text-xs font-mono text-muted-foreground">
-          Evaluation: {dossierState.evaluationFingerprint ?? "Unknown"}
-        </p>
-        <p className="text-xs font-mono text-muted-foreground">
-          Review state: {evalOpp.reviewState}
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Detailed dossier not materialized for this evaluation.
-        </p>
-        <button
-          type="button"
-          disabled={dossierRequestPending}
-          onClick={() => void requestDetailedDossier()}
-          className="rounded border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
-        >
-          {dossierRequestPending ? "Requesting…" : "Request detailed dossier"}
-        </button>
-      </section>
-
-      <section className="memo-card space-y-3" aria-label="Your decision">
-        <p className="label-mono text-muted-foreground">Your decision</p>
-        <p className="text-sm text-muted-foreground">
-          {dossierState.userDecision ?? "No user decision recorded"}
+      <section className="memo-card space-y-3" aria-label="Dossier pipeline attention">
+        <p className="label-mono text-muted-foreground">Dossier pipeline attention</p>
+        <p className="text-xl font-serif text-foreground">{dossierState.engineVerdict ?? o.decision}</p>
+        <p role="status" className="text-sm text-muted-foreground">
+          Evaluation is complete, but no current staged-v8 dossier state is available. Retry the current dossier or Gemini review path; RADAR will not fall back to an older presentation.
         </p>
         <div className="flex flex-wrap gap-2">
-          {(["PURSUE", "CONSIDER", "PASS"] as DecisionVerb[]).map((verb) => (
-            <button
-              key={verb}
-              type="button"
-              onClick={() => decide(verb)}
-              className="memo-badge border border-border text-foreground hover:bg-surface-raised"
-            >
-              {verb}
-            </button>
-          ))}
+          <button
+            type="button"
+            disabled={dossierRequestPending}
+            onClick={() => void requestDetailedDossier()}
+            className="rounded border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
+          >
+            {dossierRequestPending ? "Requesting?" : "Retry detailed dossier"}
+          </button>
+          <button
+            type="button"
+            disabled={verificationRequestPending}
+            onClick={() => void requestFactualVerification()}
+            className="rounded border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
+          >
+            {verificationRequestPending ? "Requesting?" : "Retry Gemini verification"}
+          </button>
         </div>
       </section>
-
-      <nav className="flex justify-between text-sm">
-        {neighbors?.prev ? (
-          <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.prev }} search={scope}>
-            Previous
-          </Link>
-        ) : (
-          <span />
-        )}
-        <span className="text-muted-foreground">
-          {currentIndex} of {totalCount}
-        </span>
-        {neighbors?.next ? (
-          <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.next }} search={scope}>
-            Next
-          </Link>
-        ) : (
-          <span />
-        )}
-      </nav>
     </main>
   );
 }

@@ -824,11 +824,9 @@ function ShortlistCardRow({
   const coverage = o.engineRecommendation?.evidenceCoverage;
   const { primaryLabel, badgeClass, isStale, staleLabel, previousAction } = resolveShortlistCardBadgeState(o);
   const evaluatedDossier = (dossier && isEvaluated(dossier) ? dossier : undefined) ?? o;
-  const dossierBrief = evaluatedDossier?.dossierPresentation?.brief as {
-    memory?: { retentionSentence?: string };
-    frictionPreview?: string;
-    topUnknownPreview?: string;
-  } | undefined;
+  const reviewedDossier = evaluatedDossier.richDossier;
+  const reviewedThesis = reviewedDossier?.executiveThesis.text;
+  const firstDecisionCondition = reviewedDossier?.decisionConditions[0]?.question.text;
 
   useEffect(() => {
     if (isOpen && rowRef.current) {
@@ -908,14 +906,14 @@ function ShortlistCardRow({
 
           {coverage && <span className="mt-2 block text-xs text-muted-foreground">Evidence: {coverage.direct} direct &middot; {coverage.adjacent} adjacent &middot; {coverage.transferable} transferable{coverage.notEvidenced>0?` / ${coverage.notEvidenced} not evidenced`:''}{coverage.contradicted>0?` / ${coverage.contradicted} conflicting`:''}</span>}
 
-          {dossierBrief?.memory?.retentionSentence && <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
-            {dossierBrief.memory.retentionSentence}
+          {reviewedThesis && <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
+            {reviewedThesis}
           </span>}
 
-          {(dossierBrief?.frictionPreview || dossierBrief?.topUnknownPreview) && (
+          {firstDecisionCondition && (
             <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[0.68rem] text-amber-700 dark:text-amber-300 border border-amber-500/20 font-mono">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-              Needs verification: {dossierBrief?.frictionPreview || dossierBrief?.topUnknownPreview}
+              Needs verification: {firstDecisionCondition}
             </span>
           )}
         </span>

@@ -1,40 +1,15 @@
 import { Link } from "@tanstack/react-router";
 import type { DecisionVerb, EvaluatedOpportunity } from "../../data/opportunity-fixtures";
 import { applicationActionFor } from "../../data/opportunity-fixtures";
-import type { DossierJsonObject } from "../../lib/domain/dossier_presentation";
-
-type PersistedBrief = {
-  readonly headline?: string;
-  readonly executiveThesis?: { readonly headline?: string };
-  readonly memory?: { readonly retentionSentence?: string };
-  readonly pursuitStrategy?: { readonly bottomLine?: string };
-  readonly oneMinuteTLDR?: { readonly bottomLine?: string; readonly whyPursue?: readonly string[]; readonly watchFor?: readonly string[] };
-  readonly whyItWorks?: string;
-  readonly watchFor?: string;
-};
-
-function asPersistedBrief(value: DossierJsonObject | undefined): PersistedBrief | undefined {
-  return value as PersistedBrief | undefined;
-}
-
-/** Renders canonical feed truth plus an optional persisted dossier-v1 artifact. */
+/** Renders staged-v8 feed truth plus the optional reviewed rich dossier. */
 export function InlineBrief({ opportunity: o, dossier, onDecide }: {
   opportunity: EvaluatedOpportunity;
   dossier?: EvaluatedOpportunity;
   onDecide: (verb: DecisionVerb) => void;
 }) {
   const applicationAction = applicationActionFor(o);
-  const presentation = dossier?.dossierPresentation;
-  const brief = asPersistedBrief(presentation?.brief);
-  const headline = brief?.headline ?? brief?.executiveThesis?.headline ?? brief?.memory?.retentionSentence;
-  // A reviewed rich memo is already persisted canonical advisory content. Use
-  // its thesis when the older compact-presentation artifact is absent; never
-  // reconstruct a summary from browser-side evaluation fields.
   const persistedThesis = dossier?.richDossier?.executiveThesis.text;
-  const proceedIf = brief?.whyItWorks ?? brief?.oneMinuteTLDR?.whyPursue?.[0];
-  const pauseIf = brief?.watchFor ?? brief?.oneMinuteTLDR?.watchFor?.[0];
-  const bottomLine = brief?.pursuitStrategy?.bottomLine ?? brief?.oneMinuteTLDR?.bottomLine;
-  const track = o.mandateArchetype ?? presentation?.focusTopic ?? null;
+  const track = o.mandateArchetype ?? null;
   const engineVerdict = o.engineRecommendation?.engineVerdict ?? "UNKNOWN";
   const screening = o.engineRecommendation?.screeningViability;
   const userDecision = o.userDecision?.userAction ?? "NONE";
@@ -44,12 +19,8 @@ export function InlineBrief({ opportunity: o, dossier, onDecide }: {
     <div className="lg:col-span-7 flex flex-col justify-between min-w-0 space-y-4">
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2 pb-1"><span className="label-mono font-medium text-muted-foreground text-[0.68rem]">◆ Executive brief</span><span className="font-display text-base text-primary font-normal">{engineVerdict}</span></div>
-        {presentation || persistedThesis ? <>{(headline ?? persistedThesis) && <p className="mt-2 font-display text-xl sm:text-2xl leading-snug text-foreground font-normal">{headline ?? persistedThesis}</p>}{bottomLine && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{bottomLine}</p>}</> : <p className="mt-2 text-sm leading-relaxed text-muted-foreground">A detailed memo is not available for this evaluation yet.</p>}
+        {persistedThesis ? <p className="mt-2 font-display text-xl sm:text-2xl leading-snug text-foreground font-normal">{persistedThesis}</p> : <p className="mt-2 text-sm leading-relaxed text-muted-foreground">A reviewed detailed memo is not available for this evaluation yet.</p>}
       </div>
-      {presentation && (proceedIf || pauseIf) && <div className="grid gap-3 sm:grid-cols-2 pt-2">
-        {proceedIf && <div className="border-l-2 border-emerald-500 bg-emerald-500/[0.04] p-3 rounded-r-md"><p className="label-mono text-emerald-600 dark:text-emerald-400 font-bold text-[0.68rem] uppercase">Proceed if</p><p className="mt-1 text-xs leading-relaxed text-foreground font-normal">{proceedIf}</p></div>}
-        {pauseIf && <div className="border-l-2 border-amber-500 bg-amber-500/[0.04] p-3 rounded-r-md"><p className="label-mono text-amber-600 dark:text-amber-400 font-bold text-[0.68rem] uppercase">Pause if</p><p className="mt-1 text-xs leading-relaxed text-foreground font-normal">{pauseIf}</p></div>}
-      </div>}
     </div>
     <div className="lg:col-span-5 flex flex-col justify-between min-w-0 border-t border-border/60 pt-4 lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0 space-y-4">
       <div><span className="label-mono text-[0.68rem] font-bold text-muted-foreground uppercase block pb-1">Mandate Ledger</span><dl className="mt-1.5 space-y-2 border-t border-border/50 pt-2.5">

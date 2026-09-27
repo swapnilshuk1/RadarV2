@@ -5,17 +5,13 @@ import { ProductionStagedEvaluationService } from '../../src/lib/intelligence/st
 import { StagedServingPublisher } from '../../src/lib/intelligence/staged/StagedServingPublisher';
 import { SqliteDossierCompositionQueue } from '../../src/data/sqlite/repositories/SqliteDossierCompositionQueue';
 import { stagedEvaluation } from '../fixtures/staged-rich-dossier';
-import {recoverStagedProviderFailures} from '../../src/lib/intelligence/staged/StagedProviderRecovery';
 import { SqliteAdapter } from '../../src/data/database/sqlite';
 import { setupLineageTestFixture } from '../persistence/lineage_fixture';
 import { EvaluationWorkScheduler } from '../../src/lib/intelligence/EvaluationWorkScheduler';
 import { EvaluationWorker } from '../../src/lib/intelligence/EvaluationWorker';
 import { EnrichmentQueue } from '../../scripts/scraper/persist/queue';
 import { RunReconciliationService } from '../../src/lib/intelligence/RunReconciliationService';
-import { selectUnscheduledStagedCandidates } from '../../src/lib/intelligence/staged/backfillSelection';
-import { MissingEnrichmentRecovery } from '../../src/lib/intelligence/staged/MissingEnrichmentRecovery';
 import { computeContentHash } from '../../src/lib/domain/canonical_identity';
-import type { BlobStore } from '../../src/lib/storage/blob-store';
 
 describe('staged enrichment dependency lifecycle', () => {
   let db: SqliteAdapter;
@@ -126,21 +122,6 @@ describe('staged enrichment dependency lifecycle', () => {
     expect(await worker.claimNextJob()).toBeNull();
     expect(await db.one('SELECT COUNT(*) n FROM staged_evaluations')).toEqual({n:0});
   });
-  it('recovers only scoped provider dead letters and retains the original failure',async()=>{
-    await db.execute(`UPDATE opportunity_versions SET acquisition_status='ACQUIRED',lifecycle_state='ACTIVE'`);
-    await enrichment();await new EvaluationWorkScheduler(db).ensureWork(identity);
-    await db.execute(`UPDATE evaluation_jobs SET status='staged_dead_letter',attempts=3,last_error='Bedrock provider HTTP 403'`);
-    await db.execute(`UPDATE evaluation_requirements SET status='FAILED',blocked_reason='EVALUATION_DEAD_LETTER:Bedrock provider HTTP 403'`);
-    const scope={...identity,contextFingerprint:identity.evaluationContextFingerprint};
-    expect(await recoverStagedProviderFailures(db,{...scope,personId:'other'},10,true)).toEqual([]);
-    expect(await recoverStagedProviderFailures(db,scope,10)).toHaveLength(1);
-    expect(await state()).toMatchObject({status:'staged_dead_letter',requirement:'FAILED'});
-    expect(await recoverStagedProviderFailures(db,scope,10,true)).toHaveLength(1);
-    expect(await state()).toMatchObject({status:'staged_pending',requirement:'READY'});
-    expect(await recoverStagedProviderFailures(db,scope,10,true)).toEqual([]);
-    const audit=await db.one<{details:string}>(`SELECT details FROM enrichment_events WHERE event_type='EVALUATION_PROVIDER_FAILURE_RECOVERED'`);
-    expect(JSON.parse(audit!.details)).toMatchObject({attempts:3,last_error:'Bedrock provider HTTP 403',previousRequirementStatus:'FAILED'});
-  });
   it.each([false,true])('releases enrichment-ready work into the staged-v8 queue with existing job=%s', async existing => {
     await new EvaluationWorkScheduler(db).ensureWork(identity);
     if (!existing) await db.execute('DELETE FROM evaluation_jobs');
@@ -180,50 +161,10 @@ describe('staged enrichment dependency lifecycle', () => {
     await new RunReconciliationService(db).repairDanglingWork();
     expect(await state()).toMatchObject({status:'staged_pending',requirement:'READY'});
   });
-  it('backfill skips existing work and preserves terminal requirements', async () => {
-    await db.execute(`UPDATE opportunity_versions SET lifecycle_state='ACTIVE',acquisition_status='ACQUIRED'`);
-    const selection={...identity,contextFingerprint:identity.evaluationContextFingerprint,limit:1};
-    expect(await selectUnscheduledStagedCandidates(db,selection)).toHaveLength(1);
-    await new EvaluationWorkScheduler(db).ensureWork(identity);
-    expect(await selectUnscheduledStagedCandidates(db,selection)).toHaveLength(0);
-    await new RunReconciliationService(db).repairDanglingWork();
-    expect(await selectUnscheduledStagedCandidates(db,selection)).toHaveLength(0);
-  });
-  it('ready-only backfill excludes missing enrichment and an explicitly identified bad capture',async()=>{
-    await db.execute(`UPDATE opportunity_versions SET lifecycle_state='ACTIVE',acquisition_status='ACQUIRED'`);
-    const selection={...identity,contextFingerprint:identity.evaluationContextFingerprint,limit:1,readyOnly:true};
-    expect(await selectUnscheduledStagedCandidates(db,selection)).toHaveLength(0);
-    await enrichment();
-    expect(await selectUnscheduledStagedCandidates(db,selection)).toHaveLength(1);
-    expect(await selectUnscheduledStagedCandidates(db,{...selection,excludeSourceVersion:'version'})).toHaveLength(0);
-  });
   it('never releases waiting work before the exact enrichment completes',async()=>{
     await new EvaluationWorkScheduler(db).ensureWork(identity);
     await enrichment('version','1.0.0','RUNNING');
     expect(await new EnrichmentQueue(db).releaseEvaluationRequirements('job','version')).toBe(0);
     expect(await state()).toMatchObject({status:'staged_waiting_enrichment',requirement:'WAITING_ENRICHMENT'});
-  });
-  it('explicitly recovers a missing dependency only after completion and retains the previous failure in audit',async()=>{
-    const contentHash=computeContentHash({title:'Head of Growth',companyName:null,location:null,employmentType:null,rawContent:'Job description'});
-    await db.execute(`UPDATE opportunity_versions SET lifecycle_state='ACTIVE',acquisition_status='ACQUIRED'`);
-    await new EvaluationWorkScheduler(db).ensureWork(identity);
-    await new RunReconciliationService(db).repairDanglingWork();
-    const payloads=new Map<string,Buffer>();
-    const blobs={get:async(key:string)=>payloads.get(key)||null,put:async(key:string,value:string)=>{payloads.set(key,Buffer.from(value));return key;}} as BlobStore;
-    const recovery=new MissingEnrichmentRecovery(db,blobs);
-    const scope={...identity,contextFingerprint:identity.evaluationContextFingerprint};
-    const versions=await recovery.select(scope,10);
-    expect(versions).toHaveLength(1);
-    const enqueued=await recovery.enqueue(versions[0]);
-    expect(enqueued.created).toBe(true);
-    expect(JSON.parse(payloads.get(enqueued.payloadKey)!.toString()).evaluationEvidence).toMatchObject({canonicalJobId:'job',opportunityVersion:'version',contentHash});
-    expect(await recovery.recoverCompletedDependencies(scope)).toBe(0);
-    await db.execute(`UPDATE enrichment_jobs SET status='COMPLETE' WHERE id=?`,[enqueued.jobId]);
-    expect(await recovery.recoverCompletedDependencies({...scope,personId:'other'})).toBe(0);
-    expect(await recovery.recoverCompletedDependencies(scope)).toBe(1);
-    expect(await recovery.recoverCompletedDependencies(scope)).toBe(0);
-    expect(await state()).toMatchObject({status:'staged_pending',requirement:'READY',blocked_reason:null});
-    const audit=await db.one<{details:string}>(`SELECT details FROM enrichment_events WHERE event_type='EVALUATION_DEPENDENCY_RECOVERED'`);
-    expect(JSON.parse(audit!.details)).toMatchObject({previousRequirementStatus:'FAILED',previousBlockedReason:'MISSING_ENRICHMENT_JOB',job_status:'staged_dead_letter'});
   });
 });

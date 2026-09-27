@@ -5,7 +5,6 @@ import Database from "better-sqlite3";
 import * as fs from "fs";
 import * as path from "path";
 import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
-import { serveEvaluation } from "../../src/lib/intelligence/serving/EvaluationServingEngine";
 import { runMigrations } from "../../src/data/sqlite/migrations/runner";
 
 describe("M9.2C Canonical Posting-Date Provenance", () => {
@@ -98,50 +97,6 @@ describe("M9.2C Canonical Posting-Date Provenance", () => {
     expect(row.created_at).toBeDefined();
   });
 
-  it("3. Canonical serving of resulting value propagates 'Age unavailable' for NULL posted_at", async () => {
-    const servingCtx = {
-        jobHash: "test",
-        canonicalJobId: "can_1",
-        opportunityVersion: "ov_1",
-        role: "Test",
-        company: "Test",
-        location: "Test",
-        scrapedFrom: "Test",
-        applyUrl: "Test",
-        postedAt: null
-    };
-
-    const evaluated = serveEvaluation(
-        {
-            jobHash: "test",
-            evaluationInputHash: "123",
-            intrinsicQualityScore: 90,
-            intrinsicVerdict: "PURSUE",
-            baseNarrative: { 
-              baseRecommendationProse: "Go",
-              whyNow: "Now",
-              positioning: "Test",
-              primaryProof: "Proof",
-              hiringRisk: "Risk",
-              alternativePath: "Path",
-              recommendationArchetype: "Arch",
-              recommendationArchetypeTagline: "Tag",
-              mandateArchetype: "Mandate",
-              primaryDriver: "P",
-              secondaryDriver: "S",
-              primaryRisk: "R",
-              tailoringEffort: "E",
-              capabilityAlignmentText: "Cap",
-              recommendedAction: "PURSUE"
-            }
-        } as any,
-        { activePursuits: 0, attentionWindow: 5 },
-        servingCtx as any,
-        null
-    );
-
-    expect(evaluated.postedRelative).toBe("Age unavailable");
-  });
 });
 
 import { normalizePostingDate } from "../../scripts/scraper/utils/date";

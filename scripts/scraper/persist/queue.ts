@@ -567,14 +567,14 @@ export class EnrichmentQueue {
         for (const requirement of requirements) {
           await tx.execute(
             `UPDATE evaluation_jobs
-             SET status = CASE WHEN status = 'staged_dead_letter' THEN 'staged_waiting_enrichment' ELSE 'waiting_enrichment' END,
+             SET status = 'staged_waiting_enrichment',
                  attempts = 0, last_error = NULL, completed_at = NULL,
                  locked_by = NULL, lease_token = NULL, locked_at = NULL,
                  next_attempt_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
              WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?
                AND canonical_job_id = ? AND opportunity_version = ?
                AND evaluation_context_fingerprint = ?
-               AND status IN ('dead_letter', 'staged_dead_letter')`,
+               AND status = 'staged_dead_letter'`,
             [
               requirement.tenant_id,
               requirement.person_id,

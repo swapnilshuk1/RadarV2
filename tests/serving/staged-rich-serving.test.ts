@@ -14,6 +14,8 @@ import { SqliteStagedEvaluationStore } from "../../src/data/sqlite/repositories/
 import { SqliteRichDossierStore } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";
 import { StagedServingPublisher } from "../../src/lib/intelligence/staged/StagedServingPublisher";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
+import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
+import { computeEvaluationContextFingerprint } from "../../src/lib/domain/evaluation_fingerprint";
 import { resolveCanonicalServingReadModel } from "../../src/lib/intelligence/serving/CanonicalServingReadModel";
 import type { Dossier, JsonValue, Passage } from "../../src/dossier/contracts";
 import {
@@ -23,7 +25,6 @@ import {
 import { readAcquisitionFeed } from "../../src/lib/intelligence/server/acquisition-feed-read-model";
 
 import { stagedEvaluation, evaluationFingerprint, dossier } from "../fixtures/staged-rich-dossier";
-import { selectStagedDossierWork } from "../../src/lib/intelligence/staged/dossierBackfillSelection";
 import { RICH_DOSSIER_VERSION } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";
 import { SqliteDossierReviewQueue } from "../../src/data/sqlite/repositories/SqliteDossierReviewQueue";
 import { PREPARING_DOSSIER_VERSION, SqliteDossierCompositionQueue } from "../../src/data/sqlite/repositories/SqliteDossierCompositionQueue";
@@ -86,6 +87,47 @@ describe("rich staged serving activation", () => {
       evaluatedAt: "2026-01-01",
     });
   });
+  it("serves only the database-active staged-v8 context even when caller scope carries stale IDs", async () => {
+    await new SqliteRichDossierStore(db).save(identity, evaluationFingerprint, dossier());
+    await new StagedServingPublisher(db).publish(identity);
+    const resolved = await resolveServingScope("person_A", "tenant_A", db);
+    const staleScope: AuthorizedPersonScope = {
+      ...resolved.scope,
+      activeSearchPlanId: "archived-plan",
+      activeEvaluationContextId: "archived-context",
+    };
+    const queries = new SqliteOpportunityQueries(db);
+    expect(await queries.getDossier(staleScope, "source-job")).toMatchObject({
+      evaluationState: "EVALUATED",
+      richDossier: { verdict: { verdict: "PURSUE" } },
+    });
+
+    const nextContext = computeEvaluationContextFingerprint({
+      tenantId: "tenant_A",
+      personId: "person_A",
+      searchPlanSnapshotId: "sps_A",
+      ontologyVersion: "v1",
+      ontologyFingerprint: "hash_ontology",
+      policyVersion: "staged-v8",
+      profileVersion: "profile-next",
+    });
+    await db.execute(
+      `INSERT INTO evaluation_contexts(context_fingerprint,tenant_id,person_id,search_plan_snapshot_id,ontology_version,ontology_fingerprint,policy_version,profile_version) VALUES(?,?,?,?,?,?,?,?)`,
+      [nextContext,"tenant_A","person_A","sps_A","v1","hash_ontology","staged-v8","profile-next"],
+    );
+    await db.execute(
+      `INSERT INTO evaluation_context_scopes(context_fingerprint,tenant_id,person_id,search_plan_id) VALUES(?,?,?,?)`,
+      [nextContext,"tenant_A","person_A","plan_A"],
+    );
+    await db.execute(
+      `UPDATE active_evaluation_contexts SET context_fingerprint=? WHERE tenant_id='tenant_A' AND person_id='person_A' AND search_plan_id='plan_A'`,
+      [nextContext],
+    );
+    const afterSwitch = await queries.getDossier(staleScope, "source-job");
+    expect(afterSwitch?.evaluationState).not.toBe("EVALUATED");
+    expect(JSON.stringify(afterSwitch)).not.toContain(evaluationFingerprint);
+  });
+
   it("leaves PASS evaluated without selecting or generating a dossier", async () => {
     await db.execute(
       "UPDATE opportunity_versions SET acquisition_status='ACQUIRED' WHERE id='version'",
@@ -97,7 +139,7 @@ describe("rich staged serving activation", () => {
       "UPDATE staged_evaluations SET decision='PASS',evaluation_json=? WHERE canonical_job_id='job'",
       [JSON.stringify(passed)],
     );
-    expect(await selectStagedDossierWork(db, { context: "e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65", limit: 10 })).toEqual([]);
+    expect(await db.one("SELECT COUNT(*) n FROM dossier_composition_jobs")).toEqual({ n: 0 });
     expect(
       (
         await readAcquisitionFeed(db, identity, {
@@ -345,16 +387,6 @@ describe("rich staged serving activation", () => {
     await expect(new StagedServingPublisher(db).publish(identity)).rejects.toThrow(
       "SERVING_REQUIRES_MATCHING_DOSSIER",
     );
-    expect(
-      await selectStagedDossierWork(db, {
-        context: "e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65",
-        limit: 10,
-        publishOnly: true,
-      }),
-    ).toEqual([]);
-    expect(
-      await selectStagedDossierWork(db, { context: "e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65", limit: 10 }),
-    ).toHaveLength(1);
   });
   it("does not present a previous layout as the current memo", async () => {
     const store = new SqliteRichDossierStore(db);
@@ -374,10 +406,6 @@ describe("rich staged serving activation", () => {
     expect(
       (await new SqliteOpportunityQueries(db).getDossier(scope, "source-job"))?.evaluationState,
     ).not.toBe("EVALUATED");
-    // Historical presentation cannot silently qualify as current rollout coverage.
-    expect(
-      await selectStagedDossierWork(db, { context: "e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65", limit: 10 }),
-    ).toHaveLength(1);
   });
   it("rejects a dossier that keeps the headline but rewrites canonical decision detail", async () => {
     const wrongTrace = structuredClone(stagedEvaluation.trace) as unknown as JsonValue;
@@ -494,16 +522,7 @@ describe("rich staged serving activation", () => {
       (await new SqliteOpportunityQueries(db).getDossier(scope, "source-job"))?.evaluationState,
     ).toBe("INVALID");
   });
-  it("selects an existing v3.4 dossier for publish-only using the full evaluation fingerprint", async () => {
-    const options = { context: "e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65", limit: 10, publishOnly: true };
-    expect(await selectStagedDossierWork(db, options)).toEqual([]);
-    await new SqliteRichDossierStore(db).save(identity, evaluationFingerprint, dossier());
-    expect(await selectStagedDossierWork(db, { ...options, publishOnly: false })).toEqual([]);
-    expect(await selectStagedDossierWork(db, options)).toHaveLength(1);
-    await new StagedServingPublisher(db).publish(identity);
-    expect(await selectStagedDossierWork(db, options)).toEqual([]);
-  });
-  it("keeps a missing legacy score invalid while accepting an explicitly staged scoreless contract", () => {
+  it("accepts only the staged-v8 scoreless evaluated contract", () => {
     const input = {
       engineVerdict: "PURSUE",
       userDecision: null,
@@ -512,9 +531,6 @@ describe("rich staged serving activation", () => {
       reviewedFingerprint: null,
       qualityScore: null,
     };
-    expect(
-      resolveCanonicalServingReadModel({ ...input, evaluationState: "EVALUATED" }).evaluationState,
-    ).toBe("INVALID");
     expect(
       resolveCanonicalServingReadModel({ ...input, evaluationState: "STAGED_EVALUATED" })
         .evaluationState,

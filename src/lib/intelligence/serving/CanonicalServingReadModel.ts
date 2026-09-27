@@ -44,18 +44,16 @@ export function resolveCanonicalServingReadModel(input: {
   qualityScore: number | null;
 }): CanonicalServingDecisionReadModel {
   const staged = input.evaluationState === 'STAGED_EVALUATED';
-  const requestedState: CanonicalEvaluationState = input.evaluationState === 'STAGED_EVALUATED' ? 'EVALUATED' : input.evaluationState;
+  const requestedState: CanonicalEvaluationState = input.evaluationState === 'STAGED_EVALUATED'
+    ? 'EVALUATED'
+    : input.evaluationState;
   const evaluatedVerdict = toCanonicalServingVerdict(input.engineVerdict);
-  const validScore = typeof input.qualityScore === "number"
-    && Number.isFinite(input.qualityScore)
-    && input.qualityScore >= 0
-    && input.qualityScore <= 100;
   const validEvaluationFingerprint = typeof input.evaluationFingerprint === "string"
     && input.evaluationFingerprint.trim().length > 0;
-  // An EVALUATED row is a claim about a complete canonical artifact. Never turn
-  // malformed derived data into a plausible recommendation at the read boundary.
+  // staged-v8 is the only evaluated serving contract. Historical scored rows are
+  // deliberately invalid rather than adapted or inferred at read time.
   const evaluationState = requestedState === "EVALUATED"
-    && (evaluatedVerdict === "UNKNOWN" || !(staged ? input.qualityScore === null : validScore) || !validEvaluationFingerprint)
+    && (!staged || evaluatedVerdict === "UNKNOWN" || input.qualityScore !== null || !validEvaluationFingerprint)
     ? "INVALID"
     : requestedState;
   const engineVerdict = evaluationState === "EVALUATED"
