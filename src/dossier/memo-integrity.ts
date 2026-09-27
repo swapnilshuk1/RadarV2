@@ -149,10 +149,12 @@ export function validateTargetedPlanRepair(
   for (const point of nextPoints.filter((point) => !previousIds.has(point.id))) {
     if (!allowedSections.has(point.section))
       throw new Error(`MEMO_PLAN_REPAIR_NEW_POINT_WRONG_SECTION:${point.section}`);
-    // New repair points may use any canonical requirement/resolution reference;
-    // the provider schema and the full plan validator bind those IDs to the
-    // immutable staged-decision catalog. What makes this a targeted repair is
-    // that every new point must carry at least one explicit missing target.
+    if (point.requirementIds.some((id) => !allowedRequirementIds.has(id)))
+      throw new Error("MEMO_PLAN_REPAIR_NEW_POINT_UNREQUESTED_REQUIREMENT");
+    if (point.resolutionFields.some((field) => !allowedResolutionFields.has(field)))
+      throw new Error("MEMO_PLAN_REPAIR_NEW_POINT_UNREQUESTED_FIELD");
+    // The point may carry other canonical references for context, but it must
+    // exist because of this repair, not as an unrelated plan expansion.
     if (
       !point.requirementIds.some((id) => targetRequirements.has(id)) &&
       !point.resolutionFields.some((field) => targetFields.has(field))

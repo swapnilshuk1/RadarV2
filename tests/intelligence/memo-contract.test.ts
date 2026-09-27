@@ -114,6 +114,40 @@ describe("executive memo coverage", () => {
       }),
     ).not.toThrow();
   });
+  it("allows a targeted new point to use another canonical requirement while adding the requested field", () => {
+    const previous = structuredClone(dossier().narrativePlan);
+    const next = structuredClone(previous);
+    next.memoPoints!.push({
+      id: "repair-company-size",
+      section: "decisionConditions",
+      point: "Resolve company scale before treating the mandate as equivalent scope.",
+      claimIds: ["JD-1-1"],
+      requirementIds: ["REQ-002"],
+      resolutionFields: ["companySize"],
+    });
+    expect(() =>
+      validateTargetedPlanRepair(previous, next, {
+        sections: ["decisionConditions"],
+        requirementIds: [],
+        resolutionFields: ["companySize"],
+        allowedRequirementIds: ["REQ-001", "REQ-002"],
+        allowedResolutionFields: ["companySize"],
+      }),
+    ).not.toThrow();
+
+    const invalid = structuredClone(next);
+    invalid.memoPoints![invalid.memoPoints!.length - 1].requirementIds = ["REQ-NOT-CANONICAL"];
+    expect(() =>
+      validateTargetedPlanRepair(previous, invalid, {
+        sections: ["decisionConditions"],
+        requirementIds: [],
+        resolutionFields: ["companySize"],
+        allowedRequirementIds: ["REQ-001", "REQ-002"],
+        allowedResolutionFields: ["companySize"],
+      }),
+    ).toThrow("MEMO_PLAN_REPAIR_NEW_POINT_UNREQUESTED_REQUIREMENT");
+  });
+
   it("rejects a plan altered after factual and editorial review", () => {
     const value = dossier();
     value.narrativePlan.memoPoints![0].point = "A different argument";

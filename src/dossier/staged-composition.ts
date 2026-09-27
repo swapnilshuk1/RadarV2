@@ -377,6 +377,8 @@ async function writeMemo(
             sections: repair.sections,
             requirementIds: repair.missingRequirementIds ?? [],
             resolutionFields: repair.missingResolutionFields ?? [],
+            allowedRequirementIds: staged.trace.requirements.map((requirement) => requirement.id),
+            allowedResolutionFields: staged.trace.resolutions.map((resolution) => resolution.field),
           });
         } catch (error) {
           repair = { ...repair, issue: repair.issue + "; " + String(error) };
