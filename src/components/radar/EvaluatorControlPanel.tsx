@@ -180,8 +180,8 @@ export function EvaluatorControlPanel({ embedded = false, scope }: EvaluatorCont
           ["Live model calls", snapshot.queue.liveModelCalls],
           ["Worker claims", snapshot.queue.claimedWithoutModelCall],
           ["Reclaimable", snapshot.queue.reclaimableProcessing],
+          ["Waiting enrichment", snapshot.queue.waitingEnrichment],
           ["Completed", snapshot.queue.completed],
-          ["Failed", snapshot.queue.failed],
           ["Dead letter", snapshot.queue.deadLetter],
           [
             "Last completion",

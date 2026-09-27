@@ -1,13 +1,7 @@
 import crypto from "crypto";
 import { classifyModelFailure } from '../model/provider-unavailable';
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
-import { runEngineSingleIntrinsic } from "./engine";
-import { validateCandidateProjection } from "../domain/candidate_projection";
-import { validateEvaluationConsistency } from "@/lib/domain/evaluation_fingerprint";
-import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
 import type { EvaluationContext } from "@/lib/domain/evaluation_context";
-import type { OpportunitySource } from "@/data/opportunity-fixtures";
-import { resolveExactCandidateProjectionForScope } from "@/data/sqlite/repositories/profile-projection-version";
 import { createBedrockGlmResearchModel } from "@/lib/model/bedrock-glm-research-model";
 import { ProductionStagedEvaluationService } from "./staged/ProductionStagedEvaluationService";
 import { StagedServingPublisher } from './staged/StagedServingPublisher';
@@ -19,7 +13,7 @@ import {
 import { createSqliteModelInvocationSink } from "@/lib/model/model-invocation";
 import { EmptySourceEvidenceError } from '@/dossier/evidence';
 import { DeterministicStagedInputUnavailableError } from "./staged/ProductionStagedInputAdapter";
-import { STAGED_POLICY_VERSION, SqliteStagedEvaluationStore, stagedUnavailableEvaluation } from "@/data/sqlite/repositories/SqliteStagedEvaluationStore";
+import { SqliteStagedEvaluationStore, stagedUnavailableEvaluation } from "@/data/sqlite/repositories/SqliteStagedEvaluationStore";
 import {supportsStagedPolicy} from './staged/stagedPolicy';
 import { EvaluationRuntimeControl } from "./EvaluationRuntimeControl";
 
@@ -38,7 +32,6 @@ export interface ClaimedJob {
   leaseToken: string;
   attempts: number;
   maxAttempts: number;
-  queueKind: "legacy" | "staged";
 }
 
 export interface WorkerProcessingResult {
@@ -68,12 +61,7 @@ export class EvaluationWorker {
     this.runtimeControl = new EvaluationRuntimeControl(this.db);
   }
 
-  public async claimNextJob(queueKind?: ClaimedJob["queueKind"], contextFingerprint?: string): Promise<ClaimedJob | null> {
-    const queueFilter = queueKind === "staged"
-      ? "AND ej.status IN ('staged_pending', 'staged_processing')"
-      : queueKind === "legacy"
-        ? "AND ej.status IN ('pending', 'processing')"
-        : "";
+  public async claimNextJob(contextFingerprint?: string): Promise<ClaimedJob | null> {
     const job = await this.db.one<{
       id: string;
       tenant_id: string;
@@ -84,53 +72,66 @@ export class EvaluationWorker {
       evaluation_context_fingerprint: string;
       attempts: number;
       max_attempts: number;
-      queue_status: string;
     }>(
-      `SELECT ej.id, ej.tenant_id, ej.person_id, ej.search_plan_id, ej.canonical_job_id, ej.opportunity_version, ej.evaluation_context_fingerprint, ej.attempts, ej.max_attempts, ej.status AS queue_status
+      `SELECT ej.id, ej.tenant_id, ej.person_id, ej.search_plan_id, ej.canonical_job_id,
+              ej.opportunity_version, ej.evaluation_context_fingerprint, ej.attempts, ej.max_attempts
        FROM evaluation_jobs ej
-       JOIN evaluation_requirements er 
-         ON er.tenant_id = ej.tenant_id 
-        AND er.person_id = ej.person_id 
-        AND er.search_plan_id = ej.search_plan_id 
-        AND er.canonical_job_id = ej.canonical_job_id 
-        AND er.opportunity_version = ej.opportunity_version 
+       JOIN evaluation_requirements er
+         ON er.tenant_id = ej.tenant_id
+        AND er.person_id = ej.person_id
+        AND er.search_plan_id = ej.search_plan_id
+        AND er.canonical_job_id = ej.canonical_job_id
+        AND er.opportunity_version = ej.opportunity_version
         AND er.evaluation_context_fingerprint = ej.evaluation_context_fingerprint
        WHERE er.status = 'READY'
+         AND ej.status IN ('staged_pending', 'staged_processing')
          AND COALESCE((SELECT desired_state FROM evaluation_runtime_control c WHERE c.tenant_id=ej.tenant_id AND c.person_id=ej.person_id), 'RUNNING') = 'RUNNING'
-         ${queueFilter}
-         ${contextFingerprint ? 'AND ej.evaluation_context_fingerprint = ?' : ''}
-         AND ((ej.status IN ('pending', 'staged_pending') AND ej.next_attempt_at <= CURRENT_TIMESTAMP)
-          OR (ej.status IN ('processing', 'staged_processing') AND ej.locked_at < datetime('now', '-300 seconds')))
-       ORDER BY 
-         CASE WHEN ej.status IN ('processing', 'staged_processing') THEN 0 ELSE 1 END ASC,
-         ej.next_attempt_at ASC, 
+         ${contextFingerprint
+           ? 'AND ej.evaluation_context_fingerprint = ?'
+           : `AND EXISTS (
+                SELECT 1
+                FROM active_evaluation_contexts aec
+                WHERE aec.tenant_id = ej.tenant_id
+                  AND aec.person_id = ej.person_id
+                  AND aec.search_plan_id = ej.search_plan_id
+                  AND aec.context_fingerprint = ej.evaluation_context_fingerprint
+              )`}
+         AND ((ej.status = 'staged_pending' AND ej.next_attempt_at <= CURRENT_TIMESTAMP)
+          OR (ej.status = 'staged_processing' AND ej.locked_at < datetime('now', '-300 seconds')))
+       ORDER BY
+         CASE WHEN ej.status = 'staged_processing' THEN 0 ELSE 1 END ASC,
+         ej.next_attempt_at ASC,
          ej.created_at ASC
-       LIMIT 1`, contextFingerprint ? [contextFingerprint] : []
+       LIMIT 1`,
+      contextFingerprint ? [contextFingerprint] : [],
     );
-
-    if (!job) {
-      return null;
-    }
+    if (!job) return null;
 
     const leaseToken = crypto.randomUUID();
-
     const claimRes = await this.db.execute(
       `UPDATE evaluation_jobs
-       SET status = CASE WHEN status LIKE 'staged_%' THEN 'staged_processing' ELSE 'processing' END,
-           locked_by = ?,
-           lease_token = ?,
-           locked_at = CURRENT_TIMESTAMP,
-           first_claimed_at = COALESCE(first_claimed_at, CURRENT_TIMESTAMP)
-       WHERE id = ? AND (
-         (status IN ('pending', 'staged_pending') AND next_attempt_at <= CURRENT_TIMESTAMP) OR 
-         (status IN ('processing', 'staged_processing') AND locked_at < datetime('now', '-300 seconds'))
+       SET status='staged_processing',
+           locked_by=?, lease_token=?, locked_at=CURRENT_TIMESTAMP,
+           first_claimed_at=COALESCE(first_claimed_at,CURRENT_TIMESTAMP)
+       WHERE id=? AND (
+         (status='staged_pending' AND next_attempt_at<=CURRENT_TIMESTAMP) OR
+         (status='staged_processing' AND locked_at<datetime('now','-300 seconds'))
        )`,
-      [this.workerId, leaseToken, job.id]
+      [this.workerId, leaseToken, job.id],
     );
+    if (claimRes.rowsAffected === 0) return null;
 
-    if (claimRes.rowsAffected === 0) {
-      return null;
-    }
+    // Any prior running telemetry belongs to a process that lost/expired this
+    // lease. Close it when reclaiming so the evaluator page never shows a
+    // phantom provider call after the worker is gone.
+    await this.db.execute(
+      `UPDATE model_invocations
+       SET status='transport_error', completed_at=COALESCE(completed_at,?),
+           latency_ms=COALESCE(latency_ms, ?-started_at),
+           error_code=COALESCE(error_code,'ORPHANED_WORKER_LEASE')
+       WHERE evaluation_job_id=? AND status='running' AND started_at<?`,
+      [Date.now(), Date.now(), job.id, Date.now() - 1],
+    );
 
     return {
       id: job.id,
@@ -143,7 +144,6 @@ export class EvaluationWorker {
       leaseToken,
       attempts: job.attempts,
       maxAttempts: job.max_attempts,
-      queueKind: job.queue_status.startsWith('staged_') ? 'staged' : 'legacy',
     };
   }
 
@@ -154,7 +154,7 @@ export class EvaluationWorker {
     const heartbeat = setInterval(() => {
       if (renewal) return;
       renewal = this.db.execute(
-        `UPDATE evaluation_jobs SET locked_at=CURRENT_TIMESTAMP WHERE id=? AND locked_by=? AND lease_token=? AND status IN ('processing','staged_processing')`,
+        `UPDATE evaluation_jobs SET locked_at=CURRENT_TIMESTAMP WHERE id=? AND locked_by=? AND lease_token=? AND status='staged_processing'`,
         [job.id, this.workerId, job.leaseToken],
       ).then(() => {}).catch(() => {
         console.warn('[EvaluationWorker] Lease renewal failed; completion remains token-fenced', job.id);
@@ -238,229 +238,105 @@ export class EvaluationWorker {
         createdAt: ctxRow.created_at || new Date().toISOString(),
       };
 
-      if (supportsStagedPolicy(context.policyVersion) && job.queueKind !== "staged") {
-        throw new Error("STAGED_CONTEXT_REQUIRES_STAGED_QUEUE");
-      }
-      if (!supportsStagedPolicy(context.policyVersion) && job.queueKind === "staged") {
-        throw new Error("LEGACY_CONTEXT_CANNOT_USE_STAGED_QUEUE");
+      if (!supportsStagedPolicy(context.policyVersion)) {
+        throw new Error(`UNSUPPORTED_EVALUATION_POLICY:${context.policyVersion}`);
       }
 
-      // Policy dispatch keeps the durable worker spine shared while preserving
-      // the legacy intrinsic path for existing immutable contexts.
-      if (supportsStagedPolicy(context.policyVersion)) {
-        const stagedStore = new SqliteStagedEvaluationStore(this.db);
-        const identity = { tenantId: job.tenantId, personId: job.personId, canonicalJobId: job.canonicalJobId, opportunityVersion: job.opportunityVersion, evaluationContextFingerprint: job.evaluationContextFingerprint, profileVersion: context.profileVersion, policyVersion: context.policyVersion, ontologyVersion: context.ontologyVersion, ontologyFingerprint: context.ontologyFingerprint };
-        if (!isAcquired || !isLifecycleActive) {
-          const unavailable = stagedUnavailableEvaluation(identity, !isAcquired ? 'CANONICAL_JD_UNAVAILABLE' : 'OPPORTUNITY_NOT_ACTIVE');
-          await stagedStore.save(unavailable);
-          return this.commitDeterministicStagedFailure(job, unavailable.blockedReason!);
-        }
-        try {
-          const invocationSink=createSqliteModelInvocationSink(this.db,{
-            pipeline:"evaluation",
-            evaluationJobId:job.id,
-            tenantId:job.tenantId,
-            personId:job.personId,
-            canonicalJobId:job.canonicalJobId,
-            opportunityVersion:job.opportunityVersion,
-            evaluationContextFingerprint:job.evaluationContextFingerprint,
+      const stagedStore = new SqliteStagedEvaluationStore(this.db);
+      const identity = {
+        tenantId: job.tenantId,
+        personId: job.personId,
+        canonicalJobId: job.canonicalJobId,
+        opportunityVersion: job.opportunityVersion,
+        evaluationContextFingerprint: job.evaluationContextFingerprint,
+        profileVersion: context.profileVersion,
+        policyVersion: context.policyVersion,
+        ontologyVersion: context.ontologyVersion,
+        ontologyFingerprint: context.ontologyFingerprint,
+      };
+      if (!isAcquired || !isLifecycleActive) {
+        const unavailable = stagedUnavailableEvaluation(
+          identity,
+          !isAcquired ? 'CANONICAL_JD_UNAVAILABLE' : 'OPPORTUNITY_NOT_ACTIVE',
+        );
+        await stagedStore.save(unavailable);
+        return this.commitDeterministicStagedFailure(job, unavailable.blockedReason!);
+      }
+
+      try {
+        const invocationSink = createSqliteModelInvocationSink(this.db, {
+          pipeline: "evaluation",
+          evaluationJobId: job.id,
+          tenantId: job.tenantId,
+          personId: job.personId,
+          canonicalJobId: job.canonicalJobId,
+          opportunityVersion: job.opportunityVersion,
+          evaluationContextFingerprint: job.evaluationContextFingerprint,
+        });
+        const evaluationModel = createBedrockGlmResearchModel({ invocationSink });
+        const evaluated = await new ProductionStagedEvaluationService(
+          this.db,
+          evaluationModel,
+        ).evaluate({ ...identity, context });
+        await this.db.execute(
+          `UPDATE evaluation_jobs
+           SET evaluation_persisted_at=COALESCE(evaluation_persisted_at,?)
+           WHERE id=? AND locked_by=? AND lease_token=? AND status='staged_processing'`,
+          [evaluated.evaluatedAt, job.id, this.workerId, job.leaseToken],
+        );
+
+        const serving = await this.db.one<{ context_fingerprint: string }>(
+          `SELECT context_fingerprint FROM active_evaluation_contexts
+           WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND context_fingerprint=?`,
+          [job.tenantId, job.personId, job.searchPlanId, job.evaluationContextFingerprint],
+        );
+        if (serving && evaluated.decision !== 'PASS') {
+          const staged = parseCanonicalStagedDecisionResult(evaluated.evaluation);
+          const evaluationFingerprint = createStagedEvaluationFingerprint({
+            evaluationContextFingerprint: evaluated.evaluationContextFingerprint,
+            inputFingerprint: evaluated.inputFingerprint,
+            evaluation: staged,
           });
-          const evaluationModel=createBedrockGlmResearchModel({invocationSink});
-          const evaluated = await new ProductionStagedEvaluationService(
-            this.db,
-            evaluationModel,
-          ).evaluate({ ...identity, context });
+          const compositionQueue = new SqliteDossierCompositionQueue(this.db);
+          await compositionQueue.enqueue(identity, evaluationFingerprint);
+          const compositionJob = await compositionQueue.find(identity, evaluationFingerprint);
+          if (!compositionJob) throw new Error('DOSSIER_COMPOSITION_JOB_NOT_PERSISTED');
           await this.db.execute(
             `UPDATE evaluation_jobs
-             SET evaluation_persisted_at=COALESCE(evaluation_persisted_at,?)
+             SET dossier_queued_at=COALESCE(dossier_queued_at,?)
              WHERE id=? AND locked_by=? AND lease_token=? AND status='staged_processing'`,
-            [evaluated.evaluatedAt,job.id,this.workerId,job.leaseToken],
+            [new Date(compositionJob.created_at).toISOString(), job.id, this.workerId, job.leaseToken],
           );
-
-          const serving=await this.db.one<{context_fingerprint:string}>(
-            `SELECT context_fingerprint FROM active_evaluation_contexts
-             WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND context_fingerprint=?`,
-            [job.tenantId,job.personId,job.searchPlanId,job.evaluationContextFingerprint],
-          );
-          if(serving&&evaluated.decision!=='PASS'){
-            const staged=parseCanonicalStagedDecisionResult(evaluated.evaluation);
-            const evaluationFingerprint=createStagedEvaluationFingerprint({
-              evaluationContextFingerprint:evaluated.evaluationContextFingerprint,
-              inputFingerprint:evaluated.inputFingerprint,
-              evaluation:staged,
-            });
-            const compositionQueue=new SqliteDossierCompositionQueue(this.db);
-            await compositionQueue.enqueue(identity,evaluationFingerprint);
-            const compositionJob=await compositionQueue.find(identity,evaluationFingerprint);
-            if(!compositionJob) throw new Error("DOSSIER_COMPOSITION_JOB_NOT_PERSISTED");
-            await this.db.execute(
-              `UPDATE evaluation_jobs
-               SET dossier_queued_at=COALESCE(dossier_queued_at,?)
-               WHERE id=? AND locked_by=? AND lease_token=? AND status='staged_processing'`,
-              [new Date(compositionJob.created_at).toISOString(),job.id,this.workerId,job.leaseToken],
-            );
-            await new StagedServingPublisher(this.db).publish(identity,{allowPreparing:true});
-          }
-          return this.commitStagedCompletion(job, evaluated.decision);
-        } catch (error) {
-          if(error instanceof EmptySourceEvidenceError){
-            const reason=`SOURCE_EXTRACTION_EMPTY:${error.plane}`;
-            await stagedStore.save(stagedUnavailableEvaluation(identity,reason));
-            return this.commitDeterministicStagedFailure(job,reason);
-          }
-          if (error instanceof DeterministicStagedInputUnavailableError) {
-            const unavailable = stagedUnavailableEvaluation(identity, error.reason);
-            await stagedStore.save(unavailable);
-            return this.commitDeterministicStagedFailure(job, error.reason);
-          }
-          throw error;
+          await new StagedServingPublisher(this.db).publish(identity, { allowPreparing: true });
         }
+        return this.commitStagedCompletion(job, evaluated.decision);
+      } catch (error) {
+        if (error instanceof EmptySourceEvidenceError) {
+          const reason = `SOURCE_EXTRACTION_EMPTY:${error.plane}`;
+          await stagedStore.save(stagedUnavailableEvaluation(identity, reason));
+          return this.commitDeterministicStagedFailure(job, reason);
+        }
+        if (error instanceof DeterministicStagedInputUnavailableError) {
+          const unavailable = stagedUnavailableEvaluation(identity, error.reason);
+          await stagedStore.save(unavailable);
+          return this.commitDeterministicStagedFailure(job, error.reason);
+        }
+        throw error;
       }
-      // Dual Guard: Acquisition Trustworthiness + Active Lifecycle
-      if (!isAcquired || !isLifecycleActive) {
-        const evalState = (versionRow.lifecycle_state === "EXPIRED" || versionRow.lifecycle_state === "REMOVED_404")
-          ? "EXPIRED"
-          : (versionRow.acquisition_status === "CAPTURE_FAILED" || versionRow.acquisition_status === "RECOVERY_FAILED")
-          ? "ACQUISITION_FAILED"
-          : "ACQUISITION_PENDING";
-
-        const unavailable = buildCanonicalUnavailablePayload(
-          job.canonicalJobId,
-          evalState,
-          context,
-          job.canonicalJobId,
-          job.opportunityVersion,
-          new Date().toISOString()
-        );
-        const materialized = materializeCanonicalPayload(unavailable);
-        validateEvaluationConsistency(materialized);
-        return await this.commitEvaluationMaterialization(job, materialized);
-      }
-      
-      let oppSource: OpportunitySource;
-      try {
-        oppSource = JSON.parse(versionRow.raw_content);
-      } catch {
-        oppSource = {
-          jobHash: job.canonicalJobId,
-          role: versionRow.job_title,
-          company: versionRow.company_name,
-          location: versionRow.location,
-          rawDescription: versionRow.raw_content,
-        } as unknown as OpportunitySource;
-      }
-      oppSource.jobHash ||= job.canonicalJobId;
-      // The source payload's card identity is not the immutable opportunity
-      // version. Pin the latter before intrinsic evaluation so all downstream
-      // projection and trace evidence is bound to the exact version leased.
-      oppSource.opportunityVersion = job.opportunityVersion;
-
-      const snapshotRow = await this.db.one<{ payload_json: string }>(
-        `SELECT sps.payload_json
-         FROM evaluation_contexts ec
-         JOIN search_plan_snapshots sps ON ec.search_plan_snapshot_id = sps.id
-         WHERE ec.context_fingerprint = ?
-           AND ec.tenant_id = ?
-           AND ec.person_id = ?`,
-        [job.evaluationContextFingerprint, job.tenantId, job.personId]
-      );
-
-      if (!snapshotRow) {
-        throw new Error(`[EvaluationWorker] Missing evaluation context snapshot for fingerprint: ${job.evaluationContextFingerprint}`);
-      }
-
-      // Authoritative Candidate Profile Resolution for (job.tenantId, job.personId)
-      // 1. Authoritative candidate projection resolution via TenantScopedPersonStore
-      // The immutable context pins the projection version. A later CV upload
-      // must not change a queued job's candidate input.
-      const rawProjection = await resolveExactCandidateProjectionForScope(
-        this.db,
-        { tenantId: job.tenantId, personId: job.personId },
-        context.profileVersion,
-      );
-      if (!rawProjection) {
-        // A missing profile is a domain state, not permission to evaluate a
-        // synthetic executive. Persist an explicitly non-advisory result.
-        const evaluatedAt = new Date().toISOString();
-        const unavailable = buildCanonicalUnavailablePayload(
-          oppSource.jobHash || job.canonicalJobId,
-          "NOT_EVALUABLE",
-          context,
-          job.canonicalJobId,
-          job.opportunityVersion,
-          evaluatedAt,
-        );
-        const materialized = materializeCanonicalPayload(unavailable);
-        validateEvaluationConsistency(materialized);
-
-        return await this.commitEvaluationMaterialization(job, materialized);
-      }
-      const projection = rawProjection;
-
-      // 2. CandidateProjection integrity verification
-      const validation = validateCandidateProjection(projection);
-      if (!validation.valid) {
-        throw new Error(
-          `[EvaluationWorker] Authoritative candidate projection for person '${job.personId}' failed integrity check: missing [${validation.missingFields.join(", ")}]`
-        );
-      }
-
-      const artifact = runEngineSingleIntrinsic(
-        oppSource.jobHash || job.canonicalJobId,
-        projection,
-        0,
-        [oppSource]
-      );
-
-      if (!artifact) {
-        throw new Error(`[EvaluationWorker] Intrinsic evaluation artifact missing for ${job.canonicalJobId}`);
-      }
-
-      const isGenuinelySparse =
-        artifact.record?.verb === "SPARSE_SPEC" ||
-        (versionRow.evidence_state === "GENUINELY_SPARSE" &&
-          isAcquired &&
-          versionRow.acquisition_quality === "COMPLETE");
-
-      const evaluationState = isGenuinelySparse
-        ? "SPARSE_SPEC"
-        : resolveArtifactEvaluationState(artifact);
-      const evaluatedAt = new Date().toISOString();
-      const canonicalPayload = evaluationState === "EVALUATED"
-        ? buildCanonicalEvaluatedPayload(
-            artifact, context, job.canonicalJobId, job.opportunityVersion, evaluatedAt, projection,
-          )
-        : buildCanonicalUnavailablePayload(
-            oppSource.jobHash || job.canonicalJobId,
-            evaluationState,
-            context,
-            job.canonicalJobId,
-            job.opportunityVersion,
-            evaluatedAt
-          );
-      const materialized = materializeCanonicalPayload(canonicalPayload);
-      materialized.evaluationFingerprint = evaluationState === "EVALUATED"
-        ? canonicalPayload.evaluationInputHash
-        : null;
-      validateEvaluationConsistency(materialized);
-      const isVetoed = Boolean(artifact.record?.vetoed ?? false);
-      const vetoedScalar = isVetoed ? 1 : 0;
-
-      return await this.commitEvaluationMaterialization(job, materialized);
     } catch (err: any) {
       const modelFailure = classifyModelFailure(err);
       if (modelFailure.transient) {
         // Release only our lease. Keep the requirement READY and do not consume
         // job attempts or classify provider access as a candidate/source failure.
         await this.db.execute(`UPDATE evaluation_jobs SET status=?,last_error=?,next_attempt_at=datetime('now','+' || ? || ' seconds'),locked_by=NULL,lease_token=NULL,locked_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND locked_by=? AND lease_token=? AND status=?`,
-          [job.queueKind==='staged'?'staged_pending':'pending',`${modelFailure.code}: ${modelFailure.message}`,Math.ceil(modelFailure.retryAfterMs/1000),job.id,this.workerId,job.leaseToken,job.queueKind==='staged'?'staged_processing':'processing']);
+          ['staged_pending',`${modelFailure.code}: ${modelFailure.message}`,Math.ceil(modelFailure.retryAfterMs/1000),job.id,this.workerId,job.leaseToken,'staged_processing']);
         throw err;
       }
       const errorMsg = `${modelFailure.code}: ${modelFailure.message}`;
       const nextAttemptNumber = job.attempts + 1;
-      const processingStatus = job.queueKind === "staged" ? "staged_processing" : "processing";
-      const pendingStatus = job.queueKind === "staged" ? "staged_pending" : "pending";
-      const deadLetterStatus = job.queueKind === "staged" ? "staged_dead_letter" : "dead_letter";
+      const processingStatus = "staged_processing";
+      const pendingStatus = "staged_pending";
+      const deadLetterStatus = "staged_dead_letter";
 
       if (nextAttemptNumber < job.maxAttempts) {
         // Structured-output repair is a bounded semantic retry, not an
@@ -583,113 +459,8 @@ export class EvaluationWorker {
       return {status: requirementStatus==='SATISFIED'?'completed' as const:'dead_letter' as const,jobId:job.id,decision,error};
     });
   }
-  private async commitEvaluationMaterialization(
-    job: ClaimedJob,
-    materialized: any,
-  ): Promise<WorkerProcessingResult> {
-    const result = await this.db.transaction<WorkerProcessingResult>(async (tx) => {
-      const leaseCheck = await tx.one<{ id: string }>(
-        `SELECT id FROM evaluation_jobs WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
-        [job.id, this.workerId, job.leaseToken]
-      );
-      if (!leaseCheck) {
-        return {
-          status: "stale_lease_lost",
-          jobId: job.id,
-          error: "Lease token was lost or replaced before completion",
-        };
-      }
-
-      await tx.execute(
-        `INSERT INTO materialized_evaluations (
-           id, tenant_id, person_id, canonical_job_id, opportunity_version,
-           evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
-           rationale, evidence_ids, evaluation_json, vetoed, materialized_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-         ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
-         DO UPDATE SET
-           evaluation_state = EXCLUDED.evaluation_state,
-           evaluation_fingerprint = EXCLUDED.evaluation_fingerprint,
-           decision = EXCLUDED.decision,
-           quality_score = EXCLUDED.quality_score,
-           rationale = EXCLUDED.rationale,
-           evidence_ids = EXCLUDED.evidence_ids,
-           evaluation_json = EXCLUDED.evaluation_json,
-           vetoed = EXCLUDED.vetoed,
-           materialized_at = CURRENT_TIMESTAMP`,
-        [
-          materialized.id,
-          job.tenantId,
-          job.personId,
-          job.canonicalJobId,
-          job.opportunityVersion,
-          job.evaluationContextFingerprint,
-          materialized.evaluationFingerprint || null,
-          materialized.evaluationState,
-          materialized.decision || null,
-          materialized.qualityScore ?? null,
-          materialized.rationale || null,
-          typeof materialized.evidenceIds === "string" ? materialized.evidenceIds : JSON.stringify(materialized.evidenceIds || []),
-          materialized.evaluationJson,
-          materialized.vetoed ? 1 : 0,
-        ]
-      );
-
-      const completeRes = await tx.execute(
-        `UPDATE evaluation_jobs
-         SET status = 'completed',
-             completed_at = CURRENT_TIMESTAMP
-         WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
-        [job.id, this.workerId, job.leaseToken]
-      );
-
-      if (completeRes.rowsAffected === 0) {
-        return {
-          status: "stale_lease_lost",
-          jobId: job.id,
-          error: "Lease token was lost or replaced during completion",
-        };
-      }
-
-      // Mark requirement SATISFIED
-      await tx.execute(
-        `UPDATE evaluation_requirements
-         SET status = 'SATISFIED', satisfied_at = CURRENT_TIMESTAMP
-         WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?
-           AND canonical_job_id = ? AND opportunity_version = ?
-           AND evaluation_context_fingerprint = ?`,
-        [
-          job.tenantId,
-          job.personId,
-          job.searchPlanId,
-          job.canonicalJobId,
-          job.opportunityVersion,
-          job.evaluationContextFingerprint,
-        ]
-      );
-
-      return {
-        status: "completed",
-        jobId: job.id,
-        decision: materialized.decision ?? undefined,
-      };
-    });
-
-    if (result.status === "completed") {
-      try {
-        const { RunReconciliationService } = await import("./RunReconciliationService");
-        const reconciler = new RunReconciliationService(this.db);
-        await reconciler.reconcileRunsForJob(job.canonicalJobId, job.opportunityVersion);
-      } catch (recErr: any) {
-        console.warn("[EvaluationWorker] reconcileRunsForJob deferred:", recErr?.message || recErr);
-      }
-    }
-
-    return result;
-  }
-
-  public async pollAndProcessNext(queueKind?: ClaimedJob["queueKind"], contextFingerprint?: string): Promise<WorkerProcessingResult | null> {
-    const job = await this.claimNextJob(queueKind, contextFingerprint);
+  public async pollAndProcessNext(contextFingerprint?: string): Promise<WorkerProcessingResult | null> {
+    const job = await this.claimNextJob(contextFingerprint);
     if (!job) {
       return null;
     }

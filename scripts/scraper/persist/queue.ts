@@ -1,7 +1,6 @@
 import type { DatabaseAdapter } from "../../../src/data/database/adapter";
 import { getDatabaseAdapter } from "../../../src/data/database";
 import crypto from "crypto";
-import { stagedContextPredicate } from '../../../src/lib/intelligence/evaluationQueuePolicy';
 import { failEvaluationDependency } from '../../../src/lib/intelligence/evaluationDependency';
 
 export type JobStatus = "PENDING" | "LEASED" | "RUNNING" | "FAILED" | "RETRY" | "COMPLETE";
@@ -408,10 +407,10 @@ export class EnrichmentQueue {
         `INSERT INTO evaluation_jobs (
            id, tenant_id, person_id, search_plan_id, canonical_job_id,
            opportunity_version, evaluation_context_fingerprint, status, attempts, created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN EXISTS (SELECT 1 FROM evaluation_contexts ec WHERE ec.context_fingerprint = ? AND ${stagedContextPredicate}) THEN 'staged_pending' ELSE 'pending' END, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'staged_pending', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
          ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
          DO UPDATE SET 
-           status = CASE WHEN evaluation_jobs.status = 'waiting_enrichment' THEN 'pending' WHEN evaluation_jobs.status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE evaluation_jobs.status END,
+           status = CASE WHEN evaluation_jobs.status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE evaluation_jobs.status END,
            updated_at = CURRENT_TIMESTAMP`,
         [
           evalJobId,
@@ -420,7 +419,6 @@ export class EnrichmentQueue {
           req.search_plan_id,
           req.canonical_job_id,
           req.opportunity_version,
-          req.evaluation_context_fingerprint,
           req.evaluation_context_fingerprint,
         ]
       );

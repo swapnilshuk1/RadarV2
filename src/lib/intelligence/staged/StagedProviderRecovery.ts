@@ -1,5 +1,6 @@
 import type { DatabaseAdapter } from '@/data/database';
 import type { RecoveryScope } from './MissingEnrichmentRecovery';
+import { STAGED_POLICY_VERSION } from './stagedPolicy';
 
 /** Explicit operator recovery after provider access has been proved. */
 export async function recoverStagedProviderFailures(db:DatabaseAdapter,scope:RecoveryScope,limit:number,execute=false){
@@ -8,7 +9,7 @@ export async function recoverStagedProviderFailures(db:DatabaseAdapter,scope:Rec
     const rows=await tx.many<{job_id:string;requirement_id:string;enrichment_id:string;canonical_job_id:string;opportunity_version:string;attempts:number;last_error:string;blocked_reason:string}>(`
       SELECT ej.id job_id,er.id requirement_id,en.id enrichment_id,ej.canonical_job_id,ej.opportunity_version,ej.attempts,ej.last_error,er.blocked_reason
       FROM evaluation_jobs ej JOIN evaluation_requirements er ON er.tenant_id=ej.tenant_id AND er.person_id=ej.person_id AND er.search_plan_id=ej.search_plan_id AND er.canonical_job_id=ej.canonical_job_id AND er.opportunity_version=ej.opportunity_version AND er.evaluation_context_fingerprint=ej.evaluation_context_fingerprint
-      JOIN evaluation_contexts ec ON ec.context_fingerprint=ej.evaluation_context_fingerprint AND ec.policy_version='staged-v6'
+      JOIN evaluation_contexts ec ON ec.context_fingerprint=ej.evaluation_context_fingerprint AND ec.policy_version='${STAGED_POLICY_VERSION}'
       JOIN enrichment_jobs en ON en.canonical_job_id=ej.canonical_job_id AND en.opportunity_version=ej.opportunity_version AND en.pipeline_version=er.required_enrichment_pipeline_version AND en.status='COMPLETE'
       JOIN opportunity_versions ov ON ov.id=ej.opportunity_version AND ov.canonical_job_id=ej.canonical_job_id AND ov.acquisition_status='ACQUIRED' AND ov.lifecycle_state='ACTIVE'
       JOIN search_plan_candidates spc ON spc.tenant_id=ej.tenant_id AND spc.person_id=ej.person_id AND spc.search_plan_id=ej.search_plan_id AND spc.canonical_job_id=ej.canonical_job_id AND spc.opportunity_version=ej.opportunity_version AND spc.attention_decision='CANDIDATE'

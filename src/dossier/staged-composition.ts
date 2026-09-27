@@ -175,7 +175,7 @@ function inspectDraft(
   value: unknown,
   frozen: StagedResearchInput,
   staged: StagedDecisionResult,
-): { result: { draft: Draft; research: Research; memo: Draft["memo"] } } | { repair: Repair } {
+): { result: { draft: Draft; research: Research; memo: Draft["memo"] } } | { repair: Repair; draft?: Draft } {
   const parsed = memoDraftSchema.safeParse(value);
   if (!parsed.success) {
     const sections = new Set<MemoSection>();
@@ -199,7 +199,7 @@ function inspectDraft(
       narrativePlan: draft.narrativePlan,
     });
   } catch (error) {
-    return { repair: { sections: [], editorial: true, issue: String(error) } };
+    return { repair: { sections: [], editorial: true, issue: String(error) }, draft };
   }
   const issues: string[] = [],
     sections = new Set<MemoSection>();
@@ -231,7 +231,7 @@ function inspectDraft(
     }
   }
   if (issues.length)
-    return { repair: { sections: [...sections], editorial, issue: issues.join("; ") } };
+    return { repair: { sections: [...sections], editorial, issue: issues.join("; ") }, draft };
   return { result: { draft, research, memo } };
 }
 
@@ -296,6 +296,7 @@ async function writeMemo(
     } else value = response;
     const checked = inspectDraft(value, frozen, staged);
     if ("result" in checked) return checked.result;
+    if (checked.draft) value = checked.draft;
     repair = checked.repair;
     onStage("Correcting only the affected memo blocks");
   }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { contextFields, scopeFields, type Claim, type EvidenceSource, type ReasoningModel } from '../../src/dossier/contracts';
-import { chunkStagedDecisionItems, runStagedFrozenDecisionDetailed, STAGED_DECISION_BATCH_SIZE } from '../../src/dossier/staged-decision';
+import { chunkStagedDecisionItems, normalizeUnsupportedResolutionDrafts, runStagedFrozenDecisionDetailed, STAGED_DECISION_BATCH_SIZE } from '../../src/dossier/staged-decision';
 import { materializeStagedScreeningAdjudication } from '../../src/dossier/staged-screening';
 import {
   screeningConstraintForDrivers,
@@ -207,6 +207,25 @@ class ResolvedLeadershipModeModel extends ScriptedModel {
   }
 }
 
+class UnsupportedResolutionEvidenceModel extends ScriptedModel {
+  override readonly id = 'unsupported-resolution-evidence-model';
+  override async generate(instruction: string, input: any): Promise<unknown> {
+    const result = await super.generate(instruction, input);
+    if (instruction.startsWith('Resolve only RADAR')) {
+      return {
+        resolutions: [
+          ...openResolutions.filter(resolution => resolution.field !== 'leadershipChanges'),
+          {
+            field: 'leadershipChanges', status: 'INFERRED', value: 'Recent leadership change',
+            claimIds: [], methods: ['infer'],
+          },
+        ],
+      };
+    }
+    return result;
+  }
+}
+
 const baseMapped = (): StagedMappedRequirement => ({
   id: 'REQ-001',
   requirement: 'Relevant experience in Operations',
@@ -403,19 +422,37 @@ describe('staged production decision boundary', () => {
     expect(model.instructions).toHaveLength(7);
   });
 
-  it('supplies career evidence and explicit pursuit actions only to the v7 decision stage', async()=>{
-    for(const policyVersion of ['staged-v6','staged-v7'] as const){
-      let request:any,wording='';
-      class CapturingModel extends ScriptedModel {
-        async generate(instruction:string,input:any){if(instruction.includes('executive decision reasoner')){request=input.input??input;wording=instruction;}return super.generate(instruction,input);}
-      }
-      await runStagedFrozenDecisionDetailed({...frozen,opportunity:{...frozen.opportunity,id:`decision-evidence-${policyVersion}`}},new CapturingModel(),()=>{},{policyVersion});
-      if(policyVersion==='staged-v7'){
-        expect(request.candidateClaims).toEqual(claims.filter(claim=>claim.plane==='CANDIDATE'));
-        expect(wording).toContain('PASS means DO_NOT_PURSUE');
-        expect(wording).toContain('CONSIDER means investigate');
-      }else{expect(request).not.toHaveProperty('candidateClaims');expect(wording).not.toContain('PASS means DO_NOT_PURSUE');}
+  it('supplies candidate evidence and explicit pursuit semantics to the staged-v8 decision stage', async()=>{
+    let request:any,wording='';
+    class CapturingModel extends ScriptedModel {
+      async generate(instruction:string,input:any){if(instruction.includes('executive decision reasoner')){request=input.input??input;wording=instruction;}return super.generate(instruction,input);}
     }
+    await runStagedFrozenDecisionDetailed({...frozen,opportunity:{...frozen.opportunity,id:'decision-evidence-v8'}},new CapturingModel());
+    expect(request.candidateClaims).toEqual(claims.filter(claim=>claim.plane==='CANDIDATE'));
+    expect(request.candidateConflicts).toEqual(frozen.candidateConflicts);
+    expect(wording).toContain('PASS means DO_NOT_PURSUE');
+    expect(wording).toContain('CONSIDER means investigate');
+  });
+
+  it('downgrades a context resolution with no evidence to OPEN instead of fabricating support', () => {
+    expect(normalizeUnsupportedResolutionDrafts([{
+      field: 'leadershipChanges', status: 'INFERRED', value: 'Recent leadership change',
+      claimIds: [], methods: ['infer'],
+    }])).toEqual([{
+      field: 'leadershipChanges', status: 'OPEN', value: null,
+      claimIds: [], methods: ['infer'], question: 'What evidence establishes leadershipChanges?',
+    }]);
+  });
+
+  it('continues staged decision reasoning when GLM proposes an unsupported context value', async () => {
+    const result = await runStagedFrozenDecisionDetailed(
+      {...frozen, opportunity: {...frozen.opportunity, id: 'unsupported-resolution-evidence'}},
+      new UnsupportedResolutionEvidenceModel(),
+    );
+    expect(result.trace.resolutions.find(resolution => resolution.field === 'leadershipChanges')).toMatchObject({
+      status: 'OPEN', value: null, claimIds: [], question: 'What evidence establishes leadershipChanges?',
+    });
+    expect(result.decision.verdict).toBe('PASS');
   });
 
   it('rejects a question on a resolved field before decision reasoning', async () => {

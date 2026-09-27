@@ -1,7 +1,6 @@
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
 import { SqliteScrapeRunStore } from "@/data/sqlite/repositories/SqliteScrapeRunStore";
 import { EnrichmentQueue } from "../../../scripts/scraper/persist/queue";
-import { stagedContextPredicate } from './evaluationQueuePolicy';
 import { failEvaluationDependency } from './evaluationDependency';
 
 export interface RunProgress {
@@ -250,9 +249,9 @@ export class RunReconciliationService {
           `INSERT INTO evaluation_jobs (
              id, tenant_id, person_id, search_plan_id, canonical_job_id,
              opportunity_version, evaluation_context_fingerprint, status, attempts, created_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN EXISTS (SELECT 1 FROM evaluation_contexts ec WHERE ec.context_fingerprint = ? AND ${stagedContextPredicate}) THEN 'staged_pending' ELSE 'pending' END, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, 'staged_pending', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
            ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
-           DO UPDATE SET status = CASE WHEN evaluation_jobs.status = 'waiting_enrichment' THEN 'pending' WHEN evaluation_jobs.status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE evaluation_jobs.status END, updated_at = CURRENT_TIMESTAMP`,
+           DO UPDATE SET status = CASE WHEN evaluation_jobs.status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE evaluation_jobs.status END, updated_at = CURRENT_TIMESTAMP`,
           [
             evalJobId,
             req.tenant_id,
@@ -260,24 +259,24 @@ export class RunReconciliationService {
             req.search_plan_id,
             req.canonical_job_id,
             req.opportunity_version,
-            req.evaluation_context_fingerprint, req.evaluation_context_fingerprint,
+            req.evaluation_context_fingerprint,
           ]
         );
         jobsCreated++;
-      } else if (job.status === "waiting_enrichment" || job.status === "staged_waiting_enrichment") {
+      } else if (job.status === "staged_waiting_enrichment") {
         await this.db.execute(
-          `UPDATE evaluation_jobs SET status = CASE WHEN status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE 'pending' END, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          `UPDATE evaluation_jobs SET status = 'staged_pending', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
           [job.id]
         );
-      } else if (job.status === "dead_letter" || job.status === "staged_dead_letter") {
+      } else if (job.status === "staged_dead_letter") {
         await this.db.execute(
           `UPDATE evaluation_requirements SET status = 'FAILED', blocked_reason = 'EVALUATION_JOB_DEAD_LETTER' WHERE id = ?`,
           [req.id]
         );
         requirementsHealed++;
-      } else if (job.status === "completed" || job.status === "staged_completed") {
+      } else if (job.status === "staged_completed") {
         const mat = await this.db.one<{ id: string }>(
-          `SELECT id FROM ${job.status === 'staged_completed' ? 'staged_evaluations' : 'materialized_evaluations'}
+          `SELECT id FROM staged_evaluations
            WHERE tenant_id = ? AND person_id = ? AND canonical_job_id = ?
              AND opportunity_version = ? AND evaluation_context_fingerprint = ?
            LIMIT 1`,

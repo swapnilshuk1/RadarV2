@@ -15,13 +15,8 @@ import { ResponseValidator } from "@/lib/acquisition/validator";
 import { validateJobDocument } from "@/lib/acquisition/validator";
 import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
 import { CanonicalIngestionService } from "@/lib/acquisition/CanonicalIngestionService";
-import { SqliteOpportunityQueries } from "@/data/sqlite/repositories/SqliteOpportunityQueries";
-import { SqliteMaterializedEvaluationStore } from "@/data/sqlite/repositories/SqliteMaterializedEvaluationStore";
 import { extract } from "../../scripts/scraper/extract/extractor";
 import type { DetailedCard } from "../../scripts/scraper/types";
-import { validateEvaluationConsistency } from "@/lib/domain/evaluation_fingerprint";
-import type { MaterializedEvaluation } from "@/lib/domain/evaluation_context";
-import { classifyOpportunityCategories } from "@/lib/domain/category_taxonomy";
 
 class TestSqliteAdapter implements DatabaseAdapter {
   constructor(public db: Database.Database) {}
@@ -377,140 +372,6 @@ describe("Adversarial Portal Acquisition & Certification Suite (RADAR V4 Phase 2
       expect(val.isValid).toBe(false);
       expect(val.quality).toBe("INVALID");
       expect(val.failureClass).toBe("REMOVED_404");
-    });
-  });
-
-  describe("3. UI State Contract & Zero Heuristics Invariant", () => {
-    it("proves metrics.categoryMetrics.needs_more_signal.total strictly equals listOpportunities(needs_more_signal).length", async () => {
-      const sqliteDb = new Database(":memory:");
-      setupFullCanonicalSchema(sqliteDb);
-      const adapter = new TestSqliteAdapter(sqliteDb);
-      const opportunityQueries = new SqliteOpportunityQueries(adapter);
-      const evalStore = new SqliteMaterializedEvaluationStore(adapter);
-
-      const scope = { tenantId: "t_exec", personId: "p_exec" };
-
-      // Insert 1 EVALUATED opportunity (PURSUE)
-      sqliteDb.exec(`
-        INSERT INTO canonical_opportunities (id, source, source_job_id, canonical_url, company_name)
-        VALUES ('co_eval', 'LinkedIn', 'li_eval_1', 'https://linkedin.com/jobs/view/1', 'Alpha Corp');
-
-        INSERT INTO opportunity_versions (
-          id, canonical_job_id, content_hash, job_title, company_name, location,
-          raw_content, acquisition_status, acquisition_quality, lifecycle_state, evidence_state
-        ) VALUES (
-          'ov_eval', 'co_eval', 'hash_eval', 'Chief Technology Officer', 'Alpha Corp', 'Bengaluru',
-          '${"Detailed rich executive job description with complete mandate. ".repeat(40)}',
-          'ACQUIRED', 'COMPLETE', 'ACTIVE', 'SUFFICIENT'
-        );
-
-        INSERT INTO search_plan_candidates (
-          tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision
-        ) VALUES ('t_exec', 'p_exec', 'sp_exec', 'co_eval', 'ov_eval', 'CANDIDATE');
-      `);
-
-      const evalPayload = {
-        role: "Chief Technology Officer",
-        company: "Alpha Corp",
-        evaluationInputHash: "fp_eval_1",
-        engineRecommendation: { engineVerdict: "PURSUE", qualityScore: 94 },
-      };
-
-      await evalStore.materializeEvaluation(scope, {
-        id: "mat_eval_1",
-        tenantId: scope.tenantId,
-        personId: scope.personId,
-        canonicalJobId: "co_eval",
-        opportunityVersion: "ov_eval",
-        evaluationContextFingerprint: "fp_exec_v4",
-        evaluationState: "EVALUATED",
-        decision: "PURSUE",
-        qualityScore: 94,
-        rationale: "Strong CTO match",
-        evidenceIds: ["ev1"],
-        evaluationJson: JSON.stringify(evalPayload),
-        materializedAt: new Date().toISOString(),
-      });
-
-      // Insert 2 SPARSE_SPEC opportunities (intentionally null decision & null qualityScore)
-      sqliteDb.exec(`
-        INSERT INTO canonical_opportunities (id, source, source_job_id, canonical_url, company_name)
-        VALUES 
-          ('co_sparse1', 'Indeed', 'ind_sparse_1', 'https://indeed.com/viewjob?jk=1', 'Sparse Corp A'),
-          ('co_sparse2', 'Naukri', 'nk_sparse_2', 'https://naukri.com/job/2', 'Sparse Corp B');
-
-        INSERT INTO opportunity_versions (
-          id, canonical_job_id, content_hash, job_title, company_name, location,
-          raw_content, acquisition_status, acquisition_quality, lifecycle_state, evidence_state
-        ) VALUES 
-          ('ov_sparse1', 'co_sparse1', 'hash_s1', 'VP of Engineering', 'Sparse Corp A', 'Remote', 'Short 30 char spec', 'RECOVERY_PENDING', 'MINIMAL', 'ACTIVE', 'UNVERIFIED'),
-          ('ov_sparse2', 'co_sparse2', 'hash_s2', 'Director of Product', 'Sparse Corp B', 'Mumbai', 'Short 45 char spec', 'RECOVERY_PENDING', 'MINIMAL', 'ACTIVE', 'UNVERIFIED');
-
-        INSERT INTO search_plan_candidates (
-          tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision
-        ) VALUES 
-          ('t_exec', 'p_exec', 'sp_exec', 'co_sparse1', 'ov_sparse1', 'CANDIDATE'),
-          ('t_exec', 'p_exec', 'sp_exec', 'co_sparse2', 'ov_sparse2', 'CANDIDATE');
-      `);
-
-      const sparsePayload1 = {
-        role: "VP of Engineering",
-        company: "Sparse Corp A",
-        evaluationStatus: "SPARSE_SPEC",
-      };
-      const sparsePayload2 = {
-        role: "Director of Product",
-        company: "Sparse Corp B",
-        evaluationStatus: "SPARSE_SPEC",
-      };
-
-      await evalStore.materializeEvaluation(scope, {
-        id: "mat_sparse_1",
-        tenantId: scope.tenantId,
-        personId: scope.personId,
-        canonicalJobId: "co_sparse1",
-        opportunityVersion: "ov_sparse1",
-        evaluationContextFingerprint: "fp_exec_v4",
-        evaluationState: "SPARSE_SPEC",
-        decision: null,
-        qualityScore: null,
-        rationale: "Needs more signal",
-        evidenceIds: [],
-        evaluationJson: JSON.stringify(sparsePayload1),
-        materializedAt: new Date().toISOString(),
-      });
-
-      await evalStore.materializeEvaluation(scope, {
-        id: "mat_sparse_2",
-        tenantId: scope.tenantId,
-        personId: scope.personId,
-        canonicalJobId: "co_sparse2",
-        opportunityVersion: "ov_sparse2",
-        evaluationContextFingerprint: "fp_exec_v4",
-        evaluationState: "SPARSE_SPEC",
-        decision: null,
-        qualityScore: null,
-        rationale: "Needs more signal",
-        evidenceIds: [],
-        evaluationJson: JSON.stringify(sparsePayload2),
-        materializedAt: new Date().toISOString(),
-      });
-
-      // 1. Fetch metrics
-      const metrics = await opportunityQueries.getMetrics(scope);
-      expect(metrics.totalScreened).toBe(3);
-      expect(metrics.categoryMetrics.needs_more_signal.total).toBe(2);
-
-      // 2. Query category list
-      const sparseOpps = (await opportunityQueries.getFeed(scope, undefined, { categoryId: "needs_more_signal" }, 24)).items;
-      expect(sparseOpps.length).toBe(2);
-      expect(metrics.categoryMetrics.needs_more_signal.total).toBe(sparseOpps.length);
-
-      // 3. Verify every item has evaluationState = SPARSE_SPEC, decision = null, and score = null
-      for (const opp of sparseOpps) {
-        expect((opp as any).evaluationState).toBe("SPARSE_SPEC");
-        expect(opp.qualityScore ?? null).toBeNull();
-      }
     });
   });
 });

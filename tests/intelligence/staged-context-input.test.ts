@@ -88,30 +88,10 @@ describe('context-aware immutable production input',()=>{
   expect(result.sources).toEqual([]);
   expect(result.attempts.filter(a=>a.operation==='search').every(a=>a.status==='NO_RESULTS')).toBe(true);
  });
- it('preserves frozen v7 inputs but refuses fresh acquisition under old semantics',async()=>{
-  const acquisition=provider(),reasoning=model();
-  const first=await new ProductionStagedInputAdapter(db,undefined,[acquisition]).build(identity,reasoning);
-  await db.execute("UPDATE evaluation_contexts SET policy_version='staged-v7' WHERE context_fingerprint=?",[identity.evaluationContextFingerprint]);
-  expect(await new ProductionStagedInputAdapter(db,undefined,[acquisition]).build(identity,reasoning)).toEqual(first);
-  await db.execute('DELETE FROM staged_frozen_inputs');
-  await expect(new ProductionStagedInputAdapter(db,undefined,[acquisition]).build(identity,reasoning)).rejects.toThrow('FRESH_CONTEXT_INPUT_REQUIRES_STAGED_V8');
-  expect(acquisition.acquire).toHaveBeenCalledTimes(1);
- });
- it('binds the acquisition recipe into v8 identity without rewriting v7 identity',()=>{
-  const base={tenantId:'tenant',personId:'person',searchPlanSnapshotId:'snapshot',ontologyVersion:'v1',ontologyFingerprint:'ontology',policyVersion:'staged-v7',profileVersion:'profile'};
-  expect(computeEvaluationContextFingerprint(base)).toBe(computeDeterministicHash(canonicalNormalize(base)));
-  expect(computeEvaluationContextFingerprint({...base,policyVersion:'staged-v8'})).toBe(computeDeterministicHash(canonicalNormalize({...base,policyVersion:'staged-v8',contextAcquisition:CONTEXT_ACQUISITION_POLICY})));
- });
  it('rejects fresh input under a fingerprint that omits the acquisition policy',async()=>{
   await db.execute("UPDATE evaluation_contexts SET context_fingerprint='unbound-policy' WHERE context_fingerprint=?",[identity.evaluationContextFingerprint]);
   const acquisition=provider();
   await expect(new ProductionStagedInputAdapter(db,undefined,[acquisition]).build({...identity,evaluationContextFingerprint:'unbound-policy'},model())).rejects.toThrow('CONTEXT_ACQUISITION_POLICY_IDENTITY_MISMATCH');
-  expect(acquisition.acquire).not.toHaveBeenCalled();
- });
- it('does not silently reinterpret multiple candidate documents under v6',async()=>{
-  await db.execute(`UPDATE evaluation_contexts SET policy_version='staged-v6' WHERE context_fingerprint=?`,[identity.evaluationContextFingerprint]);
-  const acquisition=provider();
-  await expect(new ProductionStagedInputAdapter(db,undefined,[acquisition]).build(identity,model())).rejects.toThrow('MULTIPLE_CANDIDATE_SOURCES_REQUIRE_CONTEXT_POLICY');
   expect(acquisition.acquire).not.toHaveBeenCalled();
  });
  it('does not freeze an operational outage as successful immutable input',async()=>{

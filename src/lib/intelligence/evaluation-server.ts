@@ -8,6 +8,10 @@ import {
 } from "./EvaluationRuntimeControl";
 import { EvaluationWorker } from "./EvaluationWorker";
 
+// Evaluation-stage GLM calls are hard-capped at 120s. Give telemetry 15s of
+// grace for the terminal write, then treat a lingering `running` row as stale.
+const EVALUATION_INVOCATION_STALE_MS = 135_000;
+
 export interface EvaluatorTelemetrySnapshot {
   control: {
     desiredState: EvaluationRuntimeState;
@@ -26,8 +30,8 @@ export interface EvaluatorTelemetrySnapshot {
     claimedWithoutModelCall: number;
     /** A processing row which can be reclaimed by a worker. */
     reclaimableProcessing: number;
+    waitingEnrichment: number;
     completed: number;
-    failed: number;
     deadLetter: number;
   };
   latestCompletedAt: string | null;
@@ -113,6 +117,19 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
   const { scope, canControl } = await resolveEvaluatorAccess(user.id, db, requested);
   const runtime = await new EvaluationRuntimeControl(db).get(scope);
 
+  const telemetryNow = Date.now();
+  const staleInvocationBefore = telemetryNow - EVALUATION_INVOCATION_STALE_MS;
+  await db.execute(
+    `UPDATE model_invocations
+     SET status='transport_error',
+         completed_at=?,
+         latency_ms=?-started_at,
+         error_code=COALESCE(error_code,'STALE_INVOCATION_RECONCILED')
+     WHERE tenant_id=? AND person_id=? AND pipeline='evaluation'
+       AND status='running' AND started_at<?`,
+    [telemetryNow, telemetryNow, scope.tenantId, scope.personId, staleInvocationBefore],
+  );
+
   const statusRows = await db.many<{ status: string; n: number }>(
     `SELECT ej.status AS status,COUNT(*) AS n
      FROM evaluation_jobs AS ej
@@ -125,7 +142,7 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
   const latest = await db.one<{ completed_at: string | null }>(
     `SELECT MAX(ej.completed_at) AS completed_at
      FROM evaluation_jobs AS ej
-     WHERE ej.tenant_id=? AND ej.person_id=? AND ej.status='completed'
+     WHERE ej.tenant_id=? AND ej.person_id=? AND ej.status='staged_completed'
        AND ${capturedJobPredicate("ej")}`,
     [scope.tenantId, scope.personId],
   );
@@ -148,7 +165,7 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
               THEN 1 ELSE 0
             END AS reclaimable
      FROM evaluation_jobs AS ej
-     WHERE tenant_id=? AND person_id=? AND status IN ('processing','staged_processing')
+     WHERE tenant_id=? AND person_id=? AND status='staged_processing'
        AND ${capturedJobPredicate("ej")}
      ORDER BY COALESCE(first_claimed_at,created_at),created_at`,
     [scope.tenantId, scope.personId],
@@ -246,14 +263,14 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
       canControl,
     },
     queue: {
-      pending: Number(counts.staged_pending ?? 0) + Number(counts.pending ?? 0),
-      processing: Number(counts.staged_processing ?? 0) + Number(counts.processing ?? 0),
+      pending: Number(counts.staged_pending ?? 0),
+      processing: Number(counts.staged_processing ?? 0),
       liveModelCalls,
       claimedWithoutModelCall,
       reclaimableProcessing,
-      completed: Number(counts.completed ?? 0),
-      failed: Number(counts.failed ?? 0),
-      deadLetter: Number(counts.dead_letter ?? 0),
+      waitingEnrichment: Number(counts.staged_waiting_enrichment ?? 0),
+      completed: Number(counts.staged_completed ?? 0),
+      deadLetter: Number(counts.staged_dead_letter ?? 0),
     },
     latestCompletedAt: latest?.completed_at ?? null,
     processingStateJobs,
@@ -307,7 +324,6 @@ export const controlEvaluatorFn = createServerFn({ method: "POST" })
       // continues the durable queue.
       if (!access.activeContext) throw new AuthError("NO_ACTIVE_EVALUATION_CONTEXT", 409);
       await new EvaluationWorker(db, "ui-evaluator-resume").pollAndProcessNext(
-        "staged",
         access.activeContext.contextFingerprint,
       );
     }

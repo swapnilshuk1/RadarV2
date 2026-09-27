@@ -141,7 +141,16 @@ export class SqliteDossierReviewQueue {
       );
       if (!lane.rowsAffected) return null;
       const row = await tx.one<ReviewJob>(
-        `SELECT * FROM dossier_review_jobs WHERE recipe=? AND ((status IN ('pending','retry') AND next_attempt_at<=?) OR (status='processing' AND lease_until<=?)) ORDER BY next_attempt_at,created_at LIMIT 1`,
+        `SELECT * FROM dossier_review_jobs AS drj
+         WHERE recipe=?
+           AND EXISTS (
+             SELECT 1 FROM active_evaluation_contexts aec
+             WHERE aec.tenant_id=drj.tenant_id
+               AND aec.person_id=drj.person_id
+               AND aec.context_fingerprint=drj.evaluation_context_fingerprint
+           )
+           AND ((status IN ('pending','retry') AND next_attempt_at<=?) OR (status='processing' AND lease_until<=?))
+         ORDER BY next_attempt_at,created_at LIMIT 1`,
         [DOSSIER_COMPOSITION_RECIPE, now, now],
       );
       if (!row) {

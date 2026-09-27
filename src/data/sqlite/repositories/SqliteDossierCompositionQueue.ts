@@ -121,8 +121,14 @@ export class SqliteDossierCompositionQueue {
     const token = randomUUID();
     return this.db.transaction(async (tx) => {
       const row = await tx.one<DossierCompositionJob>(
-        `SELECT * FROM dossier_composition_jobs
+        `SELECT * FROM dossier_composition_jobs AS dcj
          WHERE recipe=?
+           AND EXISTS (
+             SELECT 1 FROM active_evaluation_contexts aec
+             WHERE aec.tenant_id=dcj.tenant_id
+               AND aec.person_id=dcj.person_id
+               AND aec.context_fingerprint=dcj.evaluation_context_fingerprint
+           )
            AND (
              (status IN ('pending','retry') AND next_attempt_at<=?)
              OR (status='processing' AND lease_until<=?)

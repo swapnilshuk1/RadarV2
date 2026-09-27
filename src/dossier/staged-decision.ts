@@ -36,7 +36,6 @@ import {
 import {
   stagedDecisionGapInstruction,
   stagedDecisionCareerCapitalInstruction,
-  stagedDecisionInstruction,
   contextAwareDecisionInstruction,
   stagedDecisionMappingInstruction,
   stagedDecisionResolutionInstruction,
@@ -202,8 +201,26 @@ function exactBatch<T extends { requirementId: string }>(
   return result;
 }
 
+export function normalizeUnsupportedResolutionDrafts(
+  drafts: z.infer<typeof stagedDecisionResolutionResponseSchema>["resolutions"],
+) {
+  return drafts.map(draft =>
+    draft.status !== 'OPEN' && (draft.value === null || draft.claimIds.length === 0)
+      ? {
+          ...draft,
+          status: 'OPEN' as const,
+          value: null,
+          claimIds: [],
+          question: draft.question ?? `What evidence establishes ${draft.field}?`,
+        }
+      : draft,
+  );
+}
+
 function validateResolutions(value: unknown, frozen: StagedResearchInput) {
-  const drafts = stagedDecisionResolutionResponseSchema.parse(value).resolutions;
+  const drafts = normalizeUnsupportedResolutionDrafts(
+    stagedDecisionResolutionResponseSchema.parse(value).resolutions,
+  );
   const parsed = materializeStagedDecisionResolutions(drafts);
   const claims = new Map(frozen.evidence.map(claim => [claim.id, claim]));
   const expected = new Set(frozen.fields);
@@ -269,7 +286,6 @@ export async function runStagedFrozenDecisionDetailed(
   frozen: StagedResearchInput,
   model: ReasoningModel,
   onStage: (stage: string) => void = () => {},
-  options: { policyVersion?: 'staged-v6' | 'staged-v7' | 'staged-v8' } = {},
 ): Promise<StagedDecisionResult> {
   const roleClaims = frozen.evidence.filter(claim => claim.plane === 'JD');
   const candidateClaims = frozen.evidence.filter(claim => claim.plane === 'CANDIDATE');
@@ -389,7 +405,8 @@ export async function runStagedFrozenDecisionDetailed(
       role,
       evidence: frozen.evidence,
       acquisition: frozen.acquisition,
-      ...(options.policyVersion==='staged-v8'?{candidateConflicts:frozen.candidateConflicts,conflictInstruction:'These conflicts are unresolved. Do not choose a winner or treat a conflicting premise as settled.'}:{}),
+      candidateConflicts:frozen.candidateConflicts,
+      conflictInstruction:'These conflicts are unresolved. Do not choose a winner or treat a conflicting premise as settled.',
       fields: frozen.fields,
     },
     stagedDecisionResolutionResponseSchema,
@@ -472,13 +489,14 @@ export async function runStagedFrozenDecisionDetailed(
     stagedDecisionCareerCapitalInstruction,
     {
       candidateClaims,
-      ...(options.policyVersion==='staged-v8'?{candidateConflicts:frozen.candidateConflicts,conflictInstruction:'Do not resolve candidate-source conflicts by choosing a winner.'}:{}),
+      candidateConflicts:frozen.candidateConflicts,
+      conflictInstruction:'Do not resolve candidate-source conflicts by choosing a winner.',
       operatingConditions: role.operatingConditions,
       authorityShape: role.authorityShape,
       resolutions,
     },
     stagedCareerCapitalSchema,
-    value => validateStagedCareerCapital(value, role, resolutions, candidateClaims, (options.policyVersion === 'staged-v7' || options.policyVersion === 'staged-v8')),
+    value => validateStagedCareerCapital(value, role, resolutions, candidateClaims, true),
     onStage,
     'career-capital',
   );
@@ -497,12 +515,13 @@ export async function runStagedFrozenDecisionDetailed(
   const decision = await proposeStage(
     'Reasoning about pursuit decision',
     model,
-    (options.policyVersion === 'staged-v7' || options.policyVersion === 'staged-v8') ? contextAwareDecisionInstruction : stagedDecisionInstruction,
+    contextAwareDecisionInstruction,
     {
       opportunity: frozen.opportunity,
       candidate: frozen.candidate,
-      ...((options.policyVersion === 'staged-v7' || options.policyVersion === 'staged-v8') ? { candidateClaims } : {}),
-      ...(options.policyVersion==='staged-v8'?{candidateConflicts:frozen.candidateConflicts,conflictInstruction:'Keep conflicts unresolved and express material uncertainty as decision hinges.'}:{}),
+      candidateClaims,
+      candidateConflicts:frozen.candidateConflicts,
+      conflictInstruction:'Keep conflicts unresolved and express material uncertainty as decision hinges.',
       immutableRequirements,
       eligibleScreeningDrivers: drivers.map(driver => ({
         id: driver.id,

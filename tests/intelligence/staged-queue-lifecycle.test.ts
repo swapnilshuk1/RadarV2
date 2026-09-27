@@ -23,10 +23,12 @@ describe('staged enrichment dependency lifecycle', () => {
   beforeEach(async () => {
     db = new SqliteAdapter(new Database(':memory:'));
     await setupLineageTestFixture(db);
-    await db.execute(`INSERT INTO evaluation_contexts (context_fingerprint,tenant_id,person_id,search_plan_snapshot_id,ontology_version,ontology_fingerprint,policy_version,profile_version) VALUES ('staged-context','tenant_A','person_A','sps_A','v1','hash_ontology','staged-v6','profile')`);
+    await db.execute(`INSERT INTO evaluation_contexts (context_fingerprint,tenant_id,person_id,search_plan_snapshot_id,ontology_version,ontology_fingerprint,policy_version,profile_version) VALUES ('staged-context','tenant_A','person_A','sps_A','v1','hash_ontology','staged-v8','profile')`);
     await db.execute(`INSERT INTO canonical_opportunities(id,source,source_job_id,canonical_url) VALUES ('job','LinkedIn','source-job','https://example.com/job')`);
     await db.execute(`INSERT INTO opportunity_versions(id,canonical_job_id,content_hash,job_title,raw_content) VALUES ('version','job',?,'Head of Growth','Job description')`,[computeContentHash({title:'Head of Growth',companyName:null,location:null,employmentType:null,rawContent:'Job description'})]);
     await db.execute(`INSERT INTO search_plan_candidates(tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,attention_decision) VALUES ('tenant_A','person_A','plan_A','job','version','CANDIDATE')`);
+    await db.execute(`INSERT OR IGNORE INTO evaluation_context_scopes(context_fingerprint,tenant_id,person_id,search_plan_id) VALUES('staged-context','tenant_A','person_A','plan_A')`);
+    await db.execute(`INSERT INTO active_evaluation_contexts(tenant_id,person_id,search_plan_id,context_fingerprint,activated_by) VALUES('tenant_A','person_A','plan_A','staged-context','test-fixture')`);
   });
   async function enrichment(version='version',pipeline='1.0.0',status='COMPLETE') {
     await db.execute(`INSERT INTO enrichment_jobs(id,job_hash,canonical_job_id,opportunity_version,pipeline_version,status) VALUES (?,?,?,?,?,?)`,[`enrich-${version}-${pipeline}`,'job','job',version,pipeline,status]);
@@ -34,19 +36,28 @@ describe('staged enrichment dependency lifecycle', () => {
   async function state() {
     return db.one<{status:string;requirement:string;blocked_reason:string|null}>(`SELECT ej.status,er.status AS requirement,er.blocked_reason FROM evaluation_jobs ej JOIN evaluation_requirements er ON er.evaluation_context_fingerprint=ej.evaluation_context_fingerprint`);
   }
+  it('default daemon claims only the active evaluation context, never stale queued work', async () => {
+    await db.execute(`UPDATE opportunity_versions SET acquisition_status='ACQUIRED',lifecycle_state='ACTIVE'`);
+    await enrichment();
+    await db.execute(`INSERT INTO evaluation_contexts (context_fingerprint,tenant_id,person_id,search_plan_snapshot_id,ontology_version,ontology_fingerprint,policy_version,profile_version) VALUES ('stale-context','tenant_A','person_A','sps_A','v1','hash_ontology','staged-v8','stale-profile')`);
+    await new EvaluationWorkScheduler(db).ensureWork({...identity,evaluationContextFingerprint:'stale-context'});
+    await db.execute(`UPDATE evaluation_jobs SET created_at='2026-01-01 00:00:00',next_attempt_at='2026-01-01 00:00:00' WHERE evaluation_context_fingerprint='stale-context'`);
+    await new EvaluationWorkScheduler(db).ensureWork(identity);
+    const claimed=await new EvaluationWorker(db).claimNextJob();
+    expect(claimed?.evaluationContextFingerprint).toBe('staged-context');
+    expect(await db.one(`SELECT status FROM evaluation_jobs WHERE evaluation_context_fingerprint='stale-context'`)).toEqual({status:'staged_pending'});
+  });
   it.each(['PURSUE','CONSIDER','PASS'] as const)('completes %s while composing only actionable active-context results',async decision=>{
     await db.execute(`UPDATE opportunity_versions SET acquisition_status='ACQUIRED',lifecycle_state='ACTIVE'`);
     await enrichment();await new EvaluationWorkScheduler(db).ensureWork(identity);
-    await db.execute(`INSERT OR IGNORE INTO evaluation_context_scopes(context_fingerprint,tenant_id,person_id,search_plan_id) VALUES('staged-context','tenant_A','person_A','plan_A')`);
-    await db.execute(`INSERT INTO active_evaluation_contexts(tenant_id,person_id,search_plan_id,context_fingerprint,activated_by) VALUES('tenant_A','person_A','plan_A','staged-context','test-fixture')`);
-    const worker=new EvaluationWorker(db);const job=await worker.claimNextJob('staged');
+    const worker=new EvaluationWorker(db);const job=await worker.claimNextJob();
     const evaluation=structuredClone(stagedEvaluation);
     evaluation.decision.verdict=decision;
     evaluation.trace.decision.verdict=decision;
     const evaluate=vi.spyOn(ProductionStagedEvaluationService.prototype,'evaluate').mockResolvedValue({
       ...identity,
       profileVersion:'profile',
-      policyVersion:'staged-v6',
+      policyVersion:'staged-v8',
       ontologyVersion:'v1',
       ontologyFingerprint:'hash_ontology',
       jobHash:'job',
@@ -55,7 +66,7 @@ describe('staged enrichment dependency lifecycle', () => {
       modelId:'test',
       modelVersion:'test',
       modelConfigurationFingerprint:'test-config',
-      contractVersion:'staged-decision-v6',
+      contractVersion:'staged-decision-v8',
       evaluationState:'COMPLETED',
       decision,
       screeningViability:evaluation.decision.screeningViability,
@@ -100,7 +111,7 @@ describe('staged enrichment dependency lifecycle', () => {
   it.each([[403,900_000],[429,45_000]])('releases the owned lease with provider-specific delay for HTTP %s without spending attempts',async(httpStatus,retryAfterMs)=>{
     await db.execute(`UPDATE opportunity_versions SET acquisition_status='ACQUIRED',lifecycle_state='ACTIVE'`);
     await enrichment();await new EvaluationWorkScheduler(db).ensureWork(identity);
-    const worker=new EvaluationWorker(db);const job=await worker.claimNextJob('staged');
+    const worker=new EvaluationWorker(db);const job=await worker.claimNextJob();
     const error=new ModelProviderUnavailableError(`Provider HTTP ${httpStatus}`,httpStatus,retryAfterMs);
     const evaluation=vi.spyOn(ProductionStagedEvaluationService.prototype,'evaluate').mockRejectedValue(error);
     try{
@@ -112,7 +123,7 @@ describe('staged enrichment dependency lifecycle', () => {
     const delay=await db.one<{seconds:number}>(`SELECT CAST(strftime('%s',next_attempt_at)-strftime('%s','now') AS INTEGER) AS seconds FROM evaluation_jobs`);
     const expectedDelay=httpStatus===403?5:retryAfterMs/1000;
     expect(delay!.seconds).toBeGreaterThanOrEqual(expectedDelay-2);expect(delay!.seconds).toBeLessThanOrEqual(expectedDelay);
-    expect(await worker.claimNextJob('staged')).toBeNull();
+    expect(await worker.claimNextJob()).toBeNull();
     expect(await db.one('SELECT COUNT(*) n FROM staged_evaluations')).toEqual({n:0});
   });
   it('recovers only scoped provider dead letters and retains the original failure',async()=>{
@@ -130,13 +141,13 @@ describe('staged enrichment dependency lifecycle', () => {
     const audit=await db.one<{details:string}>(`SELECT details FROM enrichment_events WHERE event_type='EVALUATION_PROVIDER_FAILURE_RECOVERED'`);
     expect(JSON.parse(audit!.details)).toMatchObject({attempts:3,last_error:'Bedrock provider HTTP 403',previousRequirementStatus:'FAILED'});
   });
-  it.each([false,true])('releases v6 into staged queue with existing job=%s', async existing => {
+  it.each([false,true])('releases enrichment-ready work into the staged-v8 queue with existing job=%s', async existing => {
     await new EvaluationWorkScheduler(db).ensureWork(identity);
     if (!existing) await db.execute('DELETE FROM evaluation_jobs');
     await enrichment();
     await new EnrichmentQueue(db).releaseEvaluationRequirements('job','version');
     expect(await state()).toMatchObject({status:'staged_pending',requirement:'READY'});
-    expect((await new EvaluationWorker(db).claimNextJob('staged'))?.evaluationContextFingerprint).toBe('staged-context');
+    expect((await new EvaluationWorker(db).claimNextJob())?.evaluationContextFingerprint).toBe('staged-context');
   });
   it('does not release a different opportunity or pipeline dependency', async () => {
     await new EvaluationWorkScheduler(db).ensureWork(identity);
@@ -162,7 +173,7 @@ describe('staged enrichment dependency lifecycle', () => {
     await new EnrichmentQueue(db).failEvaluationRequirements('job','version');
     expect(await state()).toMatchObject({status:'staged_dead_letter',requirement:'FAILED',blocked_reason:'ENRICHMENT_FAILED'});
   });
-  it('reconciliation creates a missing v6 queue row in the staged family', async () => {
+  it('reconciliation creates a missing staged-v8 queue row', async () => {
     await enrichment();
     await new EvaluationWorkScheduler(db).ensureWork(identity);
     await db.execute('DELETE FROM evaluation_jobs');
