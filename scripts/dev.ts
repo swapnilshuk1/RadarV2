@@ -32,6 +32,13 @@ function processSpecs(databaseTarget: string): ManagedProcess[] {
       restart: true,
     },
     {
+      name: "enrichment",
+      command: process.execPath,
+      args: ["--import", "tsx", "scripts/enrich.ts"],
+      env: workerEnv,
+      restart: true,
+    },
+    {
       name: "evaluation",
       command: process.execPath,
       args: ["--import", "tsx", "scripts/run-evaluation-worker.ts"],
