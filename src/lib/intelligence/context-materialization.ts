@@ -25,6 +25,86 @@ export interface MaterializationSourceBoundary {
 }
 
 /**
+ * A deterministic attention rejection revokes this context's derived work.
+ * Source acquisition and model-invocation history remain intact; neither is a
+ * serving artifact and both are needed for provenance and operational audit.
+ */
+async function pruneNonCandidateContextArtifacts(
+  tx: DatabaseAdapter,
+  identity: {
+    tenantId: string;
+    personId: string;
+    searchPlanId: string;
+    canonicalJobId: string;
+    opportunityVersion: string;
+    evaluationContextFingerprint: string;
+  },
+): Promise<void> {
+  const contextParams = [
+    identity.tenantId,
+    identity.personId,
+    identity.canonicalJobId,
+    identity.opportunityVersion,
+    identity.evaluationContextFingerprint,
+  ];
+  const workParams = [
+    identity.tenantId,
+    identity.personId,
+    identity.searchPlanId,
+    ...contextParams.slice(2),
+  ];
+
+  await tx.execute(
+    `DELETE FROM dossier_review_jobs
+     WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=?
+       AND evaluation_context_fingerprint=?`,
+    contextParams,
+  );
+  await tx.execute(
+    `DELETE FROM dossier_composition_jobs
+     WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=?
+       AND evaluation_context_fingerprint=?`,
+    contextParams,
+  );
+  await tx.execute(
+    `DELETE FROM materialized_dossier_presentations
+     WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=?
+       AND evaluation_context_fingerprint=?`,
+    contextParams,
+  );
+  await tx.execute(
+    `DELETE FROM materialized_evaluations
+     WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=?
+       AND evaluation_context_fingerprint=?`,
+    contextParams,
+  );
+  await tx.execute(
+    `DELETE FROM staged_evaluations
+     WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=?
+       AND evaluation_context_fingerprint=?`,
+    contextParams,
+  );
+  await tx.execute(
+    `DELETE FROM staged_frozen_inputs
+     WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=?
+       AND evaluation_context_fingerprint=?`,
+    contextParams,
+  );
+  await tx.execute(
+    `DELETE FROM evaluation_jobs
+     WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND canonical_job_id=?
+       AND opportunity_version=? AND evaluation_context_fingerprint=?`,
+    workParams,
+  );
+  await tx.execute(
+    `DELETE FROM evaluation_requirements
+     WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND canonical_job_id=?
+       AND opportunity_version=? AND evaluation_context_fingerprint=?`,
+    workParams,
+  );
+}
+
+/**
  * Re-evaluates one explicit canonical candidate cohort for a prepared context.
  * The source plan may be archived, but it must belong to the authorized scope.
  * A scrape/run identifier never participates in serving identity.
@@ -78,6 +158,14 @@ export async function materializeExistingCanonicalPool(
     opportunityVersion: string;
     evaluationContextFingerprint: string;
   }> = [];
+  const rejectedWork: Array<{
+    tenantId: string;
+    personId: string;
+    searchPlanId: string;
+    canonicalJobId: string;
+    opportunityVersion: string;
+    evaluationContextFingerprint: string;
+  }> = [];
   let eligibleCandidates = 0;
 
   for (const row of rows) {
@@ -114,9 +202,18 @@ export async function materializeExistingCanonicalPool(
       gate.locationEvidence ?? null,
     ]);
 
-    if (gate.decision !== "CANDIDATE") continue;
+    if (gate.decision !== "CANDIDATE") {
+      rejectedWork.push({
+        tenantId: scope.tenantId,
+        personId: scope.personId,
+        searchPlanId: prepared.plan.id,
+        canonicalJobId: row.canonical_job_id,
+        opportunityVersion: row.opportunity_version,
+        evaluationContextFingerprint: prepared.context.contextFingerprint,
+      });
+      continue;
+    }
     eligibleCandidates++;
-
 
     stagedWork.push({
       tenantId: scope.tenantId,
@@ -149,6 +246,9 @@ export async function materializeExistingCanonicalPool(
                        location_evidence = excluded.location_evidence`,
         chunk.flat(),
       );
+    }
+    for (const rejected of rejectedWork) {
+      await pruneNonCandidateContextArtifacts(tx, rejected);
     }
   });
 
