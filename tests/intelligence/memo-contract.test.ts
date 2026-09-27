@@ -1,7 +1,11 @@
 import { bindMemoReferences } from "../../src/dossier/bound-memo-schema";
 import { describe, it, expect } from "vitest";
 import { dossier, stagedEvaluation } from "../fixtures/staged-rich-dossier";
-import { assertMemoIntegrity, validateMemoPlan } from "../../src/dossier/memo-integrity";
+import {
+  assertMemoIntegrity,
+  validateMemoPlan,
+  validateTargetedPlanRepair,
+} from "../../src/dossier/memo-integrity";
 import { assertFactualReviewProvenance } from "../../src/dossier/factual-review-integrity";
 
 describe("executive memo coverage", () => {
@@ -63,6 +67,30 @@ describe("executive memo coverage", () => {
     const missing = dossier();
     missing.decisionConditions[0].requirementIds = [];
     expect(() => assertMemoIntegrity(missing)).toThrow("MEMO_CONDITION_COVERAGE_INVALID");
+  });
+  it("rejects a targeted plan repair that rewrites existing point semantics", () => {
+    const previous = structuredClone(dossier().narrativePlan);
+    const next = structuredClone(previous);
+    next.memoPoints![0].point = "A rewritten point that was not part of the repair target.";
+    expect(() =>
+      validateTargetedPlanRepair(previous, next, {
+        sections: [next.memoPoints![0].section],
+        requirementIds: [],
+        resolutionFields: [],
+      }),
+    ).toThrow("MEMO_PLAN_REPAIR_REWROTE_POINT");
+  });
+  it("rejects a targeted plan repair that adds an unrelated reference", () => {
+    const previous = structuredClone(dossier().narrativePlan);
+    const next = structuredClone(previous);
+    next.memoPoints![0].resolutionFields.push("unrequested-field");
+    expect(() =>
+      validateTargetedPlanRepair(previous, next, {
+        sections: [next.memoPoints![0].section],
+        requirementIds: [],
+        resolutionFields: [],
+      }),
+    ).toThrow("MEMO_PLAN_REPAIR_ADDED_UNREQUESTED_FIELD");
   });
   it("rejects a plan altered after factual and editorial review", () => {
     const value = dossier();

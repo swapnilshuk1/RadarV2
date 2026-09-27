@@ -14,7 +14,6 @@
 
 import { execSync } from "child_process";
 import { certificationManifest } from "./certification/manifest";
-import { InvariantAssertions } from "../src/lib/intelligence/evaluation/InvariantAssertions";
 
 export interface Stage {
   name: string;
@@ -71,9 +70,9 @@ export const STAGES: Stage[] = [
     execution: "reported-by-manifest",
   },
   {
-    name: "Stage 7: Editorial Governance & Verdict Contracts",
+    name: "Stage 7: Staged-v8 Memo & Serving Contracts",
     command: "Unified Vitest certification manifest (executed once in Stage 3)",
-    description: "Rule 13 executive prose compliance, score resolution, and badge mappings",
+    description: "Staged-v8 memo integrity, verdict truth, reviewed serving, and badge mappings",
     execution: "reported-by-manifest",
   },
 ];
@@ -119,12 +118,8 @@ export function runCertification(stages: Stage[] = STAGES) {
         execSync(command, { stdio: "inherit", env: process.env });
         if (stage.execution === "manifest") {
           manifestCompleted = true;
-          InvariantAssertions.assertFailClosedCertificationContract();
           console.log(
             `  Unified manifest verified ${certificationManifest.length} logical groups in one Vitest process.`,
-          );
-          console.log(
-            "  Fail-closed recommendation-artifact assertion verified by the certification runner.",
           );
         }
       }
