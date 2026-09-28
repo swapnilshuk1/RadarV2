@@ -270,6 +270,14 @@ function hasExplicitOrganizationalStructure(text:string):boolean {
   return /\b(?:organizational|organisation|org)\s+structure\b|\b(?:matrix(?:ed)?|functional|divisional|flat|centralized|decentralized|hierarchical)\s+(?:organization|organisation|structure|team)\b|\bbusiness units?\b|\bsubsidiar(?:y|ies)\b/i.test(text);
 }
 
+function claimEstablishesRolePeopleScale(claim:Claim):boolean {
+  if(claim.plane!=='JD'||claim.state!=='EXPLICIT')return false;
+  return [claim.text,...claim.citations.map(citation=>citation.quote)].some(support=>
+    /\b(?:individual contributor|no direct reports?|without direct reports?|does not manage (?:a )?team)\b/i.test(support)
+      || /\b(?:team|direct reports?|reports?)\b[^.]{0,50}\b\d+\b|\b\d+\s+(?:direct reports?|people|team members?)\b/i.test(support)
+  );
+}
+
 function normalizeSemanticallyUnsupportedContextResolutions(
   drafts:ReturnType<typeof normalizeUnsupportedResolutionDrafts>,
   frozen:StagedResearchInput,
@@ -292,6 +300,8 @@ function normalizeSemanticallyUnsupportedContextResolutions(
       question='What company-wide headcount growth, contraction, layoffs, or hiring expansion has occurred?';
     }else if(draft.field==='relatedHiring'&&!hasRelatedHiringEvidence(support)){
       question='What other roles or positions is the company currently hiring for?';
+    }else if(draft.field==='teamScale'&&!resolutionClaims.some(claimEstablishesRolePeopleScale)){
+      question='What direct-report or people-management scale does this role actually own?';
     }else{
       return draft;
     }
@@ -509,13 +519,7 @@ function validateResolutions(value: unknown, frozen: StagedResearchInput) {
       }
     }
     if (resolution.field === 'teamScale' && resolution.status !== 'OPEN') {
-      const rolePeopleScale=resolutionClaims.some(claim=>{
-        if(claim.plane!=='JD'||claim.state!=='EXPLICIT')return false;
-        const support=[claim.text,...claim.citations.map(citation=>citation.quote)].join(' ');
-        return /\b(?:individual contributor|no direct reports?|without direct reports?|does not manage (?:a )?team)\b/i.test(support)
-          || /\b(?:team|direct reports?|reports?)\b[^.]{0,50}\b\d+\b|\b\d+\s+(?:direct reports?|people|team members?)\b/i.test(support);
-      });
-      if(!rolePeopleScale){
+      if(!resolutionClaims.some(claimEstablishesRolePeopleScale)){
         throw new Error('teamScale requires role-side people-management evidence; company headcount and brand/account/client/project counts are not team scale');
       }
     }

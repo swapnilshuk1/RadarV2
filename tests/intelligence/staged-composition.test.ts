@@ -607,7 +607,7 @@ describe("staged dossier editorial boundary", () => {
       token: async () => "private-token",
       request: async (_url, options) => {
         expect(JSON.parse(options!.body as string).generationConfig.thinkingConfig).toEqual({
-          thinkingLevel: "MEDIUM",
+          thinkingLevel: "LOW",
         });
         expect(JSON.parse(options!.body as string).generationConfig.maxOutputTokens).toBe(16384);
         return new Response("sensitive provider response", { status: 403 });
@@ -819,6 +819,30 @@ describe("staged dossier editorial boundary", () => {
     expect(result.canonicalDecisionTrace).toEqual(stagedEvaluation.trace);
     assertFactualReviewProvenance(result);
   });
+  it("binds review receipts to the persisted claim-backed source lineage", async () => {
+    const input = structuredClone(frozen);
+    input.sources.push({
+      id: "unused-context",
+      plane: "CONTEXT",
+      title: "Unused context",
+      locator: "context:unused",
+      text: "No canonical claim survived from this source.",
+      capturedAt: "2026-01-01T00:00:00.000Z",
+      attribution: "INDEPENDENT",
+    });
+    const writer = { id: "lineage-writer", version: "1", generate: vi.fn(async () => draft()) };
+    const reviewer = {
+      id: "lineage-reviewer",
+      version: "1",
+      generate: vi.fn(async (_i: string, reviewInput: any) => accept(reviewInput)),
+    };
+
+    const result = await composeStagedDossier(input, stagedEvaluation, writer, reviewer);
+
+    expect(result.evidence.lineage.map((source) => source.id)).not.toContain("unused-context");
+    expect(() => assertFactualReviewProvenance(result)).not.toThrow();
+  });
+
   it("publishes a draft without a reviewer and later reviews that exact draft without rewriting", async () => {
     const writer = { id: "writer", version: "1", generate: vi.fn(async () => draft()) };
     const pending = await composeStagedDraft(frozen, stagedEvaluation, writer);
@@ -947,6 +971,29 @@ describe("staged dossier editorial boundary", () => {
       await reviewMemo(reviewer, frozen, stagedEvaluation, research(), draft().memo, accepted),
     ).toHaveLength(6);
   });
+  it("repairs reviewer bookkeeping from the previous review instead of re-authoring blind", async () => {
+    let calls = 0;
+    const reviewer = {
+      id: "review-bookkeeping-repair",
+      version: "1",
+      generate: vi.fn(async (_i: string, input: any) => {
+        calls++;
+        if (calls === 1) {
+          const first: any = accept(input);
+          first.acceptedPassageIds.pop();
+          return first;
+        }
+        expect(input.previousReview).toBeDefined();
+        expect(input.reviewRepair).toContain("REVIEW_PASSAGE_COVERAGE_INCOMPLETE");
+        return accept(input);
+      }),
+    };
+    await expect(
+      reviewMemo(reviewer, frozen, stagedEvaluation, research(), draft().memo),
+    ).resolves.toHaveLength(6);
+    expect(reviewer.generate).toHaveBeenCalledTimes(2);
+  });
+
   it.each(["missing", "duplicate", "invented", "contradictory"])(
     "rejects %s reviewer identities without accepting a receipt",
     async (mode) => {

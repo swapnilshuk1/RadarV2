@@ -28,9 +28,9 @@ export function createGeminiFactualReviewModel(
       model: options.model ?? process.env.RADAR_FACTUAL_REVIEW_MODEL ?? "gemini-3.8-flash",
       location: "global",
       schemaFormat: "json-schema",
-      thinkingLevel: "MEDIUM",
+      thinkingLevel: "LOW",
       // The provider counts thinking inside this ceiling. Leave room for both
-      // medium reasoning and the required per-passage structured assessment.
+      // review reasoning and the required per-passage structured assessment.
       maxOutputTokens: 16384,
       timeoutMs: 120000,
       invocationSink: options.invocationSink,
@@ -42,18 +42,15 @@ export function createGeminiFactualReviewModel(
     try {
       return await generate(instruction, input, schema, metadata);
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       // Infrastructure failures must pause durable work, not consume semantic repair attempts.
       if (
         error instanceof ModelInvalidOutputError ||
         error instanceof SyntaxError ||
-        (error instanceof Error && error.message.startsWith("Model output incomplete:"))
+        message.startsWith("Model output incomplete:")
       )
         throw new ModelProviderUnavailableError(
-          `GEMINI_REVIEW_OUTPUT_INCOMPLETE: ${
-            error instanceof SyntaxError
-              ? "invalid JSON"
-              : error.message.replace("Model output incomplete: ", "")
-          }; no factual assessment was accepted`,
+          `GEMINI_REVIEW_OUTPUT_INCOMPLETE: ${error instanceof SyntaxError ? "invalid JSON" : message.replace("Model output incomplete: ", "")}; no factual assessment was accepted`,
           undefined,
           error instanceof ModelInvalidOutputError ? error.retryAfterMs : 2_000,
         );

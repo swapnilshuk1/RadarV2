@@ -2,9 +2,12 @@ import { createHash } from "node:crypto";
 import {
   compositionSchema,
   factualReviewReceiptSchema,
+  type Claim,
   type Dossier,
+  type EvidenceSource,
   type FactualReviewReceipt,
 } from "./contracts";
+import { candidateSourceClarifications } from "./candidate-clarifications";
 import { allPassages } from "./grounding";
 
 export const FACTUAL_REVIEW_POLICY_VERSION = "memo-facts-v4";
@@ -30,12 +33,26 @@ export function reviewPassages(value: unknown) {
     })),
   );
 }
+export function reviewEvidenceLineage(
+  evidence: Claim[],
+  sources: EvidenceSource[],
+): EvidenceSource[] {
+  const sourceIds = new Set(
+    evidence.flatMap((claim) => claim.citations.map((citation) => citation.sourceId)),
+  );
+  candidateSourceClarifications(sources).forEach(({ sourceId }) => sourceIds.add(sourceId));
+  return sources.filter((source) => sourceIds.has(source.id));
+}
 export function reviewEvidenceFingerprint(
-  evidence: unknown[],
-  sources: unknown[],
+  evidence: Claim[],
+  sources: EvidenceSource[],
   conflicts: unknown[],
 ): string {
-  return reviewFingerprint({ evidence, sources, conflicts });
+  return reviewFingerprint({
+    evidence,
+    sources: reviewEvidenceLineage(evidence, sources),
+    conflicts,
+  });
 }
 /** Every current presentation must carry complete, exact-content review receipts.
  * Optional fields on historical DTOs do not relax the current storage boundary.

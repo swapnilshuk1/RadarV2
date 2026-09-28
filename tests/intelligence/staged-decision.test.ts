@@ -550,15 +550,24 @@ describe('staged production decision boundary', () => {
       }
     }
 
-    await expect(runStagedFrozenDecisionDetailed({
+    const result = await runStagedFrozenDecisionDetailed({
       ...frozen,
       opportunity: { ...frozen.opportunity, id: 'reach-team-scale-semantics' },
       sources: [...frozen.sources, brandSource, contextSource],
       evidence: [...claims, brandClaim, sizeClaim],
       validEvidenceClaimIds: [...claims.map(claim => claim.id), brandClaim.id, sizeClaim.id],
-    }, new TeamScaleConfusionModel())).rejects.toThrow(
-      'teamScale requires role-side people-management evidence',
-    );
+    }, new TeamScaleConfusionModel());
+
+    expect(result.trace.resolutions.find(resolution => resolution.field === 'companySize')).toMatchObject({
+      status: 'RESOLVED',
+      value: '2-10 employees',
+    });
+    expect(result.trace.resolutions.find(resolution => resolution.field === 'teamScale')).toMatchObject({
+      status: 'OPEN',
+      value: null,
+      claimIds: [],
+      question: 'What direct-report or people-management scale does this role actually own?',
+    });
   });
 
   it('does not present an unverified canonical-company and JD business name as aliases', async () => {
@@ -798,6 +807,14 @@ describe('staged production decision boundary', () => {
       text: 'The company offers room to grow into senior roles as Reach scales.',
       status: 'RESOLVED',
       value: 'Active hiring for additional Creative Strategist roles.',
+      methods: ['extract'],
+    },
+    {
+      name: 'brand-partner count as team scale',
+      field: 'teamScale',
+      text: 'Own creative strategy for 3-5 brand partners concurrently.',
+      status: 'RESOLVED',
+      value: '3-5 team members',
       methods: ['extract'],
     },
   ])('downgrades $name to OPEN', async ({field,text,status,value,methods}) => {
