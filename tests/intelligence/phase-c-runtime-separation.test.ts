@@ -24,12 +24,13 @@ describe("Phase C runtime separation", () => {
     const evaluator = source("scripts/run-evaluation-worker.ts");
     expect(scraper).toContain("process.once(\"SIGTERM\"");
     expect(scraper).toContain("while (!stopping)");
-    expect(scraper).toContain("tenant_id");
-    expect(scraper).toContain("person_id");
-    expect(scraper).toContain("portal_targets");
-    expect(scraper).toContain("config_json");
-    expect(scraper).toContain("transitionRunStatus(scope, row.id, 'queued', 'initializing')");
-    expect(scraper).toContain("SCRAPE_WORKER_CLAIM_NOT_VISIBLE");
+    expect(scraper).toContain("claimedRun.tenantId");
+    expect(scraper).toContain("claimedRun.personId");
+    expect(scraper).toContain("claimedRun.portalTargets");
+    expect(scraper).toContain("claimedRun.configJson");
+    expect(scraper).toContain("claimNextForWorker(WORKER_ID, LEASE_MS)");
+    expect(scraper).toContain("heartbeatWorkerLease(claimedRun.id, WORKER_ID, leaseToken, LEASE_MS)");
+    expect(scraper).toContain("scrapeLease: { owner: WORKER_ID, token: leaseToken }");
     expect(scraper).toContain("portals: portals.length ? portals : undefined");
     expect(source("scripts/scrape.ts")).toContain("opts.scope?.tenantId || opts.authContext?.tenantId");
     expect(evaluator).toContain("process.once(\"SIGTERM\"");
@@ -37,6 +38,8 @@ describe("Phase C runtime separation", () => {
     const devSupervisor = source("scripts/dev.ts");
     expect(devSupervisor).toContain('args: ["--import", "tsx", "scripts/run-scrape-worker.ts"]');
     expect(devSupervisor).toContain('args: ["--import", "tsx", "scripts/enrich.ts"]');
+    expect(devSupervisor).toContain('args: ["--import", "tsx", "scripts/process-document-jobs.ts"]');
+    expect(devSupervisor).toContain('args: ["--import", "tsx", "scripts/run-corpus-regeneration-worker.ts"]');
   });
 
   it("classifies operational and invalid-output model failures differently", () => {

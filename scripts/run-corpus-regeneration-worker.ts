@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { getDatabaseAdapter } from "../src/data/database";
 import type { DatabaseAdapter } from "../src/data/database";
 import { runCorpusPipeline } from "./corpus/pipeline";
+import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
 
 let stopping = false;
 process.once("SIGTERM", () => { stopping = true; });
@@ -32,6 +33,15 @@ export async function processNextCorpusRegenerationJob(
   return true;
 }
 
-async function run() { const id=`corpus-worker-${process.pid}`; while (!stopping) { if (!await processNextCorpusRegenerationJob(id)) await new Promise(r=>setTimeout(r,1000)); } }
+async function run() {
+  await startWorkerHeartbeat("corpus");
+  const id = `corpus-worker-${process.pid}`;
+  let idleMs = 1_000;
+  while (!stopping) {
+    if (await processNextCorpusRegenerationJob(id)) { idleMs = 1_000; continue; }
+    await new Promise((resolve) => setTimeout(resolve, idleMs));
+    idleMs = Math.min(idleMs * 2, 30_000);
+  }
+}
 const isMain = process.argv[1]?.endsWith("run-corpus-regeneration-worker.ts") || process.argv[1]?.endsWith("run-corpus-regeneration-worker");
 if (isMain) void run();

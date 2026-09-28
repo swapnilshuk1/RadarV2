@@ -7,7 +7,7 @@ import {
   handleGoogleOAuthCallback,
   handleGoogleOAuthInitiation,
 } from "./lib/auth/oauth-http-routes";
-import { readyResponse } from "./lib/health/readiness";
+import { readyResponse, systemReadyResponse } from "./lib/health/readiness";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -63,6 +63,9 @@ export default {
     }
     if (url.pathname === "/health/ready") {
       return readyResponse();
+    }
+    if (url.pathname === "/health/system") {
+      return systemReadyResponse();
     }
 
     // Invariant: Privileged webhooks are completely eliminated from the runtime.

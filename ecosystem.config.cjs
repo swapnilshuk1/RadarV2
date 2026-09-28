@@ -1,6 +1,8 @@
 // Production configuration is supplied by PM2/the process environment. Never
 // search the checkout for an arbitrary .env file at runtime.
 const envVars = {};
+const deploymentMode = process.env.RADAR_DEPLOYMENT_MODE;
+const runServerScraper = deploymentMode !== "distributed";
 
 module.exports = {
   apps: [
@@ -40,7 +42,7 @@ module.exports = {
       },
     },
     ...[
-      ["radar-scrape", "scripts/run-scrape-worker.ts"],
+      ...(runServerScraper ? [["radar-scrape", "scripts/run-scrape-worker.ts"]] : []),
       ["radar-documents", "scripts/process-document-jobs.ts"],
       ["radar-dossiers", "scripts/run-dossier-composition-worker.ts"],
       ["radar-reviews", "scripts/run-dossier-review-worker.ts"],

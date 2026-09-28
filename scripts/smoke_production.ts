@@ -33,6 +33,24 @@ async function runProductionSmoke() {
     }
     console.log("  ✔ Readiness probe confirms exact release SHA.");
 
+    const systemReadiness = await fetch(`${readinessBaseUrl.replace(/\/$/, "")}/health/system`);
+    const systemPayload = await systemReadiness.json() as {
+      status?: string;
+      releaseSha?: string;
+      workers?: { required?: number; healthy?: number; missing?: string[] };
+    };
+    if (
+      !systemReadiness.ok ||
+      systemPayload.status !== "ready" ||
+      systemPayload.releaseSha !== expectedReleaseSha ||
+      !systemPayload.workers ||
+      systemPayload.workers.required !== systemPayload.workers.healthy ||
+      (systemPayload.workers.missing?.length ?? 0) !== 0
+    ) {
+      throw new Error("System readiness did not confirm the full worker topology for this release.");
+    }
+    console.log(`  [OK] System readiness confirms ${systemPayload.workers.healthy}/${systemPayload.workers.required} required workers.`);
+
     // 1. Database Connection & Health
     console.log("▶ [1/4] Auditing Database Connection & Schema Health...");
     const db = await getDatabaseAdapter();

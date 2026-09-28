@@ -10,6 +10,7 @@
  * 3. Terminal Immutability: Completed/failed/aborted runs cannot transition back to active states.
  */
 
+import { randomUUID } from "node:crypto";
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { AuthorizedPersonScope } from "../../../lib/security/auth";
 
@@ -70,6 +71,9 @@ export interface ScrapeRun {
   startedAt: string | null;
   finishedAt: string | null;
   updatedAt: string;
+  leaseOwner: string | null;
+  leaseToken: string | null;
+  leaseExpiresAt: number | null;
 }
 
 export interface ScrapeRunEvent {
@@ -203,7 +207,8 @@ export class SqliteScrapeRunStore {
     scope: AuthorizedPersonScope,
     runId: string,
     status: ScrapeRunStatus,
-    errorMessage?: string
+    errorMessage?: string,
+    lease?: { owner: string; token: string },
   ): Promise<boolean> {
     const now = new Date().toISOString();
     const isTerminal = TERMINAL_SCRAPE_STATUSES.includes(status);
@@ -217,7 +222,8 @@ export class SqliteScrapeRunStore {
            started_at = CASE WHEN ? = 'running' AND started_at IS NULL THEN ? ELSE started_at END,
            updated_at = ?
        WHERE id = ? AND tenant_id = ? AND person_id = ?
-         AND status NOT IN (${terminalPlaceholders})`,
+         AND status NOT IN (${terminalPlaceholders})
+         ${lease ? "AND lease_owner = ? AND lease_token = ? AND lease_expires_at > ?" : ""}`,
       [
         status,
         errorMessage || null,
@@ -230,6 +236,7 @@ export class SqliteScrapeRunStore {
         scope.tenantId,
         scope.personId,
         ...TERMINAL_SCRAPE_STATUSES,
+        ...(lease ? [lease.owner, lease.token, Date.now()] : []),
       ]
     );
 
@@ -245,7 +252,8 @@ export class SqliteScrapeRunStore {
     runId: string,
     expected: ScrapeRunStatus | ScrapeRunStatus[],
     next: ScrapeRunStatus,
-    errorMessage?: string
+    errorMessage?: string,
+    lease?: { owner: string; token: string },
   ): Promise<boolean> {
     const now = new Date().toISOString();
     const isTerminal = TERMINAL_SCRAPE_STATUSES.includes(next);
@@ -261,7 +269,8 @@ export class SqliteScrapeRunStore {
            started_at = CASE WHEN ? = 'running' AND started_at IS NULL THEN ? ELSE started_at END,
            updated_at = ?
        WHERE id = ? AND tenant_id = ? AND person_id = ?
-         AND status IN (${expectedPlaceholders})`,
+         AND status IN (${expectedPlaceholders})
+         ${lease ? "AND lease_owner = ? AND lease_token = ? AND lease_expires_at > ?" : ""}`,
       [
         next,
         errorMessage || null,
@@ -274,10 +283,104 @@ export class SqliteScrapeRunStore {
         scope.tenantId,
         scope.personId,
         ...expectedList,
+        ...(lease ? [lease.owner, lease.token, Date.now()] : []),
       ]
     );
 
     return res.rowsAffected > 0;
+  }
+
+  /** Atomically leases the next queued or stale acquisition run for a scraper worker. */
+  async claimNextForWorker(
+    workerId: string,
+    leaseMs = 120_000,
+    staleWithoutLeaseMs = 300_000,
+  ): Promise<ScrapeRun | null> {
+    const now = Date.now();
+    const expiresAt = now + leaseMs;
+    const staleCutoff = new Date(now - staleWithoutLeaseMs).toISOString();
+    const token = randomUUID();
+    const rows = await this.db.many<any>(
+      `UPDATE scrape_runs
+       SET status = CASE WHEN status = 'queued' THEN 'initializing' ELSE status END,
+           lease_owner = ?, lease_token = ?, lease_expires_at = ?,
+           started_at = CASE WHEN status = 'queued' AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = (
+         SELECT id FROM scrape_runs
+         WHERE status = 'queued'
+            OR (status IN ('initializing','running') AND (
+                 (lease_expires_at IS NOT NULL AND lease_expires_at <= ?)
+                 OR (lease_expires_at IS NULL AND datetime(updated_at) <= datetime(?))
+               ))
+         ORDER BY CASE WHEN status = 'queued' THEN 0 ELSE 1 END, created_at ASC
+         LIMIT 1
+       )
+       AND (
+         status = 'queued'
+         OR (status IN ('initializing','running') AND (
+              (lease_expires_at IS NOT NULL AND lease_expires_at <= ?)
+              OR (lease_expires_at IS NULL AND datetime(updated_at) <= datetime(?))
+            ))
+       )
+       RETURNING *`,
+      [workerId, token, expiresAt, now, staleCutoff, now, staleCutoff],
+    );
+    return rows[0] ? this.mapRunRow(rows[0]) : null;
+  }
+
+  async heartbeatWorkerLease(
+    runId: string,
+    workerId: string,
+    leaseToken: string,
+    leaseMs = 120_000,
+  ): Promise<void> {
+    const now = Date.now();
+    const result = await this.db.execute(
+      `UPDATE scrape_runs SET lease_expires_at = ?
+       WHERE id = ? AND lease_owner = ? AND lease_token = ?
+         AND lease_expires_at > ? AND status NOT IN ('completed','failed','aborted')`,
+      [now + leaseMs, runId, workerId, leaseToken, now],
+    );
+    if (result.rowsAffected !== 1) throw new Error("SCRAPE_RUN_LEASE_LOST");
+  }
+
+  async assertWorkerLease(runId: string, workerId: string, leaseToken: string): Promise<void> {
+    const row = await this.db.one<{ id: string }>(
+      `SELECT id FROM scrape_runs
+       WHERE id = ? AND lease_owner = ? AND lease_token = ?
+         AND lease_expires_at > ? AND status NOT IN ('completed','failed','aborted')`,
+      [runId, workerId, leaseToken, Date.now()],
+    );
+    if (!row) throw new Error("SCRAPE_RUN_LEASE_LOST");
+  }
+
+  async releaseWorkerLease(runId: string, workerId: string, leaseToken: string): Promise<boolean> {
+    const result = await this.db.execute(
+      `UPDATE scrape_runs SET lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL
+       WHERE id = ? AND lease_owner = ? AND lease_token = ?`,
+      [runId, workerId, leaseToken],
+    );
+    return result.rowsAffected === 1;
+  }
+
+  async failWorkerLease(
+    runId: string,
+    workerId: string,
+    leaseToken: string,
+    errorMessage: string,
+  ): Promise<boolean> {
+    const result = await this.db.execute(
+      `UPDATE scrape_runs
+       SET status = 'failed', error_message = ?, finished_at = CURRENT_TIMESTAMP,
+           lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND lease_owner = ? AND lease_token = ?
+         AND lease_expires_at > ?
+         AND status NOT IN ('completed','failed','aborted')`,
+      [errorMessage, runId, workerId, leaseToken, Date.now()],
+    );
+    return result.rowsAffected === 1;
   }
 
   /**
@@ -290,7 +393,8 @@ export class SqliteScrapeRunStore {
       totalDiscovered?: number;
       totalEnqueued?: number;
       metrics?: Record<string, unknown>;
-    }
+    },
+    lease?: { owner: string; token: string },
   ): Promise<void> {
     const now = new Date().toISOString();
     const updates: string[] = ["updated_at = ?"];
@@ -310,13 +414,16 @@ export class SqliteScrapeRunStore {
     }
 
     values.push(runId, scope.tenantId, scope.personId);
+    if (lease) values.push(lease.owner, lease.token, Date.now());
 
-    await this.db.execute(
+    const result = await this.db.execute(
       `UPDATE scrape_runs 
        SET ${updates.join(", ")}
-       WHERE id = ? AND tenant_id = ? AND person_id = ?`,
+       WHERE id = ? AND tenant_id = ? AND person_id = ?
+         ${lease ? "AND lease_owner = ? AND lease_token = ? AND lease_expires_at > ?" : ""}`,
       values
     );
+    if (lease && result.rowsAffected !== 1) throw new Error("SCRAPE_RUN_LEASE_LOST");
   }
 
   /**
@@ -399,6 +506,9 @@ export class SqliteScrapeRunStore {
       startedAt: row.started_at || null,
       finishedAt: row.finished_at || null,
       updatedAt: row.updated_at,
+      leaseOwner: row.lease_owner || null,
+      leaseToken: row.lease_token || null,
+      leaseExpiresAt: row.lease_expires_at == null ? null : Number(row.lease_expires_at),
     };
   }
 

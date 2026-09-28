@@ -329,16 +329,33 @@ export class EnrichmentQueue {
     return leased;
   }
 
-  public async markRunning(jobId: string): Promise<void> {
-    await this.db.execute(
-      `UPDATE enrichment_jobs SET status = 'RUNNING', started_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [jobId]
+  public async markRunning(jobId: string, workerId: string, leaseDurationSeconds = 300): Promise<void> {
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + leaseDurationSeconds * 1000).toISOString();
+    const result = await this.db.execute(
+      `UPDATE enrichment_jobs
+       SET status = 'RUNNING', started_at = COALESCE(started_at, CURRENT_TIMESTAMP), lease_expires_at = ?
+       WHERE id = ? AND status = 'LEASED' AND lease_owner = ? AND lease_expires_at > ?`,
+      [expiresAt, jobId, workerId, now]
     );
-    await this.logEvent(jobId, "LLM_STARTED");
+    if (result.rowsAffected !== 1) throw new Error("ENRICHMENT_LEASE_LOST");
+    await this.logEvent(jobId, "LLM_STARTED", JSON.stringify({ workerId, expiresAt }));
   }
 
-  public async markCompleted(jobId: string, lastError?: string | null): Promise<void> {
-    await this.db.execute(
+  public async heartbeat(jobId: string, workerId: string, leaseDurationSeconds = 300): Promise<void> {
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + leaseDurationSeconds * 1000).toISOString();
+    const result = await this.db.execute(
+      `UPDATE enrichment_jobs SET lease_expires_at = ?
+       WHERE id = ? AND status IN ('LEASED','RUNNING') AND lease_owner = ? AND lease_expires_at > ?`,
+      [expiresAt, jobId, workerId, now]
+    );
+    if (result.rowsAffected !== 1) throw new Error("ENRICHMENT_LEASE_LOST");
+  }
+
+  public async markCompleted(jobId: string, workerId: string, lastError?: string | null): Promise<void> {
+    const now = new Date().toISOString();
+    const result = await this.db.execute(
       `UPDATE enrichment_jobs 
       SET status = 'COMPLETE', 
           completed_at = CURRENT_TIMESTAMP,
@@ -346,9 +363,10 @@ export class EnrichmentQueue {
           failure_type = NULL,
           lease_owner = NULL,
           lease_expires_at = NULL
-      WHERE id = ?`,
-      [lastError || null, jobId]
+      WHERE id = ? AND status = 'RUNNING' AND lease_owner = ? AND lease_expires_at > ?`,
+      [lastError || null, jobId, workerId, now]
     );
+    if (result.rowsAffected !== 1) throw new Error("ENRICHMENT_LEASE_LOST");
     await this.logEvent(jobId, "JOB_FINISHED", lastError || undefined);
 
     // Release dependent evaluation requirements: WAITING_ENRICHMENT -> READY and create pending evaluation_jobs
@@ -447,8 +465,9 @@ export class EnrichmentQueue {
     return changed;
   }
 
-  public async markRetry(jobId: string, failureType: FailureType, errorMsg: string, nextRetryAt: string): Promise<void> {
-    await this.db.execute(
+  public async markRetry(jobId: string, workerId: string, failureType: FailureType, errorMsg: string, nextRetryAt: string): Promise<void> {
+    const now = new Date().toISOString();
+    const result = await this.db.execute(
       `UPDATE enrichment_jobs 
       SET status = 'RETRY', 
           failure_type = ?, 
@@ -457,16 +476,18 @@ export class EnrichmentQueue {
           attempts = attempts + 1,
           lease_owner = NULL,
           lease_expires_at = NULL
-      WHERE id = ?`,
-      [failureType, errorMsg, nextRetryAt, jobId]
+      WHERE id = ? AND status IN ('LEASED','RUNNING') AND lease_owner = ? AND lease_expires_at > ?`,
+      [failureType, errorMsg, nextRetryAt, jobId, workerId, now]
     );
+    if (result.rowsAffected !== 1) throw new Error("ENRICHMENT_LEASE_LOST");
 
     const eventType = failureType === "RATE_LIMIT" ? "LLM_RATE_LIMITED" : "RETRY_SCHEDULED";
     await this.logEvent(jobId, eventType, JSON.stringify({ errorMsg, nextRetryAt }));
   }
 
-  public async markFailed(jobId: string, failureType: FailureType, errorMsg: string): Promise<void> {
-    await this.db.execute(
+  public async markFailed(jobId: string, workerId: string, failureType: FailureType, errorMsg: string): Promise<void> {
+    const now = new Date().toISOString();
+    const result = await this.db.execute(
       `UPDATE enrichment_jobs 
       SET status = 'FAILED', 
           completed_at = CURRENT_TIMESTAMP,
@@ -475,9 +496,10 @@ export class EnrichmentQueue {
           attempts = attempts + 1,
           lease_owner = NULL,
           lease_expires_at = NULL
-      WHERE id = ?`,
-      [failureType, errorMsg, jobId]
+      WHERE id = ? AND status IN ('LEASED','RUNNING') AND lease_owner = ? AND lease_expires_at > ?`,
+      [failureType, errorMsg, jobId, workerId, now]
     );
+    if (result.rowsAffected !== 1) throw new Error("ENRICHMENT_LEASE_LOST");
     await this.logEvent(jobId, "JOB_FAILED", JSON.stringify({ errorMsg }));
 
     // Fail-Closed: mark dependent evaluation requirements FAILED

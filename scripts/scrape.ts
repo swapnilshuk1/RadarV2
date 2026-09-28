@@ -293,6 +293,12 @@ export interface RunOptions {
   searchPlanId?: string;
   resolvedPlan?: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan;
   variants?: AcquisitionVariant[];
+  /** Internal durable-worker claim identity; never supplied by request handlers. */
+  claimedRunId?: string;
+  /** Internal lease fence invoked at execution boundaries by the scrape worker. */
+  assertWorkerLease?: () => Promise<void>;
+  /** Token-fenced durable run mutations for the claiming scraper worker. */
+  scrapeLease?: { owner: string; token: string };
 }
 
 export interface RunRuntimeSession {
@@ -399,6 +405,9 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     throw new Error("SCRAPER_ACTOR_SCOPE_TENANT_MISMATCH");
   }
   const log = makeLogger("scrape");
+  const assertWorkerLease = async () => {
+    if (opts.assertWorkerLease) await opts.assertWorkerLease();
+  };
   const storageRes = verifyArtifactStorage();
   if (!storageRes.ok) {
     throw new Error(`STORAGE_UNWRITABLE: ${storageRes.fatalError || "Essential artifact storage unwritable"}`);
@@ -555,14 +564,17 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     try {
       const repos = getRepositories();
       const activeDurableRun = await repos.scrapeRuns.getActiveRun(runScope);
+      if (opts.claimedRunId && activeDurableRun?.id !== opts.claimedRunId) {
+        throw new Error(`SCRAPE_WORKER_CLAIM_MISMATCH: expected ${opts.claimedRunId}, active=${activeDurableRun?.id ?? "none"}`);
+      }
+      await assertWorkerLease();
 
       if (activeDurableRun) {
         const activeStatus = activeDurableRun.status;
 
-        // A dedicated worker claims a durable queued run before any local
-        // artifact exists. Initialise that exact run rather than aborting it
-        // merely because the web process never created a manifest.
-        if ((activeStatus === "queued" || activeStatus === "initializing") && !freshRun) {
+        // A durable row that is still queued has never owned local runtime state.
+        // A claimed initializing/running row must first attempt manifest resume.
+        if (activeStatus === "queued" && !freshRun) {
           queuedDurableRunId = activeDurableRun.id;
         } else {
 
@@ -602,7 +614,14 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           }
         }
 
+        if (!tryResumed && activeStatus === "initializing" && !freshRun && opts.claimedRunId === activeDurableRun.id) {
+          queuedDurableRunId = activeDurableRun.id;
+        }
+
         if (!queuedDurableRunId && !tryResumed) {
+          if (opts.claimedRunId === activeDurableRun.id) {
+            throw new Error(`CLAIMED_SCRAPE_RUN_UNRESUMABLE: ${activeDurableRun.id} status=${activeStatus}`);
+          }
           if (isEarlyPhase) {
             log(
               `Active durable run ${activeDurableRun.id} in state '${activeStatus}' is unresumable or fresh run requested. Transitioning to aborted (LOCAL_RUNTIME_STATE_UNRECOVERABLE).`,
@@ -613,7 +632,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               activeDurableRun.id,
               activeStatus as any,
               "aborted",
-              "LOCAL_RUNTIME_STATE_UNRECOVERABLE: local manifest missing or incompatible"
+              "LOCAL_RUNTIME_STATE_UNRECOVERABLE: local manifest missing or incompatible",
+              opts.scrapeLease,
             );
             await repos.scrapeRuns.recordEvent(runScope, activeDurableRun.id, {
               stage: "recovery",
@@ -668,7 +688,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               newRunId,
               "initializing",
               "aborted",
-              `Local initialization failed: ${initErr.message}`
+              `Local initialization failed: ${initErr.message}`,
+              opts.scrapeLease,
             );
           } catch (compErr: any) {
             log(`Failed to compensate aborted run ${newRunId}: ${compErr.message}`, "error");
@@ -878,7 +899,9 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               runScope,
               mgr.runId,
               "initializing",
-              "waiting_for_confirmation"
+              "waiting_for_confirmation",
+              undefined,
+              opts.scrapeLease,
             );
 
           if (!transitioned) {
@@ -989,13 +1012,16 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         }
       } else {
         if (runScope) {
+          await assertWorkerLease();
           let transitioned = false;
           try {
             transitioned = await getRepositories().scrapeRuns.transitionRunStatus(
               runScope,
               mgr.runId,
               ["initializing", "waiting_for_confirmation"],
-              "running"
+              "running",
+              undefined,
+              opts.scrapeLease,
             );
           } catch (e: any) {
             log(`Error during auto-confirm transition to running: ${e.message}`, "error");
@@ -1072,6 +1098,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               break;
             }
           }
+          await assertWorkerLease();
           if (persistenceState.unavailable) {
             failPendingUnitsForPersistence();
             plog(`Stopping ${portal} queue because shared persistence is unavailable: ${persistenceState.error || "retry budget exhausted"}`, "error");
@@ -1166,6 +1193,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       log(`Enqueued ${ingestedCount} cards for enrichment.`);
+      await assertWorkerLease();
 
       // Certification: Ensure no units are left running or unexecuted
       const runningUnits = mgr.runningUnits();
@@ -1181,6 +1209,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               mgr.runId,
               "failed",
               `Certification failed: ${runningUnits.length} units running, ${pendingUnits.length} units pending.`,
+              opts.scrapeLease,
             ),
           );
         }
@@ -1210,7 +1239,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               totalDiscovered: mgr.manifest.cards.length,
               totalEnqueued: ingestedCount,
               metrics: tm as any,
-            }),
+            }, opts.scrapeLease),
           );
           await withPersistenceBoundary("failed scrape run terminalization", () =>
             repos.scrapeRuns.updateRunStatus(
@@ -1218,6 +1247,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               mgr.runId,
               "failed",
               `Acquisition failed: ${failedUnits.length} unit(s) failed, ${integrityFailures} integrity failure(s)`,
+              opts.scrapeLease,
             ),
           );
         }
@@ -1226,6 +1256,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       if (runScope && capabilities.enrichmentDispatchEnabled) {
+        await assertWorkerLease();
         mgr.transitionTo("enriching");
         const repos = getRepositories();
         await withPersistenceBoundary("enriching scrape run metrics", () =>
@@ -1233,10 +1264,12 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             totalDiscovered: mgr.manifest.cards.length,
             totalEnqueued: ingestedCount,
             metrics: tm as any,
-          }),
+          }, opts.scrapeLease),
         );
         const transitioned = await withPersistenceBoundary("running to enriching transition", async () => {
-          const changed = await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "enriching");
+          const changed = await repos.scrapeRuns.updateRunStatus(
+            runScope, mgr.runId, "enriching", undefined, opts.scrapeLease,
+          );
           if (changed) return true;
           const durable = await repos.scrapeRuns.getRun(runScope, mgr.runId);
           return durable?.status === "enriching";
@@ -1296,12 +1329,18 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
 
       return { success: true, count: ingestedCount, runId: mgr.runId };
     } catch (err: any) {
+      if (String(err?.message || err).includes("SCRAPE_RUN_LEASE_LOST")) {
+        log(`Scrape worker lease lost for ${mgr.runId}; stale runtime is exiting without terminal writes`, "warn");
+        return { success: false, count: 0, runId: mgr.runId };
+      }
       log(`Fatal: ${err.message}`, "error");
       mgr.finalize("failed");
       if (runScope) {
         try {
           await withPersistenceBoundary("fatal scrape run terminalization", () =>
-            getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "failed", err.message),
+            getRepositories().scrapeRuns.updateRunStatus(
+              runScope, mgr.runId, "failed", err.message, opts.scrapeLease,
+            ),
           );
         } catch (terminalErr: any) {
           log(

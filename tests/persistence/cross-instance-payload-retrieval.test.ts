@@ -89,8 +89,8 @@ describe("Phase 4B: Cross-Instance Payload Retrieval & BlobStore Invariant", () 
     expect(parsedCard.detail.rawText).toContain("P&L scale 100M+ ARR");
 
     // Instance B marks job running and complete
-    await instanceB_Queue.markRunning(leasedJob.id);
-    await instanceB_Queue.markCompleted(leasedJob.id);
+    await instanceB_Queue.markRunning(leasedJob.id, leasedJob.lease_owner!);
+    await instanceB_Queue.markCompleted(leasedJob.id, leasedJob.lease_owner!);
 
     const stats = await instanceB_Queue.getRunStats("run-cross-instance-test");
     expect(stats.completed).toBe(1);
@@ -134,6 +134,7 @@ describe("Phase 4B: Cross-Instance Payload Retrieval & BlobStore Invariant", () 
     // Worker records failure gracefully
     await queue.markFailed(
       leased[0].id,
+      leased[0].lease_owner!,
       "UNKNOWN",
       `Orphaned payload: Blob ${leased[0].payload_key} missing in BlobStore`
     );

@@ -15,6 +15,7 @@ export type DeployConfig = {
   readonly expectedDatabaseFingerprint: string;
   readonly recoveryCommand: string;
   readonly readinessUrl: string;
+  readonly deploymentMode: "single_host" | "distributed";
 };
 
 export type CommandRunner = (command: string, args: string[]) => string;
@@ -33,6 +34,10 @@ function parseConfig(): DeployConfig {
   if (!fs.isFileSync(artifact)) throw new Error("DEPLOY_ARTIFACT_MISSING");
   const keyPath = path.resolve(required("RADAR_DEPLOY_SSH_KEY_PATH"));
   if (!fs.isFileSync(keyPath)) throw new Error("DEPLOY_SSH_KEY_MISSING");
+  const deploymentMode = required("RADAR_DEPLOYMENT_MODE");
+  if (deploymentMode !== "single_host" && deploymentMode !== "distributed") {
+    throw new Error("DEPLOY_MODE_INVALID");
+  }
   return {
     sha,
     artifact,
@@ -43,6 +48,7 @@ function parseConfig(): DeployConfig {
     expectedDatabaseFingerprint: required("RADAR_DEPLOY_DB_FINGERPRINT"),
     recoveryCommand: required("RADAR_DEPLOY_RECOVERY_COMMAND"),
     readinessUrl: required("RADAR_DEPLOY_READINESS_URL"),
+    deploymentMode,
   };
 }
 
@@ -90,7 +96,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
   const remoteArtifact = `${config.appDirectory}/releases/${releaseName}`;
   const stagingDirectory = `${config.appDirectory}/releases/${config.sha}`;
   const receipt = `${config.appDirectory}/releases/${config.sha}.receipt.json`;
-  const writers = [
+  const allManagedWorkers = [
     "radar-scrape",
     "radar-enrich",
     "radar-documents",
@@ -99,6 +105,25 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     "radar-reviews",
     "radar-corpus",
   ];
+  const writers = config.deploymentMode === "distributed"
+    ? allManagedWorkers.filter((name) => name !== "radar-scrape")
+    : allManagedWorkers;
+  const requiredProcesses = ["radar-v2", ...writers];
+  const startAllProcesses = "pm2 startOrRestart ecosystem.config.cjs --update-env";
+  const enforceProcessTopology = config.deploymentMode === "distributed"
+    ? "pm2 stop 'radar-scrape' >/dev/null 2>&1 || true"
+    : ":";
+  const verifyAllProcesses = [
+    `RADAR_PM2_REQUIRED=${shellQuote(JSON.stringify(requiredProcesses))}`,
+    "node -e",
+    shellQuote(`const {execFileSync}=require("node:child_process"); const required=JSON.parse(process.env.RADAR_PM2_REQUIRED||"[]"); const apps=JSON.parse(execFileSync("pm2",["jlist"],{encoding:"utf8"})); const cwd=process.cwd(); const bad=required.filter((name)=>{ const app=apps.find((candidate)=>candidate.name===name); return !app || app.pm2_env?.status!=="online" || app.pm2_env?.pm_cwd!==cwd; }); if(bad.length){ console.error("PM2_TOPOLOGY_UNHEALTHY:"+bad.join(",")); process.exit(1); }`),
+  ].join(" ");
+  const systemReadinessUrl = `${config.readinessUrl.replace(/\/$/, "")}/health/system`;
+  const waitForSystemReadiness = [
+    "system_ready=0",
+    `for attempt in $(seq 1 30); do if curl --fail --silent --show-error ${shellQuote(systemReadinessUrl)} >/dev/null; then system_ready=1; break; fi; sleep 2; done`,
+    `[ "$system_ready" = "1" ]`,
+  ].join("; ");
 
   // The recovery command is supplied by the operator's actual database
   // provider. Its non-empty result is persisted as the recovery-point ID.
@@ -153,7 +178,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     "}",
   ].join("\n");
 
-  const stopWriters = writers.map((name) => `stop_pm2_process ${shellQuote(name)}`).join("; ");
+  const stopWriters = allManagedWorkers.map((name) => `stop_pm2_process ${shellQuote(name)}`).join("; ");
 
   const activate = [
     "set -eu",
@@ -164,12 +189,17 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     `cd ${shellQuote(stagingDirectory)}`,
     `node_modules/.bin/tsx scripts/release/verify.ts . ${shellQuote(config.sha)}`,
     `export RADAR_RELEASE_SHA=${shellQuote(config.sha)}`,
+    `export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)}`,
+    `export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)}`,
     stopWriters,
     "stop_pm2_process radar-v2",
     "npm run db:migrate",
     "npm run db:status",
-    "pm2 startOrRestart ecosystem.config.cjs --only radar-v2 --update-env",
+    startAllProcesses,
+    enforceProcessTopology,
+    verifyAllProcesses,
     `curl --fail --silent --show-error ${shellQuote(`${config.readinessUrl.replace(/\/$/, "")}/health/ready`)}`,
+    waitForSystemReadiness,
     `RADAR_DEPLOY_READINESS_URL=${shellQuote(config.readinessUrl)} RADAR_RELEASE_SHA=${shellQuote(config.sha)} node_modules/.bin/tsx scripts/smoke_production.ts`,
     `printf '%s' ${shellQuote(config.sha)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}`,
   ].join("; ");
@@ -180,6 +210,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
       previousSha: priorSha || null,
       newSha: config.sha,
       databaseFingerprint: config.expectedDatabaseFingerprint,
+      deploymentMode: config.deploymentMode,
       recoveryPoint,
       status: "failed",
       rollback: "rollback_failed",
@@ -191,17 +222,19 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
       previousSha: priorSha || null,
       newSha: config.sha,
       databaseFingerprint: config.expectedDatabaseFingerprint,
+      deploymentMode: config.deploymentMode,
       recoveryPoint,
       status: "failed",
       rollback: "previous-release-restored",
       databaseRestored: false,
-      workersStarted: false,
+      workersStarted: true,
       error: errorMessage,
     });
     const rollbackUnavailableReceipt = JSON.stringify({
       previousSha: priorSha || null,
       newSha: config.sha,
       databaseFingerprint: config.expectedDatabaseFingerprint,
+      deploymentMode: config.deploymentMode,
       recoveryPoint,
       status: "failed",
       rollback: priorSha
@@ -217,14 +250,14 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
       canRestorePrior
         ? [
             `printf '%s' ${shellQuote(rollbackFailedReceipt)} > ${shellQuote(receipt)}`,
-            `if (cd ${shellQuote(priorReleaseDirectory!)} && pm2 startOrRestart ecosystem.config.cjs --only radar-v2 --update-env && printf '%s' ${shellQuote(priorSha!)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}); then`,
+            `if (cd ${shellQuote(priorReleaseDirectory!)} && export RADAR_RELEASE_SHA=${shellQuote(priorSha!)} && export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)} && export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)} && ${startAllProcesses} && ${enforceProcessTopology} && ${verifyAllProcesses} && ${waitForSystemReadiness} && printf '%s' ${shellQuote(priorSha!)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}); then`,
             `  printf '%s' ${shellQuote(rollbackSuccessReceipt)} > ${shellQuote(receipt)}`,
             `else`,
-            `  pm2 stop radar-v2 || true`,
+            ...requiredProcesses.map((name) => `  pm2 stop ${shellQuote(name)} || true`),
             `fi`,
           ].join("\n")
         : [
-            "pm2 stop radar-v2 || true",
+            ...requiredProcesses.map((name) => `pm2 stop ${shellQuote(name)} || true`),
             `printf '%s' ${shellQuote(rollbackUnavailableReceipt)} > ${shellQuote(receipt)}`,
           ].join("\n"),
     ].join("\n");
@@ -267,9 +300,10 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     previousSha: priorSha || null,
     newSha: config.sha,
     databaseFingerprint: config.expectedDatabaseFingerprint,
+    deploymentMode: config.deploymentMode,
     recoveryPoint,
-    status: "web-ready",
-    workersStarted: false,
+    status: "ready",
+    workersStarted: true,
   });
   runner(
     "ssh",

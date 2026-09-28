@@ -17,6 +17,7 @@ export interface RequiredSchemaStatus {
   readonly candidateTruthTablesPresent: boolean;
   readonly evaluationControlTablePresent: boolean;
   readonly durableWorkerTablesPresent: boolean;
+  readonly operationalLeaseSchemaPresent: boolean;
 }
 
 export const migrationChecksum = (content: string) =>
@@ -54,6 +55,7 @@ const REQUIRED_TABLES = [
   "dossier_review_jobs",
   "scrape_runs",
   "corpus_regeneration_jobs",
+  "worker_heartbeats",
 ] as const;
 
 const REQUIRED_SCOPE_COLUMNS = [
@@ -105,6 +107,11 @@ export async function getRequiredSchemaStatus(db: DatabaseAdapter): Promise<Requ
     REQUIRED_SCOPE_COLUMNS.map(([table, column]) => hasColumn(db, table, column)),
   );
   const dossierPresentationsTablePresent = tablePresent("materialized_dossier_presentations");
+  const scrapeLeaseColumnsPresent = (await Promise.all([
+    hasColumn(db, "scrape_runs", "lease_owner"),
+    hasColumn(db, "scrape_runs", "lease_token"),
+    hasColumn(db, "scrape_runs", "lease_expires_at"),
+  ])).every(Boolean);
   return {
     evaluationFingerprintColumnPresent,
     categoryIdsColumnPresent,
@@ -127,7 +134,9 @@ export async function getRequiredSchemaStatus(db: DatabaseAdapter): Promise<Requ
       "scrape_runs",
       "dossier_review_jobs",
       "corpus_regeneration_jobs",
+      "worker_heartbeats",
     ].every(tablePresent),
+    operationalLeaseSchemaPresent: scrapeLeaseColumnsPresent && tablePresent("worker_heartbeats"),
   };
 }
 
@@ -161,6 +170,7 @@ export async function verifyRequiredSchema(db: DatabaseAdapter): Promise<Require
     ["candidateTruthTablesPresent", "candidate truth tables/columns"],
     ["evaluationControlTablePresent", "evaluation context/control tables"],
     ["durableWorkerTablesPresent", "durable worker tables"],
+    ["operationalLeaseSchemaPresent", "operational worker lease schema"],
   ];
   for (const [key, description] of currentRequirements) {
     if (!status[key]) {

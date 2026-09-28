@@ -25,7 +25,6 @@
     "scrape": "tsx scripts/scrape.ts",
     "scrape:preflight": "tsx scripts/scraper/preflight.ts",
     "enrich": "tsx scripts/enrich.ts",
-    "enrich:recover": "tsx --env-file=.env scripts/recover-degraded.ts",
     "corpus:generate": "tsx scripts/corpus/pipeline.ts",
     "corpus:health": "tsx scripts/corpus/health.ts",
     "validate-graph": "tsx scripts/validate-graph.ts",

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { getDatabaseAdapter } from "../src/data/database";
 import { ProjectionPipeline } from "../src/lib/intelligence/pipeline/ProjectionPipeline";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
+import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
 
 export async function processNextDocumentJob(workerId = `document-worker-${crypto.randomUUID()}`): Promise<boolean> {
   const db = getDatabaseAdapter();
@@ -59,10 +60,14 @@ if (process.argv[1]?.endsWith("process-document-jobs.ts")) {
   process.once("SIGINT", stop);
   const workerId = `document-worker-${crypto.randomUUID()}`;
   const run = async () => {
+    await startWorkerHeartbeat("documents");
+    let idleMs = 1_000;
     while (!stopping) {
       try {
         const processed = await processNextDocumentJob(workerId);
-        if (!processed) await new Promise(resolve => setTimeout(resolve, 1_000));
+        if (processed) { idleMs = 1_000; continue; }
+        await new Promise(resolve => setTimeout(resolve, idleMs));
+        idleMs = Math.min(idleMs * 2, 30_000);
       } catch (error) {
         runtimeLog("error", "document_worker_poll_error");
         await new Promise(resolve => setTimeout(resolve, 5_000));

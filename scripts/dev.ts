@@ -59,6 +59,20 @@ function processSpecs(databaseTarget: string): ManagedProcess[] {
       env: workerEnv,
       restart: true,
     },
+    {
+      name: "documents",
+      command: process.execPath,
+      args: ["--import", "tsx", "scripts/process-document-jobs.ts"],
+      env: workerEnv,
+      restart: true,
+    },
+    {
+      name: "corpus",
+      command: process.execPath,
+      args: ["--import", "tsx", "scripts/run-corpus-regeneration-worker.ts"],
+      env: workerEnv,
+      restart: true,
+    },
   ];
 }
 async function main() {

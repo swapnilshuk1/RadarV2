@@ -105,8 +105,8 @@ describe("Phase 4C: Distributed Execution, Payload Access & Lease Contention", (
     expect(loadedCard.title).toBe("Vice President of Enterprise Architecture");
 
     // Winner marks job running and complete
-    await winnerQueue.markRunning(winnerJob.id);
-    await winnerQueue.markCompleted(winnerJob.id);
+    await winnerQueue.markRunning(winnerJob.id, winnerJob.lease_owner!);
+    await winnerQueue.markCompleted(winnerJob.id, winnerJob.lease_owner!);
 
     // After completion, loser attempts to lease again -> STILL 0 jobs (never double-processed)
     const postCompleteAttempt = await loserQueue.leaseJobs(loserWorkerId, 1);
@@ -150,9 +150,10 @@ describe("Phase 4C: Distributed Execution, Payload Access & Lease Contention", (
       payloadKey
     );
 
-    // Instance B leases the job with short duration
+    // Instance B leases and starts the job with short duration
     const bLeased = await instanceB_Queue.leaseJobs("worker_instance_b_crashed", 1, 10);
     expect(bLeased).toHaveLength(1);
+    await instanceB_Queue.markRunning(bLeased[0].id, bLeased[0].lease_owner!, 10);
 
     // Simulate Instance B crashing and its lease expiring
     await db.execute(
@@ -168,10 +169,16 @@ describe("Phase 4C: Distributed Execution, Payload Access & Lease Contention", (
     expect(cLeased[0].id).toBe(bLeased[0].id);
     expect(cLeased[0].lease_owner).toBe("worker_instance_c_healthy");
 
-    // Instance C retrieves payload via BlobStore and completes
+    // Stale Instance B is fenced after takeover.
+    await expect(
+      instanceB_Queue.markCompleted(bLeased[0].id, "worker_instance_b_crashed"),
+    ).rejects.toThrow("ENRICHMENT_LEASE_LOST");
+
+    // Instance C retrieves payload via BlobStore, marks running, and completes.
     const payload = await sharedBlobStorage.get(cLeased[0].payload_key);
     expect(payload).not.toBeNull();
-    await instanceC_Queue.markCompleted(cLeased[0].id);
+    await instanceC_Queue.markRunning(cLeased[0].id, cLeased[0].lease_owner!);
+    await instanceC_Queue.markCompleted(cLeased[0].id, cLeased[0].lease_owner!);
 
     const stats = await instanceC_Queue.getRunStats("run-failover-test");
     expect(stats.completed).toBe(1);

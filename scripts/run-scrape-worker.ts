@@ -2,74 +2,86 @@
  * Explicit scraper-worker entrypoint. The web process only creates queued,
  * tenant/person-owned scrape runs; this process is the sole Playwright owner.
  */
-import { getDatabaseAdapter } from "../src/data/database";
+import { randomUUID } from "node:crypto";
 import { getRepositories } from "../src/data/sqlite/provider";
 import { startRun } from "./scrape";
 import type { PortalName } from "./scraper/types";
+import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
+
+const WORKER_ID = `scrape-worker-${process.pid}-${randomUUID()}`;
+const LEASE_MS = 120_000;
+const HEARTBEAT_MS = 30_000;
 
 let stopping = false;
 process.once("SIGTERM", () => { stopping = true; });
 process.once("SIGINT", () => { stopping = true; });
 
 async function claimAndRun(): Promise<boolean> {
-  const db = getDatabaseAdapter();
-  const row = await db.one<{
-    id: string;
-    tenant_id: string;
-    person_id: string;
-    search_plan_id: string | null;
-    portal_targets: string;
-    config_json: string;
-  }>(
-    `SELECT id,tenant_id,person_id,search_plan_id,portal_targets,config_json
-     FROM scrape_runs WHERE status='queued' ORDER BY created_at LIMIT 1`,
-  );
-  if (!row) return false;
-  const scope = { tenantId: row.tenant_id, personId: row.person_id };
   const repos = getRepositories();
-  const claimed = await repos.scrapeRuns.transitionRunStatus(scope, row.id, 'queued', 'initializing');
-  if (!claimed) return true;
-  const claimedRun = await repos.scrapeRuns.getRun(scope, row.id);
-  if (claimedRun?.status !== 'initializing') {
-    throw new Error(`SCRAPE_WORKER_CLAIM_NOT_VISIBLE: durable status=${claimedRun?.status ?? 'missing'}`);
-  }
+  const claimedRun = await repos.scrapeRuns.claimNextForWorker(WORKER_ID, LEASE_MS);
+  if (!claimedRun) return false;
+  if (!claimedRun.leaseToken) throw new Error("SCRAPE_WORKER_LEASE_TOKEN_MISSING");
+
+  const leaseToken = claimedRun.leaseToken;
+  const scope = { tenantId: claimedRun.tenantId, personId: claimedRun.personId };
+  let heartbeatFailure: Error | null = null;
+  const heartbeat = async () => {
+    if (heartbeatFailure) throw heartbeatFailure;
+    await repos.scrapeRuns.heartbeatWorkerLease(claimedRun.id, WORKER_ID, leaseToken, LEASE_MS);
+  };
+  const timer = setInterval(() => {
+    void heartbeat().catch((error) => {
+      heartbeatFailure = error instanceof Error ? error : new Error(String(error));
+      console.error(`[scrape-worker] lease lost for ${claimedRun.id}:`, heartbeatFailure);
+      process.exit(1);
+    });
+  }, HEARTBEAT_MS);
+  timer.unref();
+
   try {
-    // The durable run was authorized before enqueue. This worker consumes its
-    // immutable tenant/person command and never fabricates an AuthContext.
+    await heartbeat();
     let config: Record<string, unknown> = {};
-    let portals: PortalName[] = [];
-    try { config = JSON.parse(row.config_json || "{}"); } catch {}
-    try {
-      const requested = JSON.parse(row.portal_targets || "[]");
-      if (Array.isArray(requested)) {
-        portals = requested.filter((value): value is PortalName =>
-          value === "LinkedIn" || value === "Naukri" || value === "Indeed"
-        );
-      }
-    } catch {}
+    try { config = JSON.parse(claimedRun.configJson || "{}"); } catch {}
+    const portals = claimedRun.portalTargets.filter((value): value is PortalName =>
+      value === "LinkedIn" || value === "Naukri" || value === "Indeed"
+    );
     const { completion } = await startRun({
       resume: true,
       autoConfirm: true,
       scope,
-      searchPlanId: row.search_plan_id ?? undefined,
+      searchPlanId: claimedRun.searchPlanId ?? undefined,
       portals: portals.length ? portals : undefined,
       maxPages: typeof config.maxPages === "number" ? config.maxPages : undefined,
       maxCardsPerPage: typeof config.maxCardsPerPage === "number" ? config.maxCardsPerPage : undefined,
       keywords: Array.isArray(config.keywords) && config.keywords.every((value) => typeof value === "string")
         ? config.keywords as string[]
         : undefined,
+      claimedRunId: claimedRun.id,
+      assertWorkerLease: heartbeat,
+      scrapeLease: { owner: WORKER_ID, token: leaseToken },
     });
     await completion;
+    if (heartbeatFailure) throw heartbeatFailure;
   } catch (error) {
-    await repos.scrapeRuns.updateRunStatus(scope, row.id, "failed", error instanceof Error ? error.message : "SCRAPE_WORKER_FAILED");
+    const message = error instanceof Error ? error.message : "SCRAPE_WORKER_FAILED";
+    if (!message.includes("SCRAPE_RUN_LEASE_LOST")) {
+      await repos.scrapeRuns.failWorkerLease(claimedRun.id, WORKER_ID, leaseToken, message);
+    }
+  } finally {
+    clearInterval(timer);
+    await repos.scrapeRuns.releaseWorkerLease(claimedRun.id, WORKER_ID, leaseToken).catch(() => false);
   }
   return true;
 }
 
 async function run() {
+  await startWorkerHeartbeat("scrape");
+  let idleMs = 1_000;
   while (!stopping) {
     const claimed = await claimAndRun();
-    if (!claimed) await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (claimed) { idleMs = 1_000; continue; }
+    await new Promise((resolve) => setTimeout(resolve, idleMs));
+    idleMs = Math.min(idleMs * 2, 5_000);
   }
 }
 void run();

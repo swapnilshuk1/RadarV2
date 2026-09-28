@@ -5,6 +5,7 @@ import { createFactualReviewModel } from "../src/lib/model/factual-review-model"
 import { DossierReviewWorker } from "../src/lib/intelligence/staged/DossierReviewWorker";
 import { createSqliteModelInvocationSink } from "../src/lib/model/model-invocation";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
+import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
 
 const BASE_IDLE_POLL_MS = 5_000;
 const MAX_IDLE_POLL_MS = 30_000;
@@ -23,6 +24,7 @@ const worker = new DossierReviewWorker(
       invocationSink: createSqliteModelInvocationSink(db, context),
     }),
 );
+await startWorkerHeartbeat("dossier-review");
 let stopping = false;
 let idlePolls = 0;
 process.on("SIGINT", () => {

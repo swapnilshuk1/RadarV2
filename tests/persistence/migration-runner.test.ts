@@ -96,11 +96,13 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
     expect(result.applied).toContain("039_backfill_v4_3_evaluation_fingerprint.sql");
     expect(result.applied).toContain("041_indeed_resolution_provenance.sql");
     expect(result.applied).toContain("061_corpus_regeneration_worker.sql");
+    expect(result.applied).toContain("062_operational_worker_leases.sql");
     await expect(verifyRequiredSchema(inMemoryAdapter)).resolves.toMatchObject({
       tenantScopeTablesPresent: true,
       candidateTruthTablesPresent: true,
       evaluationControlTablePresent: true,
       durableWorkerTablesPresent: true,
+      operationalLeaseSchemaPresent: true,
     });
     await expect(
       inMemoryAdapter.many(

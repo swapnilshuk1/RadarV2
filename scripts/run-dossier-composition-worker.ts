@@ -2,6 +2,7 @@ import { getDatabaseAdapter } from "../src/data/database";
 import { loadMantleCredentials } from "../src/lib/model/bedrock-credentials";
 import { DossierCompositionWorker } from "../src/lib/intelligence/staged/DossierCompositionWorker";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
+import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
 
 const db = getDatabaseAdapter();
 if (
@@ -23,6 +24,7 @@ if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 8)
   throw new Error("DOSSIER_JOB_CONCURRENCY_INVALID");
 
 const workers = Array.from({ length: concurrency }, () => new DossierCompositionWorker(db));
+await startWorkerHeartbeat("dossier-composition");
 const BASE_IDLE_POLL_MS = 3_000;
 const MAX_IDLE_POLL_MS = 30_000;
 let stopping = false;
