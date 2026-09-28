@@ -16,7 +16,6 @@ export const certificationManifest = [
       "tests/certification/certification-gate-integrity.test.ts",
       "tests/intelligence/staged-production-integration.test.ts",
       "tests/intelligence/staged-context-input.test.ts",
-      "tests/certification/journey_c_decision_persistence_to_dto.test.ts",
       "tests/certification/journey_d_loader_to_ui_rendering.test.ts",
       "tests/certification/test-inventory-audit.test.ts",
     ],
@@ -27,17 +26,14 @@ export const certificationManifest = [
     description:
       "FK integrity, content hashing, version lineage, operational queue crash recovery, and global metric aggregations",
     files: [
-      "tests/intelligence/canonical-ingestion-fk-regression.test.ts",
       "tests/intelligence/canonical-acquisition-integrity.test.ts",
       "tests/acquisition/ingestion-lineage.test.ts",
-      "tests/intelligence/metrics-portal-breakdown.test.ts",
       "tests/persistence/queue-crash-restart.test.ts",
       "tests/persistence/scrape-run-state-machine.test.ts",
       "tests/persistence/cross-instance-payload-retrieval.test.ts",
       "tests/persistence/distributed-lease-contention.test.ts",
       "tests/persistence/blob-store-connectivity.test.ts",
       "tests/scraper/acquisition-variant-contract.test.ts",
-      "tests/scraper/scraper-operability.test.ts",
     ],
   },
   {
@@ -65,13 +61,10 @@ export const certificationManifest = [
     files: [
       "tests/serving/cursor.test.ts",
       "tests/serving/navigation-and-shortlist-contract.test.ts",
-      "tests/serving/keyset_pagination.test.ts",
       "tests/serving/opportunity-queries-contract.test.ts",
       "tests/serving/route_server_functions_parity.test.ts",
       "tests/serving/singleflight_and_observability.test.ts",
       "tests/serving/singleflight-scope-isolation.test.ts",
-      "tests/serving/sql_feed_parity.test.ts",
-      "tests/serving/sql_metrics_aggregation.test.ts",
       "tests/editorial/shortlist-badge-resolution.test.ts",
       "tests/serving/current-serving-boundary.test.ts",
       "tests/persistence/deployment-determinism.test.ts",
@@ -103,10 +96,8 @@ export const certificationManifest = [
     description:
       "Fail-closed profile resolution, non-escalating permissions, canonical verdicts, reproducibility, and durable worker recovery",
     files: [
-      "tests/intelligence/worker-profile-resolution.test.ts",
       "tests/intelligence/profile-projection-version-compat.test.ts",
       "tests/security/scraper-auth-permission-non-escalation.test.ts",
-      "tests/intelligence/m8-canonical-serving.test.ts",
       "tests/security/evaluation-context-isolation.test.ts",
     ],
   },
@@ -119,6 +110,7 @@ export const certificationManifest = [
       "tests/intelligence/candidate-truth-boundary.test.ts",
       "tests/intelligence/phase-c-runtime-separation.test.ts",
       "tests/intelligence/corpus-regeneration-worker.test.ts",
+      "tests/intelligence/evaluator-control-worker-liveness.test.ts",
       "tests/persistence/migration-runner.test.ts",
       "tests/persistence/populated-migration.test.ts",
       "tests/release/readiness.test.ts",

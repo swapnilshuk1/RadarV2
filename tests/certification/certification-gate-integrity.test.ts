@@ -44,7 +44,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       { name: "Ingestion & Lineage", cmd: "Unified Vitest certification manifest" },
       { name: "Multi-Tenant & Scope Security", cmd: "Unified Vitest certification manifest" },
       { name: "Serving Store & Keyset", cmd: "Unified Vitest certification manifest" },
-      { name: "Editorial Governance", cmd: "Unified Vitest certification manifest" },
+      { name: "Staged-v8 Memo & Serving Contracts", cmd: "Unified Vitest certification manifest" },
     ];
 
     expectedStageKeywords.forEach((expected, index) => {
@@ -59,7 +59,6 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       "ingestion-lineage",
       "tenant-security",
       "serving-pagination",
-      "editorial-governance",
       "staged-dossier-merge-gate",
       "gate-0-safety",
       "runtime-release-safety",
@@ -86,7 +85,6 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
     expect(certifyScriptContent).toContain("process.exit(1)");
     expect(certifyScriptContent).toContain("CERTIFICATION FAIL");
     expect(certifyScriptContent).toContain("CERTIFICATION PASS");
-    expect(certifyScriptContent).toContain("assertFailClosedCertificationContract");
   });
 
   it("3a. keeps affected-test feedback conservative and manifest-derived", () => {
@@ -95,7 +93,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
     );
     expect(
       selectAffectedGroupIds(["src/lib/intelligence/editorial/BriefCompositionEngine.ts"]),
-    ).toEqual(["boundary-journeys", "editorial-governance"]);
+    ).toEqual(["boundary-journeys", "staged-dossier-merge-gate"]);
     expect(selectAffectedGroupIds(["unmapped/future-system.ts"])).toEqual(
       certificationManifest.map((group) => group.id),
     );

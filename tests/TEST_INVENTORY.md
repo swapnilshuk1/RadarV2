@@ -184,7 +184,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (173 Total Files)
+## 3. Complete Test File Registry (174 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -225,6 +225,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/dossier-source-authority.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 5 | 21 |
 | `tests/intelligence/editorial-boundary.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 5 |
 | `tests/intelligence/evaluation-work-scheduler.test.ts` | Evaluation & Policy | **KEEP** | Stage 3 | 3 | 11 |
+| `tests/intelligence/evaluator-control-worker-liveness.test.ts` | Runtime Workers | **KEEP** | Stage 3 | 2 | 7 |
 | `tests/intelligence/evidence-extraction-bedrock.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 4 | 17 |
 | `tests/intelligence/for4d5_client_freshness.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 6 | 16 |
 | `tests/intelligence/gate4-write-refresh-edge-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 8 |
