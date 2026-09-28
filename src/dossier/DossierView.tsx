@@ -5,9 +5,11 @@ import "./dossier.css";
 export function DossierView({
   dossier: d,
   reviewState,
+  actions,
 }: {
   dossier: Dossier;
   reviewState?: "pending" | "attention" | "reviewed";
+  actions?: ReactNode;
 }) {
   const reviewed =
     reviewState === "reviewed" || (!reviewState && Boolean(d.generation.factualReviews?.length));
@@ -168,6 +170,7 @@ export function DossierView({
                 year: "numeric",
               })}
             </p>
+            {actions && <div className="dossier-hero-actions">{actions}</div>}
           </div>
           <aside className="dossier-overview">
             <span className="label-mono">The call</span>

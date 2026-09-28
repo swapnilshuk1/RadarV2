@@ -267,7 +267,7 @@ function Shortlist() {
 
   return (
     <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
-      <main className="mx-auto max-w-[1180px] px-5 sm:px-8 pt-4">
+      <main className="mx-auto max-w-[1320px] px-5 sm:px-8 pt-4">
         {/* Metric Integrity Warning Banner */}
         {integrity && integrity.status !== "PASS" && (
           <div className="mb-4 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200 text-xs font-mono flex items-start gap-3">
@@ -825,8 +825,16 @@ function ShortlistCardRow({
   const { primaryLabel, badgeClass, isStale, staleLabel, previousAction } = resolveShortlistCardBadgeState(o);
   const evaluatedDossier = (dossier && isEvaluated(dossier) ? dossier : undefined) ?? o;
   const reviewedDossier = evaluatedDossier.richDossier;
-  const reviewedThesis = reviewedDossier?.executiveThesis.text;
   const firstDecisionCondition = reviewedDossier?.decisionConditions[0]?.question.text;
+  const evidenceSummary = coverage
+    ? [
+        coverage.direct ? `${coverage.direct} direct` : null,
+        coverage.adjacent ? `${coverage.adjacent} adjacent` : null,
+        coverage.transferable ? `${coverage.transferable} transferable` : null,
+        coverage.notEvidenced ? `${coverage.notEvidenced} to verify` : null,
+        coverage.contradicted ? `${coverage.contradicted} conflict${coverage.contradicted === 1 ? "" : "s"}` : null,
+      ].filter(Boolean).join(" · ")
+    : null;
 
   useEffect(() => {
     if (isOpen && rowRef.current) {
@@ -904,18 +912,8 @@ function ShortlistCardRow({
             {o.company} · {o.location}{(o as { workModel?: string }).workModel ? ` (${(o as { workModel?: string }).workModel})` : ""} · {o.scrapedFrom}
           </span>
 
-          {coverage && <span className="mt-2 block text-xs text-muted-foreground">Evidence: {coverage.direct} direct &middot; {coverage.adjacent} adjacent &middot; {coverage.transferable} transferable{coverage.notEvidenced>0?` / ${coverage.notEvidenced} not evidenced`:''}{coverage.contradicted>0?` / ${coverage.contradicted} conflicting`:''}</span>}
+          {evidenceSummary && <span className="mt-2 block text-xs text-muted-foreground">Evidence · {evidenceSummary}</span>}
 
-          {reviewedThesis && <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
-            {reviewedThesis}
-          </span>}
-
-          {firstDecisionCondition && (
-            <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[0.68rem] text-amber-700 dark:text-amber-300 border border-amber-500/20 font-mono">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-              Needs verification: {firstDecisionCondition}
-            </span>
-          )}
         </span>
 
         <span className="flex shrink-0 flex-col items-end gap-2">
@@ -939,6 +937,7 @@ function ShortlistCardRow({
             <InlineBrief
               opportunity={o}
               dossier={evaluatedDossier}
+              decisionCondition={firstDecisionCondition}
               onDecide={(verb) =>
                 decide(
                   o.jobHash,

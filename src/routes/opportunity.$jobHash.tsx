@@ -169,34 +169,6 @@ export function OpportunityBriefView() {
     return (
       <>
         {decisionFeedback}
-        <div className="memo-container flex flex-wrap items-center justify-between gap-4 py-4">
-          <Link to="/" search={scope} className="text-primary hover:underline">
-            Return to Shortlist
-          </Link>
-          <div className="flex gap-2" aria-label="Your decision">
-            {(["PURSUE", "CONSIDER", "PASS"] as const).map((verb) => (
-              <button
-                key={verb}
-                className="rounded border px-3 py-2"
-                aria-pressed={dossierState.selectedActionForControls === verb}
-                disabled={decisionPending}
-                onClick={() => void decide(verb)}
-              >
-                {verb}
-              </button>
-            ))}
-          </div>
-          {isExternalPostingUrl(o.applyUrl) && (
-            <a
-              href={o.applyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              View job posting
-            </a>
-          )}
-        </div>
         <DossierView
           dossier={o.richDossier}
           reviewState={
@@ -205,6 +177,37 @@ export function OpportunityBriefView() {
               : o.memoReviewState === "review_attention"
                 ? "attention"
                 : "pending"
+          }
+          actions={
+            <>
+              <Link to="/" search={scope} className="dossier-return-link">
+                ← Shortlist
+              </Link>
+              <div className="dossier-decision-actions" aria-label="Your decision">
+                {(["PURSUE", "CONSIDER", "PASS"] as const).map((verb) => (
+                  <button
+                    key={verb}
+                    type="button"
+                    className="dossier-decision-action"
+                    aria-pressed={dossierState.selectedActionForControls === verb}
+                    disabled={decisionPending}
+                    onClick={() => void decide(verb)}
+                  >
+                    {verb}
+                  </button>
+                ))}
+              </div>
+              {isExternalPostingUrl(o.applyUrl) && (
+                <a
+                  href={o.applyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="dossier-apply-action"
+                >
+                  Apply now ↗
+                </a>
+              )}
+            </>
           }
         />
       </>

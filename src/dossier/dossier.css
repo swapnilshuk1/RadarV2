@@ -6,7 +6,7 @@
   line-height: 1.55;
 }
 .dossier-body {
-  width: min(100% - 3rem, 76rem);
+  width: min(100% - 3rem, 88rem);
   margin: 0 auto;
   padding: 0;
 }
@@ -83,6 +83,63 @@
   font-size: 0.75rem;
   color: var(--muted-foreground);
 }
+.dossier-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+}
+.dossier-decision-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.dossier-decision-action,
+.dossier-apply-action,
+.dossier-return-link {
+  min-height: 2.4rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  font: 0.66rem/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.dossier-decision-action {
+  color: var(--muted-foreground);
+  background: var(--background);
+}
+.dossier-decision-action:hover,
+.dossier-decision-action[aria-pressed="true"] {
+  color: var(--background);
+  background: var(--foreground);
+  border-color: var(--foreground);
+}
+.dossier-decision-action:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+.dossier-apply-action {
+  color: var(--signal-foreground);
+  background: var(--signal);
+  border-color: var(--signal);
+  text-decoration: none;
+  font-weight: 700;
+}
+.dossier-apply-action:hover {
+  filter: brightness(0.94);
+}
+.dossier-return-link {
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+.dossier-return-link:hover {
+  color: var(--foreground);
+  background: var(--surface-raised);
+}
 .dossier-verdict {
   font-family: var(--font-mono);
   font-size: 0.65rem;
@@ -146,9 +203,9 @@
 }
 .dossier-chapter {
   display: grid;
-  grid-template-columns: 8.5rem minmax(0, 1fr);
-  gap: clamp(1.75rem, 4vw, 3.5rem);
-  padding: 2.5rem 0 2.75rem;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: clamp(1.5rem, 3vw, 3rem);
+  padding: 2.1rem 0 2.25rem;
   border-top: 1px solid var(--border);
 }
 .dossier-chapter aside {
@@ -373,6 +430,7 @@
   list-style: disc;
   padding-left: 1.25rem;
   margin: 0.75rem 0 1.25rem;
+  max-width: 72rem;
 }
 .dossier-bullets li {
   padding-left: 0.35rem;
@@ -435,6 +493,10 @@
 @media (max-width: 700px) {
   .dossier-chapter > .dossier-rail {
     position: static;
+  }
+  .dossier-hero-actions,
+  .dossier-decision-actions {
+    width: 100%;
   }
   .dossier-fit-row,
   .dossier-condition {
