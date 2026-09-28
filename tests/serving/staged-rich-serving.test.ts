@@ -545,6 +545,36 @@ describe("rich staged serving activation", () => {
       vi.unstubAllGlobals();
     }
   });
+  it("renders unresolved scope as decision guidance rather than an internal acquisition prompt", () => {
+    const rich = dossier();
+    rich.resolutions = [
+      {
+        field: "reportingLine",
+        status: "OPEN",
+        value: null,
+        claimIds: [],
+        methods: ["ask"],
+        question: "What is the reporting structure for this role?",
+        consequence: "Authority changes the career value.",
+      },
+      {
+        field: "teamScale",
+        status: "OPEN",
+        value: null,
+        claimIds: [],
+        methods: ["ask"],
+        question: "What is the team scale or headcount responsibility for this role?",
+        consequence: "Team scope changes the career value.",
+      },
+    ];
+    const markup = renderToStaticMarkup(createElement(DossierView, { dossier: rich }));
+    expect(markup).toContain("Before you advance");
+    expect(markup).toContain("Authority and reporting");
+    expect(markup).toContain("Leadership scope");
+    expect(markup).not.toContain("What is the reporting structure for this role?");
+    expect(markup).not.toContain("What is the team scale or headcount responsibility for this role?");
+  });
+
   it("never uses the input fingerprint as an alias for an exact evaluation fingerprint", async () => {
     const store = new SqliteRichDossierStore(db);
     await store.save(identity, evaluationFingerprint, dossier());
