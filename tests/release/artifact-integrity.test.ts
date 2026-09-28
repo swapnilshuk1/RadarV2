@@ -49,4 +49,21 @@ describe("certified release artifacts", () => {
       /RELEASE_PAYLOAD_CHECKSUM_MISMATCH/,
     );
   });
+
+  it("binds a symbolic link's target instead of its dereferenced payload", () => {
+    const directory = releaseDirectory();
+    const link = path.join(directory, "runtime-link");
+    try {
+      fs.symlinkSync("payload.txt", link);
+    } catch (error) {
+      if (process.platform === "win32") return;
+      throw error;
+    }
+
+    const checksum = releasePayloadChecksum(directory);
+    fs.unlinkSync(link);
+    fs.symlinkSync("scripts/certification/manifest.ts", link);
+
+    expect(releasePayloadChecksum(directory)).not.toBe(checksum);
+  });
 });

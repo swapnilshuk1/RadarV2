@@ -74,6 +74,28 @@ jobs:
       - name: Package exact certified release artifact
         run: npm run release:package
 
+      - name: Verify extracted release portability
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SHA="${GITHUB_SHA}"
+          ARTIFACT="release/radar-release-${SHA}.tar.gz"
+          CHECK_DIR="$(mktemp -d)"
+          trap 'rm -rf "${CHECK_DIR}"' EXIT
+
+          tar -xzf "${ARTIFACT}" -C "${CHECK_DIR}"
+          cd "${CHECK_DIR}"
+
+          ABS_LINK="$(find . -type l -lname '/*' -print -quit)"
+          if [ -n "${ABS_LINK}" ]; then
+            echo "::error::Release contains absolute symlink: ${ABS_LINK} -> $(readlink "${ABS_LINK}")"
+            exit 1
+          fi
+
+          node_modules/.bin/tsx --version
+          node_modules/.bin/tsx scripts/release/verify.ts . "${SHA}"
+
       - name: Retain release artifact for this exact commit
         uses: actions/upload-artifact@v4
         with:
