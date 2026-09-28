@@ -83,8 +83,8 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
           verId,
           params.evaluationFingerprint === undefined ? `evaluation_${params.id}` : params.evaluationFingerprint,
           params.engineVerdict,
-          params.score === undefined ? 85 : params.score,
-          params.evaluationState || "COMPLETE",
+          params.score === undefined ? null : params.score,
+          params.evaluationState || "STAGED_EVALUATED",
           params.vetoed ?? 0,
         ]
       );
@@ -225,7 +225,7 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
     sqliteDb.pragma("ignore_check_constraints = ON");
     await seedItem({ id: "bad-verdict", title: "Bad Verdict", engineVerdict: "UNSUPPORTED" });
     sqliteDb.pragma("ignore_check_constraints = OFF");
-    await seedItem({ id: "bad-score", title: "Bad Score", engineVerdict: "PASS", score: null });
+    await seedItem({ id: "bad-score", title: "Bad Score", engineVerdict: "PASS", score: 85 });
     await seedItem({ id: "bad-fingerprint", title: "Bad Fingerprint", engineVerdict: "PASS", evaluationFingerprint: null });
 
     const metrics = await queries.getMetrics(scope);
@@ -280,11 +280,11 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
   });
 
   it("selects the unreviewed shortlist at the canonical server boundary", async () => {
-    await seedItem({ id: "queue-consider", title: "Queue Consider", engineVerdict: "CONSIDER", score: 80 });
-    await seedItem({ id: "queue-pursue", title: "Queue Pursue", engineVerdict: "PURSUE", score: 95 });
-    await seedItem({ id: "queue-pass", title: "Queue Pass", engineVerdict: "PASS", score: 99 });
+    await seedItem({ id: "queue-consider", title: "Queue Consider", engineVerdict: "CONSIDER" });
+    await seedItem({ id: "queue-pursue", title: "Queue Pursue", engineVerdict: "PURSUE" });
+    await seedItem({ id: "queue-pass", title: "Queue Pass", engineVerdict: "PASS" });
     await seedItem({ id: "queue-invalid", title: "Queue Invalid", engineVerdict: "PURSUE", evaluationState: "INVALID", score: 100 });
-    await seedItem({ id: "queue-reviewed", title: "Queue Reviewed", engineVerdict: "PURSUE", userAction: "PASS", score: 90 });
+    await seedItem({ id: "queue-reviewed", title: "Queue Reviewed", engineVerdict: "PURSUE", userAction: "PASS" });
 
     const page = await queries.getFeed(scope, undefined, {
       decisionFilter: "unreviewed",

@@ -162,7 +162,7 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
 
     sqliteDb.prepare(
       `INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version)
-       VALUES (?, ?, ?, ?, '1.0', 'ont_fp', '1.0', ?)`
+       VALUES (?, ?, ?, ?, '1.0', 'ont_fp', 'staged-v8', ?)`
     ).run(ctxFp, tenantId, personId, snapId, pinnedProfileVersion);
 
     // Ensure candidate row exists for FK invariant
@@ -175,7 +175,7 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
       `INSERT INTO evaluation_jobs (
          id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version,
          evaluation_context_fingerprint, status, locked_by, lease_token, locked_at, attempts, max_attempts
-       ) VALUES (?, ?, ?, ?, 'opp_canon_1', 'v1_opp_1', ?, 'processing', 'test_worker_1', 'lease_tok_123', CURRENT_TIMESTAMP, 0, 3)`
+       ) VALUES (?, ?, ?, ?, 'opp_canon_1', 'v1_opp_1', ?, 'staged_processing', 'test_worker_1', 'lease_tok_123', CURRENT_TIMESTAMP, 0, 3)`
     ).run(jobId, tenantId, personId, planId, ctxFp);
 
     return {

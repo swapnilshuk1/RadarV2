@@ -4,7 +4,7 @@
  * RADAR v2 — Phase 6 Keyset Pagination & Deterministic Ordering Test Suite.
  *
  * Mathematically tests:
- * 1. Ordering Invariant: (populationTier ASC, qualityScore DESC NULLS LAST, jobHash ASC).
+ * 1. Ordering Invariant: staged-v8 rows order by populationTier, then jobHash because evaluated qualityScore is NULL.
  * 2. NULL-Score Boundary Matrix:
  *    - same tier + scored -> scored
  *    - same tier + scored -> NULL
@@ -87,9 +87,9 @@ describe("Phase 6: Keyset Pagination & Deterministic Ordering", () => {
           params.jobId,
           `ov_${params.jobId}`,
           `eval_${params.jobId}`,
-          params.evalState || "COMPLETE",
+          params.evalState || "STAGED_EVALUATED",
           params.verdict,
-          params.score,
+          (params.evalState || "STAGED_EVALUATED") === "STAGED_EVALUATED" ? null : params.score,
           params.vetoed || 0,
         ]
       );
@@ -103,8 +103,8 @@ describe("Phase 6: Keyset Pagination & Deterministic Ordering", () => {
     }
   }
 
-  describe("1. NULL-Score & Lexicographic Ordering Boundary Suite", () => {
-    it("orders by (tier ASC, quality_score DESC NULLS LAST, jobHash ASC) across scores 100, 50, 0, NULL", async () => {
+  describe("1. Staged-v8 NULL-score & lexicographic ordering", () => {
+    it("orders current staged evaluations by tier then jobHash with NULL quality scores", async () => {
       // Seed opportunities within Tier 0 (ENGINE_PURSUIT) with varied scores
       await seedOpportunity({ jobId: "j1", hash: "hash_c", title: "VP 1", verdict: "PURSUE", score: 50 });
       await seedOpportunity({ jobId: "j2", hash: "hash_a", title: "VP 2", verdict: "PURSUE", score: 100 });
@@ -130,12 +130,12 @@ describe("Phase 6: Keyset Pagination & Deterministic Ordering", () => {
         "hash_b",
         "hash_c",
         "hash_d",
-        "hash_f",
         "hash_e",
+        "hash_f",
       ]);
     });
 
-    it("paginates seamlessly across scored -> scored, scored -> NULL, and NULL -> NULL boundaries", async () => {
+    it("paginates seamlessly across staged-v8 NULL-score rows", async () => {
       await seedOpportunity({ jobId: "j1", hash: "h1", title: "VP 1", verdict: "PURSUE", score: 80 });
       await seedOpportunity({ jobId: "j2", hash: "h2", title: "VP 2", verdict: "PURSUE", score: 60 });
       await seedOpportunity({ jobId: "j3", hash: "h3", title: "VP 3", verdict: "PURSUE", score: null });

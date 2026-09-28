@@ -158,7 +158,7 @@ describe("Journey C: Decision Persistence → Feed DTO Parity", () => {
         confidence, vetoed, policy_version, evaluated_at, materialized_at, updated_at
       ) VALUES (
         'me_1', 'tenant_alpha', 'person_user1', 'job_target_1', 'ver_target_1',
-        'ec_1', 'eval_target_1', 'COMPLETE', 'PURSUE', 85.0, 0.9, 0, 'v4.1',
+        'ec_1', 'eval_target_1', 'STAGED_EVALUATED', 'PURSUE', NULL, 0.9, 0, 'staged-v8',
         '2026-08-31T00:00:00.000Z', '2026-08-31T00:00:00.000Z', '2026-08-31T00:00:00.000Z'
       )`
     );
