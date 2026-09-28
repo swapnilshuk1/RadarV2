@@ -252,6 +252,17 @@ function GlobalHeader() {
             </li>
             <li>
               <Link
+                to="/scraped"
+                search={candidateScope}
+                className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
+                  isSelected("/scraped") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Scraped
+              </Link>
+            </li>
+            <li>
+              <Link
                 to="/decisions"
                 search={candidateScope}
                 className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
