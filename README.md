@@ -74,8 +74,10 @@ be recovered from Git history. Database migrations remain ordered and intact.
 ## Local development
 
 Install the Node/npm versions declared in `package.json`, then `npm ci`.
-Use an explicitly selected isolated local database. `npm run dev` runs database
-bootstrap/migrations; do not let a production URL in `.env` select its target.
+Use an explicitly selected isolated local database. `npm run dev` starts only the
+web application on port 3000: it does not run migrations, consume worker queues or
+start model-backed evaluation/dossier work. Apply migrations explicitly with
+`npm run db:migrate` when the selected non-production database needs them.
 
 ```powershell
 $env:RADAR_ENV = 'dev'
@@ -84,6 +86,9 @@ $env:TURSO_DATABASE_URL = $env:TURSO_CONNECTION_URL
 $env:TURSO_AUTH_TOKEN = 'local-only'
 npm run dev
 ```
+
+To intentionally run the web application plus the complete local worker fleet, use
+`npm run dev:full`. That command can consume queued jobs and make paid model calls.
 
 Review an already generated dossier without running models:
 

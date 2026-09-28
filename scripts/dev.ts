@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import type { Readable } from "node:stream";
 import { getDatabaseTargetIdentity } from "../src/data/database";
 
 type ManagedProcess = {
@@ -11,6 +12,29 @@ type ManagedProcess = {
 
 const RESTART_DELAY_MS = 2_000;
 
+function pipePrefixedOutput(
+  stream: Readable | null,
+  name: string,
+  target: NodeJS.WriteStream,
+): void {
+  if (!stream) return;
+  let buffered = "";
+  stream.setEncoding("utf8");
+  stream.on("data", (chunk: string) => {
+    buffered += chunk;
+    let newline = buffered.indexOf("\n");
+    while (newline >= 0) {
+      const line = buffered.slice(0, newline).replace(/\r$/, "");
+      target.write(`[${name}] ${line}\n`);
+      buffered = buffered.slice(newline + 1);
+      newline = buffered.indexOf("\n");
+    }
+  });
+  stream.on("end", () => {
+    if (buffered) target.write(`[${name}] ${buffered}\n`);
+  });
+}
+
 function processSpecs(databaseTarget: string): ManagedProcess[] {
   const localFileDb = databaseTarget.startsWith("file:");
   const workerEnv = localFileDb
@@ -21,9 +45,13 @@ function processSpecs(databaseTarget: string): ManagedProcess[] {
           process.env.RADAR_DOSSIER_JOB_CONCURRENCY || "1",
       }
     : {};
-  const viteCommand = process.platform === "win32" ? "npx.cmd" : "npx";
   return [
-    { name: "vite", command: viteCommand, args: ["vite", "--strictPort", "--port", "3000"], restart: false },
+    {
+      name: "vite",
+      command: process.execPath,
+      args: ["node_modules/vite/bin/vite.js", "--strictPort", "--port", "3000"],
+      restart: false,
+    },
     {
       name: "scrape",
       command: process.execPath,
@@ -79,6 +107,9 @@ async function main() {
   const identity = getDatabaseTargetIdentity();
   const databaseTarget =
     process.env.TURSO_CONNECTION_URL || process.env.TURSO_DATABASE_URL || "";
+  console.warn(
+    "[dev-supervisor] FULL STACK mode: queue-consuming workers are enabled and model calls may occur.",
+  );
   console.log(`Database target fingerprint: ${identity.fingerprint}`);
   console.log(
     "Development startup never applies migrations. Run npm run db:migrate against an explicitly selected non-production target.",
@@ -109,11 +140,13 @@ async function main() {
   const launch = (spec: ManagedProcess) => {
     if (shuttingDown) return;
     const child = spawn(spec.command, spec.args, {
-      stdio: "inherit",
-      shell: spec.name === "vite" && process.platform === "win32",
+      stdio: ["inherit", "pipe", "pipe"],
+      shell: false,
       env: { ...baseEnv, ...spec.env },
     });
     children.set(spec.name, child);
+    pipePrefixedOutput(child.stdout, spec.name, process.stdout);
+    pipePrefixedOutput(child.stderr, spec.name, process.stderr);
     console.log(`[dev-supervisor] started ${spec.name} pid=${child.pid ?? "unknown"}`);
 
     child.on("error", (error) => {
