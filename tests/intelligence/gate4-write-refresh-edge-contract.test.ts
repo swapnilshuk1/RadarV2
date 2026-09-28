@@ -97,6 +97,15 @@ describe("Gate 4 write and refresh edge contracts", () => {
     expect(row).toEqual({ preferred_work_model: null, travel_tolerance: null });
   });
 
+  it("does not create a fresh intent version when the submitted intent is unchanged", async () => {
+    const { db, store } = await createDocumentFixture();
+    const scope = { tenantId: "tenant-default", personId: "person-a", roles: [] };
+    const intent = { personId: "person-a", preferredLocations: ["Bengaluru"], targetTitles: ["VP Growth"] };
+    expect(await store.saveCareerIntent(scope, intent)).toBe(true);
+    expect(await store.saveCareerIntent(scope, intent)).toBe(false);
+    expect(await db.one<{ count: number }>("SELECT COUNT(*) AS count FROM career_intents WHERE person_id = 'person-a'")).toEqual({ count: 1 });
+  });
+
   it("does not permit undo or clear local changes before canonical acknowledgement", async () => {
     const decisions = { job: { verb: "PURSUE" as const, at: 1 } };
     await expect(requireDecisionAcknowledgement(async () => ({ success: false }), "undo rejected")).rejects.toThrow("undo rejected");

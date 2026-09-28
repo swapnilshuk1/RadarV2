@@ -254,16 +254,34 @@ export class SqliteDocumentStore {
 
   // --- versioned career_intents methods (ADR-012) ---
 
-  async saveCareerIntent(scope: AuthorizedPersonScope, intent: CareerIntentRecord): Promise<void> {
+  async saveCareerIntent(scope: AuthorizedPersonScope, intent: CareerIntentRecord): Promise<boolean> {
     this.assertScope(scope, intent.personId);
     const now = new Date().toISOString();
     
     // Get highest version for person
-    await this.db.transaction(async (tx) => {
-    const latest = await tx.one<any>(`SELECT version FROM career_intents WHERE tenant_id = ? AND person_id = ? ORDER BY version DESC LIMIT 1`, [scope.tenantId, intent.personId]);
-    const nextVersion = (latest?.version || 0) + 1;
-    const intentId = `intent-${intent.personId}-v${nextVersion}`;
-    const saved = await tx.execute(
+    return await this.db.transaction(async (tx) => {
+      const latest = await tx.one<any>(
+        `SELECT * FROM career_intents WHERE tenant_id = ? AND person_id = ? ORDER BY version DESC LIMIT 1`,
+        [scope.tenantId, intent.personId],
+      );
+      const sameIntent = latest &&
+        (latest.min_salary_usd ?? undefined) === (intent.minSalaryUsd ?? undefined) &&
+        (latest.currency ?? undefined) === (intent.currency ?? undefined) &&
+        (latest.target_salary_amount ?? undefined) === (intent.targetSalaryAmount ?? undefined) &&
+        (latest.normalized_salary_usd ?? undefined) === (intent.normalizedSalaryUsd ?? undefined) &&
+        (latest.normalization_source_currency ?? undefined) === (intent.normalization?.sourceCurrency ?? undefined) &&
+        (latest.normalization_target_currency ?? undefined) === (intent.normalization?.targetCurrency ?? undefined) &&
+        (latest.normalization_rate ?? undefined) === (intent.normalization?.rate ?? undefined) &&
+        (latest.normalization_rate_source ?? undefined) === (intent.normalization?.rateSource ?? undefined) &&
+        (latest.normalization_effective_at ?? undefined) === (intent.normalization?.effectiveAt ?? undefined) &&
+        (latest.preferred_locations ?? "[]") === JSON.stringify(intent.preferredLocations || []) &&
+        (latest.target_titles ?? "[]") === JSON.stringify(intent.targetTitles || []) &&
+        (latest.preferred_work_model ?? undefined) === (intent.preferredWorkModel ?? undefined) &&
+        (latest.travel_tolerance ?? undefined) === (intent.travelTolerance ?? undefined);
+      if (sameIntent) return false;
+      const nextVersion = (latest?.version || 0) + 1;
+      const intentId = `intent-${intent.personId}-v${nextVersion}`;
+      const saved = await tx.execute(
       `
       INSERT INTO career_intents (
         id, tenant_id, person_id, version, min_salary_usd, currency, target_salary_amount,
@@ -293,8 +311,9 @@ export class SqliteDocumentStore {
         intent.travelTolerance ?? null,
         now
       ]
-    );
-    if (saved.rowsAffected !== 1) throw new Error("CAREER_INTENT_SAVE_FAILED");
+      );
+      if (saved.rowsAffected !== 1) throw new Error("CAREER_INTENT_SAVE_FAILED");
+      return true;
     });
   }
 

@@ -128,7 +128,15 @@ export const saveIntentFn = createServerFn({ method: "POST" })
     // immutable intent version. This prevents an API error from concealing a
     // newly persisted but unusable intent.
     await validateIntentActivationPreconditions({ ...intentRecord, scope });
-    await repos.documents.saveCareerIntent(scope, intentRecord);
+    const changed = await repos.documents.saveCareerIntent(scope, intentRecord);
+    if (!changed) {
+      return {
+        success: true,
+        activationState: "ACTIVE" as const,
+        unchanged: true,
+        message: "Career intent is already current.",
+      };
+    }
 
     // Saving the versioned intent must also replace the active scraper plan.
     // Otherwise the UI reports success while scraping continues to resolve a
