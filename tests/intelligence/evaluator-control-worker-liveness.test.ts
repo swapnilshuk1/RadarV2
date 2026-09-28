@@ -14,4 +14,14 @@ describe("evaluator control worker liveness", () => {
     expect(panel).toContain('data-testid="evaluator-worker-offline"');
     expect(panel).not.toContain("localDaemonRunning");
   });
+
+  it("normal development keeps only web and the idle evaluator service supervised", () => {
+    const pkg = JSON.parse(source("package.json"));
+    const dev = source("scripts/dev.ts");
+
+    expect(pkg.scripts.dev).toBe("tsx scripts/dev.ts");
+    expect(pkg.scripts["dev:full"]).toBe("tsx scripts/dev.ts --full");
+    expect(dev).toContain("return [evaluation, vite]");
+    expect(dev).toContain('process.argv.includes("--full")');
+  });
 });

@@ -9,6 +9,7 @@ import { SqliteAdapter } from '../../src/data/database/sqlite';
 import { setupLineageTestFixture } from '../persistence/lineage_fixture';
 import { EvaluationWorkScheduler } from '../../src/lib/intelligence/EvaluationWorkScheduler';
 import { EvaluationWorker } from '../../src/lib/intelligence/EvaluationWorker';
+import { EvaluationRuntimeControl } from '../../src/lib/intelligence/EvaluationRuntimeControl';
 import { EnrichmentQueue } from '../../scripts/scraper/persist/queue';
 import { RunReconciliationService } from '../../src/lib/intelligence/RunReconciliationService';
 import { computeContentHash } from '../../src/lib/domain/canonical_identity';
@@ -25,6 +26,7 @@ describe('staged enrichment dependency lifecycle', () => {
     await db.execute(`INSERT INTO search_plan_candidates(tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,attention_decision) VALUES ('tenant_A','person_A','plan_A','job','version','CANDIDATE')`);
     await db.execute(`INSERT OR IGNORE INTO evaluation_context_scopes(context_fingerprint,tenant_id,person_id,search_plan_id) VALUES('staged-context','tenant_A','person_A','plan_A')`);
     await db.execute(`INSERT INTO active_evaluation_contexts(tenant_id,person_id,search_plan_id,context_fingerprint,activated_by) VALUES('tenant_A','person_A','plan_A','staged-context','test-fixture')`);
+    await db.execute(`INSERT INTO evaluation_runtime_control(tenant_id,person_id,desired_state,updated_at,updated_by) VALUES('tenant_A','person_A','RUNNING',0,'test-fixture')`);
   });
   async function enrichment(version='version',pipeline='1.0.0',status='COMPLETE') {
     await db.execute(`INSERT INTO enrichment_jobs(id,job_hash,canonical_job_id,opportunity_version,pipeline_version,status) VALUES (?,?,?,?,?,?)`,[`enrich-${version}-${pipeline}`,'job','job',version,pipeline,status]);
@@ -32,6 +34,27 @@ describe('staged enrichment dependency lifecycle', () => {
   async function state() {
     return db.one<{status:string;requirement:string;blocked_reason:string|null}>(`SELECT ej.status,er.status AS requirement,er.blocked_reason FROM evaluation_jobs ej JOIN evaluation_requirements er ON er.evaluation_context_fingerprint=ej.evaluation_context_fingerprint`);
   }
+  it('requires an explicit Start before the worker may claim queued evaluation work', async () => {
+    await db.execute(`UPDATE opportunity_versions SET acquisition_status='ACQUIRED',lifecycle_state='ACTIVE'`);
+    await enrichment();
+    await new EvaluationWorkScheduler(db).ensureWork(identity);
+    await db.execute(`DELETE FROM evaluation_runtime_control WHERE tenant_id='tenant_A' AND person_id='person_A'`);
+
+    const worker = new EvaluationWorker(db);
+    await expect(worker.claimNextJob()).resolves.toBeNull();
+
+    await new EvaluationRuntimeControl(db).set(
+      { tenantId: 'tenant_A', personId: 'person_A' },
+      'RUNNING',
+      'test-user',
+    );
+    await expect(worker.claimNextJob()).resolves.toMatchObject({
+      tenantId: 'tenant_A',
+      personId: 'person_A',
+      canonicalJobId: 'job',
+    });
+  });
+
   it('default daemon claims only the active evaluation context, never stale queued work', async () => {
     await db.execute(`UPDATE opportunity_versions SET acquisition_status='ACQUIRED',lifecycle_state='ACTIVE'`);
     await enrichment();

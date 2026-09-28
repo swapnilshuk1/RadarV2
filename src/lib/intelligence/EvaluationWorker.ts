@@ -85,7 +85,7 @@ export class EvaluationWorker {
         AND er.evaluation_context_fingerprint = ej.evaluation_context_fingerprint
        WHERE er.status = 'READY'
          AND ej.status IN ('staged_pending', 'staged_processing')
-         AND COALESCE((SELECT desired_state FROM evaluation_runtime_control c WHERE c.tenant_id=ej.tenant_id AND c.person_id=ej.person_id), 'RUNNING') = 'RUNNING'
+         AND COALESCE((SELECT desired_state FROM evaluation_runtime_control c WHERE c.tenant_id=ej.tenant_id AND c.person_id=ej.person_id), 'STOPPED') = 'RUNNING'
          AND NOT EXISTS (
            SELECT 1
            FROM search_plan_candidates newer_spc

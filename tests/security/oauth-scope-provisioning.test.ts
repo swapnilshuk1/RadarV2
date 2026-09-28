@@ -134,10 +134,10 @@ describe("OAuth scope provisioning", () => {
       .toMatchObject({ role: "member", status: "revoked", revoked_at: "2026-01-01T00:00:00Z" });
   });
 
-  test("a missing scoped evaluator-control row defaults to RUNNING while a missing table remains an error", async () => {
+  test("a missing scoped evaluator-control row defaults to STOPPED while a missing table remains an error", async () => {
     const control = new EvaluationRuntimeControl(db);
     await expect(control.get({ tenantId: "tenant_active", personId: "person_new" }))
-      .resolves.toMatchObject({ desiredState: "RUNNING", updatedAt: 0, updatedBy: null });
+      .resolves.toMatchObject({ desiredState: "STOPPED", updatedAt: 0, updatedBy: null });
     await db.execute("DROP TABLE evaluation_runtime_control");
     await expect(control.get({ tenantId: "tenant_active", personId: "person_new" })).rejects.toThrow(/no such table/i);
   });

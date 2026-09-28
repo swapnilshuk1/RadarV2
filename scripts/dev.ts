@@ -35,7 +35,7 @@ function pipePrefixedOutput(
   });
 }
 
-function processSpecs(databaseTarget: string): ManagedProcess[] {
+function processSpecs(databaseTarget: string, fullStack: boolean): ManagedProcess[] {
   const localFileDb = databaseTarget.startsWith("file:");
   const workerEnv = localFileDb
     ? {
@@ -45,13 +45,29 @@ function processSpecs(databaseTarget: string): ManagedProcess[] {
           process.env.RADAR_DOSSIER_JOB_CONCURRENCY || "1",
       }
     : {};
+  const vite: ManagedProcess = {
+    name: "vite",
+    command: process.execPath,
+    args: ["node_modules/vite/bin/vite.js", "--strictPort", "--port", "3000"],
+    restart: false,
+  };
+  const evaluation: ManagedProcess = {
+    name: "evaluation",
+    command: process.execPath,
+    args: ["--import", "tsx", "scripts/run-evaluation-worker.ts"],
+    env: workerEnv,
+    restart: true,
+  };
+
+  if (!fullStack) {
+    // Normal product development keeps the evaluator service alive so the UI
+    // Start/Pause/Resume/Stop controls are real. Durable control defaults to
+    // STOPPED, so merely starting RADAR does not consume model-backed work.
+    return [evaluation, vite];
+  }
+
   return [
-    {
-      name: "vite",
-      command: process.execPath,
-      args: ["node_modules/vite/bin/vite.js", "--strictPort", "--port", "3000"],
-      restart: false,
-    },
+    vite,
     {
       name: "scrape",
       command: process.execPath,
@@ -66,13 +82,7 @@ function processSpecs(databaseTarget: string): ManagedProcess[] {
       env: workerEnv,
       restart: true,
     },
-    {
-      name: "evaluation",
-      command: process.execPath,
-      args: ["--import", "tsx", "scripts/run-evaluation-worker.ts"],
-      env: workerEnv,
-      restart: true,
-    },
+    evaluation,
     {
       name: "dossier-composition",
       command: process.execPath,
@@ -107,8 +117,11 @@ async function main() {
   const identity = getDatabaseTargetIdentity();
   const databaseTarget =
     process.env.TURSO_CONNECTION_URL || process.env.TURSO_DATABASE_URL || "";
-  console.warn(
-    "[dev-supervisor] FULL STACK mode: queue-consuming workers are enabled and model calls may occur.",
+  const fullStack = process.argv.includes("--full");
+  console.log(
+    fullStack
+      ? "[dev-supervisor] FULL STACK mode: all local workers are enabled; queued work may be consumed."
+      : "[dev-supervisor] INTERACTIVE mode: web + evaluator service. Evaluation remains idle until the UI starts it.",
   );
   console.log(`Database target fingerprint: ${identity.fingerprint}`);
   console.log(
@@ -176,7 +189,7 @@ async function main() {
   process.once("SIGINT", () => shutdown(0));
   process.once("SIGTERM", () => shutdown(0));
 
-  for (const spec of processSpecs(databaseTarget)) launch(spec);
+  for (const spec of processSpecs(databaseTarget, fullStack)) launch(spec);
 }
 
 main().catch((error) => {

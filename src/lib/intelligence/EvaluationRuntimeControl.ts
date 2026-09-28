@@ -24,9 +24,9 @@ export class EvaluationRuntimeControl {
          WHERE tenant_id=? AND person_id=?`, [scope.tenantId, scope.personId],
       );
       if (!row) {
-        // Migration 059 intentionally begins with no rows. An absent row is
-        // the durable default, matching the worker claim predicate.
-        return { desiredState: "RUNNING", updatedAt: 0, updatedBy: null };
+        // Evaluation is explicitly user-started. A missing scoped control row
+        // must therefore be non-consuming until the user presses Start.
+        return { desiredState: "STOPPED", updatedAt: 0, updatedBy: null };
       }
       return {
         desiredState: row.desired_state,

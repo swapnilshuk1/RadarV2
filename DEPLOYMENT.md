@@ -8,10 +8,11 @@ Use this guide for release preparation and verification.
 ## Prove locally and identify the release
 
 Use an isolated local database with explicit environment overrides. `npm run dev`
-starts the web application only and never runs migrations or worker queues. Apply
-migrations explicitly with `npm run db:migrate` against the selected non-production
-target. Use `npm run dev:full` only when intentionally exercising the complete local
-worker fleet because it can consume queued jobs and invoke paid models.
+starts the web application plus the supervised evaluator service; evaluation remains
+STOPPED until an authorized user presses **Start evaluation** in RADAR. It never runs
+migrations. Apply migrations explicitly with `npm run db:migrate` against the selected
+non-production target. Use `npm run dev:full` only when intentionally exercising the
+complete local worker fleet.
 Validate relevant behavior, TypeScript, the production build and the certification
 manifest. CI packages `.output` for its exact commit SHA. Pushing `main` runs CI;
 it does not deploy or activate serving.

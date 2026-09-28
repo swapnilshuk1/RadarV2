@@ -74,9 +74,11 @@ be recovered from Git history. Database migrations remain ordered and intact.
 ## Local development
 
 Install the Node/npm versions declared in `package.json`, then `npm ci`.
-Use an explicitly selected isolated local database. `npm run dev` starts only the
-web application on port 3000: it does not run migrations, consume worker queues or
-start model-backed evaluation/dossier work. Apply migrations explicitly with
+Use an explicitly selected isolated local database. `npm run dev` starts the web
+application on port 3000 plus the supervised evaluator service. The evaluator is
+non-consuming until an authorized user presses **Start evaluation** in RADAR; merely
+starting development does not spend model credits. It does not start scrape,
+enrichment, dossier, document or corpus workers. Apply migrations explicitly with
 `npm run db:migrate` when the selected non-production database needs them.
 
 ```powershell
@@ -88,7 +90,8 @@ npm run dev
 ```
 
 To intentionally run the web application plus the complete local worker fleet, use
-`npm run dev:full`. That command can consume queued jobs and make paid model calls.
+`npm run dev:full`. The evaluator still obeys the same Start/Pause/Resume/Stop control;
+other workers may consume their own queues.
 
 Review an already generated dossier without running models:
 
