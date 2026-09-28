@@ -87,6 +87,10 @@ jobs:
           tar -xzf "${ARTIFACT}" -C "${CHECK_DIR}"
           cd "${CHECK_DIR}"
 
+          test -f tsconfig.json
+          test -f config/ontologies/technology.json
+          test -f config/ontologies/technology.meta.json
+
           ABS_LINK="$(find . -type l -lname '/*' -print -quit)"
           if [ -n "${ABS_LINK}" ]; then
             echo "::error::Release contains absolute symlink: ${ABS_LINK} -> $(readlink "${ABS_LINK}")"
@@ -95,6 +99,7 @@ jobs:
 
           node_modules/.bin/tsx --version
           node_modules/.bin/tsx scripts/release/verify.ts . "${SHA}"
+          node_modules/.bin/tsx --tsconfig tsconfig.json scripts/release/smoke-worker-runtime.ts
 
       - name: Retain release artifact for this exact commit
         uses: actions/upload-artifact@v4

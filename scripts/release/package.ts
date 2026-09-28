@@ -74,6 +74,8 @@ export function createReleaseBundle(outputDirectory = path.join(root, "release")
       ".output",
       "src",
       "scripts",
+      "config",
+      "tsconfig.json",
       "ecosystem.config.cjs",
       "package.json",
       "package-lock.json",
