@@ -119,11 +119,13 @@ export async function getRequiredSchemaStatus(db: DatabaseAdapter): Promise<Requ
     REQUIRED_SCOPE_COLUMNS.map(([table, column]) => hasColumn(db, table, column)),
   );
   const dossierPresentationsTablePresent = tablePresent("materialized_dossier_presentations");
-  const scrapeLeaseColumnsPresent = (await Promise.all([
-    hasColumn(db, "scrape_runs", "lease_owner"),
-    hasColumn(db, "scrape_runs", "lease_token"),
-    hasColumn(db, "scrape_runs", "lease_expires_at"),
-  ])).every(Boolean);
+  const scrapeLeaseColumnsPresent = (
+    await Promise.all([
+      hasColumn(db, "scrape_runs", "lease_owner"),
+      hasColumn(db, "scrape_runs", "lease_token"),
+      hasColumn(db, "scrape_runs", "lease_expires_at"),
+    ])
+  ).every(Boolean);
   return {
     evaluationFingerprintColumnPresent,
     categoryIdsColumnPresent,

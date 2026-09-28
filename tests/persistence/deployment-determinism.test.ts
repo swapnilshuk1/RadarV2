@@ -69,7 +69,7 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
     expect(fs.existsSync(path.resolve(process.cwd(), "scripts/deploy.ts"))).toBe(true);
   });
 
-  it("5. deploy.ts requires explicit target inputs, verified artifacts, and starts only web", () => {
+  it("5. deploy.ts requires explicit target inputs, verified artifacts, and the supervised runtime topology", () => {
     const deployTsPath = path.resolve(process.cwd(), "scripts/deploy.ts");
     const content = fs.readFileSync(deployTsPath, "utf-8");
 
@@ -80,8 +80,9 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
     expect(content).not.toContain("161.118.175.246");
     expect(content).not.toContain("oracle_official.key");
     expect(content).not.toContain("npm run build");
-    expect(content).toContain("pm2 startOrRestart ecosystem.config.cjs --only radar-v2");
-    expect(content).toContain("workersStarted: false");
+    expect(content).toContain("pm2 startOrRestart ecosystem.config.cjs --update-env");
+    expect(content).toContain("allManagedWorkers");
+    expect(content).toContain("workersStarted: true");
   });
 
   it("6. CI packages the certified release bundle rather than an ad-hoc server build", () => {
@@ -91,7 +92,6 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
     expect(ci).toContain("radar-release-${{ github.sha }}");
     expect(ci).not.toContain("radar-linux-output.tar.gz");
   });
-
 
   it("8. OpportunityService delegates serving queries exclusively to repos.canonicalServing and DatabaseAdapter", async () => {
     const servicePath = path.resolve(process.cwd(), "src/lib/intelligence/opportunity-service.ts");

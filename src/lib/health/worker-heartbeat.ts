@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { getDatabaseAdapter, getDatabaseTargetIdentity, type DatabaseAdapter } from "../../data/database";
+import {
+  getDatabaseAdapter,
+  getDatabaseTargetIdentity,
+  type DatabaseAdapter,
+} from "../../data/database";
 import { describeBlobStoreConfiguration } from "../storage/blob-store";
 
 export const REQUIRED_WORKERS = [
@@ -28,7 +32,8 @@ export async function isWorkerOnline(
   const staleAfterMs = options.staleAfterMs ?? WORKER_HEARTBEAT_STALE_MS;
   const cutoff = new Date((options.now ?? Date.now()) - staleAfterMs).toISOString();
   const releaseSha = options.releaseSha ?? process.env.RADAR_RELEASE_SHA ?? "development";
-  const databaseFingerprint = options.databaseFingerprint ?? getDatabaseTargetIdentity().fingerprint;
+  const databaseFingerprint =
+    options.databaseFingerprint ?? getDatabaseTargetIdentity().fingerprint;
   const row = await db.one<{ instance_id: string }>(
     `SELECT instance_id
      FROM worker_heartbeats
@@ -73,9 +78,13 @@ export async function startWorkerHeartbeat(
       [workerName, instanceId, releaseSha, identity.fingerprint, new Date().toISOString()],
     );
   };
-  await db.execute("DELETE FROM worker_heartbeats WHERE last_seen_at < ?", [new Date(Date.now() - 86_400_000).toISOString()]);
+  await db.execute("DELETE FROM worker_heartbeats WHERE last_seen_at < ?", [
+    new Date(Date.now() - 86_400_000).toISOString(),
+  ]);
   await beat();
-  const timer = setInterval(() => { void beat().catch(() => undefined); }, intervalMs);
+  const timer = setInterval(() => {
+    void beat().catch(() => undefined);
+  }, intervalMs);
   timer.unref();
   return { instanceId, stop: () => clearInterval(timer) };
 }

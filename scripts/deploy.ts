@@ -105,18 +105,22 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     "radar-reviews",
     "radar-corpus",
   ];
-  const writers = config.deploymentMode === "distributed"
-    ? allManagedWorkers.filter((name) => name !== "radar-scrape")
-    : allManagedWorkers;
+  const writers =
+    config.deploymentMode === "distributed"
+      ? allManagedWorkers.filter((name) => name !== "radar-scrape")
+      : allManagedWorkers;
   const requiredProcesses = ["radar-v2", ...writers];
   const startAllProcesses = "pm2 startOrRestart ecosystem.config.cjs --update-env";
-  const enforceProcessTopology = config.deploymentMode === "distributed"
-    ? "pm2 stop 'radar-scrape' >/dev/null 2>&1 || true"
-    : ":";
+  const enforceProcessTopology =
+    config.deploymentMode === "distributed"
+      ? "pm2 stop 'radar-scrape' >/dev/null 2>&1 || true"
+      : ":";
   const verifyAllProcesses = [
     `RADAR_PM2_REQUIRED=${shellQuote(JSON.stringify(requiredProcesses))}`,
     "node -e",
-    shellQuote(`const {execFileSync}=require("node:child_process"); const required=JSON.parse(process.env.RADAR_PM2_REQUIRED||"[]"); const apps=JSON.parse(execFileSync("pm2",["jlist"],{encoding:"utf8"})); const cwd=process.cwd(); const bad=required.filter((name)=>{ const app=apps.find((candidate)=>candidate.name===name); return !app || app.pm2_env?.status!=="online" || app.pm2_env?.pm_cwd!==cwd; }); if(bad.length){ console.error("PM2_TOPOLOGY_UNHEALTHY:"+bad.join(",")); process.exit(1); }`),
+    shellQuote(
+      `const {execFileSync}=require("node:child_process"); const required=JSON.parse(process.env.RADAR_PM2_REQUIRED||"[]"); const apps=JSON.parse(execFileSync("pm2",["jlist"],{encoding:"utf8"})); const cwd=process.cwd(); const bad=required.filter((name)=>{ const app=apps.find((candidate)=>candidate.name===name); return !app || app.pm2_env?.status!=="online" || app.pm2_env?.pm_cwd!==cwd; }); if(bad.length){ console.error("PM2_TOPOLOGY_UNHEALTHY:"+bad.join(",")); process.exit(1); }`,
+    ),
   ].join(" ");
   const systemReadinessUrl = `${config.readinessUrl.replace(/\/$/, "")}/health/system`;
   const waitForSystemReadiness = [
@@ -178,7 +182,9 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     "}",
   ].join("\n");
 
-  const stopWriters = allManagedWorkers.map((name) => `stop_pm2_process ${shellQuote(name)}`).join("; ");
+  const stopWriters = allManagedWorkers
+    .map((name) => `stop_pm2_process ${shellQuote(name)}`)
+    .join("; ");
 
   const activate = [
     "set -eu",

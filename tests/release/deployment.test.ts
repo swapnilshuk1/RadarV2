@@ -88,7 +88,11 @@ describe("deterministic release deployment", () => {
         const url = args[args.length - 1];
         return JSON.stringify(
           url.endsWith("/health/system")
-            ? { status: "ready", releaseSha: testSha, workers: { required: 7, healthy: 7, missing: [] } }
+            ? {
+                status: "ready",
+                releaseSha: testSha,
+                workers: { required: 7, healthy: 7, missing: [] },
+              }
             : { status: "ready", releaseSha: testSha },
         );
       }
@@ -136,7 +140,11 @@ describe("deterministic release deployment", () => {
         const url = args[args.length - 1];
         return JSON.stringify(
           url.endsWith("/health/system")
-            ? { status: "ready", releaseSha: testSha, workers: { required: 7, healthy: 7, missing: [] } }
+            ? {
+                status: "ready",
+                releaseSha: testSha,
+                workers: { required: 7, healthy: 7, missing: [] },
+              }
             : { status: "ready", releaseSha: testSha },
         );
       }
@@ -185,7 +193,11 @@ describe("deterministic release deployment", () => {
         const url = args[args.length - 1];
         return JSON.stringify(
           url.endsWith("/health/system")
-            ? { status: "ready", releaseSha: testSha, workers: { required: 7, healthy: 7, missing: [] } }
+            ? {
+                status: "ready",
+                releaseSha: testSha,
+                workers: { required: 7, healthy: 7, missing: [] },
+              }
             : { status: "ready", releaseSha: testSha },
         );
       }
@@ -228,9 +240,7 @@ describe("deterministic release deployment", () => {
     const rollbackCmd = rollbackCommands[0];
 
     expect(rollbackCmd).toContain(`cd '/srv/radar/releases/${priorSha}'`);
-    expect(rollbackCmd).toContain(
-      "pm2 startOrRestart ecosystem.config.cjs --update-env",
-    );
+    expect(rollbackCmd).toContain("pm2 startOrRestart ecosystem.config.cjs --update-env");
     expect(rollbackCmd).not.toContain(`cd '/srv/radar/releases/${testSha}'`);
     expect(rollbackCmd).toContain(`printf '%s' '${priorSha}' > '/srv/radar/CURRENT_SHA'`);
     expect(rollbackCmd).toContain("radar-scrape");
@@ -388,9 +398,7 @@ describe("deterministic release deployment", () => {
     // 3. CURRENT_SHA update
     // 4. previous-release-restored receipt written
     const cdIndex = rollbackCmd.indexOf(`cd '/srv/radar/releases/${priorSha}'`);
-    const pm2Index = rollbackCmd.indexOf(
-      "pm2 startOrRestart ecosystem.config.cjs --update-env",
-    );
+    const pm2Index = rollbackCmd.indexOf("pm2 startOrRestart ecosystem.config.cjs --update-env");
     const shaUpdateIndex = rollbackCmd.indexOf(
       `printf '%s' '${priorSha}' > '/srv/radar/CURRENT_SHA'`,
     );
@@ -419,9 +427,15 @@ describe("deterministic release deployment", () => {
       }
       if (command === "curl") {
         const url = args[args.length - 1];
-        return JSON.stringify(url.endsWith("/health/system")
-          ? { status: "ready", releaseSha: testSha, workers: { required: 6, healthy: 6, missing: [] } }
-          : { status: "ready", releaseSha: testSha });
+        return JSON.stringify(
+          url.endsWith("/health/system")
+            ? {
+                status: "ready",
+                releaseSha: testSha,
+                workers: { required: 6, healthy: 6, missing: [] },
+              }
+            : { status: "ready", releaseSha: testSha },
+        );
       }
       return "";
     };
@@ -430,5 +444,4 @@ describe("deterministic release deployment", () => {
     expect(activation).toContain("RADAR_DEPLOYMENT_MODE='distributed'");
     expect(activation).not.toContain('RADAR_PM2_REQUIRED=\'["radar-v2","radar-scrape"');
   });
-
 });

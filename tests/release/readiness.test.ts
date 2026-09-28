@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { getReadiness, getSystemReadiness } from "../../src/lib/health/readiness";
-import { getDatabaseAdapter, getDatabaseTargetIdentity, resetDatabaseAdapter } from "../../src/data/database";
+import {
+  getDatabaseAdapter,
+  getDatabaseTargetIdentity,
+  resetDatabaseAdapter,
+} from "../../src/data/database";
 import { isWorkerOnline, REQUIRED_WORKERS } from "../../src/lib/health/worker-heartbeat";
 
 describe("release readiness", () => {
@@ -40,7 +44,14 @@ describe("release readiness", () => {
     }
     await expect(getSystemReadiness()).resolves.toMatchObject({
       status: 200,
-      body: { status: "ready", workers: { required: REQUIRED_WORKERS.length, healthy: REQUIRED_WORKERS.length, missing: [] } },
+      body: {
+        status: "ready",
+        workers: {
+          required: REQUIRED_WORKERS.length,
+          healthy: REQUIRED_WORKERS.length,
+          missing: [],
+        },
+      },
     });
 
     await db.execute("DELETE FROM worker_heartbeats WHERE worker_name = ?", ["corpus"]);
@@ -61,16 +72,19 @@ describe("release readiness", () => {
     await db.execute(
       `INSERT INTO worker_heartbeats (worker_name,instance_id,release_sha,database_fingerprint,last_seen_at)
        VALUES (?,?,?,?,?)`,
-      ["evaluation", "evaluation-test", process.env.RADAR_RELEASE_SHA, fingerprint, new Date(now).toISOString()],
+      [
+        "evaluation",
+        "evaluation-test",
+        process.env.RADAR_RELEASE_SHA,
+        fingerprint,
+        new Date(now).toISOString(),
+      ],
     );
 
     await expect(isWorkerOnline("evaluation", { db, now })).resolves.toBe(true);
     await expect(
       isWorkerOnline("evaluation", { db, now, releaseSha: "different-release" }),
     ).resolves.toBe(false);
-    await expect(
-      isWorkerOnline("evaluation", { db, now: now + 151_000 }),
-    ).resolves.toBe(false);
+    await expect(isWorkerOnline("evaluation", { db, now: now + 151_000 })).resolves.toBe(false);
   });
-
 });
