@@ -3,7 +3,7 @@ import {
   verifyMigrationChecksums,
   verifyRequiredSchema,
 } from "../../data/sqlite/migrations/runner";
-import { REQUIRED_WORKERS, requiredWorkersForEnvironment } from "./worker-heartbeat";
+import { REQUIRED_WORKERS, WORKER_HEARTBEAT_STALE_MS, requiredWorkersForEnvironment } from "./worker-heartbeat";
 
 export type ReadinessPayload = {
   readonly status: "ready" | "unavailable";
@@ -42,7 +42,7 @@ export type SystemReadinessPayload = {
 };
 
 export async function getSystemReadiness(
-  staleAfterMs = 150_000,
+  staleAfterMs = WORKER_HEARTBEAT_STALE_MS,
 ): Promise<{ status: number; body: SystemReadinessPayload }> {
   const sha = releaseSha();
   let requiredWorkers: readonly string[] = REQUIRED_WORKERS;

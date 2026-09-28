@@ -7,6 +7,7 @@ import {
   type EvaluationRuntimeState,
 } from "./EvaluationRuntimeControl";
 import { EvaluationWorkScheduler } from "./EvaluationWorkScheduler";
+import { isWorkerOnline } from "../health/worker-heartbeat";
 
 // Evaluation-stage GLM calls are hard-capped at 120s. Give telemetry 15s of
 // grace for the terminal write, then treat a lingering `running` row as stale.
@@ -17,7 +18,7 @@ export interface EvaluatorTelemetrySnapshot {
     desiredState: EvaluationRuntimeState;
     updatedAt: number;
     updatedBy: string | null;
-    localDaemonRunning: boolean;
+    workerOnline: boolean;
     canControl: boolean;
   };
   queue: {
@@ -90,9 +91,9 @@ async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getD
     throw new AuthError("FORBIDDEN: Active tenant membership required", 403);
   }
 
-  // This controls a process-global daemon. Keep the operator boundary strict,
-  // but source it from the active tenant membership rather than the profile
-  // role cached in the browser session.
+  // Queue control is scoped to the candidate, while process supervision stays
+  // outside the serving process. Source authority from the active tenant
+  // membership rather than the profile role cached in the browser session.
   return { scope, activeContext, canControl: membership.role === "admin" };
 }
 
@@ -101,6 +102,7 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
   const { scope, activeContext, canControl } = await resolveEvaluatorAccess(user.id, db, requested);
   const runtime = await new EvaluationRuntimeControl(db).get(scope);
   const activeContextFingerprint = activeContext?.contextFingerprint ?? null;
+  const workerOnline = await isWorkerOnline("evaluation", { db });
 
   const telemetryNow = Date.now();
   const staleInvocationBefore = telemetryNow - EVALUATION_INVOCATION_STALE_MS;
@@ -244,9 +246,10 @@ async function snapshotForUser(user: { id: string; role?: string }, requested?: 
       desiredState: runtime.desiredState,
       updatedAt: runtime.updatedAt,
       updatedBy: runtime.updatedBy,
-      // A serving process never owns worker loops. Process supervision is
-      // intentionally outside the request/runtime boundary.
-      localDaemonRunning: false,
+      // Process supervision remains outside the request/runtime boundary.
+      // A fresh heartbeat tells the UI whether a supervised evaluator can
+      // actually consume the durable RUNNING/PAUSED/STOPPED control state.
+      workerOnline,
       canControl,
     },
     queue: {

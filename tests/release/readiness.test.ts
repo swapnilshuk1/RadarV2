@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { getReadiness, getSystemReadiness } from "../../src/lib/health/readiness";
 import { getDatabaseAdapter, getDatabaseTargetIdentity, resetDatabaseAdapter } from "../../src/data/database";
-import { REQUIRED_WORKERS } from "../../src/lib/health/worker-heartbeat";
+import { isWorkerOnline, REQUIRED_WORKERS } from "../../src/lib/health/worker-heartbeat";
 
 describe("release readiness", () => {
   const original = { ...process.env };
@@ -48,6 +48,29 @@ describe("release readiness", () => {
       status: 503,
       body: { status: "unavailable", workers: { missing: ["corpus"] } },
     });
+  });
+
+  it("reports an evaluator online only for a fresh heartbeat on the same release and database", async () => {
+    process.env.RADAR_ENV = "test";
+    process.env.RADAR_RELEASE_SHA = "c".repeat(40);
+    const db = getDatabaseAdapter();
+    const fingerprint = getDatabaseTargetIdentity().fingerprint;
+    const now = Date.now();
+
+    await db.execute("DELETE FROM worker_heartbeats WHERE worker_name = ?", ["evaluation"]);
+    await db.execute(
+      `INSERT INTO worker_heartbeats (worker_name,instance_id,release_sha,database_fingerprint,last_seen_at)
+       VALUES (?,?,?,?,?)`,
+      ["evaluation", "evaluation-test", process.env.RADAR_RELEASE_SHA, fingerprint, new Date(now).toISOString()],
+    );
+
+    await expect(isWorkerOnline("evaluation", { db, now })).resolves.toBe(true);
+    await expect(
+      isWorkerOnline("evaluation", { db, now, releaseSha: "different-release" }),
+    ).resolves.toBe(false);
+    await expect(
+      isWorkerOnline("evaluation", { db, now: now + 151_000 }),
+    ).resolves.toBe(false);
   });
 
 });

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getDatabaseAdapter, getDatabaseTargetIdentity } from "../../data/database";
+import { getDatabaseAdapter, getDatabaseTargetIdentity, type DatabaseAdapter } from "../../data/database";
 import { describeBlobStoreConfiguration } from "../storage/blob-store";
 
 export const REQUIRED_WORKERS = [
@@ -12,6 +12,36 @@ export const REQUIRED_WORKERS = [
   "corpus",
 ] as const;
 export type RequiredWorkerName = (typeof REQUIRED_WORKERS)[number];
+export const WORKER_HEARTBEAT_STALE_MS = 150_000;
+
+export async function isWorkerOnline(
+  workerName: RequiredWorkerName,
+  options: {
+    db?: DatabaseAdapter;
+    staleAfterMs?: number;
+    now?: number;
+    releaseSha?: string;
+    databaseFingerprint?: string;
+  } = {},
+): Promise<boolean> {
+  const db = options.db ?? getDatabaseAdapter();
+  const staleAfterMs = options.staleAfterMs ?? WORKER_HEARTBEAT_STALE_MS;
+  const cutoff = new Date((options.now ?? Date.now()) - staleAfterMs).toISOString();
+  const releaseSha = options.releaseSha ?? process.env.RADAR_RELEASE_SHA ?? "development";
+  const databaseFingerprint = options.databaseFingerprint ?? getDatabaseTargetIdentity().fingerprint;
+  const row = await db.one<{ instance_id: string }>(
+    `SELECT instance_id
+     FROM worker_heartbeats
+     WHERE worker_name=?
+       AND release_sha=?
+       AND database_fingerprint=?
+       AND last_seen_at>=?
+     ORDER BY last_seen_at DESC
+     LIMIT 1`,
+    [workerName, releaseSha, databaseFingerprint, cutoff],
+  );
+  return Boolean(row);
+}
 
 export function requiredWorkersForEnvironment(
   env: NodeJS.ProcessEnv = process.env,
