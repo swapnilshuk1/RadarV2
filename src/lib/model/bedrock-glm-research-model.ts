@@ -13,8 +13,8 @@ export const GLM_STAGE_OUTPUT_TOKENS = {
   "gap-classification-batch": 3072,
   "career-capital": 4096,
   "decision": 4096,
-  "memo-draft": 12288,
-  "memo-repair": 6144,
+  "memo-draft": 6144,
+  "memo-repair": 3072,
   "factual-review": 12288,
 } as const;
 
@@ -29,8 +29,8 @@ export const GLM_STAGE_TIMEOUT_MS = {
   "gap-classification-batch": 60_000,
   "career-capital": 90_000,
   "decision": 90_000,
-  "memo-draft": 180_000,
-  "memo-repair": 120_000,
+  "memo-draft": 120_000,
+  "memo-repair": 60_000,
   "factual-review": 180_000,
 } as const;
 

@@ -1,4 +1,4 @@
-/** Immutable semantic recipe. Any change requires a new staged policy version. */
+/** Current pre-production semantic recipe. Refine this contract in place until production freeze. */
 export const CONTEXT_ACQUISITION_POLICY = {
   version: 'context-acquisition-v2',
   searchProvider: 'tavily', searchDepth: 'advanced', maxResults: 5,

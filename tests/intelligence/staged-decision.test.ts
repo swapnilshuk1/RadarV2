@@ -266,6 +266,33 @@ describe('staged production decision boundary', () => {
     expect(()=>materializeStagedScreeningAdjudication({...entry,gateBasis:'NONE'},screeningRequirement,quotes)).toThrow('non-NONE');
     expect(()=>materializeStagedScreeningAdjudication({...entry,screeningFunction:'ROLE_PERFORMANCE_REQUIREMENT'},screeningRequirement,quotes)).toThrow('gateBasis=NONE');
   });
+  it('preserves explicit founder/investment joining conditions as role-side conditions', () => {
+    const founderClaim: Claim = {
+      id: 'JD-3',
+      text: 'This is an equity-only co-founder opportunity with no salary and an investment commitment.',
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: 'JD',
+      citations: [{ sourceId: 'JD-SOURCE', quote: 'Equity-only co-founder opportunity with no salary; selected co-founder will invest capital.' }],
+      derivedFrom: [],
+    };
+    const roleClaims=[...claims.filter(claim=>claim.plane==='JD'),founderClaim];
+    expect(()=>materializeStagedRoleAnalysis({
+      requirements: [{ requirement: 'Relevant experience in Operations', strength: 'REQUIRED', roleImportance: 'CORE_CAPABILITY', roleClaimIds: ['JD-1'], reasoning: 'Required experience.' }],
+      operatingConditions: [],
+      authorityShape: 'Co-founder operating role',
+      roleSideConditions: [],
+    },roleClaims)).toThrow('Explicit joining condition must survive as roleSideCondition');
+
+    const role=materializeStagedRoleAnalysis({
+      requirements: [{ requirement: 'Relevant experience in Operations', strength: 'REQUIRED', roleImportance: 'CORE_CAPABILITY', roleClaimIds: ['JD-1'], reasoning: 'Required experience.' }],
+      operatingConditions: [],
+      authorityShape: 'Co-founder operating role',
+      roleSideConditions: [{ condition: 'Equity-only founder role with required personal investment and no salary', roleClaimIds: ['JD-3'] }],
+    },roleClaims);
+    expect(role.roleSideConditions[0].roleClaimIds).toEqual(['JD-3']);
+  });
+
   it('keeps application-owned identities and screening-driver admissibility', () => {
     const role = materializeStagedRoleAnalysis({
       requirements: [{ requirement: 'Relevant experience in Operations', strength: 'REQUIRED', roleImportance: 'CORE_CAPABILITY', roleClaimIds: ['JD-1'], reasoning: 'Required experience.' }],
@@ -422,13 +449,592 @@ describe('staged production decision boundary', () => {
     expect(model.instructions).toHaveLength(7);
   });
 
+  it.each([
+    {
+      label: 'Reach Digital company size',
+      field: 'companySize',
+      claim: {
+        id: 'CONTEXT-1',
+        text: 'Reach Digital has a headcount of 2-10 employees.',
+        state: 'EXPLICIT',
+        confidence: 1,
+        plane: 'CONTEXT',
+        citations: [{ sourceId: 'CONTEXT-SOURCE', quote: 'Company size: 2-10 employees.' }],
+        derivedFrom: [],
+      } as Claim,
+    },
+    {
+      label: 'Guru Dhoondo growth target',
+      field: 'growth',
+      claim: {
+        id: 'JD-3',
+        text: 'Scale daily sessions from 5 to 45 by March 2027.',
+        state: 'EXPLICIT',
+        confidence: 1,
+        plane: 'JD',
+        citations: [{ sourceId: 'JD-SOURCE', quote: 'Scale from ~5 to 45 sessions/day by March 2027.' }],
+        derivedFrom: [],
+      } as Claim,
+    },
+  ])('does not lose explicit $label evidence during field resolution', async ({field,claim}) => {
+    const contextSource: EvidenceSource = {
+      id: 'CONTEXT-SOURCE', plane: 'CONTEXT', title: 'Company profile', locator: 'fixture://context',
+      text: 'Company size: 2-10 employees.', capturedAt: '2026-09-16T00:00:00.000Z', attribution: 'INDEPENDENT',
+    };
+    await expect(runStagedFrozenDecisionDetailed({
+      ...frozen,
+      opportunity: {...frozen.opportunity,id:`evidence-conservation-${field}`},
+      sources: claim.plane==='CONTEXT'?[...frozen.sources,contextSource]:frozen.sources,
+      evidence:[...claims,claim],
+      validEvidenceClaimIds:[...claims.map(item=>item.id),claim.id],
+    },new ScriptedModel())).rejects.toThrow(`OPEN field has sufficient validated evidence: ${field}`);
+  });
+
+  it('does not confuse company headcount or brand workload with role team scale', async () => {
+    const brandSource: EvidenceSource = {
+      id: 'JD-BRANDS', plane: 'JD', title: 'Reach Digital role', locator: 'fixture://reach-role',
+      text: 'Manage 3-5 brand partners at a time.', capturedAt: '2026-09-28T00:00:00.000Z', attribution: 'JOB_POST',
+    };
+    const contextSource: EvidenceSource = {
+      id: 'CONTEXT-SIZE', plane: 'CONTEXT', title: 'Reach Digital company profile', locator: 'fixture://reach-company',
+      text: 'Company Size\n2-10 employees', capturedAt: '2026-09-28T00:00:00.000Z', attribution: 'INDEPENDENT',
+    };
+    const brandClaim: Claim = {
+      id: 'JD-BRAND-COUNT',
+      text: 'Manage 3-5 brand partners at a time.',
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: 'JD',
+      citations: [{ sourceId: brandSource.id, quote: 'Manage 3-5 brand partners at a time.' }],
+      derivedFrom: [],
+    };
+    const sizeClaim: Claim = {
+      id: 'CONTEXT-SIZE-CLAIM',
+      text: 'Reach Digital has 2-10 employees.',
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: 'CONTEXT',
+      citations: [{ sourceId: contextSource.id, quote: '2-10 employees' }],
+      derivedFrom: [],
+    };
+
+    class TeamScaleConfusionModel extends ScriptedModel {
+      override readonly id = 'team-scale-confusion-model';
+      override async generate(instruction: string, input: any): Promise<unknown> {
+        if (instruction.startsWith('Resolve only RADAR')) {
+          return {
+            resolutions: openResolutions.map((resolution) => {
+              if (resolution.field === 'companySize') {
+                return {
+                  field: 'companySize',
+                  status: 'RESOLVED',
+                  value: '2-10 employees',
+                  claimIds: [sizeClaim.id],
+                  methods: ['extract'],
+                };
+              }
+              if (resolution.field === 'teamScale') {
+                return {
+                  field: 'teamScale',
+                  status: 'RESOLVED',
+                  value: '3-5 direct reports',
+                  claimIds: [brandClaim.id, sizeClaim.id],
+                  methods: ['extract'],
+                };
+              }
+              return resolution;
+            }),
+          };
+        }
+        return super.generate(instruction, input);
+      }
+    }
+
+    await expect(runStagedFrozenDecisionDetailed({
+      ...frozen,
+      opportunity: { ...frozen.opportunity, id: 'reach-team-scale-semantics' },
+      sources: [...frozen.sources, brandSource, contextSource],
+      evidence: [...claims, brandClaim, sizeClaim],
+      validEvidenceClaimIds: [...claims.map(claim => claim.id), brandClaim.id, sizeClaim.id],
+    }, new TeamScaleConfusionModel())).rejects.toThrow(
+      'teamScale requires role-side people-management evidence',
+    );
+  });
+
+  it('does not present an unverified canonical-company and JD business name as aliases', async () => {
+    const guruClaim: Claim = {
+      id: 'JD-3',
+      text: 'Guru Dhoondo is a live tutoring marketplace.',
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: 'JD',
+      citations: [{ sourceId: 'JD-SOURCE', quote: 'Guru Dhoondo is a live tutoring marketplace.' }],
+      derivedFrom: [],
+    };
+
+    class AliasQuestionModel extends ScriptedModel {
+      override readonly id = 'alias-question-model';
+      override async generate(instruction: string, input: any): Promise<unknown> {
+        if (instruction.startsWith('Resolve only RADAR')) {
+          return {
+            resolutions: openResolutions.map((resolution) =>
+              resolution.field === 'companySize'
+                ? {
+                    ...resolution,
+                    question: 'What is the total employee headcount of Fortaxe (Guru Dhoondo)?',
+                  }
+                : resolution,
+            ),
+          };
+        }
+        return super.generate(instruction, input);
+      }
+    }
+
+    const safe = await runStagedFrozenDecisionDetailed({
+      ...frozen,
+      opportunity: {
+        id: 'guru-unverified-alias-open',
+        company: 'Fortaxe',
+        title: 'Head of Growth & Marketing at Guru Dhoondo',
+      },
+      evidence: [...claims, guruClaim],
+      validEvidenceClaimIds: [...claims.map(claim => claim.id), guruClaim.id],
+    }, new AliasQuestionModel());
+
+    expect(safe.trace.resolutions.find(resolution => resolution.field === 'companySize')?.question)
+      .toBe('What is the total employee headcount of the opportunity business?');
+
+    class AliasFactModel extends ScriptedModel {
+      override readonly id = 'alias-fact-model';
+      override async generate(instruction: string, input: any): Promise<unknown> {
+        if (instruction.startsWith('Resolve only RADAR')) {
+          return {
+            resolutions: openResolutions.map((resolution) =>
+              resolution.field === 'companySize'
+                ? {
+                    field: 'companySize',
+                    status: 'RESOLVED',
+                    value: 'Fortaxe (Guru Dhoondo) has 10 employees.',
+                    claimIds: ['JD-3'],
+                    methods: ['extract'],
+                  }
+                : resolution,
+            ),
+          };
+        }
+        return super.generate(instruction, input);
+      }
+    }
+
+    await expect(runStagedFrozenDecisionDetailed({
+      ...frozen,
+      opportunity: {
+        id: 'guru-unverified-alias-resolved',
+        company: 'Fortaxe',
+        title: 'Head of Growth & Marketing at Guru Dhoondo',
+      },
+      evidence: [...claims, guruClaim],
+      validEvidenceClaimIds: [...claims.map(claim => claim.id), guruClaim.id],
+    }, new AliasFactModel())).rejects.toThrow(
+      'Unsupported company alias assertion in resolved field: companySize',
+    );
+  });
+
+  it('does not treat an open leadership search as a completed leadership change', async () => {
+    const searchClaim: Claim = {
+      id: 'JD-3',
+      text: 'The company is looking for a Co-Founder & CMO to join at the early stage.',
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: 'JD',
+      citations: [{ sourceId: 'JD-SOURCE', quote: 'We are looking for a Co-Founder & CMO to join at the early stage.' }],
+      derivedFrom: [],
+    };
+    const roleClaim: Claim = {
+      id: 'JD-4',
+      text: 'The role is Co-Founder & CMO at the pre-market stage.',
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: 'JD',
+      citations: [{ sourceId: 'JD-SOURCE', quote: 'Role: Co-Founder & CMO. Stage: Pre-market.' }],
+      derivedFrom: [],
+    };
+
+    class LeadershipSearchModel extends ScriptedModel {
+      override readonly id = 'leadership-search-model';
+      override async generate(instruction: string, input: any): Promise<unknown> {
+        if (instruction.includes('role interpreter')) {
+          return {
+            requirements: [
+              { requirement: 'Relevant experience in Operations', strength: 'REQUIRED', roleImportance: 'CORE_CAPABILITY', roleClaimIds: ['JD-1'], reasoning: 'Explicit prior-experience qualification.' },
+              { requirement: 'Hindi fluency', strength: 'PREFERRED', roleImportance: 'ENABLER', roleClaimIds: ['JD-2'], reasoning: 'Explicit preference.' },
+            ],
+            operatingConditions: [],
+            authorityShape: 'Co-founder operating role',
+            roleSideConditions: [
+              { condition: 'Founder-status opportunity', roleClaimIds: ['JD-3'] },
+            ],
+          };
+        }
+        if (instruction.startsWith('Resolve only RADAR')) {
+          return {
+            resolutions: openResolutions.map((resolution) =>
+              resolution.field === 'leadershipChanges'
+                ? {
+                    field: 'leadershipChanges',
+                    status: 'RESOLVED',
+                    value: 'Seeking to appoint inaugural Co-Founder & CMO.',
+                    claimIds: ['JD-3', 'JD-4'],
+                    methods: ['extract'],
+                  }
+                : resolution,
+            ),
+          };
+        }
+        return super.generate(instruction, input);
+      }
+    }
+
+    await expect(runStagedFrozenDecisionDetailed({
+      ...frozen,
+      opportunity: { ...frozen.opportunity, id: 'better-days-open-leadership-search' },
+      evidence: [...claims, searchClaim, roleClaim],
+      validEvidenceClaimIds: [...claims.map(claim => claim.id), searchClaim.id, roleClaim.id],
+    }, new LeadershipSearchModel())).rejects.toThrow(
+      'Leadership changes require a completed appointment, departure, or succession event; an open leadership search is not a leadership change',
+    );
+  });
+
+  it.each([
+    {
+      name: 'funding status inside growth',
+      field: 'growth',
+      plane: 'CONTEXT',
+      text: 'Reach Digital creates over 500 ads monthly.',
+      status: 'INFERRED',
+      value: 'Scale-up traction from 500+ ads monthly; operates as a funded startup.',
+      methods: ['derive'],
+      error: 'Growth cannot invent funding status that is absent from its cited evidence',
+    },
+    {
+      name: 'uncited monetary scale inside growth',
+      field: 'growth',
+      plane: 'CONTEXT',
+      text: 'Reach Digital creates over 500 ads monthly.',
+      status: 'INFERRED',
+      value: 'Scale-up traction from 500+ ads monthly and $50M+ media spend.',
+      methods: ['derive'],
+      error: 'Growth cannot introduce monetary scale that is absent from its cited evidence',
+    },
+  ])('rejects $name', async ({field,plane,text,status,value,methods,error}) => {
+    const guardClaim: Claim = {
+      id: 'GUARD-CLAIM',
+      text,
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: plane as Claim['plane'],
+      citations: [{ sourceId: 'JD-SOURCE', quote: text }],
+      derivedFrom: [],
+    };
+    class ResolutionGuardModel extends ScriptedModel {
+      override readonly id = 'resolution-guard-model';
+      override async generate(instruction: string, input: any): Promise<unknown> {
+        if (instruction.startsWith('Resolve only RADAR')) {
+          return {
+            resolutions: openResolutions.map((resolution) =>
+              resolution.field === field
+                ? {
+                    field,
+                    status,
+                    value,
+                    claimIds: ['GUARD-CLAIM'],
+                    methods,
+                  }
+                : resolution,
+            ),
+          };
+        }
+        return super.generate(instruction, input);
+      }
+    }
+
+    await expect(runStagedFrozenDecisionDetailed({
+      ...frozen,
+      opportunity: { ...frozen.opportunity, id: `guard-${field}` },
+      evidence: [...claims, guardClaim],
+      validEvidenceClaimIds: [...claims.map(claim => claim.id), guardClaim.id],
+    }, new ResolutionGuardModel())).rejects.toThrow(error);
+  });
+
+  it.each([
+    {
+      name: 'partial team composition as organizational structure',
+      field: 'organizationalStructure',
+      text: 'The company is a fully remote team of creatives, editors, and growth strategists.',
+      status: 'RESOLVED',
+      value: '2 co-founders as CEOs; flat remote team of creatives and growth strategists.',
+      methods: ['extract'],
+    },
+    {
+      name: 'career progression as workforce trajectory',
+      field: 'workforceTrajectory',
+      text: 'The company offers room to grow into senior roles as Reach scales.',
+      status: 'INFERRED',
+      value: 'Active hiring expansion as the company scales.',
+      methods: ['derive'],
+    },
+    {
+      name: 'single vacancy as workforce trajectory',
+      field: 'workforceTrajectory',
+      text: 'The company is hiring for one Creative Strategist role.',
+      status: 'INFERRED',
+      value: 'Company workforce is expanding.',
+      methods: ['derive'],
+    },
+    {
+      name: 'career progression as related hiring',
+      field: 'relatedHiring',
+      text: 'The company offers room to grow into senior roles as Reach scales.',
+      status: 'RESOLVED',
+      value: 'Active hiring for additional Creative Strategist roles.',
+      methods: ['extract'],
+    },
+  ])('downgrades $name to OPEN', async ({field,text,status,value,methods}) => {
+    const contextClaim: Claim = {
+      id: 'JD-CONTEXT-GUARD',
+      text,
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: 'JD',
+      citations: [{ sourceId: 'JD-SOURCE', quote: text }],
+      derivedFrom: [],
+    };
+    class ContextNormalizationModel extends ScriptedModel {
+      override readonly id = 'context-normalization-model';
+      override async generate(instruction: string, input: any): Promise<unknown> {
+        if (instruction.startsWith('Resolve only RADAR')) {
+          return {
+            resolutions: openResolutions.map((resolution) =>
+              resolution.field === field
+                ? {
+                    field,
+                    status,
+                    value,
+                    claimIds: ['JD-CONTEXT-GUARD'],
+                    methods,
+                  }
+                : resolution,
+            ),
+          };
+        }
+        return super.generate(instruction, input);
+      }
+    }
+    const result = await runStagedFrozenDecisionDetailed({
+      ...frozen,
+      opportunity: { ...frozen.opportunity, id: `context-normalization-${field}` },
+      evidence: [...claims, contextClaim],
+      validEvidenceClaimIds: [...claims.map(claim => claim.id), contextClaim.id],
+    }, new ContextNormalizationModel());
+
+    expect(result.trace.resolutions.find(resolution => resolution.field === field)).toMatchObject({
+      status: 'OPEN',
+      value: null,
+      claimIds: [],
+    });
+  });
+
+  it('does not fuse company size and a separate single vacancy into workforce movement', async () => {
+    const sizeClaim: Claim = {
+      id: 'JD-COMPANY-SIZE',
+      text: 'The company has 10 employees',
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: 'JD',
+      citations: [{ sourceId: 'JD-SOURCE', quote: 'The company has 10 employees' }],
+      derivedFrom: [],
+    };
+    const vacancyClaim: Claim = {
+      id: 'JD-SINGLE-VACANCY',
+      text: 'The company is hiring a Creative Strategist.',
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: 'JD',
+      citations: [{ sourceId: 'JD-SOURCE', quote: 'The company is hiring a Creative Strategist.' }],
+      derivedFrom: [],
+    };
+    class WorkforceFusionModel extends ScriptedModel {
+      override readonly id = 'workforce-fusion-model';
+      override async generate(instruction: string, input: any): Promise<unknown> {
+        if (instruction.startsWith('Resolve only RADAR')) {
+          return {
+            resolutions: openResolutions.map((resolution) =>
+              resolution.field === 'workforceTrajectory'
+                ? {
+                    field: 'workforceTrajectory',
+                    status: 'INFERRED',
+                    value: 'Company workforce is expanding.',
+                    claimIds: [sizeClaim.id, vacancyClaim.id],
+                    methods: ['derive'],
+                  }
+                : resolution,
+            ),
+          };
+        }
+        return super.generate(instruction, input);
+      }
+    }
+
+    const result = await runStagedFrozenDecisionDetailed({
+      ...frozen,
+      opportunity: { ...frozen.opportunity, id: 'workforce-no-cross-claim-fusion' },
+      evidence: [...claims, sizeClaim, vacancyClaim],
+      validEvidenceClaimIds: [...claims.map(claim => claim.id), sizeClaim.id, vacancyClaim.id],
+    }, new WorkforceFusionModel());
+
+    expect(result.trace.resolutions.find(resolution => resolution.field === 'workforceTrajectory')).toMatchObject({
+      status: 'OPEN',
+      value: null,
+      claimIds: [],
+    });
+  });
+
+  it('accepts an explicit company headcount increase as workforce movement', async () => {
+    const workforceClaim: Claim = {
+      id: 'JD-WORKFORCE-MOVEMENT',
+      text: 'Company headcount expansion moved staffing from 10 to 25 over the last year.',
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: 'JD',
+      citations: [{ sourceId: 'JD-SOURCE', quote: 'Company headcount expansion moved staffing from 10 to 25 over the last year.' }],
+      derivedFrom: [],
+    };
+    class WorkforceMovementModel extends ScriptedModel {
+      override readonly id = 'workforce-movement-model';
+      override async generate(instruction: string, input: any): Promise<unknown> {
+        if (instruction.startsWith('Resolve only RADAR')) {
+          return {
+            resolutions: openResolutions.map((resolution) =>
+              resolution.field === 'workforceTrajectory'
+                ? {
+                    field: 'workforceTrajectory',
+                    status: 'INFERRED',
+                    value: 'Company headcount expanded from 10 to 25 over the last year.',
+                    claimIds: [workforceClaim.id],
+                    methods: ['derive'],
+                  }
+                : resolution,
+            ),
+          };
+        }
+        return super.generate(instruction, input);
+      }
+    }
+
+    const result = await runStagedFrozenDecisionDetailed({
+      ...frozen,
+      opportunity: { ...frozen.opportunity, id: 'workforce-explicit-headcount-growth' },
+      evidence: [...claims, workforceClaim],
+      validEvidenceClaimIds: [...claims.map(claim => claim.id), workforceClaim.id],
+    }, new WorkforceMovementModel());
+
+    expect(result.trace.resolutions.find(resolution => resolution.field === 'workforceTrajectory')).toMatchObject({
+      status: 'INFERRED',
+      value: 'Company headcount expanded from 10 to 25 over the last year.',
+      claimIds: [workforceClaim.id],
+    });
+  });
+
+  it('accepts explicit geographic market expansion even when another cited claim mentions recruiting', async () => {
+    const expansionSource: EvidenceSource = {
+      id: 'JD-EXPANSION',
+      plane: 'JD',
+      title: 'Guru Dhoondo role',
+      locator: 'fixture://guru-expansion',
+      text: 'The company has a 7 year plan to scale nationally and internationally. Guru/tutor side growth involves recruiting supply through LinkedIn and job boards. As the company scales, channel strategy will adapt for international markets as the company expands beyond India.',
+      capturedAt: '2026-09-28T00:00:00.000Z',
+      attribution: 'JOB_POST',
+    };
+    const expansionClaim: Claim = {
+      id: 'JD-3',
+      text: 'The company has a 7 year plan to scale nationally and internationally.',
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: 'JD',
+      citations: [{ sourceId: expansionSource.id, quote: 'The company has a 7 year plan to scale nationally and internationally.' }],
+      derivedFrom: [],
+    };
+    const recruitingClaim: Claim = {
+      id: 'JD-4',
+      text: 'Guru/tutor side growth involves recruiting supply through LinkedIn and job boards.',
+      state: 'EXPLICIT',
+      confidence: 1,
+      plane: 'JD',
+      citations: [{ sourceId: expansionSource.id, quote: 'Guru/tutor side growth involves recruiting supply through LinkedIn and job boards.' }],
+      derivedFrom: [],
+    };
+    class MarketExpansionModel extends ScriptedModel {
+      override readonly id = 'market-expansion-model';
+      override async generate(instruction: string, input: any): Promise<unknown> {
+        if (instruction.startsWith('Resolve only RADAR')) {
+          return {
+            resolutions: openResolutions.map((resolution) =>
+              resolution.field === 'marketExpansion'
+                ? {
+                    field: 'marketExpansion',
+                    status: 'RESOLVED',
+                    value: 'Seven-year national and international expansion plan, including expansion beyond India.',
+                    claimIds: ['JD-3', 'JD-4'],
+                    methods: ['extract'],
+                  }
+                : resolution,
+            ),
+          };
+        }
+        return super.generate(instruction, input);
+      }
+    }
+
+    const result = await runStagedFrozenDecisionDetailed({
+      ...frozen,
+      opportunity: { ...frozen.opportunity, id: 'guru-market-expansion' },
+      sources: [...frozen.sources, expansionSource],
+      evidence: [...claims, expansionClaim, recruitingClaim],
+      validEvidenceClaimIds: [...claims.map(claim => claim.id), expansionClaim.id, recruitingClaim.id],
+    }, new MarketExpansionModel());
+
+    expect(result.trace.resolutions.find(resolution => resolution.field === 'marketExpansion')).toMatchObject({
+      status: 'RESOLVED',
+      claimIds: ['JD-3', 'JD-4'],
+    });
+  });
+
+  it('rejects OPEN when direct validated evidence already answers the field', async () => {
+    const reportingClaim: Claim = {
+      id: 'JD-3', text: 'The role reports directly to the founders', state: 'EXPLICIT', confidence: 1, plane: 'JD',
+      citations: [{ sourceId: 'JD-SOURCE', quote: 'The role reports directly to the founders.' }], derivedFrom: [],
+    };
+    await expect(runStagedFrozenDecisionDetailed({
+      ...frozen,
+      opportunity: {...frozen.opportunity, id: 'evidence-conservation'},
+      evidence: [...claims, reportingClaim],
+      validEvidenceClaimIds: [...claims.map(claim => claim.id), reportingClaim.id],
+    }, new ScriptedModel())).rejects.toThrow('OPEN field has sufficient validated evidence: reportingLine');
+  });
+
   it('supplies candidate evidence and explicit pursuit semantics to the staged-v8 decision stage', async()=>{
     let request:any,wording='';
     class CapturingModel extends ScriptedModel {
       async generate(instruction:string,input:any){if(instruction.includes('executive decision reasoner')){request=input.input??input;wording=instruction;}return super.generate(instruction,input);}
     }
-    await runStagedFrozenDecisionDetailed({...frozen,opportunity:{...frozen.opportunity,id:'decision-evidence-v8'}},new CapturingModel());
+    const candidateDecisionProfile = {
+      projection: { currentTitle: 'SVP', yearsExperience: 20, coreCapabilities: ['GROWTH'] },
+      intent: { targetTitles: ['CMO'], preferredLocations: ['India'], decisionPreferences: { careerMove: 'PROGRESSION' } },
+    };
+    await runStagedFrozenDecisionDetailed({...frozen,candidateDecisionProfile,opportunity:{...frozen.opportunity,id:'decision-evidence-v8'}},new CapturingModel());
     expect(request.candidateClaims).toEqual(claims.filter(claim=>claim.plane==='CANDIDATE'));
+    expect(request.candidateDecisionProfile).toEqual(candidateDecisionProfile);
     expect(request.candidateConflicts).toEqual(frozen.candidateConflicts);
     expect(wording).toContain('PASS means DO_NOT_PURSUE');
     expect(wording).toContain('CONSIDER means investigate');
@@ -458,6 +1064,65 @@ describe('staged production decision boundary', () => {
   it('rejects a question on a resolved field before decision reasoning', async () => {
     await expect(runStagedFrozenDecisionDetailed(frozen, new ResolvedQuestionModel()))
       .rejects.toThrow(`Resolved field cannot carry a question: ${contextFields[0]}`);
+  });
+
+  it('rejects executive distance without reporting topology for an ordinary role', async () => {
+    class UnsupportedDistanceModel extends ScriptedModel {
+      async generate(instruction:string,input:any){
+        if(instruction.startsWith('Resolve only RADAR')){
+          return {
+            resolutions: openResolutions.map(resolution =>
+              resolution.field === 'executiveDistance'
+                ? {...resolution,status:'INFERRED',value:3,claimIds:['JD-1'],methods:['infer'],question:undefined}
+                : resolution
+            ),
+          };
+        }
+        return super.generate(instruction,input);
+      }
+    }
+    await expect(runStagedFrozenDecisionDetailed(
+      {...frozen,opportunity:{...frozen.opportunity,id:'unsupported-executive-distance'}},
+      new UnsupportedDistanceModel(),
+    )).rejects.toThrow('Executive distance requires reporting topology unless explicit founder/CxO authority independently establishes executive altitude');
+  });
+
+  it('allows executive distance from explicit CxO altitude even when a conventional reporting line is unknown', async () => {
+    const cxoClaim:Claim={
+      id:'JD-3',
+      text:'The role title is Chief Marketing Officer (CMO).',
+      state:'EXPLICIT',
+      confidence:1,
+      plane:'JD',
+      citations:[{sourceId:'JD-SOURCE',quote:'Chief Marketing Officer (CMO)'}],
+      derivedFrom:[],
+    };
+    class CxoDistanceModel extends ScriptedModel {
+      async generate(instruction:string,input:any){
+        if(instruction.startsWith('Resolve only RADAR')){
+          return {
+            resolutions: openResolutions.map(resolution =>
+              resolution.field === 'executiveDistance'
+                ? {...resolution,status:'INFERRED',value:1,claimIds:['JD-3'],methods:['infer'],question:undefined}
+                : resolution
+            ),
+          };
+        }
+        return super.generate(instruction,input);
+      }
+    }
+    const result=await runStagedFrozenDecisionDetailed({
+      ...frozen,
+      opportunity:{...frozen.opportunity,id:'cxo-executive-distance'},
+      evidence:[...claims,cxoClaim],
+      validEvidenceClaimIds:[...claims.map(claim=>claim.id),cxoClaim.id],
+    },new CxoDistanceModel());
+    expect(result.trace.resolutions.find(resolution=>resolution.field==='reportingLine')?.status).toBe('OPEN');
+    expect(result.trace.resolutions.find(resolution=>resolution.field==='executiveDistance')).toMatchObject({
+      status:'INFERRED',
+      value:1,
+      claimIds:['JD-3'],
+    });
   });
 
   it('requires analytical leadership mode classifications to be inferred', async () => {

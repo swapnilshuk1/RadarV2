@@ -180,9 +180,11 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
       const upgraded = await runMigrations(adapter);
       expect(upgraded.applied).toContain("037_materialized_evaluation_fingerprint.sql");
       expect(upgraded.applied).toContain("038_opportunity_version_category_projection.sql");
+      expect(upgraded.applied).toContain("064_candidate_decision_preferences.sql");
       expect(await getRequiredSchemaStatus(adapter)).toMatchObject({
         evaluationFingerprintColumnPresent: true,
         categoryIdsColumnPresent: true,
+        candidateDecisionPreferencesColumnPresent: true,
         dossierPresentationsTablePresent: true,
       });
 

@@ -66,6 +66,21 @@ function ProfilePage() {
   const [locations, setLocations] = useState((intent?.preferredLocations || []).join(", "));
   const [targetTitles, setTargetTitles] = useState((intent?.targetTitles || []).join(", "));
   const [workModel, setWorkModel] = useState<"" | "HYBRID" | "REMOTE" | "ON_SITE" | "ANY">(intent?.preferredWorkModel || "");
+  const decisionPreferences = (intent as any)?.decisionPreferences || {};
+  const [desiredNextRoleLevel, setDesiredNextRoleLevel] = useState<string>(decisionPreferences.desiredNextRoleLevel || "");
+  const [careerMove, setCareerMove] = useState<string>(decisionPreferences.careerMove || "");
+  const [leadershipPreference, setLeadershipPreference] = useState<string>(decisionPreferences.leadershipPreference || "");
+  const [minimumTeamSize, setMinimumTeamSize] = useState<string>(decisionPreferences.minimumTeamSize == null ? "" : String(decisionPreferences.minimumTeamSize));
+  const [minimumCommercialScope, setMinimumCommercialScope] = useState<string>(decisionPreferences.minimumCommercialScope || "");
+  const [travelTolerance, setTravelTolerance] = useState<"" | "HIGH" | "MEDIUM" | "LOW">((intent as any)?.travelTolerance || "");
+  const [startupStageAppetite, setStartupStageAppetite] = useState<string[]>(decisionPreferences.startupStageAppetite || []);
+  const [founderInterest, setFounderInterest] = useState<string>(decisionPreferences.founderInterest || "");
+  const [personalCapitalInvestment, setPersonalCapitalInvestment] = useState<string>(decisionPreferences.personalCapitalInvestment || "");
+  const [compensationPreference, setCompensationPreference] = useState<string>(decisionPreferences.compensationPreference || "");
+  const [timeZoneTolerance, setTimeZoneTolerance] = useState<string>(decisionPreferences.timeZoneTolerance || "");
+  const [industriesSought, setIndustriesSought] = useState<string>((decisionPreferences.industriesSought || []).join(", "));
+  const [industriesAvoided, setIndustriesAvoided] = useState<string>((decisionPreferences.industriesAvoided || []).join(", "));
+  const [nonNegotiables, setNonNegotiables] = useState<string>((decisionPreferences.nonNegotiables || []).join("\n"));
   const [isSavingIntent, setIsSavingIntent] = useState(false);
   const [intentSavedMsg, setIntentSavedMsg] = useState("");
   const [intentActivationPending, setIntentActivationPending] = useState(false);
@@ -188,6 +203,24 @@ function ProfilePage() {
     try {
       const locList = locations.split(",").map(s => s.trim()).filter(Boolean);
       const titleList = targetTitles.split(",").map(s => s.trim()).filter(Boolean);
+      const list = (value: string) => value.split(",").map(s => s.trim()).filter(Boolean);
+      const lines = (value: string) => value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      const candidateDecisionPreferences = {
+        desiredNextRoleLevel: desiredNextRoleLevel.trim() || undefined,
+        careerMove: careerMove || undefined,
+        leadershipPreference: leadershipPreference || undefined,
+        minimumTeamSize: minimumTeamSize.trim() ? Number(minimumTeamSize) : undefined,
+        minimumCommercialScope: minimumCommercialScope || undefined,
+        startupStageAppetite: startupStageAppetite.length ? startupStageAppetite : undefined,
+        founderInterest: founderInterest || undefined,
+        personalCapitalInvestment: personalCapitalInvestment || undefined,
+        compensationPreference: compensationPreference || undefined,
+        timeZoneTolerance: timeZoneTolerance || undefined,
+        industriesSought: list(industriesSought).length ? list(industriesSought) : undefined,
+        industriesAvoided: list(industriesAvoided).length ? list(industriesAvoided) : undefined,
+        nonNegotiables: lines(nonNegotiables).length ? lines(nonNegotiables) : undefined,
+      };
+      const hasDecisionPreferences = Object.values(candidateDecisionPreferences).some(value => value !== undefined);
 
       const result = await saveIntentFn({
         data: {
@@ -199,7 +232,9 @@ function ProfilePage() {
           minSalaryUsd: currency === "USD" && targetSalary.trim() ? Number(targetSalary) : undefined,
           preferredLocations: locList,
           targetTitles: titleList,
-          preferredWorkModel: workModel || undefined
+          preferredWorkModel: workModel || undefined,
+          travelTolerance: travelTolerance || undefined,
+          decisionPreferences: hasDecisionPreferences ? candidateDecisionPreferences as any : undefined
         }
       });
       const presentation = resolveIntentActivationPresentation(result);
@@ -507,6 +542,131 @@ function ProfilePage() {
                 <option value="REMOTE">REMOTE</option>
                 <option value="ON_SITE">ON_SITE</option>
               </select>
+            </div>
+
+            <div className="border-t border-border/60 pt-5 space-y-4">
+              <div>
+                <span className="mono text-[10px] tracking-[0.18em] uppercase font-bold text-foreground/80 block">
+                  CAREER DECISION PREFERENCES
+                </span>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Optional. Blank means RADAR does not know your preference and must not assume it.
+                </p>
+              </div>
+
+              <div>
+                <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">DESIRED NEXT-ROLE LEVEL</label>
+                <input className="w-full p-2.5 text-[13px] rounded-xs border border-border/80 bg-background" value={desiredNextRoleLevel} onChange={(e) => setDesiredNextRoleLevel(e.target.value)} placeholder="e.g. CMO / SVP+ / founder-level" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">CAREER MOVE SOUGHT</label>
+                  <select className="w-full p-2.5 text-[12px] font-mono rounded-xs border border-border/80 bg-background" value={careerMove} onChange={(e) => setCareerMove(e.target.value)}>
+                    <option value="">Not specified</option>
+                    <option value="PROGRESSION">Progression</option>
+                    <option value="LATERAL">Similar-scale move</option>
+                    <option value="DELIBERATE_RESET">Deliberate reset</option>
+                    <option value="FOUNDER">Founder / co-founder</option>
+                    <option value="PORTFOLIO">Portfolio / fractional</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">LEADERSHIP PREFERENCE</label>
+                  <select className="w-full p-2.5 text-[12px] font-mono rounded-xs border border-border/80 bg-background" value={leadershipPreference} onChange={(e) => setLeadershipPreference(e.target.value)}>
+                    <option value="">Not specified</option>
+                    <option value="LEADERSHIP">People leadership</option>
+                    <option value="PLAYER_COACH">Player-coach</option>
+                    <option value="INDIVIDUAL_CONTRIBUTOR">Individual contributor</option>
+                    <option value="ANY">Any</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">MINIMUM TEAM SIZE</label>
+                  <input type="number" min="0" className="w-full p-2.5 text-[12px] font-mono rounded-xs border border-border/80 bg-background" value={minimumTeamSize} onChange={(e) => setMinimumTeamSize(e.target.value)} placeholder="Blank = not specified" />
+                </div>
+                <div>
+                  <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">FOUNDER INTEREST</label>
+                  <select className="w-full p-2.5 text-[12px] font-mono rounded-xs border border-border/80 bg-background" value={founderInterest} onChange={(e) => setFounderInterest(e.target.value)}>
+                    <option value="">Not specified</option><option value="YES">Yes</option><option value="OPEN">Open to it</option><option value="NO">No</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">MINIMUM COMMERCIAL SCOPE</label>
+                  <select className="w-full p-2.5 text-[12px] font-mono rounded-xs border border-border/80 bg-background" value={minimumCommercialScope} onChange={(e) => setMinimumCommercialScope(e.target.value)}>
+                    <option value="">Not specified</option>
+                    <option value="FUNCTIONAL">Functional ownership</option>
+                    <option value="BUDGET_OWNERSHIP">Budget ownership</option>
+                    <option value="REVENUE_OWNERSHIP">Revenue ownership</option>
+                    <option value="PNL_OWNERSHIP">P&amp;L ownership</option>
+                    <option value="ENTERPRISE">Enterprise-wide commercial scope</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">TRAVEL TOLERANCE</label>
+                  <select className="w-full p-2.5 text-[12px] font-mono rounded-xs border border-border/80 bg-background" value={travelTolerance} onChange={(e) => setTravelTolerance(e.target.value as any)}>
+                    <option value="">Not specified</option>
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-2">STARTUP STAGES YOU WOULD CONSIDER</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    ["ESTABLISHED", "Established"],
+                    ["SCALE_UP", "Scale-up"],
+                    ["EARLY_STAGE", "Early stage"],
+                    ["PRE_REVENUE", "Pre-revenue"],
+                  ].map(([value, label]) => (
+                    <label key={value} className="flex items-center gap-2 text-[12px]">
+                      <input type="checkbox" checked={startupStageAppetite.includes(value)} onChange={(e) => setStartupStageAppetite(current => e.target.checked ? [...current, value] : current.filter(item => item !== value))} />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">PERSONAL CAPITAL INVESTMENT</label>
+                  <select className="w-full p-2.5 text-[12px] font-mono rounded-xs border border-border/80 bg-background" value={personalCapitalInvestment} onChange={(e) => setPersonalCapitalInvestment(e.target.value)}>
+                    <option value="">Not specified</option><option value="YES">Willing</option><option value="OPEN">Open / depends</option><option value="NO">Not willing</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">CASH / EQUITY PREFERENCE</label>
+                  <select className="w-full p-2.5 text-[12px] font-mono rounded-xs border border-border/80 bg-background" value={compensationPreference} onChange={(e) => setCompensationPreference(e.target.value)}>
+                    <option value="">Not specified</option><option value="CASH_PRIORITY">Cash priority</option><option value="BALANCED">Balanced</option><option value="EQUITY_PRIORITY">Equity priority</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">TIME-ZONE TOLERANCE</label>
+                <select className="w-full p-2.5 text-[12px] font-mono rounded-xs border border-border/80 bg-background" value={timeZoneTolerance} onChange={(e) => setTimeZoneTolerance(e.target.value)}>
+                  <option value="">Not specified</option><option value="LOCAL_HOURS">Local business hours</option><option value="LIMITED_OVERLAP">Limited off-hours overlap</option><option value="US_HOURS_OK">US hours acceptable</option><option value="ANY">Any</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">INDUSTRIES TO SEEK</label><input className="w-full p-2.5 text-[12px] rounded-xs border border-border/80 bg-background" value={industriesSought} onChange={(e) => setIndustriesSought(e.target.value)} placeholder="Comma-separated" /></div>
+                <div><label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">INDUSTRIES TO AVOID</label><input className="w-full p-2.5 text-[12px] rounded-xs border border-border/80 bg-background" value={industriesAvoided} onChange={(e) => setIndustriesAvoided(e.target.value)} placeholder="Comma-separated" /></div>
+              </div>
+
+              <div>
+                <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">NON-NEGOTIABLES</label>
+                <textarea className="w-full h-24 p-2.5 text-[12px] rounded-xs border border-border/80 bg-background" value={nonNegotiables} onChange={(e) => setNonNegotiables(e.target.value)} placeholder={"One per line\nExample: no relocation"} />
+              </div>
             </div>
 
             <div>

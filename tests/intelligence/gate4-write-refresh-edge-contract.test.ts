@@ -91,10 +91,41 @@ describe("Gate 4 write and refresh edge contracts", () => {
     const intent = await store.getLatestCareerIntent(scope);
     expect(intent?.preferredWorkModel).toBeUndefined();
     expect(intent?.travelTolerance).toBeUndefined();
-    const row = await db.one<{ preferred_work_model: string | null; travel_tolerance: string | null }>(
-      "SELECT preferred_work_model, travel_tolerance FROM career_intents WHERE person_id = 'person-a'",
+    expect(intent?.decisionPreferences).toBeUndefined();
+    const row = await db.one<{ preferred_work_model: string | null; travel_tolerance: string | null; decision_preferences_json: string | null }>(
+      "SELECT preferred_work_model, travel_tolerance, decision_preferences_json FROM career_intents WHERE person_id = 'person-a'",
     );
-    expect(row).toEqual({ preferred_work_model: null, travel_tolerance: null });
+    expect(row).toEqual({ preferred_work_model: null, travel_tolerance: null, decision_preferences_json: null });
+  });
+
+  it("round-trips explicit candidate decision preferences without inventing blanks", async () => {
+    const { store } = await createDocumentFixture();
+    const scope = { tenantId: "tenant-default", personId: "person-a", roles: [] };
+    await store.saveCareerIntent(scope, {
+      personId: "person-a",
+      preferredLocations: ["Bengaluru"],
+      targetTitles: ["CMO"],
+      travelTolerance: "MEDIUM",
+      decisionPreferences: {
+        careerMove: "PROGRESSION",
+        leadershipPreference: "LEADERSHIP",
+        minimumCommercialScope: "PNL_OWNERSHIP",
+        founderInterest: "OPEN",
+        startupStageAppetite: ["SCALE_UP", "EARLY_STAGE"],
+        nonNegotiables: ["No permanent relocation"],
+      },
+    });
+    const intent = await store.getLatestCareerIntent(scope);
+    expect(intent?.travelTolerance).toBe("MEDIUM");
+    expect(intent?.decisionPreferences).toEqual({
+      careerMove: "PROGRESSION",
+      leadershipPreference: "LEADERSHIP",
+      minimumCommercialScope: "PNL_OWNERSHIP",
+      founderInterest: "OPEN",
+      startupStageAppetite: ["SCALE_UP", "EARLY_STAGE"],
+      nonNegotiables: ["No permanent relocation"],
+    });
+    expect((intent?.decisionPreferences as any)?.personalCapitalInvestment).toBeUndefined();
   });
 
   it("does not create a fresh intent version when the submitted intent is unchanged", async () => {

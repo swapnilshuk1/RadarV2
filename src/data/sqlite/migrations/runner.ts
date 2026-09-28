@@ -12,6 +12,7 @@ export interface MigrationResult {
 export interface RequiredSchemaStatus {
   readonly evaluationFingerprintColumnPresent: boolean;
   readonly categoryIdsColumnPresent: boolean;
+  readonly candidateDecisionPreferencesColumnPresent: boolean;
   readonly dossierPresentationsTablePresent: boolean;
   readonly tenantScopeTablesPresent: boolean;
   readonly candidateTruthTablesPresent: boolean;
@@ -35,6 +36,12 @@ const REQUIRED_COLUMNS = [
     column: "category_ids",
     statusKey: "categoryIdsColumnPresent" as const,
     migration: "038_opportunity_version_category_projection.sql",
+  },
+  {
+    table: "career_intents",
+    column: "decision_preferences_json",
+    statusKey: "candidateDecisionPreferencesColumnPresent" as const,
+    migration: "064_candidate_decision_preferences.sql",
   },
 ] as const;
 
@@ -91,11 +98,16 @@ async function hasColumn(db: DatabaseAdapter, table: string, column: string): Pr
 export async function getRequiredSchemaStatus(db: DatabaseAdapter): Promise<RequiredSchemaStatus> {
   let evaluationFingerprintColumnPresent = false;
   let categoryIdsColumnPresent = false;
+  let candidateDecisionPreferencesColumnPresent = false;
   for (const required of REQUIRED_COLUMNS) {
     const present = await hasColumn(db, required.table, required.column);
-    if (required.statusKey === "evaluationFingerprintColumnPresent")
+    if (required.statusKey === "evaluationFingerprintColumnPresent") {
       evaluationFingerprintColumnPresent = present;
-    else categoryIdsColumnPresent = present;
+    } else if (required.statusKey === "categoryIdsColumnPresent") {
+      categoryIdsColumnPresent = present;
+    } else {
+      candidateDecisionPreferencesColumnPresent = present;
+    }
   }
   const tables = await Promise.all(
     REQUIRED_TABLES.map(async (table) => [table, await hasTable(db, table)] as const),
@@ -115,6 +127,7 @@ export async function getRequiredSchemaStatus(db: DatabaseAdapter): Promise<Requ
   return {
     evaluationFingerprintColumnPresent,
     categoryIdsColumnPresent,
+    candidateDecisionPreferencesColumnPresent,
     dossierPresentationsTablePresent,
     tenantScopeTablesPresent:
       ["users", "tenants", "memberships", "people"].every(tablePresent) &&

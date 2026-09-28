@@ -24,7 +24,33 @@ const uploadSchema = z.object({ tenantId: z.string().min(1), personId: z.string(
   if (v.mimeType !== "text/plain" && !v.base64Buffer) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "DOCUMENT_BINARY_PAYLOAD_REQUIRED" });
   if (v.base64Buffer && (!/^[A-Za-z0-9+/]*={0,2}$/.test(v.base64Buffer) || v.base64Buffer.length % 4 !== 0)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "DOCUMENT_BASE64_INVALID" });
 });
-const intentSchema = z.object({ tenantId: z.string().min(1), personId: z.string().min(1), currency: z.enum(["INR", "USD", "EUR", "GBP"]).optional(), targetSalaryAmount: z.number().finite().nonnegative().max(10_000_000_000).optional(), minSalaryUsd: z.number().finite().nonnegative().max(10_000_000_000).optional(), preferredLocations: z.array(z.string().trim().min(1).max(120)).max(20), targetTitles: z.array(z.string().trim().min(1).max(160)).max(20), preferredWorkModel: z.enum(["HYBRID", "REMOTE", "ON_SITE", "ANY"]).optional(), travelTolerance: z.enum(["HIGH", "MEDIUM", "LOW"]).optional() });
+const decisionPreferencesSchema = z.object({
+  desiredNextRoleLevel: z.string().trim().min(1).max(120).optional(),
+  careerMove: z.enum(["PROGRESSION", "LATERAL", "DELIBERATE_RESET", "FOUNDER", "PORTFOLIO"]).optional(),
+  leadershipPreference: z.enum(["LEADERSHIP", "PLAYER_COACH", "INDIVIDUAL_CONTRIBUTOR", "ANY"]).optional(),
+  minimumTeamSize: z.number().int().nonnegative().max(100_000).optional(),
+  minimumCommercialScope: z.enum(["FUNCTIONAL", "BUDGET_OWNERSHIP", "REVENUE_OWNERSHIP", "PNL_OWNERSHIP", "ENTERPRISE"]).optional(),
+  startupStageAppetite: z.array(z.enum(["ESTABLISHED", "SCALE_UP", "EARLY_STAGE", "PRE_REVENUE"])).max(4).optional(),
+  founderInterest: z.enum(["YES", "NO", "OPEN"]).optional(),
+  personalCapitalInvestment: z.enum(["YES", "NO", "OPEN"]).optional(),
+  compensationPreference: z.enum(["CASH_PRIORITY", "BALANCED", "EQUITY_PRIORITY"]).optional(),
+  timeZoneTolerance: z.enum(["LOCAL_HOURS", "LIMITED_OVERLAP", "US_HOURS_OK", "ANY"]).optional(),
+  industriesSought: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
+  industriesAvoided: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
+  nonNegotiables: z.array(z.string().trim().min(1).max(240)).max(20).optional(),
+}).strict();
+
+const intentSchema = z.object({
+  tenantId: z.string().min(1), personId: z.string().min(1),
+  currency: z.enum(["INR", "USD", "EUR", "GBP"]).optional(),
+  targetSalaryAmount: z.number().finite().nonnegative().max(10_000_000_000).optional(),
+  minSalaryUsd: z.number().finite().nonnegative().max(10_000_000_000).optional(),
+  preferredLocations: z.array(z.string().trim().min(1).max(120)).max(20),
+  targetTitles: z.array(z.string().trim().min(1).max(160)).max(20),
+  preferredWorkModel: z.enum(["HYBRID", "REMOTE", "ON_SITE", "ANY"]).optional(),
+  travelTolerance: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
+  decisionPreferences: decisionPreferencesSchema.optional(),
+});
 
 async function authorizeCandidate(userId: string, tenantId: string, personId: string, permission: "read:person" | "write:person") {
   const db = getDatabaseAdapter();
@@ -121,7 +147,8 @@ export const saveIntentFn = createServerFn({ method: "POST" })
       preferredLocations: intent.preferredLocations,
       targetTitles: intent.targetTitles,
       preferredWorkModel: intent.preferredWorkModel,
-      travelTolerance: intent.travelTolerance
+      travelTolerance: intent.travelTolerance,
+      decisionPreferences: intent.decisionPreferences
     };
 
     // Check all deterministic activation prerequisites before recording a new

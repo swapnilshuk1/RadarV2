@@ -12,7 +12,9 @@ if (
 )
   throw new Error("Apply migration 053 before starting the dossier composition worker");
 
-loadMantleCredentials();
+if ((process.env.RADAR_DOSSIER_WRITER_PROVIDER ?? "glm").trim().toLowerCase() === "glm") {
+  loadMantleCredentials();
+}
 
 const arg = process.argv.find((value) => value.startsWith("--concurrency="));
 const concurrency = Number(

@@ -24,6 +24,7 @@ import {
 import {
   memoWritingInstruction,
   memoInputPacket,
+  assignedMemoPointsFor,
   validateMemoCopy,
   assembleMemo,
   MemoCopyRepair,
@@ -39,7 +40,8 @@ const editorialSchema = z
 export const memoDraftSchema = z
   .object({
     rationale: z.string().min(1),
-    narrativePlan: narrativePlanSchema.extend({ memoPoints: z.array(memoPointSchema).min(1) }),
+    // memoPoints are application-owned and injected from the accepted decision trace.
+    narrativePlan: narrativePlanSchema,
     memo: compositionSchema,
   })
   .strict();
@@ -119,13 +121,16 @@ function compactMemoRepairInput(
     return {
       input: {
         fixedDecision: packet.fixedDecision,
+        candidateDecisionProfile: packet.candidateDecisionProfile,
+        operatingConditions: packet.operatingConditions,
+        roleSideConditions: packet.roleSideConditions,
         requirements: staged.trace.requirements.filter((requirement) =>
           missingRequirementIds.has(requirement.id),
         ),
         referenceScope: staged.trace.resolutions.filter((resolution) =>
           missingResolutionFields.has(resolution.field),
         ),
-        assignedMemoPoints: previous.narrativePlan.memoPoints.filter((point) =>
+        assignedMemoPoints: (previous.narrativePlan.memoPoints ?? []).filter((point) =>
           repair.sections.includes(point.section as MemoSection),
         ),
       },
@@ -183,6 +188,7 @@ function compactMemoRepairInput(
         ...packet.candidateEvidence,
         facts: filterClaims(packet.candidateEvidence.facts),
       },
+      candidateDecisionProfile: packet.candidateDecisionProfile,
       opportunity: packet.opportunity,
       roleEvidence: filterClaims(packet.roleEvidence),
       contextEvidence: filterClaims(packet.contextEvidence),
@@ -192,6 +198,7 @@ function compactMemoRepairInput(
         requirementIds.has(requirement.id),
       ),
       operatingConditions: staged.trace.role.operatingConditions,
+      roleSideConditions: staged.trace.role.roleSideConditions,
       referenceScope: staged.trace.resolutions.filter((resolution) =>
         resolutionFields.has(resolution.field),
       ),
@@ -212,13 +219,156 @@ function compactMemoRepairInput(
   };
 }
 
+function memoMatchTokens(value: string): Set<string> {
+  return new Set(
+    value
+      .toLocaleLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((token) => token.length >= 4 && !["with", "from", "that", "this", "your", "role"].includes(token)),
+  );
+}
+
+function assignToBestRows<T extends { claimIds: string[]; text: string }>(
+  rows: { evidenceRefs: string[]; text: string }[],
+  items: T[],
+): T[][] {
+  const assigned = rows.map(() => [] as T[]);
+  if (!rows.length) return assigned;
+  for (const item of items) {
+    const itemClaims = new Set(item.claimIds);
+    const itemTokens = memoMatchTokens(item.text);
+    let bestIndex = 0;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    rows.forEach((row, index) => {
+      const evidenceOverlap = row.evidenceRefs.filter((id) => itemClaims.has(id)).length;
+      const rowTokens = memoMatchTokens(row.text);
+      const lexicalOverlap = [...itemTokens].filter((token) => rowTokens.has(token)).length;
+      // Evidence is authoritative; lexical similarity is only a tie-breaker.
+      // The load penalty prevents all unmatched assignments collapsing onto row 1.
+      const score = evidenceOverlap * 100 + lexicalOverlap * 5 - assigned[index].length * 12;
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    });
+    assigned[bestIndex].push(item);
+  }
+  return assigned;
+}
+
+function injectApplicationMemoReferences(
+  memo: z.infer<typeof compositionSchema>,
+  frozen: StagedResearchInput,
+  staged: StagedDecisionResult,
+) {
+  const assignedPoints = assignedMemoPointsFor(frozen, staged);
+
+  const fitRows = memo.candidateFit.map((row) => ({
+    evidenceRefs: row.assessment.evidenceRefs,
+    text: `${row.label} ${row.assessment.text} ${row.assessment.reasoning}`,
+  }));
+  const fitItems = assignedPoints
+    .filter((point) => point.section === "candidateFit")
+    .map((point) => ({
+      id: point.id,
+      requirementIds: point.requirementIds,
+      resolutionFields: point.resolutionFields,
+      claimIds: point.claimIds,
+      text: point.point,
+    }));
+  const fitAssignments = assignToBestRows(fitRows, fitItems);
+  const candidateFit = memo.candidateFit.map((row, index) => ({
+    ...row,
+    requirementIds: [
+      ...new Set(fitAssignments[index]!.flatMap((item) => item.requirementIds)),
+    ],
+  }));
+
+  const conditionRows = memo.decisionConditions.map((row) => ({
+    evidenceRefs: [...new Set([...row.question.evidenceRefs, ...row.consequence.evidenceRefs])],
+    text: `${row.question.text} ${row.consequence.text} ${row.question.reasoning} ${row.consequence.reasoning}`,
+  }));
+  const conditionItems = assignedPoints
+    .filter((point) => point.section === "decisionConditions")
+    .map((point) => ({
+      id: point.id,
+      requirementIds: point.requirementIds,
+      resolutionFields: point.resolutionFields,
+      claimIds: point.claimIds,
+      text: point.point,
+    }));
+  const conditionAssignments = assignToBestRows(conditionRows, conditionItems);
+  const decisionConditions = memo.decisionConditions.map((row, index) => ({
+    ...row,
+    requirementIds: [
+      ...new Set(conditionAssignments[index]!.flatMap((item) => item.requirementIds)),
+    ],
+    resolutionFields: [
+      ...new Set(conditionAssignments[index]!.flatMap((item) => item.resolutionFields)),
+    ],
+  }));
+
+  return { ...memo, candidateFit, decisionConditions };
+}
+
+function normalizeMechanicalMemoShape(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const root = value as Record<string, unknown>;
+  const memo = root.memo;
+  if (!memo || typeof memo !== "object" || Array.isArray(memo)) return value;
+  const memoObject = memo as Record<string, unknown>;
+  const approach = memoObject.approach;
+  if (!approach || typeof approach !== "object" || Array.isArray(approach)) return value;
+  const approachObject = approach as Record<string, unknown>;
+  const normalizedApproach = { ...approachObject };
+  const textKey = (item: unknown) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return "";
+    const text = (item as Record<string, unknown>).text;
+    return typeof text === "string"
+      ? text.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+      : "";
+  };
+  const used = new Set<string>();
+  const openingKey = textKey(approachObject.opening);
+  if (openingKey) used.add(openingKey);
+  const nextSteps = approachObject.nextSteps;
+  if (Array.isArray(nextSteps)) {
+    for (const item of nextSteps) {
+      const key = textKey(item);
+      if (key) used.add(key);
+    }
+  }
+  for (const key of ["resumeNarrative", "linkedinStrategy", "screening", "interview"] as const) {
+    const items = approachObject[key];
+    if (!Array.isArray(items)) continue;
+    const distinct = items.find((item) => {
+      const text = textKey(item);
+      return text && !used.has(text);
+    });
+    if (distinct) {
+      const text = textKey(distinct);
+      if (text) used.add(text);
+      normalizedApproach[key] = [distinct];
+    } else {
+      normalizedApproach[key] = [];
+    }
+  }
+  return {
+    ...root,
+    memo: {
+      ...memoObject,
+      approach: normalizedApproach,
+    },
+  };
+}
+
 /** Validate all independent boundaries together so a repair sees every defect. */
 function inspectDraft(
   value: unknown,
   frozen: StagedResearchInput,
   staged: StagedDecisionResult,
 ): { result: { draft: Draft; research: Research; memo: Draft["memo"] } } | { repair: Repair; draft?: Draft } {
-  const parsed = memoDraftSchema.safeParse(value);
+  const parsed = memoDraftSchema.safeParse(normalizeMechanicalMemoShape(value));
   if (!parsed.success) {
     const sections = new Set<MemoSection>();
     let editorial = false;
@@ -233,7 +383,15 @@ function inspectDraft(
     }
     return { repair: { sections: [...sections], editorial, issue: parsed.error.message } };
   }
-  const draft = parsed.data;
+  const assignedMemoPoints = assignedMemoPointsFor(frozen, staged);
+  const draft: Draft = {
+    ...parsed.data,
+    narrativePlan: {
+      ...parsed.data.narrativePlan,
+      memoPoints: assignedMemoPoints,
+    },
+    memo: injectApplicationMemoReferences(parsed.data.memo, frozen, staged),
+  };
   let research: Research;
   try {
     research = bindStagedEditorial(frozen, staged, {
@@ -354,7 +512,7 @@ async function writeMemo(
     );
     lastResponse = response;
     if (repair) {
-      const patch = schema.safeParse(response);
+      const patch = schema.safeParse(normalizeMechanicalMemoShape(response));
       if (!patch.success) {
         await writer.discardResponse?.(response);
         repair = { ...repair, issue: repair.issue + "; Patch schema: " + patch.error.message };

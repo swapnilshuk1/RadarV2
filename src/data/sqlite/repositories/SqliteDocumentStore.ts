@@ -17,6 +17,22 @@ export interface CandidateDocumentRecord {
   updatedAt: string;
 }
 
+export interface CandidateDecisionPreferences {
+  desiredNextRoleLevel?: string;
+  careerMove?: "PROGRESSION" | "LATERAL" | "DELIBERATE_RESET" | "FOUNDER" | "PORTFOLIO";
+  leadershipPreference?: "LEADERSHIP" | "PLAYER_COACH" | "INDIVIDUAL_CONTRIBUTOR" | "ANY";
+  minimumTeamSize?: number;
+  minimumCommercialScope?: "FUNCTIONAL" | "BUDGET_OWNERSHIP" | "REVENUE_OWNERSHIP" | "PNL_OWNERSHIP" | "ENTERPRISE";
+  startupStageAppetite?: Array<"ESTABLISHED" | "SCALE_UP" | "EARLY_STAGE" | "PRE_REVENUE">;
+  founderInterest?: "YES" | "NO" | "OPEN";
+  personalCapitalInvestment?: "YES" | "NO" | "OPEN";
+  compensationPreference?: "CASH_PRIORITY" | "BALANCED" | "EQUITY_PRIORITY";
+  timeZoneTolerance?: "LOCAL_HOURS" | "LIMITED_OVERLAP" | "US_HOURS_OK" | "ANY";
+  industriesSought?: string[];
+  industriesAvoided?: string[];
+  nonNegotiables?: string[];
+}
+
 export interface CareerIntentRecord {
   id?: string;
   personId: string;
@@ -36,6 +52,7 @@ export interface CareerIntentRecord {
   targetTitles: string[];
   preferredWorkModel?: "HYBRID" | "REMOTE" | "ON_SITE" | "ANY";
   travelTolerance?: "HIGH" | "MEDIUM" | "LOW";
+  decisionPreferences?: CandidateDecisionPreferences;
   createdAt?: string;
 }
 
@@ -277,7 +294,8 @@ export class SqliteDocumentStore {
         (latest.preferred_locations ?? "[]") === JSON.stringify(intent.preferredLocations || []) &&
         (latest.target_titles ?? "[]") === JSON.stringify(intent.targetTitles || []) &&
         (latest.preferred_work_model ?? undefined) === (intent.preferredWorkModel ?? undefined) &&
-        (latest.travel_tolerance ?? undefined) === (intent.travelTolerance ?? undefined);
+        (latest.travel_tolerance ?? undefined) === (intent.travelTolerance ?? undefined) &&
+        (latest.decision_preferences_json ?? undefined) === (intent.decisionPreferences ? JSON.stringify(intent.decisionPreferences) : undefined);
       if (sameIntent) return false;
       const nextVersion = (latest?.version || 0) + 1;
       const intentId = `intent-${intent.personId}-v${nextVersion}`;
@@ -287,9 +305,9 @@ export class SqliteDocumentStore {
         id, tenant_id, person_id, version, min_salary_usd, currency, target_salary_amount,
         normalized_salary_usd, normalization_source_currency, normalization_target_currency,
         normalization_rate, normalization_rate_source, normalization_effective_at,
-        preferred_locations, target_titles, preferred_work_model, travel_tolerance, created_at
+        preferred_locations, target_titles, preferred_work_model, travel_tolerance, decision_preferences_json, created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         intentId,
@@ -309,6 +327,7 @@ export class SqliteDocumentStore {
         JSON.stringify(intent.targetTitles || []),
         intent.preferredWorkModel ?? null,
         intent.travelTolerance ?? null,
+        intent.decisionPreferences ? JSON.stringify(intent.decisionPreferences) : null,
         now
       ]
       );
@@ -344,6 +363,7 @@ export class SqliteDocumentStore {
       targetTitles: JSON.parse(row.target_titles || "[]"),
       preferredWorkModel: row.preferred_work_model ?? undefined,
       travelTolerance: row.travel_tolerance ?? undefined,
+      decisionPreferences: row.decision_preferences_json ? JSON.parse(row.decision_preferences_json) : undefined,
       createdAt: row.created_at
     };
   }

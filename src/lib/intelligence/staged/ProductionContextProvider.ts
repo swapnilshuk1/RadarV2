@@ -12,6 +12,30 @@ function publicHttps(value:string):URL {
   return url;
 }
 
+const BUSINESS_TYPE_NOUNS=new Set([
+  'agency','marketplace','platform','software','saas','beverage','fintech','ecommerce',
+]);
+
+function compactIdentityHint(terms:readonly string[]):string|undefined{
+  for(const term of terms){
+    const words=term
+      .replace(/[’']/g,'')
+      .replace(/[^A-Za-z0-9-]+/g,' ')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    for(let index=0;index<words.length;index++){
+      const noun=words[index]!.toLocaleLowerCase();
+      if(!BUSINESS_TYPE_NOUNS.has(noun))continue;
+      const preceding=words.slice(Math.max(0,index-2),index)
+        .map(word=>word.toLocaleLowerCase())
+        .filter(word=>!['a','an','the','is','and','of','for'].includes(word));
+      if(preceding.length)return preceding.join(' ');
+    }
+  }
+  return undefined;
+}
+
 function attemptRows(
   fields:readonly string[],
   provider:string,
@@ -42,6 +66,15 @@ export class ProductionContextProvider implements ContextProvider {
   async acquire(opportunity:SliceInput['opportunity'],fields:readonly string[]){
     if(!this.searchKey?.trim())throw new ModelProviderUnavailableError('CONTEXT_SEARCH_CONFIGURATION_REQUIRED');
     const name=opportunity.company.trim().toLocaleLowerCase().replace(/\s+/g,' ');
+    const researchMeta=opportunity as SliceInput['opportunity'] & {
+      researchAliases?:string[];
+      researchIdentityTerms?:string[];
+    };
+    const researchAliases=(researchMeta.researchAliases??[])
+      .map(alias=>alias.trim()).filter(Boolean).slice(0,3);
+    const researchIdentityTerms=(researchMeta.researchIdentityTerms??[])
+      .map(term=>term.trim()).filter(Boolean).slice(0,3);
+    const identityHint=compactIdentityHint(researchIdentityTerms);
     const entity=await this.db.one<{official_domain:string|null}>(
       `SELECT official_domain FROM intelligence_company_entities WHERE tenant_id=? AND normalized_name=?`,
       [this.tenantId,name],
@@ -76,7 +109,11 @@ export class ProductionContextProvider implements ContextProvider {
           signal:AbortSignal.timeout(25_000),
           headers:{'Content-Type':'application/json',Authorization:`Bearer ${this.searchKey}`},
           body:JSON.stringify({
-            query:`${opportunity.company} ${policy.querySuffix}`,
+            query:[
+              [opportunity.company,...researchAliases].map(value=>`"${value}"`).join(' OR '),
+              identityHint ? `"${identityHint}"` : '',
+              identityHint ? 'company team' : policy.querySuffix,
+            ].filter(Boolean).join(' '),
             search_depth:policy.searchDepth,
             max_results:policy.maxResults,
             include_raw_content:'text',

@@ -1,6 +1,6 @@
 import { getDatabaseAdapter } from "../src/data/database";
 import { loadMantleCredentials } from "../src/lib/model/bedrock-credentials";
-import { createBedrockGlmResearchModel } from "../src/lib/model/bedrock-glm-research-model";
+import { createDossierWriterModel } from "../src/lib/model/dossier-writer-model";
 import { createFactualReviewModel } from "../src/lib/model/factual-review-model";
 import { DossierReviewWorker } from "../src/lib/intelligence/staged/DossierReviewWorker";
 import { createSqliteModelInvocationSink } from "../src/lib/model/model-invocation";
@@ -12,11 +12,13 @@ const MAX_IDLE_POLL_MS = 30_000;
 
 const db = getDatabaseAdapter();
 if (!await db.one("SELECT name FROM sqlite_master WHERE type='table' AND name='dossier_review_jobs'")) throw new Error('Apply migration 052 before starting the review worker');
-loadMantleCredentials();
+if ((process.env.RADAR_DOSSIER_WRITER_PROVIDER ?? "glm").trim().toLowerCase() === "glm") {
+  loadMantleCredentials();
+}
 const worker = new DossierReviewWorker(
   db,
   (context) =>
-    createBedrockGlmResearchModel({
+    createDossierWriterModel({
       invocationSink: createSqliteModelInvocationSink(db, context),
     }),
   (context) =>
