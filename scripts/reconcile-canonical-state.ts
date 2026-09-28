@@ -22,7 +22,6 @@ import {
   SqliteRichDossierStore,
 } from "../src/data/sqlite/repositories/SqliteRichDossierStore";
 import { StagedServingPublisher } from "../src/lib/intelligence/staged/StagedServingPublisher";
-import { SqliteDecisionSupportStore } from "../src/data/sqlite/repositories/SqliteDecisionSupportStore";
 import { createStagedEvaluationFingerprint } from "../src/dossier/staged-decision-integrity";
 
 type Row = Record<string, unknown>;
@@ -151,17 +150,27 @@ async function main(): Promise<void> {
     "SELECT * FROM profile_projection_source_bindings WHERE tenant_id=? AND person_id=? AND profile_version=?",
     [tenantId, personId, sourceContext.profile_version],
   );
+  // Shortlist membership is evaluation-based. A reviewed dossier enriches a
+  // card, but it is not a prerequisite for serving an accepted evaluation.
+  // Select exactly the local P/C serving population, rather than accidentally
+  // treating memo publication as the source of truth. Existing human decisions
+  // remain part of this population and are copied below when fingerprint-matched.
   const sourceEvaluations = await rows(
     local,
     `SELECT se.* FROM staged_evaluations se
-     JOIN materialized_dossier_presentations dp
-       ON dp.tenant_id=se.tenant_id AND dp.person_id=se.person_id
-      AND dp.canonical_job_id=se.canonical_job_id AND dp.opportunity_version=se.opportunity_version
-      AND dp.evaluation_context_fingerprint=se.evaluation_context_fingerprint
-      AND dp.presentation_version=?
+     JOIN materialized_evaluations me
+       ON me.tenant_id=se.tenant_id AND me.person_id=se.person_id
+      AND me.canonical_job_id=se.canonical_job_id AND me.opportunity_version=se.opportunity_version
+      AND me.evaluation_context_fingerprint=se.evaluation_context_fingerprint
+     JOIN search_plan_candidates spc
+       ON spc.tenant_id=se.tenant_id AND spc.person_id=se.person_id
+      AND spc.canonical_job_id=se.canonical_job_id AND spc.opportunity_version=se.opportunity_version
+      AND spc.search_plan_id=? AND spc.attention_decision='CANDIDATE'
      WHERE se.tenant_id=? AND se.person_id=? AND se.evaluation_context_fingerprint=?
-       AND se.evaluation_state='COMPLETED' AND se.decision IN ('PURSUE','CONSIDER')`,
-    [RICH_DOSSIER_VERSION, tenantId, personId, context],
+       AND se.evaluation_state='COMPLETED' AND se.decision IN ('PURSUE','CONSIDER')
+       AND me.evaluation_state='STAGED_EVALUATED' AND me.decision IN ('PURSUE','CONSIDER')
+       AND me.evaluation_fingerprint IS NOT NULL`,
+    [planId, tenantId, personId, context],
   );
   if (!sourceEvaluations.length) fail("SOURCE_ACCEPTED_EVALUATIONS_MISSING");
   const candidateKeys = new Set(
@@ -207,14 +216,17 @@ async function main(): Promise<void> {
         `SELECT * FROM materialized_dossier_presentations WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=? AND presentation_version=?`,
         [...Object.values(identity), RICH_DOSSIER_VERSION],
       );
-      if (!presentation || presentation.source_evaluation_fingerprint !== evaluationFingerprint)
-        fail("SOURCE_REVIEWED_DOSSIER_MISSING");
-      const dossier = await new SqliteRichDossierStore(local).get(
-        identity,
-        evaluationFingerprint,
-        RICH_DOSSIER_VERSION,
-      );
-      if (!dossier) fail("SOURCE_REVIEWED_DOSSIER_INVALID");
+      // A dossier may be absent or have become invalid under the current
+      // validator. In either case the evaluation remains eligible for the
+      // shortlist and is explicitly served as dossier-preparing-v1.
+      const dossier =
+        presentation?.source_evaluation_fingerprint === evaluationFingerprint
+          ? await new SqliteRichDossierStore(local).get(
+              identity,
+              evaluationFingerprint,
+              RICH_DOSSIER_VERSION,
+            )
+          : null;
       const decision = await row(
         local,
         "SELECT * FROM canonical_decisions WHERE tenant_id=? AND person_id=? AND canonical_job_id=?",
@@ -232,7 +244,10 @@ async function main(): Promise<void> {
     personId,
     planId,
     sourceCandidates: sourceCandidates.length,
-    accepted: prepared.length,
+    shortlistMembers: sourceEvaluations.length,
+    validEvaluations: prepared.length,
+    validReviewedDossiers: prepared.filter((item) => item.dossier).length,
+    preparingDossiers: prepared.filter((item) => !item.dossier).length,
     recoveryPoint: process.env.RADAR_RECONCILE_RECOVERY_POINT,
     target: targetIdentity.fingerprint,
   };
@@ -325,30 +340,6 @@ async function main(): Promise<void> {
             context,
           ],
         ],
-        [
-          "materialized_dossier_presentations",
-          await row(
-            local,
-            "SELECT * FROM materialized_dossier_presentations WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=? AND presentation_version=?",
-            [
-              tenantId,
-              personId,
-              item.identity.canonicalJobId,
-              item.identity.opportunityVersion,
-              context,
-              RICH_DOSSIER_VERSION,
-            ],
-          )!,
-          "tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=? AND presentation_version=?",
-          [
-            tenantId,
-            personId,
-            item.identity.canonicalJobId,
-            item.identity.opportunityVersion,
-            context,
-            RICH_DOSSIER_VERSION,
-          ],
-        ],
       ] as const) {
         const existing = await row(tx, `SELECT * FROM ${q(table)} WHERE ${predicate}`, values);
         if (existing && stable(existing) !== stable(source))
@@ -379,28 +370,22 @@ async function main(): Promise<void> {
         item.input,
       );
       await new SqliteStagedEvaluationStore(tx).save(item.staged as StagedEvaluationRecord);
-      await new SqliteRichDossierStore(tx).save(
-        item.identity,
-        item.evaluationFingerprint,
-        item.dossier,
-      );
-      await new StagedServingPublisher(tx).publish(item.identity);
+      if (item.dossier) {
+        await new SqliteRichDossierStore(tx).save(
+          item.identity,
+          item.evaluationFingerprint,
+          item.dossier,
+        );
+      }
+      await new StagedServingPublisher(tx).publish(item.identity, { allowPreparing: true });
       if (item.decision) {
-        const existing = await row(
+        await insertExact(
           tx,
-          "SELECT * FROM canonical_decisions WHERE tenant_id=? AND person_id=? AND canonical_job_id=?",
+          "canonical_decisions",
+          item.decision,
+          "tenant_id=? AND person_id=? AND canonical_job_id=?",
           [tenantId, personId, item.identity.canonicalJobId],
         );
-        if (existing && stable(existing) !== stable(item.decision))
-          fail("CANONICAL_DECISION_CONFLICT");
-        if (!existing)
-          await new SqliteDecisionSupportStore(tx).recordAuthorizedUserDecision(
-            personId,
-            tenantId,
-            item.identity.canonicalJobId,
-            String(item.decision.action) as "PURSUE" | "CONSIDER" | "PASS",
-            item.decision.reason ? String(item.decision.reason) : undefined,
-          );
       }
     }
     await tx.execute(
@@ -418,7 +403,10 @@ async function main(): Promise<void> {
     [tenantId, personId, context],
   );
   if (Number(targetCount?.count) !== prepared.length) fail("POST_APPLY_SHORTLIST_PARITY_FAILED");
-  console.log(`CANONICAL_RECONCILIATION_APPLIED context=${context} promoted=${prepared.length}`);
+  console.log(
+    `CANONICAL_RECONCILIATION_APPLIED context=${context} promoted=${prepared.length} ` +
+      `reviewed=${prepared.filter((item) => item.dossier).length} preparing=${prepared.filter((item) => !item.dossier).length}`,
+  );
 }
 
 main().catch((error) => {
