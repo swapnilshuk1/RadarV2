@@ -5,7 +5,6 @@ import { execSync } from "child_process";
 import { AuthError, requireAuthUser, type SessionUser } from "../../src/lib/auth/guard";
 import { createSession, generateSessionToken } from "../../src/lib/auth/session";
 import { getDatabase } from "../../src/data/sqlite/provider";
-import { getActiveScrapeLock } from "../../src/lib/intelligence/scrape-server";
 
 describe("P0-B & P0-C & P0-D Security Regression Suite", () => {
   const db = getDatabase();
@@ -222,55 +221,6 @@ describe("P0-B & P0-C & P0-D Security Regression Suite", () => {
       // Admin user accessing someone else's explanation -> allowed
       const adminUser: SessionUser = { ...regularUser, id: testAdminUserId, role: "admin" };
       expect(checkAccess(adminUser, requestedPersonId)).toBe(true);
-    });
-  });
-
-  // ─── P0-C: SCRAPER MUTEX & ACCESS CONTROL ───────────────────────────────────
-
-  describe("P0-C / SEC-03: Scraper Mutex & Access Control", () => {
-    it("getActiveScrapeLock returns null when no scrape is running", () => {
-      const lock = getActiveScrapeLock();
-      expect(lock === null || typeof lock.runId === "string").toBe(true);
-    });
-
-    it("mutex rejects concurrent scrape runs when one is active", () => {
-      const simulateMutexCheck = (activeLock: { runId: string } | null, activeState: any) => {
-        if (activeLock || activeState) {
-          return {
-            success: false,
-            error: "A scraping run is already in progress. Concurrent execution is rejected.",
-            alreadyRunning: true
-          };
-        }
-        return { success: true };
-      };
-
-      // When an active lock exists
-      const rejected = simulateMutexCheck({ runId: "test-run-123" }, null);
-      expect(rejected.success).toBe(false);
-      expect(rejected.alreadyRunning).toBe(true);
-
-      // When no active lock exists
-      const allowed = simulateMutexCheck(null, null);
-      expect(allowed.success).toBe(true);
-    });
-
-    it("mutex releases cleanly after background scraper error or exception", async () => {
-      let testLock: { runId: string; startedAt: number } | null = null;
-      const runId = "test-failing-run";
-
-      testLock = { runId, startedAt: Date.now() };
-      expect(testLock).not.toBeNull();
-
-      // Simulate a failed completion promise
-      const failingPromise = Promise.reject(new Error("Scraper crashed unexpectedly"));
-      await failingPromise.catch(() => {
-        if (testLock?.runId === runId) {
-          testLock = null;
-        }
-      });
-
-      expect(testLock).toBeNull();
     });
   });
 

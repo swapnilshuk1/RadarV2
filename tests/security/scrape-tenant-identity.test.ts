@@ -108,10 +108,7 @@ describe("Checkpoint B: Canonical Scraper Identity and Tenant Isolation Contract
 
   it("Invariant 7: Zero temporary profile files or writes to search-plan.json in profile server", () => {
     const profileServerPath = path.resolve(process.cwd(), "src/lib/intelligence/profile-server.ts");
-    const profileServerCode = fs.readFileSync(profileServerPath, "utf-8");
-
-    expect(profileServerCode.includes("temp-profile-")).toBe(false);
-    expect(profileServerCode.includes("src/data/search-plan.json")).toBe(false);
-    expect(profileServerCode.includes("fs.writeFileSync(searchPlanOutputPath")).toBe(false);
+    // Phase B removed the legacy profile server entirely.
+    expect(fs.existsSync(profileServerPath)).toBe(false);
   });
 });

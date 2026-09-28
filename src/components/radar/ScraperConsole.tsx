@@ -7,6 +7,7 @@ interface ScraperConsoleProps {
   onRefreshFeed: () => void;
   onConfirm: (data: { data: { runId: string } }) => Promise<any>;
   onAbort: (data: { data: { runId: string } }) => Promise<any>;
+  scope?: { tenantId?: string; personId?: string };
 }
 
 interface RunSummary {
@@ -15,7 +16,7 @@ interface RunSummary {
   extracted: number;
 }
 
-export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbort }: ScraperConsoleProps) {
+export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbort, scope }: ScraperConsoleProps) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
   const [summary, setSummary] = useState<RunSummary>({ portalsCompleted: 0, cardsFound: 0, extracted: 0 });
@@ -49,6 +50,9 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
     }
   }, [runId]);
 
+  const tenantId = scope?.tenantId;
+  const personId = scope?.personId;
+
   // Polling loop
   useEffect(() => {
     if (!runId || completed) return;
@@ -57,7 +61,9 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
 
     const poll = async () => {
       try {
-        const res: any = await getRunEventsFn({ data: { runId, afterIndex: nextIndexRef.current } });
+        const res: any = await getRunEventsFn({
+          data: { runId, afterIndex: nextIndexRef.current, tenantId, personId },
+        });
         
         if (res.events.length > 0) {
           setEvents(prev => [...prev, ...res.events]);
@@ -94,7 +100,7 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
 
     timeoutId = setTimeout(poll, pollInterval);
     return () => clearTimeout(timeoutId);
-  }, [runId, completed, pollInterval, onRefreshFeed]);
+  }, [runId, completed, pollInterval, onRefreshFeed, tenantId, personId]);
 
   // Auto-scroll to bottom of events
   useEffect(() => {

@@ -81,7 +81,8 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
     };
     await queue.enqueue("retention_job", "retention_hash", "snapshots/retention.json", "ext_v2", provenance, 1, 0, "snapshots/retention.json");
     await adapter.execute("UPDATE enrichment_jobs SET created_at = datetime('now', '-10 days') WHERE id = ?", ["retention_job"]);
-    await queue.markFailed("retention_job", "UNKNOWN", "new failure");
+    const [retentionLease] = await queue.leaseJobs("worker_retention", 1);
+    await queue.markFailed("retention_job", retentionLease.lease_owner!, "UNKNOWN", "new failure");
 
     const completed = await adapter.one<{ completed_at: string | null }>("SELECT completed_at FROM enrichment_jobs WHERE id = ?", ["retention_job"]);
     expect(completed?.completed_at).toBeTruthy();
@@ -197,7 +198,7 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
     expect(leasedJob.status).toBe("LEASED");
 
     // Worker 1 marks job RUNNING
-    await worker1.markRunning(leasedJob.id);
+    await worker1.markRunning(leasedJob.id, leasedJob.lease_owner!, 1);
     const runningRow = await adapter.one<{ status: string; started_at: string }>(
       "SELECT status, started_at FROM enrichment_jobs WHERE id = ?",
       [leasedJob.id]
@@ -230,7 +231,8 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
     expect(reLeased.length).toBe(1);
     expect(reLeased[0].id).toBe("job_crash_1");
 
-    await worker2.markCompleted(reLeased[0].id);
+    await worker2.markRunning(reLeased[0].id, reLeased[0].lease_owner!);
+    await worker2.markCompleted(reLeased[0].id, reLeased[0].lease_owner!);
 
     const completedRow = await adapter.one<{ status: string; completed_at: string }>(
       "SELECT status, completed_at FROM enrichment_jobs WHERE id = ?",
@@ -265,7 +267,7 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
 
     // Schedule retry with future next_retry_at (10 minutes in future)
     const futureTime = new Date(Date.now() + 600000).toISOString();
-    await queue.markRetry(job.id, "RATE_LIMIT", "HTTP 429 Too Many Requests", futureTime);
+    await queue.markRetry(job.id, job.lease_owner!, "RATE_LIMIT", "HTTP 429 Too Many Requests", futureTime);
 
     // Job should NOT be claimable while cooling down
     const available = await queue.leaseJobs("worker_retry_2", 1);
@@ -283,7 +285,7 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
     expect(reLeased[0].attempts).toBe(1);
 
     // Mark fatal failure
-    await queue.markFailed(job.id, "UNKNOWN", "Permanent 404 JD Not Found");
+    await queue.markFailed(job.id, reLeased[0].lease_owner!, "UNKNOWN", "Permanent 404 JD Not Found");
     const failedJob = await adapter.one<{ status: string; failure_type: string; attempts: number }>(
       "SELECT status, failure_type, attempts FROM enrichment_jobs WHERE id = ?",
       [job.id]
@@ -317,7 +319,8 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
     expect(stats.completed).toBe(0);
 
     const [j1] = await queue.leaseJobsForRun("worker_t", runId, 1);
-    await queue.markCompleted(j1.id);
+    await queue.markRunning(j1.id, j1.lease_owner!);
+    await queue.markCompleted(j1.id, j1.lease_owner!);
 
     stats = await queue.getRunStats(runId);
     expect(stats.completed).toBe(1);
@@ -375,7 +378,8 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
          'staged_waiting_enrichment')`,
     );
 
-    await queue.markFailed("enrich_manual_retry", "UNKNOWN", "permanent extraction failure");
+    const [manualLease] = await queue.leaseJobs("worker_manual_retry", 1);
+    await queue.markFailed("enrich_manual_retry", manualLease.lease_owner!, "UNKNOWN", "permanent extraction failure");
     expect(await adapter.one<{ status: string }>("SELECT status FROM evaluation_requirements WHERE id = 'req_manual_retry'"))
       .toEqual({ status: "FAILED" });
     expect(await adapter.one<{ status: string }>("SELECT status FROM evaluation_jobs WHERE id = 'eval_manual_retry'"))

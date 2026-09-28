@@ -11,6 +11,7 @@ import { getDatabaseAdapter } from "../src/data/database";
 import { SqliteOpportunityQueries } from "../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { resolveServingScope, resolveScraperAuthContext } from "../src/lib/security/scope-resolver";
 import { TenantIsolationError } from "../src/lib/security/auth";
+import { verifyMigrationChecksums, verifyRequiredSchema } from "../src/data/sqlite/migrations/runner";
 
 async function runProductionSmoke() {
   console.log("\n============================================================");
@@ -20,12 +21,44 @@ async function runProductionSmoke() {
   const startTime = Date.now();
 
   try {
+    const readinessBaseUrl = process.env.RADAR_DEPLOY_READINESS_URL;
+    const expectedReleaseSha = process.env.RADAR_RELEASE_SHA;
+    if (!readinessBaseUrl || !expectedReleaseSha) {
+      throw new Error("RADAR_DEPLOY_READINESS_URL and RADAR_RELEASE_SHA are required for exact-release smoke.");
+    }
+    const readiness = await fetch(`${readinessBaseUrl.replace(/\/$/, "")}/health/ready`);
+    const readinessPayload = await readiness.json() as { status?: string; releaseSha?: string };
+    if (!readiness.ok || readinessPayload.status !== "ready" || readinessPayload.releaseSha !== expectedReleaseSha) {
+      throw new Error("Readiness probe did not confirm the exact deployed release SHA.");
+    }
+    console.log("  ✔ Readiness probe confirms exact release SHA.");
+
+    const systemReadiness = await fetch(`${readinessBaseUrl.replace(/\/$/, "")}/health/system`);
+    const systemPayload = await systemReadiness.json() as {
+      status?: string;
+      releaseSha?: string;
+      workers?: { required?: number; healthy?: number; missing?: string[] };
+    };
+    if (
+      !systemReadiness.ok ||
+      systemPayload.status !== "ready" ||
+      systemPayload.releaseSha !== expectedReleaseSha ||
+      !systemPayload.workers ||
+      systemPayload.workers.required !== systemPayload.workers.healthy ||
+      (systemPayload.workers.missing?.length ?? 0) !== 0
+    ) {
+      throw new Error("System readiness did not confirm the full worker topology for this release.");
+    }
+    console.log(`  [OK] System readiness confirms ${systemPayload.workers.healthy}/${systemPayload.workers.required} required workers.`);
+
     // 1. Database Connection & Health
     console.log("▶ [1/4] Auditing Database Connection & Schema Health...");
     const db = await getDatabaseAdapter();
     const tableCount = await db.one<{ count: number }>(
       `SELECT count(*) as count FROM sqlite_master WHERE type='table'`
     );
+    await verifyMigrationChecksums(db);
+    await verifyRequiredSchema(db);
     console.log(`  ✔ Connected to database (${tableCount?.count} active tables).`);
 
     // 2. Explicit candidate, tenant, and serving-context authority

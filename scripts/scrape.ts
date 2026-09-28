@@ -87,6 +87,7 @@ import {
 export { CredentialBroker, establishPortalAuthSession };
 import crypto from "crypto";
 import type { AuthContext } from "../src/lib/security/auth";
+import type { AuthorizedPersonScope } from "../src/lib/security/auth";
 import {
   CanonicalIngestionService,
   type CanonicalIngestionResult,
@@ -287,9 +288,17 @@ export interface RunOptions {
   resume?: boolean;
   autoConfirm?: boolean;
   authContext?: AuthContext;
+  /** Candidate identity is a capability selected at the request boundary. */
+  scope?: AuthorizedPersonScope;
   searchPlanId?: string;
   resolvedPlan?: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan;
   variants?: AcquisitionVariant[];
+  /** Internal durable-worker claim identity; never supplied by request handlers. */
+  claimedRunId?: string;
+  /** Internal lease fence invoked at execution boundaries by the scrape worker. */
+  assertWorkerLease?: () => Promise<void>;
+  /** Token-fenced durable run mutations for the claiming scraper worker. */
+  scrapeLease?: { owner: string; token: string };
 }
 
 export interface RunRuntimeSession {
@@ -316,7 +325,7 @@ export function createRunSession(
   const session: RunRuntimeSession = {
     runId,
     tenantId: opts.authContext?.tenantId,
-    personId: opts.authContext?.userId,
+    personId: opts.scope?.personId,
     capabilities,
     health: HealthManager.forRun(runId),
     contexts: new Map(),
@@ -328,38 +337,6 @@ export function createRunSession(
   activeRunSessions.set(runId, session);
 
   return session;
-}
-
-export async function abortLiveRun(runId?: string): Promise<boolean> {
-  if (runId) {
-    const mgr = activeRunControllers.get(runId);
-    const runtime = activeRunSessions.get(runId);
-
-    if (!mgr) {
-      return false;
-    }
-
-    mgr.manifest.status = "stopping";
-    mgr.persistManifest();
-
-    if (runtime) {
-      for (const session of runtime.authSessions.values()) {
-        session.dispose();
-      }
-      runtime.authSessions.clear();
-    }
-
-    await closePortalContextsForRun(runId);
-
-    HealthManager.clearRun(runId);
-    activeRunSessions.delete(runId);
-
-    return true;
-  }
-
-  await shutdownAllRuns("explicit-global-abort");
-
-  return true;
 }
 
 let shutdownStarted = false;
@@ -424,7 +401,13 @@ function installSignalHandlers(): void {
 installSignalHandlers();
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
+  if (opts.scope && opts.authContext && opts.scope.tenantId !== opts.authContext.tenantId) {
+    throw new Error("SCRAPER_ACTOR_SCOPE_TENANT_MISMATCH");
+  }
   const log = makeLogger("scrape");
+  const assertWorkerLease = async () => {
+    if (opts.assertWorkerLease) await opts.assertWorkerLease();
+  };
   const storageRes = verifyArtifactStorage();
   if (!storageRes.ok) {
     throw new Error(`STORAGE_UNWRITABLE: ${storageRes.fatalError || "Essential artifact storage unwritable"}`);
@@ -435,18 +418,21 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
   const runtimeOpts = resolveScraperRuntimeOptions(process.argv.slice(2), process.env);
   const explicitScoped = runtimeOpts.mode === "SCOPED" || process.argv.includes("--scoped");
-  const hasTenant = Boolean(opts.authContext?.tenantId || runtimeOpts.tenantId);
-  const hasPerson = Boolean(opts.authContext?.userId || runtimeOpts.personId);
+  const hasTenant = Boolean(opts.scope?.tenantId || opts.authContext?.tenantId || runtimeOpts.tenantId);
+  const hasPerson = Boolean(opts.scope?.personId || runtimeOpts.personId);
 
   // Partial SCOPED identity must fail closed BEFORE any browser launch
   if ((explicitScoped && (!hasTenant || !hasPerson)) || (hasTenant && !hasPerson) || (!hasTenant && hasPerson)) {
     throw new Error(
-      `PARTIAL_SCOPED_IDENTITY: SCOPED mode requires both --tenant-id and --person-id. Provided tenantId=${opts.authContext?.tenantId || runtimeOpts.tenantId || "none"}, personId=${opts.authContext?.userId || runtimeOpts.personId || "none"}. Refusing execution before browser initialization.`
+      `PARTIAL_SCOPED_IDENTITY: SCOPED mode requires both --tenant-id and --person-id. Provided tenantId=${opts.scope?.tenantId || runtimeOpts.tenantId || "none"}, personId=${opts.scope?.personId || runtimeOpts.personId || "none"}. Refusing execution before browser initialization.`
     );
   }
 
   let effectiveAuthContext: any = opts.authContext;
-  if (!effectiveAuthContext && (hasTenant && hasPerson)) {
+  // A worker consumes a previously-authorized durable scope. It must not
+  // reconstruct an interactive actor or re-run user authorization.
+  const trustedWorkerScope = opts.scope;
+  if (!effectiveAuthContext && !trustedWorkerScope && (hasTenant && hasPerson)) {
     const { resolveScraperAuthContext } = await import("../src/lib/security/scope-resolver");
     const db = getDatabaseAdapter();
     const resolvedAuth = await resolveScraperAuthContext(
@@ -457,7 +443,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     effectiveAuthContext = resolvedAuth.authContext;
   }
 
-  const mode = effectiveAuthContext ? "SCOPED" : "GLOBAL_MARKET";
+  const effectiveScope = trustedWorkerScope || (effectiveAuthContext ? { tenantId: effectiveAuthContext.tenantId, personId: effectiveAuthContext.userId } : undefined);
+  const mode = effectiveScope ? "SCOPED" : "GLOBAL_MARKET";
   const effectiveSearchPlanId = opts.searchPlanId || runtimeOpts.searchPlanId;
   const capabilities = await resolveScraperCapabilities(mode);
 
@@ -488,10 +475,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   let searchSource: "PLAN" | "SUPPLIED" | "DEFAULT" = "DEFAULT";
   let evaluationProjection: "ACTIVE" | "DEFERRED_NO_SEARCH_PLAN" = "DEFERRED_NO_SEARCH_PLAN";
 
-  if (effectiveAuthContext) {
+  if (effectiveScope) {
     const { ScraperPlanResolver } = await import("../src/lib/intelligence/ScraperPlanResolver");
     const db = getDatabaseAdapter();
-    const scope = { tenantId: effectiveAuthContext.tenantId, personId: effectiveAuthContext.userId };
+    const scope = effectiveScope;
 
     try {
       resolvedPlan = opts.resolvedPlan || (await ScraperPlanResolver.resolveActivePlan(
@@ -532,7 +519,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       evaluationProjection = "DEFERRED_NO_SEARCH_PLAN";
       resolvedPlan = undefined;
       log(
-        `[ScraperAuth] Running planless scoped acquisition for tenant ${effectiveAuthContext.tenantId} (person: ${effectiveAuthContext.userId}).\n` +
+        `[ScraperAuth] Running planless scoped acquisition for tenant ${scope.tenantId} (person: ${scope.personId}).\n` +
         `  searchSource=${searchSource}, evaluationProjection=${evaluationProjection}. Queries: ${keywords.length}. Evaluation deferred until search plan created.`
       );
     }
@@ -542,7 +529,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     evaluationProjection = "DEFERRED_NO_SEARCH_PLAN";
     log(`Running in offline unauthenticated mode: using manual/default keywords (${keywords.length} queries).`);
   }
-  
+
   const resolvedKeywords = keywords;
   const resolvedVariants = opts.variants || (resolvedPlan ? compileMultiLocationCoverageVariants(resolvedPlan, portals) : undefined);
   const variantsSignature = computeVariantsSignature(resolvedVariants);
@@ -564,21 +551,32 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
   let mgr = new RunController();
   let resumed = false;
+  let queuedDurableRunId: string | undefined;
   let runScope: any = null;
   let globalMarketLock: ExclusiveLockToken | null = null;
 
-  if (effectiveAuthContext) {
+  if (effectiveScope) {
     runScope = {
-      tenantId: effectiveAuthContext.tenantId,
-      personId: effectiveAuthContext.userId,
+      tenantId: effectiveScope.tenantId,
+      personId: effectiveScope.personId,
       roles: [],
     };
     try {
       const repos = getRepositories();
       const activeDurableRun = await repos.scrapeRuns.getActiveRun(runScope);
+      if (opts.claimedRunId && activeDurableRun?.id !== opts.claimedRunId) {
+        throw new Error(`SCRAPE_WORKER_CLAIM_MISMATCH: expected ${opts.claimedRunId}, active=${activeDurableRun?.id ?? "none"}`);
+      }
+      await assertWorkerLease();
 
       if (activeDurableRun) {
         const activeStatus = activeDurableRun.status;
+
+        // A durable row that is still queued has never owned local runtime state.
+        // A claimed initializing/running row must first attempt manifest resume.
+        if (activeStatus === "queued" && !freshRun) {
+          queuedDurableRunId = activeDurableRun.id;
+        } else {
 
         // Invariant: If actively in downstream pipeline, refuse fresh acquisition to protect workers
         if (activeStatus === "enriching" || activeStatus === "completing") {
@@ -616,7 +614,14 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           }
         }
 
-        if (!tryResumed) {
+        if (!tryResumed && activeStatus === "initializing" && !freshRun && opts.claimedRunId === activeDurableRun.id) {
+          queuedDurableRunId = activeDurableRun.id;
+        }
+
+        if (!queuedDurableRunId && !tryResumed) {
+          if (opts.claimedRunId === activeDurableRun.id) {
+            throw new Error(`CLAIMED_SCRAPE_RUN_UNRESUMABLE: ${activeDurableRun.id} status=${activeStatus}`);
+          }
           if (isEarlyPhase) {
             log(
               `Active durable run ${activeDurableRun.id} in state '${activeStatus}' is unresumable or fresh run requested. Transitioning to aborted (LOCAL_RUNTIME_STATE_UNRECOVERABLE).`,
@@ -627,7 +632,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               activeDurableRun.id,
               activeStatus as any,
               "aborted",
-              "LOCAL_RUNTIME_STATE_UNRECOVERABLE: local manifest missing or incompatible"
+              "LOCAL_RUNTIME_STATE_UNRECOVERABLE: local manifest missing or incompatible",
+              opts.scrapeLease,
             );
             await repos.scrapeRuns.recordEvent(runScope, activeDurableRun.id, {
               stage: "recovery",
@@ -643,12 +649,13 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             );
           }
         }
+        }
       }
 
       if (!resumed) {
         // No active durable run (or previous unresumable run aborted). Create clean new run!
-        const newRunId = RunController.generateRunId();
-        await repos.scrapeRuns.createRun(runScope, {
+        const newRunId = queuedDurableRunId ?? RunController.generateRunId();
+        if (!queuedDurableRunId) await repos.scrapeRuns.createRun(runScope, {
           id: newRunId,
           searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : null,
           portalTargets: portals,
@@ -668,7 +675,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             },
           },
         });
-        log(`Created new durable scrape_run in Turso Cloud: ${newRunId}`);
+        log(`${queuedDurableRunId ? "Claimed queued" : "Created new"} durable scrape_run in Turso Cloud: ${newRunId}`);
 
         // Initialize local RunController with compensation if it fails
         try {
@@ -681,7 +688,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               newRunId,
               "initializing",
               "aborted",
-              `Local initialization failed: ${initErr.message}`
+              `Local initialization failed: ${initErr.message}`,
+              opts.scrapeLease,
             );
           } catch (compErr: any) {
             log(`Failed to compensate aborted run ${newRunId}: ${compErr.message}`, "error");
@@ -762,19 +770,19 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             {
               runId: mgr.runId,
               mode: runScope ? "SCOPED" : "GLOBAL_MARKET",
-              tenantId: effectiveAuthContext?.tenantId,
-              personId: effectiveAuthContext?.userId,
+              tenantId: opts.scope?.tenantId || effectiveAuthContext?.tenantId,
+              personId: opts.scope?.personId || effectiveAuthContext?.userId,
             },
             {},
             {
               headless: runtimeOpts.headless,
             }
           );
-        } catch (err: any) { 
-          plog(`context launch failed: ${err.message}`, "error"); 
+        } catch (err: any) {
+          plog(`context launch failed: ${err.message}`, "error");
           mgr.updatePortalHealth(portal, { status: "error", details: err.message });
           mgr.recordActivity(`Error connecting to ${portal}: ${err.message}`);
-          
+
           const errCode = err?.code || "PORTAL_INITIALIZATION_FAILED";
           for (const u of mgr.manifest.units) {
             if (u.portal === portal && (u.status === "pending" || u.status === "running")) {
@@ -784,9 +792,9 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               });
             }
           }
-          return null; 
+          return null;
         }
-        
+
         runtime.contexts.set(portal, browserContext);
         const pageManager = new PageManager(portal, browserContext);
         runtime.pageManagers.set(portal, pageManager);
@@ -796,10 +804,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         // Establish JIT PortalAuthSession without retaining plaintext secrets
         let authSession: PortalAuthSession | null = null;
         try {
-          if (effectiveAuthContext) {
+          if (effectiveAuthContext || effectiveScope) {
             const repos = await getRepositories();
             const broker = new CredentialBroker(repos.credentials);
-            authSession = await establishPortalAuthSession(broker, effectiveAuthContext, portal, browserContext);
+            authSession = await establishPortalAuthSession(broker, effectiveAuthContext || effectiveScope!, portal, browserContext);
             if (authSession) {
               runtime.authSessions.set(portal, authSession);
               plog(`authenticated session established (source: ${authSession.source}, version: ${authSession.version})`);
@@ -819,7 +827,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           authSession: authSession || undefined,
           logger: plog,
         });
-        
+
         if (sessionStatus === "error") {
           plog(`session error — skipping portal`, "warn");
           mgr.updatePortalHealth(portal, { status: "error", details: `Session error` });
@@ -891,7 +899,9 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               runScope,
               mgr.runId,
               "initializing",
-              "waiting_for_confirmation"
+              "waiting_for_confirmation",
+              undefined,
+              opts.scrapeLease,
             );
 
           if (!transitioned) {
@@ -1002,13 +1012,16 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         }
       } else {
         if (runScope) {
+          await assertWorkerLease();
           let transitioned = false;
           try {
             transitioned = await getRepositories().scrapeRuns.transitionRunStatus(
               runScope,
               mgr.runId,
               ["initializing", "waiting_for_confirmation"],
-              "running"
+              "running",
+              undefined,
+              opts.scrapeLease,
             );
           } catch (e: any) {
             log(`Error during auto-confirm transition to running: ${e.message}`, "error");
@@ -1073,6 +1086,19 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         let portalFacts = 0;
 
         while (!mgr.isCancellationRequested()) {
+          // Stop is a durable command issued by the web boundary. Mirror it
+          // into the local run controller before claiming the next unit; the
+          // currently executing unit remains fenced by its normal persistence
+          // transitions.
+          if (runScope) {
+            const durableRun = await getRepositories().scrapeRuns.getRun(runScope, mgr.runId);
+            if (durableRun?.status === "stopping" || durableRun?.status === "aborted") {
+              mgr.manifest.status = durableRun.status;
+              mgr.persistManifest();
+              break;
+            }
+          }
+          await assertWorkerLease();
           if (persistenceState.unavailable) {
             failPendingUnitsForPersistence();
             plog(`Stopping ${portal} queue because shared persistence is unavailable: ${persistenceState.error || "retry budget exhausted"}`, "error");
@@ -1167,6 +1193,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       log(`Enqueued ${ingestedCount} cards for enrichment.`);
+      await assertWorkerLease();
 
       // Certification: Ensure no units are left running or unexecuted
       const runningUnits = mgr.runningUnits();
@@ -1182,6 +1209,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               mgr.runId,
               "failed",
               `Certification failed: ${runningUnits.length} units running, ${pendingUnits.length} units pending.`,
+              opts.scrapeLease,
             ),
           );
         }
@@ -1211,7 +1239,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               totalDiscovered: mgr.manifest.cards.length,
               totalEnqueued: ingestedCount,
               metrics: tm as any,
-            }),
+            }, opts.scrapeLease),
           );
           await withPersistenceBoundary("failed scrape run terminalization", () =>
             repos.scrapeRuns.updateRunStatus(
@@ -1219,6 +1247,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               mgr.runId,
               "failed",
               `Acquisition failed: ${failedUnits.length} unit(s) failed, ${integrityFailures} integrity failure(s)`,
+              opts.scrapeLease,
             ),
           );
         }
@@ -1227,6 +1256,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       if (runScope && capabilities.enrichmentDispatchEnabled) {
+        await assertWorkerLease();
         mgr.transitionTo("enriching");
         const repos = getRepositories();
         await withPersistenceBoundary("enriching scrape run metrics", () =>
@@ -1234,10 +1264,12 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             totalDiscovered: mgr.manifest.cards.length,
             totalEnqueued: ingestedCount,
             metrics: tm as any,
-          }),
+          }, opts.scrapeLease),
         );
         const transitioned = await withPersistenceBoundary("running to enriching transition", async () => {
-          const changed = await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "enriching");
+          const changed = await repos.scrapeRuns.updateRunStatus(
+            runScope, mgr.runId, "enriching", undefined, opts.scrapeLease,
+          );
           if (changed) return true;
           const durable = await repos.scrapeRuns.getRun(runScope, mgr.runId);
           return durable?.status === "enriching";
@@ -1269,7 +1301,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         mgr.recordActivity(`Acquisition complete · Local run finalized as completed`);
       }
       const runDurationS = ((new Date().getTime() - new Date(mgr.manifest.startedAt).getTime()) / 1000).toFixed(1);
-      
+
       const { generateAcquisitionReport } = await import("./scraper/run/report");
       generateAcquisitionReport(mgr.runId);
 
@@ -1297,12 +1329,18 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
 
       return { success: true, count: ingestedCount, runId: mgr.runId };
     } catch (err: any) {
+      if (String(err?.message || err).includes("SCRAPE_RUN_LEASE_LOST")) {
+        log(`Scrape worker lease lost for ${mgr.runId}; stale runtime is exiting without terminal writes`, "warn");
+        return { success: false, count: 0, runId: mgr.runId };
+      }
       log(`Fatal: ${err.message}`, "error");
       mgr.finalize("failed");
       if (runScope) {
         try {
           await withPersistenceBoundary("fatal scrape run terminalization", () =>
-            getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "failed", err.message),
+            getRepositories().scrapeRuns.updateRunStatus(
+              runScope, mgr.runId, "failed", err.message, opts.scrapeLease,
+            ),
           );
         } catch (terminalErr: any) {
           log(
@@ -1615,7 +1653,7 @@ export async function processUnit(
     });
     let cards: FeedCard[] = [];
     const pm = pageManager;
-    
+
     try {
       cards = await handler.listCards({
         runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
@@ -1662,11 +1700,11 @@ export async function processUnit(
       else if (msg.includes("navigat")) errorCategory = "Navigation";
       else if (msg.includes("selector")) errorCategory = "Selector";
       else if (msg.includes("blocked") || msg.includes("rate limit") || msg.includes("auth_expired") || msg.includes("429") || msg.includes("406")) errorCategory = "Blocked";
-      
+
       if (errorCategory === "Blocked") {
         mgr.updatePortalHealth(unit.portal, { status: "error", details: "Blocked by anti-bot", score: 0 });
       }
-      
+
       log(`listCards failed for ${unit.id} [${errorCategory}]: ${err.message}`, "error");
       outcome.status = "failed";
       outcome.warnings.push(`listCards failed: ${err.message}`);
@@ -1978,7 +2016,7 @@ export async function processUnit(
         } else {
           if (unit.portal === "Naukri") {
             let usedNaukriRichDiscovery = false;
-            let usedNaukriAts = false;
+            let usedNaukriNativeDetail = false;
 
             // Naukri Multi-Tier Acquisition Architecture:
             // Tier 1: Direct Rich Ingestion (ONLY when explicitly carrying authoritative full-description provenance)
@@ -2004,79 +2042,10 @@ export async function processUnit(
                 extractionMethod: "FALLBACK_CARD",
                 details: `Direct rich discovery payload (${feedCard.rawText.length} chars)`
               });
-            } 
-            // Tier 2: External ATS Enrichment via applyRedirectUrl (< 500 chars)
-            if (!usedNaukriRichDiscovery && feedCard.applyRedirectUrl) {
-              log(`[Naukri] Attempting ATS enrichment via ${feedCard.applyRedirectUrl}`);
-              const atsRes: import("./scraper/utils/http-fetch").HttpFetchResult = await fastFetchDetail(
-                feedCard.applyRedirectUrl,
-                undefined,
-                undefined,
-                { "Referer": "https://www.naukri.com/" },
-                feedCard.title,
-                feedCard.company
-              ).catch((err: any): import("./scraper/utils/http-fetch").HttpFetchResult => ({
-                fetched: false,
-                fetchError: err.message,
-                fetchDurationMs: 0,
-                httpStatus: undefined,
-                outcome: "TRANSPORT_ERROR" as AcquisitionOutcome,
-                rawHtml: "",
-                rawText: ""
-              }));
-
-              if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
-                log(`[Naukri] ATS enrichment successful (${atsRes.rawText.length} chars, quality=${atsRes.qualityTier || 'VALID'}, method=${atsRes.extractionMethod}) for ${feedCard.title} @ ${feedCard.company}`);
-                usedNaukriAts = true;
-                acquisitionRoute = "ATS_ENRICHED";
-                enrichmentStatus = "ENRICHED_SUCCESS";
-                detail = {
-                  fetched: true,
-                  rawHtml: atsRes.rawHtml,
-                  rawText: atsRes.rawText,
-                  fetchDurationMs: atsRes.fetchDurationMs,
-                  httpStatus: atsRes.httpStatus || 200,
-                  finalUrl: feedCard.applyRedirectUrl,
-                };
-                acquisitionAttempts.push({
-                  method: "ATS_HTTP",
-                  url: feedCard.applyRedirectUrl,
-                  timestamp: new Date().toISOString(),
-                  httpStatus: atsRes.httpStatus || 200,
-                  outcome: "SUCCESS",
-                  qualityTier: atsRes.qualityTier || "VALID",
-                  extractionMethod: atsRes.extractionMethod,
-                  details: `Extracted ${atsRes.rawText.length} chars via ${atsRes.extractionMethod}`
-                });
-              } else {
-                log(`[Naukri] ATS enrichment rejected/failed (${atsRes.fetchError || atsRes.outcome}); preserving attempt and evaluating native detail fallback`);
-                enrichmentStatus = "ENRICHED_FAILED";
-                fallbackRoute = "ORIGINAL_DISCOVERY_PAYLOAD";
-                acquisitionAttempts.push({
-                  method: "ATS_HTTP",
-                  url: feedCard.applyRedirectUrl,
-                  timestamp: new Date().toISOString(),
-                  httpStatus: atsRes.httpStatus,
-                  outcome: atsRes.outcome || "EXTRACTION_FAILURE",
-                  qualityTier: atsRes.qualityTier || "NON_JOB",
-                  extractionMethod: atsRes.extractionMethod,
-                  details: atsRes.fetchError || `Rejected by quality gate (${atsRes.qualityResult?.reasons?.join("; ") || "unsubstantive"})`
-                });
-
-                detail = {
-                  fetched: false,
-                  fetchError: `ATS enrichment failed: ${atsRes.fetchError || atsRes.outcome}`,
-                  rawHtml: feedCard.rawHtml || "",
-                  rawText: feedCard.rawText || "",
-                  fetchDurationMs: 0,
-                  httpStatus: atsRes.httpStatus || 200,
-                  failureClass: atsRes.failureClass,
-                };
-              }
-            } 
-            // Tier 3: Native Detail Acquisition (invoked when rich discovery was not used and ATS did not yield a usable JD)
-            if (!usedNaukriRichDiscovery && !usedNaukriAts && !portalPauseTriggered && outcome.pausePortalQueue !== true) {
-              enrichmentStatus = enrichmentStatus === "ENRICHED_FAILED" ? "ENRICHED_FAILED" : "NOT_APPLICABLE";
+            }
+            // Tier 2: Native Naukri Detail Acquisition (source truth before any external apply/ATS redirect)
+            if (!usedNaukriRichDiscovery && !portalPauseTriggered && outcome.pausePortalQueue !== true) {
+              enrichmentStatus = "NOT_APPLICABLE";
               const pmDetail = pageManager;
               const runHealth = HealthManager.forRun(mgr.runId);
               const detailCtx: import("./scraper/types").PortalContext = {
@@ -2098,7 +2067,7 @@ export async function processUnit(
                 recordTelemetry: (event: any) => mgr.recordTelemetry(event),
               };
 
-              log(`[Naukri] ${feedCard.applyRedirectUrl ? "ATS enrichment failed" : "Discovery payload lacks authoritative provenance"} (${feedCard.rawText?.length || 0} chars, authoritative=${Boolean(feedCard.hasAuthoritativeFullDescription)}); invoking portal fetchDetail for ${feedCard.detailUrl}`);
+              log(`[Naukri] Discovery payload lacks authoritative full-JD provenance (${feedCard.rawText?.length || 0} chars); invoking native detail fetch for ${feedCard.detailUrl}`);
               mgr.journal.append({ type: "detail_extraction_started", cardId: cardUnitId, url: feedCard.detailUrl });
               const portalDetail = await handler.fetchDetail(detailCtx, feedCard.detailUrl).catch((err: any) => ({
                 fetched: false,
@@ -2112,6 +2081,7 @@ export async function processUnit(
 
               if (portalDetail.fetched && portalDetail.rawText && portalDetail.rawText.length >= 200) {
                 log(`[Naukri] Detail fetch successful (${portalDetail.rawText.length} chars) for ${feedCard.title} @ ${feedCard.company}`);
+                usedNaukriNativeDetail = true;
                 acquisitionRoute = "DETAIL_PAGE_BROWSER";
                 detail = portalDetail;
                 acquisitionAttempts.push({
@@ -2146,6 +2116,75 @@ export async function processUnit(
                 });
               }
             }
+            // Tier 3: External apply/ATS fallback (only after native Naukri detail is unavailable/unusable)
+            if (!usedNaukriRichDiscovery && !usedNaukriNativeDetail && feedCard.applyRedirectUrl) {
+              log(`[Naukri] Native detail unavailable; attempting external ATS fallback via ${feedCard.applyRedirectUrl}`);
+              const atsRes: import("./scraper/utils/http-fetch").HttpFetchResult = await fastFetchDetail(
+                feedCard.applyRedirectUrl,
+                undefined,
+                undefined,
+                { "Referer": "https://www.naukri.com/" },
+                feedCard.title,
+                feedCard.company
+              ).catch((err: any): import("./scraper/utils/http-fetch").HttpFetchResult => ({
+                fetched: false,
+                fetchError: err.message,
+                fetchDurationMs: 0,
+                httpStatus: undefined,
+                outcome: "TRANSPORT_ERROR" as AcquisitionOutcome,
+                rawHtml: "",
+                rawText: ""
+              }));
+
+              if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
+                log(`[Naukri] ATS enrichment successful (${atsRes.rawText.length} chars, quality=${atsRes.qualityTier || 'VALID'}, method=${atsRes.extractionMethod}) for ${feedCard.title} @ ${feedCard.company}`);
+                acquisitionRoute = "ATS_ENRICHED";
+                enrichmentStatus = "ENRICHED_SUCCESS";
+                detail = {
+                  fetched: true,
+                  rawHtml: atsRes.rawHtml,
+                  rawText: atsRes.rawText,
+                  fetchDurationMs: atsRes.fetchDurationMs,
+                  httpStatus: atsRes.httpStatus || 200,
+                  finalUrl: feedCard.applyRedirectUrl,
+                };
+                acquisitionAttempts.push({
+                  method: "ATS_HTTP",
+                  url: feedCard.applyRedirectUrl,
+                  timestamp: new Date().toISOString(),
+                  httpStatus: atsRes.httpStatus || 200,
+                  outcome: "SUCCESS",
+                  qualityTier: atsRes.qualityTier || "VALID",
+                  extractionMethod: atsRes.extractionMethod,
+                  details: `Extracted ${atsRes.rawText.length} chars via ${atsRes.extractionMethod}`
+                });
+              } else {
+                log(`[Naukri] External ATS fallback rejected/failed (${atsRes.fetchError || atsRes.outcome}) after native detail failure`);
+                enrichmentStatus = "ENRICHED_FAILED";
+                fallbackRoute = "ORIGINAL_DISCOVERY_PAYLOAD";
+                acquisitionAttempts.push({
+                  method: "ATS_HTTP",
+                  url: feedCard.applyRedirectUrl,
+                  timestamp: new Date().toISOString(),
+                  httpStatus: atsRes.httpStatus,
+                  outcome: atsRes.outcome || "EXTRACTION_FAILURE",
+                  qualityTier: atsRes.qualityTier || "NON_JOB",
+                  extractionMethod: atsRes.extractionMethod,
+                  details: atsRes.fetchError || `Rejected by quality gate (${atsRes.qualityResult?.reasons?.join("; ") || "unsubstantive"})`
+                });
+
+                detail = {
+                  fetched: false,
+                  fetchError: `ATS enrichment failed: ${atsRes.fetchError || atsRes.outcome}`,
+                  rawHtml: feedCard.rawHtml || "",
+                  rawText: feedCard.rawText || "",
+                  fetchDurationMs: 0,
+                  httpStatus: atsRes.httpStatus || 200,
+                  failureClass: atsRes.failureClass,
+                };
+              }
+            }
+
           } else {
           let usedRichDiscovery = false;
           // Invariant (Gate 2): LinkedIn discovery cards are never authoritative full JDs,
@@ -2604,7 +2643,7 @@ export async function processUnit(
             evaluationEvidence: { state: "PENDING" },
             telemetry: { cardExtractMs: 0, detailExtractMs: detail.fetchDurationMs || 0, totalMs: detail.fetchDurationMs || 0 },
           };
-          
+
           writtenSnapshotPath = writeSnapshot(detailedCard);
           if (writtenSnapshotPath) {
             mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: writtenSnapshotPath });
@@ -2907,10 +2946,10 @@ export async function processUnit(
         }
       }
     }
-    
+
     const cardsParsed = cards.length;
     const classified = canonicalDuplicates + ledgerKnown + hardFiltered + identityFailed + integrityFailed + validationFailed + canonicalIngestFailed + novelAccepted + cancelledOrPruned;
-    
+
     if (classified !== cardsParsed) {
       log(`[AccountingInvariantViolation] cardsParsed=${cardsParsed}, classified=${classified} (Duplicates=${canonicalDuplicates}, Ledger=${ledgerKnown}, HardFiltered=${hardFiltered}, IdentityFailed=${identityFailed}, IntegrityFailed=${integrityFailed}, ValidationFailed=${validationFailed}, CanonicalIngestFailed=${canonicalIngestFailed}, NovelAccepted=${novelAccepted}, CancelledPruned=${cancelledOrPruned})`, "warn");
     }
@@ -2922,7 +2961,7 @@ export async function processUnit(
     const duplicates = canonicalDuplicates;
     const rejected = ledgerKnown + hardFiltered + identityFailed + integrityFailed + validationFailed + canonicalIngestFailed;
     const opportunities = novelAccepted;
-    
+
     outcome.detailCount = novelAcquired;
     outcome.opportunities = opportunities;
     outcome.factsCreated = 0; // Enriched downstream
@@ -2932,11 +2971,11 @@ export async function processUnit(
 
     let decision: "CONTINUE" | "STOP" = "CONTINUE";
     let reason = "DiscoveryRateAboveThreshold";
-    
+
     if (unit.definitionId) {
       const minSourceDiscoveryPerPage = 2; // threshold for a source page exposing too few listings
       const maxConsecutiveLowYield = 2; // stop after this many consecutive low-yield pages
-      
+
       // Gate 4: Source discovery yield measures unique valid portal identities exposed by this source work unit
       const uniqueSourceIdentities = new Set<string>();
       for (const card of cards) {
@@ -2951,7 +2990,7 @@ export async function processUnit(
       // must not inherit the coverage lane's low-yield streak.
       const yieldKey = acquisitionSurfaceKey(unit.variant, unit.portal, unit.keyword);
       let streak = mgr.lowYieldStreaks.get(yieldKey) || 0;
-      
+
       if (currentLowYield) {
         streak += 1;
         mgr.lowYieldStreaks.set(yieldKey, streak);
@@ -3123,7 +3162,7 @@ export async function processUnit(
   } finally {
     let terminalStatus: string = outcome.status;
     if (terminalStatus === "completed") terminalStatus = "done";
-    
+
     mgr.updateUnit(unit.id, { status: terminalStatus as any, finishedAt: new Date().toISOString() });
     mgr.journal.append({ type: "unit_done", unitId: unit.id, outcome });
   }
@@ -3162,9 +3201,9 @@ function printAcquisitionTelemetry(mgr: RunController) {
     let cardsSeen = 0;
     let duplicates = 0;
     let stopReason = "Exhausted";
-    
+
     const kw = units[0]?.keyword || defId;
-    
+
     for (const u of units) {
       if (u.status === "done" || u.status === "skipped_empty" || u.status === "failed") pagesCrawled++;
       if (u.decisionRecord) {
@@ -3174,7 +3213,7 @@ function printAcquisitionTelemetry(mgr: RunController) {
           stopReason = u.decisionRecord.reason;
         }
       }
-      
+
       const pStat = portalStats.get(u.portal);
       if (pStat) {
         pStat.pagesAttempted++;
@@ -3185,7 +3224,7 @@ function printAcquisitionTelemetry(mgr: RunController) {
         }
       }
     }
-    
+
     totalCards += cardsSeen;
     totalUnique += (cardsSeen - duplicates);
 
@@ -3203,7 +3242,7 @@ function printAcquisitionTelemetry(mgr: RunController) {
   console.log(`\n============================================================`);
   console.log(`                   PORTAL HEALTH SUMMARY`);
   console.log(`============================================================\n`);
-  
+
   portalStats.forEach((stats, portal) => {
     const avgLatency = stats.pagesAttempted > 0 ? (stats.totalMs / stats.pagesAttempted / 1000).toFixed(1) : "0.0";
     const health = mgr.manifest.portalHealth?.[portal]?.score ?? 100;
@@ -3232,9 +3271,9 @@ function printAcquisitionTelemetry(mgr: RunController) {
 function collectRecords(): unknown[] {
   const records: unknown[] = [];
   const seenJobHash = new Set<string>();
-  
+
   if (!fs.existsSync(EXTRACTION_DIR)) return records;
-  
+
   const files = fs.readdirSync(EXTRACTION_DIR);
   for (const f of files) {
     if (!f.endsWith(".json")) continue;
@@ -3244,7 +3283,7 @@ function collectRecords(): unknown[] {
       if (seenJobHash.has(parsed.jobHash)) continue;
       seenJobHash.add(parsed.jobHash);
       records.push(parsed);
-    } catch (err: any) { 
+    } catch (err: any) {
       console.error(`collectRecords error for ${f}:`, err);
     }
   }
@@ -3252,9 +3291,9 @@ function collectRecords(): unknown[] {
 }
 
 // Execute if run directly from the CLI
-const isMainModule = typeof process !== 'undefined' && 
-  process.argv && 
-  process.argv.length >= 2 && 
+const isMainModule = typeof process !== 'undefined' &&
+  process.argv &&
+  process.argv.length >= 2 &&
   (process.argv[1].endsWith('scrape.ts') || process.argv[1].endsWith('scrape')) &&
   process.env.npm_lifecycle_event !== 'dev' &&
   !process.argv[1].includes('node_modules');

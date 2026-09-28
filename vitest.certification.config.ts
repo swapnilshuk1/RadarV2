@@ -3,9 +3,8 @@ import path from "node:path";
 import { certificationTestFiles } from "./scripts/certification/manifest";
 
 const configuredWorkers = Number(process.env.CERTIFY_MAX_WORKERS ?? "4");
-const maxWorkers = Number.isSafeInteger(configuredWorkers) && configuredWorkers > 0
-  ? configuredWorkers
-  : 4;
+const maxWorkers =
+  Number.isSafeInteger(configuredWorkers) && configuredWorkers > 0 ? configuredWorkers : 4;
 
 /**
  * The production certification suite. Its exact inclusion set is derived from

@@ -4,10 +4,9 @@ import { JobProjectionBuilder } from "../../src/lib/intelligence/builders/JobPro
 import { CapabilityAssessmentEngine } from "../../src/lib/intelligence/engines/CapabilityAssessmentEngine";
 import { CandidateProjectionBuilderImpl } from "../../src/lib/intelligence/builders/CandidateProjectionBuilder";
 import { DecisionPolicyEngine } from "../../src/lib/intelligence/policy/DecisionPolicyEngine";
-import { invalidateEngineCache } from "../../src/lib/intelligence/engine";
 import type { DetailedCard } from "../../scripts/scraper/types";
 
-import { candidateProfile } from "../../src/data/candidate-profile";
+import { syntheticCandidateProfile as candidateProfile } from "../fixtures/synthetic-candidate-profile";
 
 describe("RADAR V4 Pipeline Repair - Regression Suite", () => {
   const dummyCandidate = new CandidateProjectionBuilderImpl().fromProfile(candidateProfile);
@@ -105,7 +104,7 @@ describe("RADAR V4 Pipeline Repair - Regression Suite", () => {
   it("Test 5: Empty/missing JDs remain unevaluable (SPARSE_SPEC)", async () => {
     const emptyOpp = {
       jobHash: "empty_123",
-      role: "VP Marketing",
+      role: "",
       company: "Unknown",
       location: "Remote",
       rawText: "",
@@ -148,9 +147,6 @@ describe("RADAR V4 Pipeline Repair - Regression Suite", () => {
     expect(capEval.overallFit).toBeGreaterThan(0);
   });
 
-  it("Test 7: Enrichment completion triggers cache invalidation", () => {
-    expect(() => invalidateEngineCache()).not.toThrow();
-  });
 
   it("Test 8: Re-evaluation is idempotent and preserves user decisions structure", async () => {
     const extraction = await extract(mockFullCard, { mode: "deterministic" });

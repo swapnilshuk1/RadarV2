@@ -1,7 +1,9 @@
 export interface IntentActivationResponse {
   success?: boolean;
   activationState?: "ACTIVE" | "PENDING_ACTIVATION";
+  unchanged?: boolean;
   activationError?: string;
+  message?: string;
 }
 
 export function resolveIntentActivationPresentation(response: IntentActivationResponse): {
@@ -11,7 +13,12 @@ export function resolveIntentActivationPresentation(response: IntentActivationRe
   message: string;
 } {
   if (response.success && response.activationState === "ACTIVE") {
-    return { persisted: true, activationPending: false, navigateHome: true, message: "Career intent saved and canonical recommendation activation is current." };
+    return {
+      persisted: true,
+      activationPending: false,
+      navigateHome: !response.unchanged,
+      message: response.message || "Career intent saved and canonical recommendation activation is current.",
+    };
   }
   if (response.success && response.activationState === "PENDING_ACTIVATION") {
     return {

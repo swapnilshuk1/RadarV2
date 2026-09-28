@@ -1,7 +1,6 @@
 import type { DatabaseAdapter } from "../../../src/data/database/adapter";
 import { getDatabaseAdapter } from "../../../src/data/database";
 import crypto from "crypto";
-import { stagedContextPredicate } from '../../../src/lib/intelligence/evaluationQueuePolicy';
 import { failEvaluationDependency } from '../../../src/lib/intelligence/evaluationDependency';
 
 export type JobStatus = "PENDING" | "LEASED" | "RUNNING" | "FAILED" | "RETRY" | "COMPLETE";
@@ -330,16 +329,33 @@ export class EnrichmentQueue {
     return leased;
   }
 
-  public async markRunning(jobId: string): Promise<void> {
-    await this.db.execute(
-      `UPDATE enrichment_jobs SET status = 'RUNNING', started_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [jobId]
+  public async markRunning(jobId: string, workerId: string, leaseDurationSeconds = 300): Promise<void> {
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + leaseDurationSeconds * 1000).toISOString();
+    const result = await this.db.execute(
+      `UPDATE enrichment_jobs
+       SET status = 'RUNNING', started_at = COALESCE(started_at, CURRENT_TIMESTAMP), lease_expires_at = ?
+       WHERE id = ? AND status = 'LEASED' AND lease_owner = ? AND lease_expires_at > ?`,
+      [expiresAt, jobId, workerId, now]
     );
-    await this.logEvent(jobId, "LLM_STARTED");
+    if (result.rowsAffected !== 1) throw new Error("ENRICHMENT_LEASE_LOST");
+    await this.logEvent(jobId, "LLM_STARTED", JSON.stringify({ workerId, expiresAt }));
   }
 
-  public async markCompleted(jobId: string, lastError?: string | null): Promise<void> {
-    await this.db.execute(
+  public async heartbeat(jobId: string, workerId: string, leaseDurationSeconds = 300): Promise<void> {
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + leaseDurationSeconds * 1000).toISOString();
+    const result = await this.db.execute(
+      `UPDATE enrichment_jobs SET lease_expires_at = ?
+       WHERE id = ? AND status IN ('LEASED','RUNNING') AND lease_owner = ? AND lease_expires_at > ?`,
+      [expiresAt, jobId, workerId, now]
+    );
+    if (result.rowsAffected !== 1) throw new Error("ENRICHMENT_LEASE_LOST");
+  }
+
+  public async markCompleted(jobId: string, workerId: string, lastError?: string | null): Promise<void> {
+    const now = new Date().toISOString();
+    const result = await this.db.execute(
       `UPDATE enrichment_jobs 
       SET status = 'COMPLETE', 
           completed_at = CURRENT_TIMESTAMP,
@@ -347,9 +363,10 @@ export class EnrichmentQueue {
           failure_type = NULL,
           lease_owner = NULL,
           lease_expires_at = NULL
-      WHERE id = ?`,
-      [lastError || null, jobId]
+      WHERE id = ? AND status = 'RUNNING' AND lease_owner = ? AND lease_expires_at > ?`,
+      [lastError || null, jobId, workerId, now]
     );
+    if (result.rowsAffected !== 1) throw new Error("ENRICHMENT_LEASE_LOST");
     await this.logEvent(jobId, "JOB_FINISHED", lastError || undefined);
 
     // Release dependent evaluation requirements: WAITING_ENRICHMENT -> READY and create pending evaluation_jobs
@@ -408,10 +425,10 @@ export class EnrichmentQueue {
         `INSERT INTO evaluation_jobs (
            id, tenant_id, person_id, search_plan_id, canonical_job_id,
            opportunity_version, evaluation_context_fingerprint, status, attempts, created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN EXISTS (SELECT 1 FROM evaluation_contexts ec WHERE ec.context_fingerprint = ? AND ${stagedContextPredicate}) THEN 'staged_pending' ELSE 'pending' END, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'staged_pending', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
          ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
          DO UPDATE SET 
-           status = CASE WHEN evaluation_jobs.status = 'waiting_enrichment' THEN 'pending' WHEN evaluation_jobs.status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE evaluation_jobs.status END,
+           status = CASE WHEN evaluation_jobs.status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE evaluation_jobs.status END,
            updated_at = CURRENT_TIMESTAMP`,
         [
           evalJobId,
@@ -420,7 +437,6 @@ export class EnrichmentQueue {
           req.search_plan_id,
           req.canonical_job_id,
           req.opportunity_version,
-          req.evaluation_context_fingerprint,
           req.evaluation_context_fingerprint,
         ]
       );
@@ -449,8 +465,9 @@ export class EnrichmentQueue {
     return changed;
   }
 
-  public async markRetry(jobId: string, failureType: FailureType, errorMsg: string, nextRetryAt: string): Promise<void> {
-    await this.db.execute(
+  public async markRetry(jobId: string, workerId: string, failureType: FailureType, errorMsg: string, nextRetryAt: string): Promise<void> {
+    const now = new Date().toISOString();
+    const result = await this.db.execute(
       `UPDATE enrichment_jobs 
       SET status = 'RETRY', 
           failure_type = ?, 
@@ -459,16 +476,18 @@ export class EnrichmentQueue {
           attempts = attempts + 1,
           lease_owner = NULL,
           lease_expires_at = NULL
-      WHERE id = ?`,
-      [failureType, errorMsg, nextRetryAt, jobId]
+      WHERE id = ? AND status IN ('LEASED','RUNNING') AND lease_owner = ? AND lease_expires_at > ?`,
+      [failureType, errorMsg, nextRetryAt, jobId, workerId, now]
     );
+    if (result.rowsAffected !== 1) throw new Error("ENRICHMENT_LEASE_LOST");
 
     const eventType = failureType === "RATE_LIMIT" ? "LLM_RATE_LIMITED" : "RETRY_SCHEDULED";
     await this.logEvent(jobId, eventType, JSON.stringify({ errorMsg, nextRetryAt }));
   }
 
-  public async markFailed(jobId: string, failureType: FailureType, errorMsg: string): Promise<void> {
-    await this.db.execute(
+  public async markFailed(jobId: string, workerId: string, failureType: FailureType, errorMsg: string): Promise<void> {
+    const now = new Date().toISOString();
+    const result = await this.db.execute(
       `UPDATE enrichment_jobs 
       SET status = 'FAILED', 
           completed_at = CURRENT_TIMESTAMP,
@@ -477,9 +496,10 @@ export class EnrichmentQueue {
           attempts = attempts + 1,
           lease_owner = NULL,
           lease_expires_at = NULL
-      WHERE id = ?`,
-      [failureType, errorMsg, jobId]
+      WHERE id = ? AND status IN ('LEASED','RUNNING') AND lease_owner = ? AND lease_expires_at > ?`,
+      [failureType, errorMsg, jobId, workerId, now]
     );
+    if (result.rowsAffected !== 1) throw new Error("ENRICHMENT_LEASE_LOST");
     await this.logEvent(jobId, "JOB_FAILED", JSON.stringify({ errorMsg }));
 
     // Fail-Closed: mark dependent evaluation requirements FAILED
@@ -569,14 +589,14 @@ export class EnrichmentQueue {
         for (const requirement of requirements) {
           await tx.execute(
             `UPDATE evaluation_jobs
-             SET status = CASE WHEN status = 'staged_dead_letter' THEN 'staged_waiting_enrichment' ELSE 'waiting_enrichment' END,
+             SET status = 'staged_waiting_enrichment',
                  attempts = 0, last_error = NULL, completed_at = NULL,
                  locked_by = NULL, lease_token = NULL, locked_at = NULL,
                  next_attempt_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
              WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?
                AND canonical_job_id = ? AND opportunity_version = ?
                AND evaluation_context_fingerprint = ?
-               AND status IN ('dead_letter', 'staged_dead_letter')`,
+               AND status = 'staged_dead_letter'`,
             [
               requirement.tenant_id,
               requirement.person_id,

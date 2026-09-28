@@ -6,7 +6,6 @@
  * from the evaluation execution logic.
  */
 
-import { invalidateEngineCache } from "./engine";
 import { invalidateCandidateDossierCache } from "./cip";
 
 export type EvaluationTriggerEvent =
@@ -39,7 +38,6 @@ export class EvaluationCoordinator {
       case "INTENT_UPDATED":
       case "ONTOLOGY_UPGRADED":
         // Invalidate in-memory caches to guarantee fresh evaluation
-        invalidateEngineCache();
         invalidateCandidateDossierCache();
 
         // Cache invalidation is intentionally not reevaluation. The write

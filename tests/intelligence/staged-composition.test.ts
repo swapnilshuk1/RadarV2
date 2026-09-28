@@ -7,11 +7,12 @@ import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { durableDossierModel } from "../../src/lib/intelligence/staged/DurableDossierModel";
 import { dossier as fixtureDossier, stagedEvaluation } from "../fixtures/staged-rich-dossier";
 import { reviewMemo } from "../../src/dossier/memo-review";
-import { memoInputPacket, validateMemoCopy } from "../../src/dossier/composition";
+import { assignedMemoPointsFor, memoInputPacket, validateMemoCopy } from "../../src/dossier/composition";
 import { compositionSchema } from "../../src/dossier/contracts";
 import { allPassages } from "../../src/dossier/grounding";
 import { propose } from "../../src/dossier/evidence";
 import { assertFactualReviewProvenance } from "../../src/dossier/factual-review-integrity";
+import { validateTargetedPlanRepair } from "../../src/dossier/memo-integrity";
 import {
   bindStagedEditorial,
   composeStagedDossier,
@@ -182,6 +183,91 @@ const accept = (input: any) => ({
   defects: [],
   suggestions: [],
 });
+describe("targeted memo-plan repair", () => {
+  it("adds an exact missing requirement without rewriting existing plan content", () => {
+    const previous = structuredClone(seed.narrativePlan);
+    const next = structuredClone(previous);
+    const fit = next.memoPoints!.find((point) => point.section === "candidateFit")!;
+    fit.requirementIds = [...fit.requirementIds, "REQ-002"];
+
+    expect(() =>
+      validateTargetedPlanRepair(previous, next, {
+        sections: ["candidateFit"],
+        requirementIds: ["REQ-002"],
+        resolutionFields: [],
+        assignments: [
+          { kind: "requirement", id: "REQ-002", sections: ["candidateFit"] },
+        ],
+        allowedRequirementIds: ["REQ-001", "REQ-002"],
+        allowedResolutionFields: [],
+      }),
+    ).not.toThrow();
+  });
+
+  it("adds an exact missing resolution field only in an allowed section", () => {
+    const previous = structuredClone(seed.narrativePlan);
+    const next = structuredClone(previous);
+    const conditions = next.memoPoints!.find(
+      (point) => point.section === "decisionConditions",
+    )!;
+    conditions.resolutionFields = [...conditions.resolutionFields, "reportingLine"];
+
+    expect(() =>
+      validateTargetedPlanRepair(previous, next, {
+        sections: ["decisionConditions"],
+        requirementIds: [],
+        resolutionFields: ["reportingLine"],
+        assignments: [
+          {
+            kind: "resolutionField",
+            id: "reportingLine",
+            sections: ["decisionConditions"],
+          },
+        ],
+        allowedRequirementIds: ["REQ-001"],
+        allowedResolutionFields: ["reportingLine"],
+      }),
+    ).not.toThrow();
+  });
+
+  it("rejects unrelated rewrites and unrelated reference additions", () => {
+    const previous = structuredClone(seed.narrativePlan);
+
+    const rewritten = structuredClone(previous);
+    rewritten.memoPoints![0].point = "Rewrite the existing plan";
+    expect(() =>
+      validateTargetedPlanRepair(previous, rewritten, {
+        sections: ["candidateFit"],
+        requirementIds: ["REQ-002"],
+        resolutionFields: [],
+        assignments: [
+          { kind: "requirement", id: "REQ-002", sections: ["candidateFit"] },
+        ],
+        allowedRequirementIds: ["REQ-001", "REQ-002"],
+        allowedResolutionFields: [],
+      }),
+    ).toThrow("MEMO_PLAN_REPAIR_REWROTE_POINT");
+
+    const unrelated = structuredClone(previous);
+    unrelated.memoPoints![0].requirementIds = [
+      ...unrelated.memoPoints![0].requirementIds,
+      "REQ-UNRELATED",
+    ];
+    expect(() =>
+      validateTargetedPlanRepair(previous, unrelated, {
+        sections: ["candidateFit"],
+        requirementIds: ["REQ-002"],
+        resolutionFields: [],
+        assignments: [
+          { kind: "requirement", id: "REQ-002", sections: ["candidateFit"] },
+        ],
+        allowedRequirementIds: ["REQ-001", "REQ-002", "REQ-UNRELATED"],
+        allowedResolutionFields: [],
+      }),
+    ).toThrow("MEMO_PLAN_REPAIR_ADDED_UNREQUESTED_REQUIREMENT");
+  });
+});
+
 describe("staged dossier editorial boundary", () => {
   it("carries earlier repair constraints forward instead of oscillating between defects", async () => {
     let calls = 0;
@@ -302,13 +388,226 @@ describe("staged dossier editorial boundary", () => {
       (await db.one<{ n: number }>("SELECT COUNT(*) n FROM dossier_model_checkpoints"))!.n,
     ).toBe(1);
   });
+  it("injects application-owned memo points and row references without a repair call", async () => {
+    const proposal = draft();
+    delete proposal.narrativePlan.memoPoints;
+    proposal.memo.candidateFit.forEach((row) => {
+      row.requirementIds = [];
+    });
+    proposal.memo.decisionConditions.forEach((row) => {
+      row.requirementIds = [];
+      row.resolutionFields = [];
+    });
+    const model = {
+      id: "memo-application-skeleton",
+      version: "1",
+      generate: vi.fn(async () => structuredClone(proposal)),
+    };
+
+    const result = await composeStagedDraft(frozen, stagedEvaluation, model);
+    expect(model.generate).toHaveBeenCalledTimes(1);
+    expect(result.narrativePlan.memoPoints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "APP-FIT-1", section: "candidateFit", requirementIds: ["REQ-001"] }),
+        expect.objectContaining({ id: "APP-COND-1", section: "decisionConditions", requirementIds: ["REQ-001"] }),
+      ]),
+    );
+    expect(result.candidateFit.flatMap((row) => row.requirementIds)).toEqual(["REQ-001"]);
+    expect(result.decisionConditions.flatMap((row) => row.requirementIds)).toEqual(["REQ-001"]);
+  });
+
+  it("owns row references when prose grouping differs from the accepted decision bundles", async () => {
+    const multi = structuredClone(stagedEvaluation) as any;
+    const roleRequirement = {
+      ...multi.trace.role.requirements[0],
+      id: "REQ-002",
+      requirement: "Strategic leadership",
+      reasoning: "Leadership is material to the role.",
+    };
+    const mappedRequirement = {
+      ...multi.trace.requirements[0],
+      id: "REQ-002",
+      requirement: "Strategic leadership",
+      status: "DIRECT",
+      candidateClaimIds: ["CANDIDATE-1-1"],
+      unsupportedAspects: [],
+      mappingReasoning: "The supplied candidate evidence supports leadership precedent.",
+    };
+    multi.trace.role.requirements.push(roleRequirement);
+    multi.trace.requirements.push(mappedRequirement);
+    multi.decision.decisionHinges = [
+      { requirementIds: ["REQ-001"], resolutionFields: [] },
+      { requirementIds: ["REQ-002"], resolutionFields: ["reportingLine"] },
+    ];
+    multi.trace.decision = structuredClone(multi.decision);
+
+    const proposal = draft();
+    const baseFit = proposal.memo.candidateFit[0];
+    proposal.memo.candidateFit = [
+      {
+        ...structuredClone(baseFit),
+        label: "Growth delivery",
+        requirementIds: [],
+        assessment: { ...structuredClone(baseFit.assessment), text: "Your evidence supports hands-on growth delivery." },
+      },
+      {
+        ...structuredClone(baseFit),
+        label: "Strategic leadership",
+        requirementIds: [],
+        assessment: { ...structuredClone(baseFit.assessment), text: "Your evidence also supports strategic leadership." },
+      },
+      {
+        ...structuredClone(baseFit),
+        label: "Scope tension",
+        requirementIds: [],
+        assessment: { ...structuredClone(baseFit.assessment), text: "The role still warrants a scope discussion." },
+      },
+    ];
+    proposal.memo.decisionConditions = [{
+      ...structuredClone(proposal.memo.decisionConditions[0]),
+      requirementIds: [],
+      resolutionFields: [],
+      question: {
+        ...structuredClone(proposal.memo.decisionConditions[0].question),
+        text: "How does reporting authority affect the growth and leadership mandate?",
+      },
+    }];
+    delete proposal.narrativePlan.memoPoints;
+
+    const model = {
+      id: "memo-row-grouping",
+      version: "1",
+      generate: vi.fn(async () => structuredClone(proposal)),
+    };
+
+    const result = await composeStagedDraft(frozen, multi, model);
+    expect(model.generate).toHaveBeenCalledTimes(1);
+    expect(new Set(result.candidateFit.flatMap((row) => row.requirementIds))).toEqual(
+      new Set(["REQ-001", "REQ-002"]),
+    );
+    expect(new Set(result.decisionConditions.flatMap((row) => row.requirementIds))).toEqual(
+      new Set(["REQ-001", "REQ-002"]),
+    );
+    expect(new Set(result.decisionConditions.flatMap((row) => row.resolutionFields))).toEqual(
+      new Set(["reportingLine"]),
+    );
+  });
+
+  it("groups directly evidenced requirements by executive meaning instead of one DIRECT bucket", () => {
+    const staged = structuredClone(stagedEvaluation) as any;
+    const baseRole = staged.trace.role.requirements[0];
+    const baseMapped = staged.trace.requirements[0];
+    staged.trace.role.requirements = [
+      { ...baseRole, id: "REQ-001", requirement: "Hands-on growth execution", reasoning: "Own campaign execution." },
+      { ...baseRole, id: "REQ-002", requirement: "Lead and build a cross-functional team", reasoning: "People leadership is central." },
+      { ...baseRole, id: "REQ-003", requirement: "Own revenue and commercial budget", reasoning: "Commercial ownership is central." },
+    ];
+    staged.trace.requirements = [
+      { ...baseMapped, id: "REQ-001", status: "DIRECT", requirement: "Hands-on growth execution", reasoning: "Own campaign execution.", mappingReasoning: "Direct execution evidence." },
+      { ...baseMapped, id: "REQ-002", status: "DIRECT", requirement: "Lead and build a cross-functional team", reasoning: "People leadership is central.", mappingReasoning: "Direct leadership evidence." },
+      { ...baseMapped, id: "REQ-003", status: "DIRECT", requirement: "Own revenue and commercial budget", reasoning: "Commercial ownership is central.", mappingReasoning: "Direct commercial evidence." },
+    ];
+
+    const points = assignedMemoPointsFor(frozen, staged).filter((point) => point.section === "candidateFit");
+    expect(points).toHaveLength(3);
+    expect(points.map((point) => point.point)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("Functional capability fit"),
+        expect.stringContaining("Leadership and authority fit"),
+        expect.stringContaining("Commercial and scale fit"),
+      ]),
+    );
+    expect(new Set(points.flatMap((point) => point.requirementIds))).toEqual(
+      new Set(["REQ-001", "REQ-002", "REQ-003"]),
+    );
+  });
+
+  it("splits one compound decision hinge into executive decision themes", () => {
+    const staged = structuredClone(stagedEvaluation) as any;
+    const baseResolution = staged.trace.resolutions[0];
+    staged.trace.resolutions = [
+      { ...baseResolution, field: "reportingLine", question: "Who does the role report to?" },
+      { ...baseResolution, field: "compensation", question: "What is the compensation structure?" },
+      { ...baseResolution, field: "geography", question: "What geography must the role cover?" },
+    ];
+    staged.decision.decisionHinges = [{
+      requirementIds: [],
+      resolutionFields: ["reportingLine", "compensation", "geography"],
+    }];
+
+    const points = assignedMemoPointsFor(frozen, staged).filter((point) => point.section === "decisionConditions");
+    expect(points).toHaveLength(3);
+    expect(points.map((point) => point.resolutionFields)).toEqual(
+      expect.arrayContaining([
+        ["reportingLine"],
+        ["compensation"],
+        ["geography"],
+      ]),
+    );
+  });
+
+  it("drops duplicate optional preparation suggestions without paying for a repair call", async () => {
+    const proposal = draft();
+    proposal.memo.approach.resumeNarrative = [
+      structuredClone(proposal.memo.approach.opening),
+      structuredClone(proposal.memo.approach.opening),
+    ];
+    let calls = 0;
+    const writer = {
+      id: "memo-preparation-normalizer",
+      version: "1",
+      async generate() {
+        calls++;
+        return structuredClone(proposal);
+      },
+    };
+
+    const result = await composeStagedDraft(frozen, stagedEvaluation, writer);
+    expect(calls).toBe(1);
+    expect(result.approach.resumeNarrative).toHaveLength(0);
+  });
+
+  it("does not persist semantically rejected memo responses across queue retries", async () => {
+    const db = new SqliteAdapter(new Database(":memory:"));
+    await setupLineageTestFixture(db);
+    let repaired = false;
+    let calls = 0;
+    const rawModel = {
+      id: "memo-semantic-retry",
+      version: "1",
+      async generate() {
+        calls++;
+        if (repaired) return draft();
+        const invalid = draft();
+        invalid.memo.candidateFit = [];
+        return invalid;
+      },
+    };
+    const model = durableDossierModel(db, "memo-semantic-retry-scope", rawModel);
+
+    await expect(composeStagedDraft(frozen, stagedEvaluation, model)).rejects.toThrow();
+    expect(calls).toBe(4);
+    expect(
+      (await db.one<{ n: number }>("SELECT COUNT(*) n FROM dossier_model_checkpoints"))!.n,
+    ).toBe(0);
+
+    repaired = true;
+    const beforeRetry = calls;
+    const result = await composeStagedDraft(frozen, stagedEvaluation, model);
+    expect(calls).toBe(beforeRetry + 1);
+    expect(result.narrativePlan.memoPoints!.some((point) => point.section === "candidateFit")).toBe(true);
+    expect(
+      (await db.one<{ n: number }>("SELECT COUNT(*) n FROM dossier_model_checkpoints"))!.n,
+    ).toBe(1);
+  });
+
   it("pauses on reviewer infrastructure failure without exposing provider bodies", async () => {
     const reviewer = createGeminiFactualReviewModel({
       projectId: "test-project",
       token: async () => "private-token",
       request: async (_url, options) => {
         expect(JSON.parse(options!.body as string).generationConfig.thinkingConfig).toEqual({
-          thinkingLevel: "MEDIUM",
+          thinkingLevel: "LOW",
         });
         expect(JSON.parse(options!.body as string).generationConfig.maxOutputTokens).toBe(16384);
         return new Response("sensitive provider response", { status: 403 });
@@ -520,6 +819,30 @@ describe("staged dossier editorial boundary", () => {
     expect(result.canonicalDecisionTrace).toEqual(stagedEvaluation.trace);
     assertFactualReviewProvenance(result);
   });
+  it("binds review receipts to the persisted claim-backed source lineage", async () => {
+    const input = structuredClone(frozen);
+    input.sources.push({
+      id: "unused-context",
+      plane: "CONTEXT",
+      title: "Unused context",
+      locator: "context:unused",
+      text: "No canonical claim survived from this source.",
+      capturedAt: "2026-01-01T00:00:00.000Z",
+      attribution: "INDEPENDENT",
+    });
+    const writer = { id: "lineage-writer", version: "1", generate: vi.fn(async () => draft()) };
+    const reviewer = {
+      id: "lineage-reviewer",
+      version: "1",
+      generate: vi.fn(async (_i: string, reviewInput: any) => accept(reviewInput)),
+    };
+
+    const result = await composeStagedDossier(input, stagedEvaluation, writer, reviewer);
+
+    expect(result.evidence.lineage.map((source) => source.id)).not.toContain("unused-context");
+    expect(() => assertFactualReviewProvenance(result)).not.toThrow();
+  });
+
   it("publishes a draft without a reviewer and later reviews that exact draft without rewriting", async () => {
     const writer = { id: "writer", version: "1", generate: vi.fn(async () => draft()) };
     const pending = await composeStagedDraft(frozen, stagedEvaluation, writer);
@@ -648,6 +971,29 @@ describe("staged dossier editorial boundary", () => {
       await reviewMemo(reviewer, frozen, stagedEvaluation, research(), draft().memo, accepted),
     ).toHaveLength(6);
   });
+  it("repairs reviewer bookkeeping from the previous review instead of re-authoring blind", async () => {
+    let calls = 0;
+    const reviewer = {
+      id: "review-bookkeeping-repair",
+      version: "1",
+      generate: vi.fn(async (_i: string, input: any) => {
+        calls++;
+        if (calls === 1) {
+          const first: any = accept(input);
+          first.acceptedPassageIds.pop();
+          return first;
+        }
+        expect(input.previousReview).toBeDefined();
+        expect(input.reviewRepair).toContain("REVIEW_PASSAGE_COVERAGE_INCOMPLETE");
+        return accept(input);
+      }),
+    };
+    await expect(
+      reviewMemo(reviewer, frozen, stagedEvaluation, research(), draft().memo),
+    ).resolves.toHaveLength(6);
+    expect(reviewer.generate).toHaveBeenCalledTimes(2);
+  });
+
   it.each(["missing", "duplicate", "invented", "contradictory"])(
     "rejects %s reviewer identities without accepting a receipt",
     async (mode) => {
@@ -720,7 +1066,9 @@ describe("staged dossier editorial boundary", () => {
   it("enforces memo budgets without truncating the returned model prose", () => {
     const value = draft().memo;
     for (const passage of allPassages(value)) passage.text = Array(80).fill("word").join(" ");
-    expect(() => validateMemoCopy(value, research(), stagedEvaluation)).toThrow("650");
+    expect(() => validateMemoCopy(value, research(), stagedEvaluation)).toThrow(
+      /exceeds 650; remove at least \d+ words and target 630 or fewer/,
+    );
     expect(value.executiveThesis.text.split(" ")).toHaveLength(80);
   });
   it("backs off consecutive capacity failures with one wire request per attempt", async () => {
@@ -764,7 +1112,7 @@ describe("staged dossier editorial boundary", () => {
     ).rejects.toThrow("Unavailable");
     expect(writer.generate).toHaveBeenCalledTimes(1);
   });
-  it("repairs missing career-capital plan coverage together with the affected memo sections", async () => {
+  it("injects material career-capital plan coverage without rewriting memo prose", async () => {
     const material = {
       material: true,
       candidateClaimIds: [],
@@ -776,56 +1124,72 @@ describe("staged dossier editorial boundary", () => {
     stagedWithCareer.trace.decision.careerCapital.authority = material;
 
     const initial = draft();
-    const repaired = draft();
-    repaired.narrativePlan.memoPoints!.push({
-      id: "career-reporting-line",
-      section: "opportunityValue",
-      point: "Clarify reporting line before judging the authority step-up.",
-      claimIds: ["JD-1-1"],
-      requirementIds: [],
-      resolutionFields: ["reportingLine"],
-    });
-    repaired.memo.opportunityValue = repaired.memo.opportunityValue.map((passage, index) =>
-      index === 0
-        ? { ...passage, text: "The reporting line determines whether the role creates a meaningful authority step-up." }
-        : passage,
-    );
-
     let calls = 0;
     const writer = {
-      id: "career-coverage-repair",
+      id: "career-coverage-application-owned",
       version: "1",
-      async generate(_instruction: string, input: any) {
+      async generate() {
         calls++;
-        if (calls === 1) return initial;
-        expect(input.repair).toContain("MEMO_PLAN_CAREER_COVERAGE");
-        expect(input.repairSections).toEqual(
-          expect.arrayContaining(["opportunityValue", "decisionConditions"]),
-        );
-        expect(input.repairEditorial).toBe(true);
-        return {
-          rationale: repaired.rationale,
-          narrativePlan: repaired.narrativePlan,
-          memo: {
-            opportunityValue: repaired.memo.opportunityValue,
-            decisionConditions: repaired.memo.decisionConditions,
-          },
-        };
+        return initial;
       },
     };
 
     const result = await composeStagedDraft(frozen, stagedWithCareer, writer);
-    expect(calls).toBe(2);
+    expect(calls).toBe(1);
     expect(result.narrativePlan.memoPoints).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: "career-reporting-line",
+          id: "APP-CAREER-1",
           section: "opportunityValue",
           resolutionFields: ["reportingLine"],
         }),
       ]),
     );
-    expect(result.opportunityValue[0].text).toContain("reporting line");
+    expect(result.opportunityValue).toEqual(initial.memo.opportunityValue);
+  });
+
+  it("injects missing requirement coverage into plan and fit rows in one writer call", async () => {
+    const stagedWithRequirement = structuredClone(stagedEvaluation) as any;
+    const roleRequirement = structuredClone(stagedWithRequirement.trace.role.requirements[0]);
+    const mappedRequirement = structuredClone(stagedWithRequirement.trace.requirements[0]);
+    stagedWithRequirement.trace.role.requirements.push({
+      ...roleRequirement,
+      id: "REQ-002",
+      requirement: "Enterprise leadership",
+    });
+    stagedWithRequirement.trace.requirements.push({
+      ...mappedRequirement,
+      id: "REQ-002",
+      requirement: "Enterprise leadership",
+      screeningSupportQuoteIds: ["REQ-002:Q1"],
+    });
+
+    const initial = draft();
+    let calls = 0;
+    const writer = {
+      id: "requirement-coverage-application-owned",
+      version: "1",
+      async generate() {
+        calls++;
+        return initial;
+      },
+    };
+
+    const result = await composeStagedDraft(frozen, stagedWithRequirement, writer);
+    expect(calls).toBe(1);
+    expect(
+      result.narrativePlan.memoPoints!.some(
+        (point) =>
+          point.section === "candidateFit" &&
+          point.requirementIds.includes("REQ-001") &&
+          point.requirementIds.includes("REQ-002"),
+      ),
+    ).toBe(true);
+    expect(new Set(result.candidateFit.flatMap((row) => row.requirementIds))).toEqual(
+      new Set(["REQ-001", "REQ-002"]),
+    );
+    expect(result.opportunityValue).toEqual(initial.memo.opportunityValue);
+    expect(result.executiveThesis).toEqual(initial.memo.executiveThesis);
   });
 
   it("returns plan and copy defects together before paying for review", async () => {

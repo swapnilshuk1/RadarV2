@@ -33,25 +33,21 @@ These are executable operations, not inspection-only commands. Select an isolate
 local database for proof; obtain approval before production execution. Supply
 explicit person/profile/context scope rather than relying on selection defaults.
 
-| Script | Responsibility and flag syntax |
+| Entry point / Command | Responsibility and syntax |
 | --- | --- |
-| `scripts/backfill-staged-evaluations.ts` | Create/bind the current context and enqueue unscheduled work. Space-separated flags: `--person-id <id> --profile-version <version> --limit <n> --ready-only`; `--dry-run` previews selection. |
-| `scripts/recover-missing-enrichment.ts` | Historical v6-only CLI: its scope query requires `staged-v6`. `--context=<fingerprint> --limit=<n>` previews; `--execute --worker-host=<hostname>` mutates. Do not use it as a v8 recovery command. |
-| `scripts/process-staged-evaluation-jobs.ts` | Process durable work with `--context=<fingerprint> --max-jobs=<n>`; optional `--watch` waits for delayed pending/processing work. |
-| `scripts/compose-staged-dossiers.ts` | Compose with `--context=<fingerprint> --limit=<n>`; `--publish` also publishes; `--publish-only` performs publication without model calls. |
-| `scripts/complete-staged-rollout.ts` | Mutating supervisor requiring `--context=<fingerprint> --expected-active=<fingerprint>`. It recovers, schedules, composes and publishes even without `--activate`; only that flag permits the guarded pointer switch. |
+| `npm run worker:evaluations` | Background evaluation worker (`scripts/run-evaluation-worker.ts`) processing staged evaluation jobs. |
+| `npm run worker:dossiers` | Dossier composition worker (`scripts/run-dossier-composition-worker.ts`) generating rich dossiers. |
+| `npm run worker:reviews` | Dossier review worker (`scripts/run-dossier-review-worker.ts`) processing dossier reviews. |
+| `npm run worker:corpus` | Corpus regeneration worker (`scripts/run-corpus-regeneration-worker.ts`) maintaining semantic corpus health. |
+| `npm run worker:scrape` | Dedicated scraper worker (`scripts/run-scrape-worker.ts`) executing queued scrape runs. |
+| `npm run worker:enrichment` | Enrichment worker (`scripts/enrich.ts`) enriching opportunities with dimension proofs. |
+| `npm run worker:documents` | Document processing worker (`scripts/process-document-jobs.ts`). |
 | `scripts/dossier/preview-staged.ts` | Read-only local dossier preview; `--file=<path>` avoids database/model access. |
+| `npm run db:migrate` | Runs pending database migrations (`scripts/migrate.ts`). |
+| `npm run certify` | Authoritative pre-release certification gate (`scripts/certify.ts`). |
+| `npm run deploy` | Exact-artifact deployment script (`scripts/deploy.ts`). |
 
-`--dry-run` applies to the backfill selector; it is not a global convention across
-scripts. Inspect the implementation before using additional flags. The supervisor
-does not itself replace the enrichment/evaluation workers. Do not pass its or the
-worker's `--watch` option as PM2 filesystem watching.
-
-The shared `MissingEnrichmentRecovery.recoverCompletedDependencies` supports
-v6/v7/v8 and is called by the current supervisor. This does not make the older
-standalone recovery CLI v8-compatible. If v8 work needs missing enrichment to be
-created, establish a scope-correct recovery procedure in the approved execution
-plan; do not change the context version merely to pass that CLI's selector.
+Inspect the implementation before using additional flags. Workers operate against durable queues. Do not pass a worker's `--watch` option as PM2 filesystem watching.
 
 ## Persistence, recovery and visibility
 

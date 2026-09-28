@@ -8,7 +8,7 @@ import { LifestyleAssessmentEngine } from "../../src/lib/intelligence/engines/Li
 import { DecisionPolicyEngine } from "../../src/lib/intelligence/policy/DecisionPolicyEngine";
 import { RequirementEvidenceAdapter } from "../../src/lib/intelligence/semantic/RequirementEvidenceAdapter";
 import { SemanticResolutionEngine } from "../../src/lib/intelligence/semantic/SemanticResolutionEngine";
-import { candidateProfile } from "../../src/data/candidate-profile";
+import { syntheticCandidateProfile as candidateProfile } from "../fixtures/synthetic-candidate-profile";
 import type { Opportunity } from "../../src/domain/entities";
 import type { CandidateProjection } from "../../src/lib/domain/candidate_projection";
 

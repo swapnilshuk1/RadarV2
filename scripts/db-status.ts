@@ -1,5 +1,16 @@
-import { getDatabaseAdapter, getDatabaseTargetIdentity } from "../src/data/database";
-import { getRequiredSchemaStatus } from "../src/data/sqlite/migrations/runner";
+import {
+  closeDatabaseAdapter,
+  getDatabaseAdapter,
+  getDatabaseTargetIdentity,
+} from "../src/data/database";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  getRequiredSchemaStatus,
+  verifyMigrationChecksums,
+  verifyRequiredSchema,
+} from "../src/data/sqlite/migrations/runner";
 
 async function main() {
   const identity = getDatabaseTargetIdentity();
@@ -9,19 +20,31 @@ async function main() {
   console.log(`Database target fingerprint: ${identity.fingerprint}`);
 
   const db = getDatabaseAdapter();
-  const migrations = await db.many<{ migration_name: string }>(
-    "SELECT migration_name FROM _migrations WHERE migration_name IN (?, ?) ORDER BY migration_name",
-    ["037_materialized_evaluation_fingerprint.sql", "038_opportunity_version_category_projection.sql"],
+  const migrationDir = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../src/data/sqlite/migrations",
   );
-  const recorded = new Set(migrations.map((row) => row.migration_name));
+  const migrationHead = fs
+    .readdirSync(migrationDir)
+    .filter((name) => name.endsWith(".sql") && !name.endsWith("_rollback.sql"))
+    .sort()
+    .at(-1);
+  const migrations = await db.many<{ migration_name: string }>(
+    "SELECT migration_name FROM _migrations ORDER BY id ASC",
+  );
   const schema = await getRequiredSchemaStatus(db);
-  console.log(`migration037Recorded: ${recorded.has("037_materialized_evaluation_fingerprint.sql")}`);
-  console.log(`evaluationFingerprintColumnPresent: ${schema.evaluationFingerprintColumnPresent}`);
-  console.log(`migration038Recorded: ${recorded.has("038_opportunity_version_category_projection.sql")}`);
-  console.log(`categoryIdsColumnPresent: ${schema.categoryIdsColumnPresent}`);
+  await verifyMigrationChecksums(db);
+  await verifyRequiredSchema(db);
+  console.log(`Migration head: ${migrationHead ?? "none"}`);
+  console.log(`Applied migration head: ${migrations.at(-1)?.migration_name ?? "none"}`);
+  console.log("Migration checksum integrity: valid");
+  console.log("Required schema: valid");
+  console.log(JSON.stringify(schema));
 }
 
-main().catch((error) => {
-  console.error("Database status failed; application startup must remain blocked.", error);
-  process.exitCode = 1;
-});
+main()
+  .catch((error) => {
+    console.error("Database status failed; application startup must remain blocked.", error);
+    process.exitCode = 1;
+  })
+  .finally(closeDatabaseAdapter);

@@ -1,8 +1,10 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { EvidenceGraph } from "../../../domain/evidence";
+import type { AuthorizedPersonScope } from "../../../lib/security/auth";
 
 export interface CandidateDocumentRecord {
   id: string;
+  tenantId: string;
   personId: string;
   filename: string;
   storageUri: string;
@@ -13,6 +15,22 @@ export interface CandidateDocumentRecord {
   errorMessage?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CandidateDecisionPreferences {
+  desiredNextRoleLevel?: string;
+  careerMove?: "PROGRESSION" | "LATERAL" | "DELIBERATE_RESET" | "FOUNDER" | "PORTFOLIO";
+  leadershipPreference?: "LEADERSHIP" | "PLAYER_COACH" | "INDIVIDUAL_CONTRIBUTOR" | "ANY";
+  minimumTeamSize?: number;
+  minimumCommercialScope?: "FUNCTIONAL" | "BUDGET_OWNERSHIP" | "REVENUE_OWNERSHIP" | "PNL_OWNERSHIP" | "ENTERPRISE";
+  startupStageAppetite?: Array<"ESTABLISHED" | "SCALE_UP" | "EARLY_STAGE" | "PRE_REVENUE">;
+  founderInterest?: "YES" | "NO" | "OPEN";
+  personalCapitalInvestment?: "YES" | "NO" | "OPEN";
+  compensationPreference?: "CASH_PRIORITY" | "BALANCED" | "EQUITY_PRIORITY";
+  timeZoneTolerance?: "LOCAL_HOURS" | "LIMITED_OVERLAP" | "US_HOURS_OK" | "ANY";
+  industriesSought?: string[];
+  industriesAvoided?: string[];
+  nonNegotiables?: string[];
 }
 
 export interface CareerIntentRecord {
@@ -34,19 +52,26 @@ export interface CareerIntentRecord {
   targetTitles: string[];
   preferredWorkModel?: "HYBRID" | "REMOTE" | "ON_SITE" | "ANY";
   travelTolerance?: "HIGH" | "MEDIUM" | "LOW";
+  decisionPreferences?: CandidateDecisionPreferences;
   createdAt?: string;
 }
 
 export class SqliteDocumentStore {
   constructor(private db: DatabaseAdapter) {}
 
-  async saveDocument(doc: CandidateDocumentRecord): Promise<void> {
+  private assertScope(scope: AuthorizedPersonScope, personId: string) {
+    if (scope.personId !== personId) throw new Error("DOCUMENT_SCOPE_PERSON_MISMATCH");
+  }
+
+  async saveDocument(scope: AuthorizedPersonScope, doc: CandidateDocumentRecord): Promise<void> {
+    this.assertScope(scope, doc.personId);
+    if (scope.tenantId !== doc.tenantId) throw new Error("DOCUMENT_SCOPE_TENANT_MISMATCH");
     const result = await this.db.execute(
       `
       INSERT INTO candidate_documents (
-        id, person_id, filename, storage_uri, mime_type, document_hash, status, stage, error_message, created_at, updated_at
+        id, tenant_id, person_id, filename, storage_uri, mime_type, document_hash, status, stage, error_message, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         filename = excluded.filename,
         storage_uri = excluded.storage_uri,
@@ -54,10 +79,11 @@ export class SqliteDocumentStore {
         stage = excluded.stage,
         error_message = excluded.error_message,
         updated_at = excluded.updated_at
-      WHERE candidate_documents.person_id = excluded.person_id
+      WHERE candidate_documents.tenant_id = excluded.tenant_id AND candidate_documents.person_id = excluded.person_id
       `,
       [
         doc.id,
+        scope.tenantId,
         doc.personId,
         doc.filename,
         doc.storageUri,
@@ -75,19 +101,32 @@ export class SqliteDocumentStore {
     }
   }
 
-  async updateDocumentStage(id: string, stage: string, status: CandidateDocumentRecord["status"], errorMessage?: string): Promise<void> {
+  async registerDocumentAndJob(scope: AuthorizedPersonScope, doc: CandidateDocumentRecord, job: { id: string; jobHash: string; payloadJson: string }): Promise<void> {
+    this.assertScope(scope, doc.personId);
+    if (scope.tenantId !== doc.tenantId) throw new Error("DOCUMENT_SCOPE_TENANT_MISMATCH");
+    await this.db.transaction(async (tx) => {
+      const saved = await tx.execute(`INSERT INTO candidate_documents (id, tenant_id, person_id, filename, storage_uri, mime_type, document_hash, status, stage, error_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [doc.id, scope.tenantId, scope.personId, doc.filename, doc.storageUri, doc.mimeType, doc.documentHash, doc.status, doc.stage, doc.errorMessage || null, doc.createdAt, doc.updatedAt]);
+      if (saved.rowsAffected !== 1) throw new Error("DOCUMENT_REGISTRATION_FAILED");
+      const queued = await tx.execute(`INSERT INTO candidate_document_jobs (id, tenant_id, person_id, document_id, job_hash, payload_json, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')`, [job.id, scope.tenantId, scope.personId, doc.id, job.jobHash, job.payloadJson]);
+      if (queued.rowsAffected !== 1) throw new Error("DOCUMENT_JOB_ENQUEUE_FAILED");
+    });
+  }
+
+  async updateDocumentStage(scope: AuthorizedPersonScope, id: string, stage: string, status: CandidateDocumentRecord["status"], errorMessage?: string): Promise<void> {
     const now = new Date().toISOString();
-    await this.db.execute(
-      `UPDATE candidate_documents SET stage = ?, status = ?, error_message = ?, updated_at = ? WHERE id = ?`,
-      [stage, status, errorMessage || null, now, id]
+    const result = await this.db.execute(
+      `UPDATE candidate_documents SET stage = ?, status = ?, error_message = ?, updated_at = ? WHERE id = ? AND tenant_id = ? AND person_id = ?`,
+      [stage, status, errorMessage || null, now, id, scope.tenantId, scope.personId]
     );
+    if (result.rowsAffected !== 1) throw new Error(`DOCUMENT_STAGE_TRANSITION_FAILED: ${id}`);
   }
 
-  async getDocument(id: string): Promise<CandidateDocumentRecord | undefined> {
-    const row = await this.db.one<any>(`SELECT * FROM candidate_documents WHERE id = ?`, [id]);
+  async getDocument(scope: AuthorizedPersonScope, id: string): Promise<CandidateDocumentRecord | undefined> {
+    const row = await this.db.one<any>(`SELECT * FROM candidate_documents WHERE id = ? AND tenant_id = ? AND person_id = ?`, [id, scope.tenantId, scope.personId]);
     if (!row) return undefined;
     return {
       id: row.id,
+      tenantId: row.tenant_id,
       personId: row.person_id,
       filename: row.filename,
       storageUri: row.storage_uri,
@@ -101,14 +140,15 @@ export class SqliteDocumentStore {
     };
   }
 
-  async getLatestDocumentForPerson(personId: string): Promise<CandidateDocumentRecord | undefined> {
+  async getLatestDocumentForPerson(scope: AuthorizedPersonScope): Promise<CandidateDocumentRecord | undefined> {
     const row = await this.db.one<any>(
-      `SELECT * FROM candidate_documents WHERE person_id = ? ORDER BY created_at DESC LIMIT 1`,
-      [personId]
+      `SELECT * FROM candidate_documents WHERE tenant_id = ? AND person_id = ? ORDER BY created_at DESC LIMIT 1`,
+      [scope.tenantId, scope.personId]
     );
     if (!row) return undefined;
     return {
       id: row.id,
+      tenantId: row.tenant_id,
       personId: row.person_id,
       filename: row.filename,
       storageUri: row.storage_uri,
@@ -122,17 +162,19 @@ export class SqliteDocumentStore {
     };
   }
 
-  async saveEvidenceGraph(graph: EvidenceGraph): Promise<void> {
+  async saveEvidenceGraph(scope: AuthorizedPersonScope, graph: EvidenceGraph): Promise<void> {
+    this.assertScope(scope, graph.personId);
     const graphJson = JSON.stringify(graph);
     await this.db.execute(
       `
       INSERT INTO evidence_graphs (
-        id, person_id, document_id, graph_json, extractor_version, prompt_version, model, created_at
+        id, tenant_id, person_id, document_id, graph_json, extractor_version, prompt_version, model, created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         graph.id,
+        scope.tenantId,
         graph.personId,
         graph.provenance.documentId,
         graphJson,
@@ -144,10 +186,20 @@ export class SqliteDocumentStore {
     );
   }
 
-  async getLatestEvidenceGraph(personId: string): Promise<EvidenceGraph | undefined> {
+  /** Replaces a legacy heuristic graph for this exact document under the same owner. */
+  async replaceEvidenceGraphForDocument(scope: AuthorizedPersonScope, graph: EvidenceGraph): Promise<void> {
+    this.assertScope(scope, graph.personId);
+    await this.db.transaction(async (tx) => {
+      await tx.execute(`DELETE FROM evidence_graphs WHERE document_id = ? AND tenant_id = ? AND person_id = ?`, [graph.provenance.documentId, scope.tenantId, scope.personId]);
+      const saved = await tx.execute(`INSERT INTO evidence_graphs (id, tenant_id, person_id, document_id, graph_json, extractor_version, prompt_version, model, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [graph.id, scope.tenantId, scope.personId, graph.provenance.documentId, JSON.stringify(graph), graph.provenance.extractorVersion, graph.provenance.promptVersion, graph.provenance.model, graph.provenance.createdAt]);
+      if (saved.rowsAffected !== 1) throw new Error("EVIDENCE_GRAPH_REPLACEMENT_FAILED");
+    });
+  }
+
+  async getLatestEvidenceGraph(scope: AuthorizedPersonScope): Promise<EvidenceGraph | undefined> {
     const row = await this.db.one<any>(
-      `SELECT graph_json FROM evidence_graphs WHERE person_id = ? ORDER BY created_at DESC LIMIT 1`,
-      [personId]
+      `SELECT graph_json FROM evidence_graphs WHERE tenant_id = ? AND person_id = ? ORDER BY created_at DESC LIMIT 1`,
+      [scope.tenantId, scope.personId]
     );
     if (!row || !row.graph_json) return undefined;
     try {
@@ -157,10 +209,10 @@ export class SqliteDocumentStore {
     }
   }
 
-  async getEvidenceGraphForDocument(documentId: string): Promise<EvidenceGraph | undefined> {
+  async getEvidenceGraphForDocument(scope: AuthorizedPersonScope, documentId: string): Promise<EvidenceGraph | undefined> {
     const row = await this.db.one<any>(
-      `SELECT graph_json FROM evidence_graphs WHERE document_id = ? ORDER BY created_at DESC LIMIT 1`,
-      [documentId]
+      `SELECT graph_json FROM evidence_graphs WHERE document_id = ? AND tenant_id = ? AND person_id = ? ORDER BY created_at DESC LIMIT 1`,
+      [documentId, scope.tenantId, scope.personId]
     );
     if (!row || !row.graph_json) return undefined;
     try {
@@ -172,39 +224,42 @@ export class SqliteDocumentStore {
 
   // --- document_contents methods ---
 
-  async saveDocumentContent(documentId: string, rawText: string, textHash: string): Promise<void> {
+  async saveDocumentContent(scope: AuthorizedPersonScope, documentId: string, rawText: string, textHash: string): Promise<void> {
     const contentId = `content-${documentId}`;
-    await this.db.execute(
+    const result = await this.db.execute(
       `
-      INSERT INTO document_contents (id, document_id, raw_text, text_hash, created_at)
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        INSERT INTO document_contents (id, tenant_id, person_id, document_id, raw_text, text_hash, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(document_id) DO UPDATE SET
         raw_text = excluded.raw_text,
         text_hash = excluded.text_hash
+      WHERE document_contents.tenant_id = excluded.tenant_id
+        AND document_contents.person_id = excluded.person_id
       `,
-      [contentId, documentId, rawText, textHash]
+      [contentId, scope.tenantId, scope.personId, documentId, rawText, textHash]
     );
+    if (result.rowsAffected !== 1) throw new Error(`DOCUMENT_OWNERSHIP_COLLISION: ${documentId} is outside the authorized scope.`);
   }
 
-  async getDocumentContent(documentId: string): Promise<{ rawText: string; textHash: string } | undefined> {
+  async getDocumentContent(scope: AuthorizedPersonScope, documentId: string): Promise<{ rawText: string; textHash: string } | undefined> {
     const row = await this.db.one<any>(
-      `SELECT raw_text, text_hash FROM document_contents WHERE document_id = ?`,
-      [documentId]
+      `SELECT raw_text, text_hash FROM document_contents WHERE document_id = ? AND tenant_id = ? AND person_id = ?`,
+      [documentId, scope.tenantId, scope.personId]
     );
     if (!row) return undefined;
     return { rawText: row.raw_text, textHash: row.text_hash };
   }
 
-  async findExistingEvidenceGraphByTextHash(textHash: string, personId: string): Promise<EvidenceGraph | undefined> {
+  async findExistingEvidenceGraphByTextHash(scope: AuthorizedPersonScope, textHash: string): Promise<EvidenceGraph | undefined> {
     const row = await this.db.one<any>(
       `
       SELECT eg.graph_json 
       FROM document_contents dc
       JOIN evidence_graphs eg ON dc.document_id = eg.document_id
-      WHERE dc.text_hash = ? AND eg.person_id = ?
+      WHERE dc.text_hash = ? AND eg.tenant_id = ? AND eg.person_id = ?
       ORDER BY eg.created_at DESC LIMIT 1
       `,
-      [textHash, personId]
+      [textHash, scope.tenantId, scope.personId]
     );
     if (!row || !row.graph_json) return undefined;
     try {
@@ -216,29 +271,47 @@ export class SqliteDocumentStore {
 
   // --- versioned career_intents methods (ADR-012) ---
 
-  async saveCareerIntent(intent: CareerIntentRecord): Promise<void> {
+  async saveCareerIntent(scope: AuthorizedPersonScope, intent: CareerIntentRecord): Promise<boolean> {
+    this.assertScope(scope, intent.personId);
     const now = new Date().toISOString();
     
     // Get highest version for person
-    const latest = await this.db.one<any>(
-      `SELECT version FROM career_intents WHERE person_id = ? ORDER BY version DESC LIMIT 1`,
-      [intent.personId]
-    );
-    const nextVersion = (latest?.version || 0) + 1;
-    const intentId = `intent-${intent.personId}-v${nextVersion}`;
-
-    await this.db.execute(
+    return await this.db.transaction(async (tx) => {
+      const latest = await tx.one<any>(
+        `SELECT * FROM career_intents WHERE tenant_id = ? AND person_id = ? ORDER BY version DESC LIMIT 1`,
+        [scope.tenantId, intent.personId],
+      );
+      const sameIntent = latest &&
+        (latest.min_salary_usd ?? undefined) === (intent.minSalaryUsd ?? undefined) &&
+        (latest.currency ?? undefined) === (intent.currency ?? undefined) &&
+        (latest.target_salary_amount ?? undefined) === (intent.targetSalaryAmount ?? undefined) &&
+        (latest.normalized_salary_usd ?? undefined) === (intent.normalizedSalaryUsd ?? undefined) &&
+        (latest.normalization_source_currency ?? undefined) === (intent.normalization?.sourceCurrency ?? undefined) &&
+        (latest.normalization_target_currency ?? undefined) === (intent.normalization?.targetCurrency ?? undefined) &&
+        (latest.normalization_rate ?? undefined) === (intent.normalization?.rate ?? undefined) &&
+        (latest.normalization_rate_source ?? undefined) === (intent.normalization?.rateSource ?? undefined) &&
+        (latest.normalization_effective_at ?? undefined) === (intent.normalization?.effectiveAt ?? undefined) &&
+        (latest.preferred_locations ?? "[]") === JSON.stringify(intent.preferredLocations || []) &&
+        (latest.target_titles ?? "[]") === JSON.stringify(intent.targetTitles || []) &&
+        (latest.preferred_work_model ?? undefined) === (intent.preferredWorkModel ?? undefined) &&
+        (latest.travel_tolerance ?? undefined) === (intent.travelTolerance ?? undefined) &&
+        (latest.decision_preferences_json ?? undefined) === (intent.decisionPreferences ? JSON.stringify(intent.decisionPreferences) : undefined);
+      if (sameIntent) return false;
+      const nextVersion = (latest?.version || 0) + 1;
+      const intentId = `intent-${intent.personId}-v${nextVersion}`;
+      const saved = await tx.execute(
       `
       INSERT INTO career_intents (
-        id, person_id, version, min_salary_usd, currency, target_salary_amount,
+        id, tenant_id, person_id, version, min_salary_usd, currency, target_salary_amount,
         normalized_salary_usd, normalization_source_currency, normalization_target_currency,
         normalization_rate, normalization_rate_source, normalization_effective_at,
-        preferred_locations, target_titles, preferred_work_model, travel_tolerance, created_at
+        preferred_locations, target_titles, preferred_work_model, travel_tolerance, decision_preferences_json, created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         intentId,
+        scope.tenantId,
         intent.personId,
         nextVersion,
         intent.minSalaryUsd ?? null,
@@ -254,15 +327,19 @@ export class SqliteDocumentStore {
         JSON.stringify(intent.targetTitles || []),
         intent.preferredWorkModel ?? null,
         intent.travelTolerance ?? null,
+        intent.decisionPreferences ? JSON.stringify(intent.decisionPreferences) : null,
         now
       ]
-    );
+      );
+      if (saved.rowsAffected !== 1) throw new Error("CAREER_INTENT_SAVE_FAILED");
+      return true;
+    });
   }
 
-  async getLatestCareerIntent(personId: string): Promise<CareerIntentRecord | undefined> {
+  async getLatestCareerIntent(scope: AuthorizedPersonScope): Promise<CareerIntentRecord | undefined> {
     const row = await this.db.one<any>(
-      `SELECT * FROM career_intents WHERE person_id = ? ORDER BY version DESC LIMIT 1`,
-      [personId]
+      `SELECT * FROM career_intents WHERE tenant_id = ? AND person_id = ? ORDER BY version DESC LIMIT 1`,
+      [scope.tenantId, scope.personId]
     );
     if (!row) return undefined;
     const locations: string[] = JSON.parse(row.preferred_locations || "[]");
@@ -286,23 +363,23 @@ export class SqliteDocumentStore {
       targetTitles: JSON.parse(row.target_titles || "[]"),
       preferredWorkModel: row.preferred_work_model ?? undefined,
       travelTolerance: row.travel_tolerance ?? undefined,
+      decisionPreferences: row.decision_preferences_json ? JSON.parse(row.decision_preferences_json) : undefined,
       createdAt: row.created_at
     };
   }
 
-  async enqueueDocumentProcessing(input: {
+  async enqueueDocumentProcessing(scope: AuthorizedPersonScope, input: {
     id: string;
-    personId: string;
     documentId: string;
     jobHash: string;
     payloadJson: string;
   }): Promise<void> {
     await this.db.transaction(async (tx) => {
       await tx.execute(
-        `INSERT INTO candidate_document_jobs (id, person_id, document_id, job_hash, payload_json, status)
-         VALUES (?, ?, ?, ?, ?, 'pending')
+        `INSERT INTO candidate_document_jobs (id, tenant_id, person_id, document_id, job_hash, payload_json, status)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending')
          ON CONFLICT(job_hash) DO NOTHING`,
-        [input.id, input.personId, input.documentId, input.jobHash, input.payloadJson],
+        [input.id, scope.tenantId, scope.personId, input.documentId, input.jobHash, input.payloadJson],
       );
     });
   }

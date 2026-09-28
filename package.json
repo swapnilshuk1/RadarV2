@@ -2,10 +2,10 @@
   "name": "tanstack_start_ts",
   "private": true,
   "engines": {
-    "node": ">=22.12.0",
-    "npm": "10.9.8"
+    "node": ">=22.22.2",
+    "npm": "10.9.9"
   },
-  "packageManager": "npm@10.9.8",
+  "packageManager": "npm@10.9.9",
   "sideEffects": false,
   "type": "module",
   "scripts": {
@@ -14,17 +14,18 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "dev": "tsx scripts/dev.ts",
+    "dev:full": "tsx scripts/dev.ts --full",
     "benchmark": "npx @dotenvx/dotenvx run -- npx tsx scripts/qa-eval.ts",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "format:check": "prettier --check package.json .github/workflows/ci.yml ecosystem.config.cjs eslint.config.js vitest.certification.config.ts scripts/certify.ts scripts/certification/manifest.ts scripts/release scripts/deploy.ts scripts/db-status.ts scripts/migrate.ts src/data/database/adapter.ts src/data/database/index.ts src/data/database/sqlite.ts src/data/database/turso.ts src/data/sqlite/migrations/runner.ts src/lib/env.ts src/lib/health src/server.ts tests/certification/certification-gate-integrity.test.ts tests/persistence/migration-runner.test.ts tests/persistence/deployment-determinism.test.ts tests/release",
     "typecheck:scraper": "tsc -p tsconfig.scraper.json --noEmit",
     "scrape": "tsx scripts/scrape.ts",
     "scrape:preflight": "tsx scripts/scraper/preflight.ts",
     "enrich": "tsx scripts/enrich.ts",
-    "enrich:recover": "tsx --env-file=.env scripts/recover-degraded.ts",
     "corpus:generate": "tsx scripts/corpus/pipeline.ts",
     "corpus:health": "tsx scripts/corpus/health.ts",
     "validate-graph": "tsx scripts/validate-graph.ts",
@@ -40,9 +41,12 @@
     "test:eqe": "npm run certify",
     "db:reset-corpus": "tsx scripts/db/reset-corpus.ts --confirm",
     "deploy": "tsx scripts/deploy.ts",
+    "release:package": "tsx scripts/release/package.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:status": "tsx scripts/db-status.ts",
     "worker:documents": "tsx scripts/process-document-jobs.ts",
+    "worker:scrape": "tsx scripts/run-scrape-worker.ts",
+    "worker:corpus": "tsx scripts/run-corpus-regeneration-worker.ts",
     "worker:enrichment": "tsx scripts/enrich.ts",
     "worker:evaluations": "tsx scripts/run-evaluation-worker.ts",
     "worker:dossiers": "tsx scripts/run-dossier-composition-worker.ts",
@@ -67,6 +71,7 @@
     "jsdom": "^30.0.1",
     "mammoth": "^1.12.0",
     "oslo": "^1.2.1",
+    "pdf-parse": "^2.4.5",
     "playwright": "^1.61.1",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
@@ -102,6 +107,6 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.16",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

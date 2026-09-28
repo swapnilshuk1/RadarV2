@@ -11,7 +11,7 @@ interface Status {
   running: boolean;
   opportunity?: Dossier["opportunity"];
 }
-function App() {
+export function App() {
   const [status, setStatus] = useState<Status>({ stage: "Loading memo", running: false });
   const [connectionError, setConnectionError] = useState("");
   async function refresh() {

@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 import {SqliteAdapter} from '../../src/data/database/sqlite';
 import {setupLineageTestFixture} from '../persistence/lineage_fixture';
-import {ProductionStagedInputAdapter} from '../../src/lib/intelligence/staged/ProductionStagedInputAdapter';
+import {normalizeCanonicalJobText,ProductionStagedInputAdapter} from '../../src/lib/intelligence/staged/ProductionStagedInputAdapter';
 import {ProductionContextProvider} from '../../src/lib/intelligence/staged/ProductionContextProvider';
 import {SqliteStagedEvaluationStore} from '../../src/data/sqlite/repositories/SqliteStagedEvaluationStore';
 import {computeContentHash} from '../../src/lib/domain/canonical_identity';
@@ -14,6 +14,10 @@ import {CONTEXT_ACQUISITION_POLICY} from '../../src/lib/intelligence/staged/cont
 import {canonicalNormalize,computeDeterministicHash} from '../../src/lib/ontology/compiler/OntologyCompiler';
 
 describe('context-aware immutable production input',()=>{
+ it('normalizes scraper noise before evidence extraction without changing the canonical raw hash',()=>{
+  const raw='<style>.job { display:block; color:red; }</style>\nShow more\nHead of Growth\nOwn revenue growth.\nOwn revenue growth.';
+  expect(normalizeCanonicalJobText(raw)).toBe('Head of Growth\nOwn revenue growth.');
+ });
  let db:SqliteAdapter;
  const contextFingerprint=(snapshot='sps_A')=>computeEvaluationContextFingerprint({tenantId:'tenant_A',personId:'person_A',searchPlanSnapshotId:snapshot,ontologyVersion:'v1',ontologyFingerprint:'hash_ontology',policyVersion:'staged-v8',profileVersion:'profile'});
  const identity={tenantId:'tenant_A',personId:'person_A',canonicalJobId:'job',opportunityVersion:'version',evaluationContextFingerprint:contextFingerprint(),profileVersion:'profile'};
@@ -25,16 +29,31 @@ describe('context-aware immutable production input',()=>{
  })});
  beforeEach(async()=>{
   vi.restoreAllMocks();db=new SqliteAdapter(new Database(':memory:'));await setupLineageTestFixture(db);
+  const projection={
+    profileVersion:'profile',
+    attainedTitle:'SVP Growth',
+    operatingLevel:{value:'STRATEGIC',confidence:1,evidenceIds:['candidate-fixture']},
+    workNature:{value:'STRATEGIC_WORK',confidence:1,evidenceIds:['candidate-fixture']},
+    decisionAuthority:{value:'ENTERPRISE',confidence:1,evidenceIds:['candidate-fixture']},
+    commercialScope:{value:'ENTERPRISE',confidence:1,evidenceIds:['candidate-fixture']},
+    yearsOfExperience:20,
+    coreCapabilities:['GROWTH'],
+    preferredLocations:['India'],
+    preferredWorkModel:'ANY',
+    executiveThemes:['growth'],
+  };
+  await db.execute(`INSERT INTO career_profiles(id,person_id,timeline,skills,projection_json) VALUES('profile-row','person_A','[]','[]',?)`,[JSON.stringify(projection)]);
+  await db.execute(`UPDATE search_plan_snapshots SET payload_json=? WHERE id='sps_A'`,[JSON.stringify({customParameters:{candidateDecisionIntent:{targetTitles:['CMO'],preferredLocations:['India'],decisionPreferences:{careerMove:'PROGRESSION'}}}})]);
   await db.execute(`INSERT INTO evaluation_contexts(context_fingerprint,tenant_id,person_id,search_plan_snapshot_id,ontology_version,ontology_fingerprint,policy_version,profile_version) VALUES(?,'tenant_A','person_A','sps_A','v1','hash_ontology','staged-v8','profile')`,[identity.evaluationContextFingerprint]);
   await db.execute(`INSERT INTO canonical_opportunities(id,source,source_job_id,canonical_url) VALUES('job','LinkedIn','source-job','https://example.com/job')`);
   const hash=computeContentHash({title:'Head of Growth',companyName:'Company',location:null,employmentType:null,rawContent:'Lead growth.'});
   await db.execute(`INSERT INTO opportunity_versions(id,canonical_job_id,content_hash,job_title,company_name,raw_content) VALUES('version','job',?,'Head of Growth','Company','Lead growth.')`,[hash]);
   for(const [id,text]of [['one','Employment began in April 2023.'],['two','Employment began in May 2023.']]){
    const textHash=createHash('sha256').update(text).digest('hex');
-   await db.execute(`INSERT INTO candidate_documents(id,person_id,filename,storage_uri,mime_type,document_hash) VALUES(?,'person_A',?,'fixture','text/plain',?)`,[id,id,textHash]);
-   await db.execute(`INSERT INTO document_contents(id,document_id,raw_text,text_hash) VALUES(?,?,?,?)`,[`text-${id}`,id,text,textHash]);
-   await db.execute(`INSERT INTO evidence_graphs(id,person_id,document_id,graph_json,extractor_version,prompt_version,model) VALUES(?,'person_A',?,'{}','fixture','fixture','fixture')`,[`graph-${id}`,id]);
-   await db.execute(`INSERT INTO profile_projection_source_bindings(person_id,profile_version,document_id,evidence_graph_id,document_text_hash) VALUES('person_A','profile',?,?,?)`,[id,`graph-${id}`,textHash]);
+   await db.execute(`INSERT INTO candidate_documents(id,tenant_id,person_id,filename,storage_uri,mime_type,document_hash) VALUES(?,'tenant_A','person_A',?,'fixture','text/plain',?)`,[id,id,textHash]);
+   await db.execute(`INSERT INTO document_contents(id,tenant_id,person_id,document_id,raw_text,text_hash) VALUES(?,'tenant_A','person_A',?,?,?)`,[`text-${id}`,id,text,textHash]);
+   await db.execute(`INSERT INTO evidence_graphs(id,tenant_id,person_id,document_id,graph_json,extractor_version,prompt_version,model) VALUES(?,'tenant_A','person_A',?,'{}','fixture','fixture','fixture')`,[`graph-${id}`,id]);
+   await db.execute(`INSERT INTO profile_projection_source_bindings(tenant_id,person_id,profile_version,document_id,evidence_graph_id,document_text_hash) VALUES('tenant_A','person_A','profile',?,?,?)`,[id,`graph-${id}`,textHash]);
   }
   vi.spyOn(pipeline,'extractValidatedSourceClaims').mockImplementation(async(_model,document,prefix)=>[{id:`${prefix}1`,text:document.text,plane:document.plane,state:'EXPLICIT',confidence:1,citations:[{sourceId:document.id,quote:document.text}],derivedFrom:[]}]);
  });
@@ -43,6 +62,8 @@ describe('context-aware immutable production input',()=>{
   const adapter=new ProductionStagedInputAdapter(db,undefined,[acquisition]);
   const first=await adapter.build(identity,reasoning);
   expect(first.evidence.some(claim=>claim.plane==='CONTEXT')).toBe(true);
+  expect(first.candidateDecisionProfile?.projection?.currentTitle).toBe('SVP Growth');
+  expect(first.candidateDecisionProfile?.intent?.decisionPreferences).toEqual({careerMove:'PROGRESSION'});
   expect(first.acquisition).toHaveLength(contextFields.length);
   expect(first.candidateConflicts[0].sourceIds).toHaveLength(2);
   const replay=await adapter.build(identity,reasoning);
@@ -88,30 +109,10 @@ describe('context-aware immutable production input',()=>{
   expect(result.sources).toEqual([]);
   expect(result.attempts.filter(a=>a.operation==='search').every(a=>a.status==='NO_RESULTS')).toBe(true);
  });
- it('preserves frozen v7 inputs but refuses fresh acquisition under old semantics',async()=>{
-  const acquisition=provider(),reasoning=model();
-  const first=await new ProductionStagedInputAdapter(db,undefined,[acquisition]).build(identity,reasoning);
-  await db.execute("UPDATE evaluation_contexts SET policy_version='staged-v7' WHERE context_fingerprint=?",[identity.evaluationContextFingerprint]);
-  expect(await new ProductionStagedInputAdapter(db,undefined,[acquisition]).build(identity,reasoning)).toEqual(first);
-  await db.execute('DELETE FROM staged_frozen_inputs');
-  await expect(new ProductionStagedInputAdapter(db,undefined,[acquisition]).build(identity,reasoning)).rejects.toThrow('FRESH_CONTEXT_INPUT_REQUIRES_STAGED_V8');
-  expect(acquisition.acquire).toHaveBeenCalledTimes(1);
- });
- it('binds the acquisition recipe into v8 identity without rewriting v7 identity',()=>{
-  const base={tenantId:'tenant',personId:'person',searchPlanSnapshotId:'snapshot',ontologyVersion:'v1',ontologyFingerprint:'ontology',policyVersion:'staged-v7',profileVersion:'profile'};
-  expect(computeEvaluationContextFingerprint(base)).toBe(computeDeterministicHash(canonicalNormalize(base)));
-  expect(computeEvaluationContextFingerprint({...base,policyVersion:'staged-v8'})).toBe(computeDeterministicHash(canonicalNormalize({...base,policyVersion:'staged-v8',contextAcquisition:CONTEXT_ACQUISITION_POLICY})));
- });
  it('rejects fresh input under a fingerprint that omits the acquisition policy',async()=>{
   await db.execute("UPDATE evaluation_contexts SET context_fingerprint='unbound-policy' WHERE context_fingerprint=?",[identity.evaluationContextFingerprint]);
   const acquisition=provider();
   await expect(new ProductionStagedInputAdapter(db,undefined,[acquisition]).build({...identity,evaluationContextFingerprint:'unbound-policy'},model())).rejects.toThrow('CONTEXT_ACQUISITION_POLICY_IDENTITY_MISMATCH');
-  expect(acquisition.acquire).not.toHaveBeenCalled();
- });
- it('does not silently reinterpret multiple candidate documents under v6',async()=>{
-  await db.execute(`UPDATE evaluation_contexts SET policy_version='staged-v6' WHERE context_fingerprint=?`,[identity.evaluationContextFingerprint]);
-  const acquisition=provider();
-  await expect(new ProductionStagedInputAdapter(db,undefined,[acquisition]).build(identity,model())).rejects.toThrow('MULTIPLE_CANDIDATE_SOURCES_REQUIRE_CONTEXT_POLICY');
   expect(acquisition.acquire).not.toHaveBeenCalled();
  });
  it('does not freeze an operational outage as successful immutable input',async()=>{
@@ -126,10 +127,22 @@ describe('context-aware immutable production input',()=>{
  it('uses the tenant-owned verified website and searches without sending candidate evidence',async()=>{
   await db.execute(`INSERT INTO intelligence_company_entities(tenant_id,id,normalized_name,official_domain) VALUES('tenant_A','company','company','company.example')`);
   const request=vi.fn(async(url:RequestInfo|URL,_init?:RequestInit)=>String(url).startsWith('https://api.tavily.com/')?new Response(JSON.stringify({results:[{url:'https://news.example/company',title:'Company expands',raw_content:'Company opened a regional office.'}]}),{status:200}):new Response('<html><body><main>Company operates in two markets.</main></body></html>',{status:200}));
-  const result=await new ProductionContextProvider(db,'tenant_A',request as typeof fetch,'fixture-key').acquire({id:'job',company:'Company',title:'Head of Growth'},contextFields);
+  const result=await new ProductionContextProvider(db,'tenant_A',request as typeof fetch,'fixture-key').acquire({
+    id:'job',
+    company:'Company',
+    title:'Head of Growth',
+    researchIdentityTerms:['AI-first performance marketing agency helping eCommerce brands scale'],
+    researchLocation:'Remote',
+  } as any,contextFields);
   expect(result.sources).toHaveLength(2);expect(result.attempts.some(a=>a.operation==='search'&&a.status==='RETRIEVED')).toBe(true);
   const search=request.mock.calls.find(([url])=>String(url).includes('api.tavily.com'))!;
   expect(JSON.stringify(search)).not.toContain('Employment began');
-  expect(JSON.parse(String(search[1]?.body)).query).not.toContain('Head of Growth');
+  const query=JSON.parse(String(search[1]?.body)).query as string;
+  expect(query).toContain('"Company"');
+  expect(query).toContain('"performance marketing"');
+  expect(query).toContain('company team');
+  expect(query).not.toContain('Head of Growth');
+  expect(query).not.toContain('Remote');
+  expect(query).not.toContain('AI-first');
  });
 });

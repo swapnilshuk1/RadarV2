@@ -7,8 +7,12 @@ Use this guide for release preparation and verification.
 
 ## Prove locally and identify the release
 
-Use an isolated local database with explicit environment overrides; `npm run dev`
-can run migrations and must not inherit a production database target accidentally.
+Use an isolated local database with explicit environment overrides. `npm run dev`
+starts the web application plus the supervised evaluator service; evaluation remains
+STOPPED until an authorized user presses **Start evaluation** in RADAR. It never runs
+migrations. Apply migrations explicitly with `npm run db:migrate` against the selected
+non-production target. Use `npm run dev:full` only when intentionally exercising the
+complete local worker fleet.
 Validate relevant behavior, TypeScript, the production build and the certification
 manifest. CI packages `.output` for its exact commit SHA. Pushing `main` runs CI;
 it does not deploy or activate serving.
@@ -26,9 +30,13 @@ conditions, previous release and active-context rollback pointer. Verify that al
 workers can access the existing payload/profile stores on the intended host.
 
 Current v8 rollout requires operational context search and the configured model
-providers. Google ADC must work under the production process identity. Keys being
-present locally do not establish production access or quota. Keep credentials
-outside Git and release archives.
+providers. Google ADC must work under the production process identity. For Bedrock
+Mantle intelligence models, configure `BEDROCK_MANTLE_API_KEY` or provide an absolute
+external path via `BEDROCK_MANTLE_KEY_FILE=/absolute/external/secret/path`. All
+production credentials (API keys, service account files, Mantle keys) must reside
+strictly outside deployment artifacts and repository trees. Keys being present
+locally do not establish production access or quota. Keep credentials outside Git
+and release archives.
 
 `scripts/deploy.ts` and older deployment helpers can perform live writes and
 restarts. Their presence is not authorization to execute them. Production server,

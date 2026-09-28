@@ -11,6 +11,7 @@ import {
   SESSION_COOKIE_NAME,
   type SessionUser,
 } from "./session";
+import { getDatabaseAdapter } from "../../data/database";
 
 export class AuthError extends Error {
   statusCode: number;
@@ -46,8 +47,18 @@ export async function requireAuthUser(options?: { requireAdmin?: boolean }): Pro
     throw new AuthError("UNAUTHORIZED: Invalid or expired session", 401);
   }
 
-  if (options?.requireAdmin && user.role !== "admin") {
-    throw new AuthError("FORBIDDEN: Admin privileges required", 403);
+  if (options?.requireAdmin) {
+    const db = getDatabaseAdapter();
+    const membership = await db.one<{ role: string }>(
+      `SELECT role
+       FROM memberships
+       WHERE user_id = ? AND role = 'admin' AND status = 'active' AND revoked_at IS NULL
+       LIMIT 1`,
+      [user.id],
+    );
+    if (!membership) {
+      throw new AuthError("FORBIDDEN: Active tenant administrator privileges required", 403);
+    }
   }
 
   return user;

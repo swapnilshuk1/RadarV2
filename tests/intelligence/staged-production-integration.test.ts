@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getDatabaseAdapter } from '../../src/data/database';
+import Database from 'better-sqlite3';
+import { SqliteAdapter } from '../../src/data/database/sqlite';
 import { runMigrations } from '../../src/data/sqlite/migrations/runner';
 import { SqliteStagedEvaluationStore, STAGED_CONTRACT_VERSION, STAGED_POLICY_VERSION, stagedUnavailableEvaluation } from '../../src/data/sqlite/repositories/SqliteStagedEvaluationStore';
 import { assertCanonicalJdContentHash, DeterministicStagedInputUnavailableError } from '../../src/lib/intelligence/staged/ProductionStagedInputAdapter';
@@ -14,7 +15,7 @@ describe('staged production persistence boundary', () => {
     expect(STAGED_CONTRACT_VERSION).toBe('staged-decision-v8');
   });
   it('persists a versioned staged result without fabricating an intrinsic score and is idempotent', async () => {
-    const db=getDatabaseAdapter(':memory:'); await runMigrations(db);
+    const db=new SqliteAdapter(new Database(':memory:')); await runMigrations(db);
     const store=new SqliteStagedEvaluationStore(db);
     const identity={tenantId:'tenant',personId:'person',canonicalJobId:'job',opportunityVersion:'version',evaluationContextFingerprint:'context',profileVersion:'profile',policyVersion:STAGED_POLICY_VERSION,ontologyVersion:'ontology',ontologyFingerprint:'ontology-hash'};
     const record={...identity,jobHash:'job',inputFingerprint:'input',sourceFingerprints:['JD:source'],modelId:'bedrock-converse',modelVersion:'zai.glm-5',contractVersion:STAGED_CONTRACT_VERSION,evaluationState:'COMPLETED' as const,decision:stagedEvaluation.decision.verdict,screeningViability:stagedEvaluation.decision.screeningViability,evaluation:stagedEvaluation,evaluatedAt:'2026-01-01T00:00:00.000Z'};
@@ -26,14 +27,15 @@ describe('staged production persistence boundary', () => {
     const legacy=await db.one<{count:number}>('SELECT COUNT(*) AS count FROM materialized_evaluations'); expect(legacy?.count).toBe(0);
   });
   it('keys cached source evidence by immutable fingerprint and exact model configuration identity', async () => {
-    const db=getDatabaseAdapter(':memory:'); await runMigrations(db); const store=new SqliteStagedEvaluationStore(db);
-    await store.cacheClaims({sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'},{id:'jd-a'},[{id:'JD-1-1'}]);
-    expect(await store.cachedClaims({sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'})).toEqual([{id:'JD-1-1'}]);
-    expect(await store.cachedClaims({sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-b'})).toBeUndefined();
-    expect(await store.cachedClaims({sourceFingerprint:'content-b',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'})).toBeUndefined();
+    const db=new SqliteAdapter(new Database(':memory:')); await runMigrations(db); const store=new SqliteStagedEvaluationStore(db);
+    const scope={tenantId:'tenant',personId:'person'};
+    await store.cacheClaims(scope,{sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'},{id:'jd-a'},[{id:'JD-1-1'}]);
+    expect(await store.cachedClaims(scope,{sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'})).toEqual([{id:'JD-1-1'}]);
+    expect(await store.cachedClaims(scope,{sourceFingerprint:'content-a',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-b'})).toBeUndefined();
+    expect(await store.cachedClaims(scope,{sourceFingerprint:'content-b',modelId:'bedrock-converse',modelVersion:'zai.glm-5',modelConfigurationFingerprint:'config-a'})).toBeUndefined();
   });
   it('reuses validated semantic checkpoints across worker restarts but not across model configurations', async () => {
-    const db=getDatabaseAdapter(':memory:'); await runMigrations(db);
+    const db=new SqliteAdapter(new Database(':memory:')); await runMigrations(db);
     let calls=0;
     const makeModel=(configurationFingerprint:string)=>({
       id:'bedrock-mantle',
@@ -52,7 +54,7 @@ describe('staged production persistence boundary', () => {
     expect(calls).toBe(2);
   });
   it('persists exact per-request usage and latency against the owning evaluation job', async () => {
-    const db=getDatabaseAdapter(':memory:'); await runMigrations(db);
+    const db=new SqliteAdapter(new Database(':memory:')); await runMigrations(db);
     const sink=createSqliteModelInvocationSink(db,{
       pipeline:'evaluation',
       evaluationJobId:'eval-job',

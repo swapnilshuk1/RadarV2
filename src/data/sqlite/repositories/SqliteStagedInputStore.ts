@@ -6,8 +6,24 @@ import {validateClaims} from '@/dossier/grounding';
 import type {StagedResearchInput} from '@/dossier/staged-role';
 import type {ProductionStagedIdentity} from '@/lib/intelligence/staged/ProductionStagedInputAdapter';
 
+const candidateDecisionProfileSchema=z.object({
+  projection:z.object({
+    currentTitle:z.string().optional(),yearsExperience:z.number().optional(),archetype:z.string().optional(),
+    operatingLevel:z.unknown().optional(),candidateSeniorityLevel:z.unknown().optional(),workNature:z.unknown().optional(),
+    decisionAuthority:z.unknown().optional(),commercialScope:z.unknown().optional(),
+    coreCapabilities:z.array(z.string()).optional(),demonstratedCapabilities:z.array(z.string()).optional(),
+    executiveThemes:z.array(z.string()).optional(),
+  }).nullable(),
+  intent:z.object({
+    targetTitles:z.array(z.string()),preferredLocations:z.array(z.string()),preferredWorkModel:z.string().optional(),
+    currency:z.string().optional(),targetSalaryAmount:z.number().optional(),travelTolerance:z.string().optional(),
+    decisionPreferences:z.record(z.string(),z.unknown()).optional(),
+  }).nullable(),
+});
+
 const snapshotSchema=z.object({
   opportunity:z.object({id:z.string(),company:z.string(),title:z.string()}),candidate:z.object({name:z.string()}),
+  candidateDecisionProfile:candidateDecisionProfileSchema.optional(),
   sources:z.array(sourceSchema),evidence:z.array(claimSchema),candidateSourceRefs:z.array(z.object({id:z.string(),title:z.string()})),
   candidateConflicts:z.array(candidateConflictSchema),validEvidenceClaimIds:z.array(z.string()),fields:z.array(z.string()),
   acquisition:z.array(z.object({provider:z.string(),field:z.string(),operation:z.enum(['retrieve','search']),status:z.enum(['ACQUIRED','RETRIEVED','NO_RESULTS','UNAVAILABLE']),sourceIds:z.array(z.string()),detail:z.string()})),fingerprint:z.string(),

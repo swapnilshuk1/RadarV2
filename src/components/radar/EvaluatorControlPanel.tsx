@@ -25,32 +25,40 @@ function formatTokens(value: number | null | undefined): string {
   return value === null || value === undefined ? "—" : value.toLocaleString();
 }
 
-export function evaluatorStatusLabel(snapshot: EvaluatorTelemetrySnapshot | null): string {
+function evaluatorStatusLabel(snapshot: EvaluatorTelemetrySnapshot | null): string {
   if (!snapshot) return "Loading";
-  const { desiredState, localDaemonRunning } = snapshot.control;
+  const { desiredState, workerOnline } = snapshot.control;
+  if (!workerOnline) return "Worker offline";
   if (desiredState === "PAUSED")
     return snapshot.queue.liveModelCalls > 0 ? "Pausing" : "Paused";
   if (desiredState === "STOPPED")
     return snapshot.queue.liveModelCalls > 0 ? "Stopping" : "Stopped";
-  return localDaemonRunning ? "Running" : "Ready / not running";
+  return "Running";
 }
 
-export function evaluatorQueueSummary(snapshot: EvaluatorTelemetrySnapshot | null): string {
+function evaluatorQueueSummary(snapshot: EvaluatorTelemetrySnapshot | null): string {
   if (!snapshot) return "Loading evaluator state…";
   const { pending, processing, liveModelCalls } = snapshot.queue;
   const processingLabel = processing === 1 ? "1 processing-state job" : `${processing} processing-state jobs`;
   const callLabel = liveModelCalls === 1 ? "1 live model call" : `${liveModelCalls} live model calls`;
-  if (!snapshot.control.localDaemonRunning) {
-    return `Evaluator is ready but not running. ${pending} pending; ${processingLabel}; ${callLabel}.`;
+  if (!snapshot.control.workerOnline) {
+    return `Evaluation worker is offline. ${pending} pending; ${processingLabel}; ${callLabel}. Start the supervised evaluation worker before controlling this queue.`;
   }
-  return `Evaluator is running. ${pending} pending; ${processingLabel}; ${callLabel}. This resumes evaluation only; it does not scrape or enrich again.`;
+  if (snapshot.control.desiredState === "PAUSED") {
+    return `Evaluation is paused. ${pending} pending; ${processingLabel}; ${callLabel}. In-flight work may finish; no new job is claimed.`;
+  }
+  if (snapshot.control.desiredState === "STOPPED") {
+    return `Evaluation is stopped. ${pending} pending; ${processingLabel}; ${callLabel}.`;
+  }
+  return `Evaluator is running. ${pending} pending; ${processingLabel}; ${callLabel}. Evaluation does not scrape or enrich again.`;
 }
 
 interface EvaluatorControlPanelProps {
   embedded?: boolean;
+  scope?: { tenantId?: string; personId?: string };
 }
 
-export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPanelProps) {
+export function EvaluatorControlPanel({ embedded = false, scope }: EvaluatorControlPanelProps) {
   const [snapshot, setSnapshot] = useState<EvaluatorTelemetrySnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [controlBusy, setControlBusy] = useState(false);
@@ -59,17 +67,20 @@ export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPane
     () => typeof document === "undefined" || document.visibilityState === "visible",
   );
 
+  const tenantId = scope?.tenantId;
+  const personId = scope?.personId;
+
   const refresh = useCallback(async () => {
     try {
-      const next = await getEvaluatorTelemetryFn();
+      const next = await getEvaluatorTelemetryFn({ data: { tenantId, personId } });
       setSnapshot(next);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Evaluator telemetry unavailable");
     }
-  }, []);
+  }, [tenantId, personId]);
 
-  const pollingIntervalMs = snapshot?.control.localDaemonRunning ? 3_000 : 30_000;
+  const pollingIntervalMs = snapshot?.control.workerOnline ? 3_000 : 30_000;
 
   useEffect(() => {
     const onVisibilityChange = () => {
@@ -99,7 +110,7 @@ export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPane
       if (controlBusy) return;
       setControlBusy(true);
       try {
-        const next = await controlEvaluatorFn({ data: { action } });
+        const next = await controlEvaluatorFn({ data: { action, tenantId, personId } });
         setSnapshot(next);
         setError(null);
       } catch (err) {
@@ -108,52 +119,57 @@ export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPane
         setControlBusy(false);
       }
     },
-    [controlBusy],
+    [controlBusy, tenantId, personId],
   );
 
   const statusLabel = useMemo(() => evaluatorStatusLabel(snapshot), [snapshot]);
 
   const controls = snapshot?.control.canControl ? (
-    <div className="flex flex-wrap items-center gap-2">
-      {snapshot.control.desiredState === "RUNNING" &&
-      snapshot.control.localDaemonRunning ? (
-        <button
-          type="button"
-          disabled={controlBusy}
-          onClick={() => void act("pause")}
-          className="rounded-full border border-border bg-background px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider text-foreground hover:bg-muted disabled:opacity-50"
-          data-testid="evaluator-pause-button"
-        >
-          Pause
-        </button>
-      ) : (
-        <button
-          type="button"
-          disabled={controlBusy}
-          onClick={() =>
-            void act(snapshot.control.desiredState === "PAUSED" ? "resume" : "start")
-          }
-          className="rounded-full bg-foreground px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider text-background hover:opacity-90 disabled:opacity-50"
-          data-testid="evaluator-start-resume-button"
-        >
-          {snapshot.control.desiredState === "PAUSED"
-            ? "Resume evaluation"
-            : "Start evaluation"}
-        </button>
-      )}
+    snapshot.control.workerOnline ? (
+      <div className="flex flex-wrap items-center gap-2">
+        {snapshot.control.desiredState === "RUNNING" ? (
+          <button
+            type="button"
+            disabled={controlBusy}
+            onClick={() => void act("pause")}
+            className="rounded-full border border-border bg-background px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider text-foreground hover:bg-muted disabled:opacity-50"
+            data-testid="evaluator-pause-button"
+          >
+            Pause
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={controlBusy}
+            onClick={() =>
+              void act(snapshot.control.desiredState === "PAUSED" ? "resume" : "start")
+            }
+            className="rounded-full bg-foreground px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider text-background hover:opacity-90 disabled:opacity-50"
+            data-testid="evaluator-start-resume-button"
+          >
+            {snapshot.control.desiredState === "PAUSED"
+              ? "Resume evaluation"
+              : "Start evaluation"}
+          </button>
+        )}
 
-      {snapshot.control.desiredState !== "STOPPED" && (
-        <button
-          type="button"
-          disabled={controlBusy}
-          onClick={() => void act("stop")}
-          className="rounded-full border border-red-500/40 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider text-red-700 hover:bg-red-500/10 dark:text-red-300 disabled:opacity-50"
-          data-testid="evaluator-stop-button"
-        >
-          Stop
-        </button>
-      )}
-    </div>
+        {snapshot.control.desiredState !== "STOPPED" && (
+          <button
+            type="button"
+            disabled={controlBusy}
+            onClick={() => void act("stop")}
+            className="rounded-full border border-red-500/40 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider text-red-700 hover:bg-red-500/10 dark:text-red-300 disabled:opacity-50"
+            data-testid="evaluator-stop-button"
+          >
+            Stop
+          </button>
+        )}
+      </div>
+    ) : (
+      <p className="text-xs text-muted-foreground" data-testid="evaluator-worker-offline">
+        Evaluation worker is offline. Queue controls will become available when the worker is online.
+      </p>
+    )
   ) : snapshot ? (
     <p className="text-xs text-muted-foreground" data-testid="evaluator-control-restricted">
       Evaluator controls require an active tenant administrator.
@@ -176,8 +192,8 @@ export function EvaluatorControlPanel({ embedded = false }: EvaluatorControlPane
           ["Live model calls", snapshot.queue.liveModelCalls],
           ["Worker claims", snapshot.queue.claimedWithoutModelCall],
           ["Reclaimable", snapshot.queue.reclaimableProcessing],
+          ["Waiting enrichment", snapshot.queue.waitingEnrichment],
           ["Completed", snapshot.queue.completed],
-          ["Failed", snapshot.queue.failed],
           ["Dead letter", snapshot.queue.deadLetter],
           [
             "Last completion",

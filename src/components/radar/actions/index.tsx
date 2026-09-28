@@ -1,2 +1,2 @@
-export * from "./ExecutiveActionButton";
-export * from "./EvidenceBadge";
+export { ExecutiveActionButton } from "./ExecutiveActionButton";
+export { EvidenceBadge } from "./EvidenceBadge";

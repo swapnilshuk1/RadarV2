@@ -8,15 +8,14 @@ import { DossierView } from "../../src/dossier/DossierView";
 import { composeStagedDossier } from "../../src/dossier/staged-composition";
 import type { StagedResearchInput } from "../../src/dossier/staged-role";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
-import {
-  setupLineageTestFixture,
-  activateLineageTestContext,
-} from "../persistence/lineage_fixture";
+import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { SqliteStagedEvaluationStore } from "../../src/data/sqlite/repositories/SqliteStagedEvaluationStore";
 import { SqliteRichDossierStore } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";
 import { StagedServingPublisher } from "../../src/lib/intelligence/staged/StagedServingPublisher";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
+import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
+import { computeEvaluationContextFingerprint } from "../../src/lib/domain/evaluation_fingerprint";
 import { resolveCanonicalServingReadModel } from "../../src/lib/intelligence/serving/CanonicalServingReadModel";
 import type { Dossier, JsonValue, Passage } from "../../src/dossier/contracts";
 import {
@@ -24,16 +23,11 @@ import {
   parseCanonicalStagedDecisionResult,
 } from "../../src/dossier/staged-decision-integrity";
 import { readAcquisitionFeed } from "../../src/lib/intelligence/server/acquisition-feed-read-model";
-import {
-  stagedRolloutReadiness,
-  activateReadyStagedRollout,
-} from "../../src/lib/intelligence/staged/StagedRolloutReadiness";
 
 import { stagedEvaluation, evaluationFingerprint, dossier } from "../fixtures/staged-rich-dossier";
-import { selectStagedDossierWork } from "../../src/lib/intelligence/staged/dossierBackfillSelection";
 import { RICH_DOSSIER_VERSION } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";
 import { SqliteDossierReviewQueue } from "../../src/data/sqlite/repositories/SqliteDossierReviewQueue";
-import { PREPARING_DOSSIER_VERSION, SqliteDossierCompositionQueue } from "../../src/data/sqlite/repositories/SqliteDossierCompositionQueue";
+import { PREPARING_DOSSIER_VERSION, SqliteDossierCompositionQueue, compositionCheckpointScope } from "../../src/data/sqlite/repositories/SqliteDossierCompositionQueue";
 import { DossierReviewWorker } from "../../src/lib/intelligence/staged/DossierReviewWorker";
 import { DossierCompositionWorker } from "../../src/lib/intelligence/staged/DossierCompositionWorker";
 import { ProductionStagedDossierService } from "../../src/lib/intelligence/staged/ProductionStagedDossierService";
@@ -47,7 +41,7 @@ describe("rich staged serving activation", () => {
     personId: "person_A",
     canonicalJobId: "job",
     opportunityVersion: "version",
-    evaluationContextFingerprint: "staged-context",
+    evaluationContextFingerprint: "e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65",
     profileVersion: "profile",
   };
   beforeEach(async () => {
@@ -57,12 +51,14 @@ describe("rich staged serving activation", () => {
     await db.execute(
       `INSERT INTO memberships(user_id,tenant_id,role,permissions,status) VALUES('person_A','tenant_A','admin','["*"]','active')`,
     );
-    await activateLineageTestContext(db);
     await db.execute(
-      `INSERT INTO evaluation_contexts(context_fingerprint,tenant_id,person_id,search_plan_snapshot_id,ontology_version,ontology_fingerprint,policy_version,profile_version) VALUES('staged-context','tenant_A','person_A','sps_A','v1','hash_ontology','staged-v6','profile')`,
+      `INSERT INTO evaluation_contexts(context_fingerprint,tenant_id,person_id,search_plan_snapshot_id,ontology_version,ontology_fingerprint,policy_version,profile_version) VALUES('e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65','tenant_A','person_A','sps_A','v1','hash_ontology','staged-v8','profile')`,
     );
     await db.execute(
-      `INSERT INTO evaluation_context_scopes(context_fingerprint,tenant_id,person_id,search_plan_id) VALUES('staged-context','tenant_A','person_A','plan_A')`,
+      `INSERT INTO evaluation_context_scopes(context_fingerprint,tenant_id,person_id,search_plan_id) VALUES('e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65','tenant_A','person_A','plan_A')`,
+    );
+    await db.execute(
+      `INSERT INTO active_evaluation_contexts(tenant_id,person_id,search_plan_id,context_fingerprint,activated_by) VALUES('tenant_A','person_A','plan_A','e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65','test-fixture')`,
     );
     await db.execute(
       `INSERT INTO canonical_opportunities(id,source,source_job_id,canonical_url) VALUES('job','LinkedIn','source-job','https://example.com/job')`,
@@ -76,14 +72,14 @@ describe("rich staged serving activation", () => {
     await new SqliteStagedEvaluationStore(db).save({
       ...identity,
       jobHash: "job",
-      policyVersion: "staged-v6",
+      policyVersion: "staged-v8",
       ontologyVersion: "v1",
       ontologyFingerprint: "hash_ontology",
       inputFingerprint: "input",
       sourceFingerprints: ["jd"],
       modelId: "test",
       modelVersion: "test",
-      contractVersion: "staged-decision-v6",
+      contractVersion: "staged-decision-v8",
       evaluationState: "COMPLETED",
       decision: "PURSUE",
       screeningViability: "PLAUSIBLE",
@@ -91,6 +87,47 @@ describe("rich staged serving activation", () => {
       evaluatedAt: "2026-01-01",
     });
   });
+  it("serves only the database-active staged-v8 context even when caller scope carries stale IDs", async () => {
+    await new SqliteRichDossierStore(db).save(identity, evaluationFingerprint, dossier());
+    await new StagedServingPublisher(db).publish(identity);
+    const resolved = await resolveServingScope("person_A", "tenant_A", db);
+    const staleScope: AuthorizedPersonScope = {
+      ...resolved.scope,
+      activeSearchPlanId: "archived-plan",
+      activeEvaluationContextId: "archived-context",
+    };
+    const queries = new SqliteOpportunityQueries(db);
+    expect(await queries.getDossier(staleScope, "source-job")).toMatchObject({
+      evaluationState: "EVALUATED",
+      richDossier: { verdict: { verdict: "PURSUE" } },
+    });
+
+    const nextContext = computeEvaluationContextFingerprint({
+      tenantId: "tenant_A",
+      personId: "person_A",
+      searchPlanSnapshotId: "sps_A",
+      ontologyVersion: "v1",
+      ontologyFingerprint: "hash_ontology",
+      policyVersion: "staged-v8",
+      profileVersion: "profile-next",
+    });
+    await db.execute(
+      `INSERT INTO evaluation_contexts(context_fingerprint,tenant_id,person_id,search_plan_snapshot_id,ontology_version,ontology_fingerprint,policy_version,profile_version) VALUES(?,?,?,?,?,?,?,?)`,
+      [nextContext,"tenant_A","person_A","sps_A","v1","hash_ontology","staged-v8","profile-next"],
+    );
+    await db.execute(
+      `INSERT INTO evaluation_context_scopes(context_fingerprint,tenant_id,person_id,search_plan_id) VALUES(?,?,?,?)`,
+      [nextContext,"tenant_A","person_A","plan_A"],
+    );
+    await db.execute(
+      `UPDATE active_evaluation_contexts SET context_fingerprint=? WHERE tenant_id='tenant_A' AND person_id='person_A' AND search_plan_id='plan_A'`,
+      [nextContext],
+    );
+    const afterSwitch = await queries.getDossier(staleScope, "source-job");
+    expect(afterSwitch?.evaluationState).not.toBe("EVALUATED");
+    expect(JSON.stringify(afterSwitch)).not.toContain(evaluationFingerprint);
+  });
+
   it("leaves PASS evaluated without selecting or generating a dossier", async () => {
     await db.execute(
       "UPDATE opportunity_versions SET acquisition_status='ACQUIRED' WHERE id='version'",
@@ -102,18 +139,11 @@ describe("rich staged serving activation", () => {
       "UPDATE staged_evaluations SET decision='PASS',evaluation_json=? WHERE canonical_job_id='job'",
       [JSON.stringify(passed)],
     );
-    expect(await selectStagedDossierWork(db, { context: "staged-context", limit: 10 })).toEqual([]);
-    const readiness = await stagedRolloutReadiness(db, {
-      tenantId: "tenant_A",
-      personId: "person_A",
-      searchPlanId: "plan_A",
-      contextFingerprint: "staged-context",
-    });
-    expect(readiness).toMatchObject({ prepared: 1, passSkipped: 1, unprepared: 0 });
+    expect(await db.one("SELECT COUNT(*) n FROM dossier_composition_jobs")).toEqual({ n: 0 });
     expect(
       (
         await readAcquisitionFeed(db, identity, {
-          contextFingerprint: "staged-context",
+          contextFingerprint: "e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65",
           searchPlanId: "plan_A",
         })
       ).rows[0].state,
@@ -125,9 +155,6 @@ describe("rich staged serving activation", () => {
   it("serves the decision immediately while the memo is preparing and advances presentation monotonically", async () => {
     const publisher = new StagedServingPublisher(db);
     await publisher.publish(identity, { allowPreparing: true });
-    await db.execute(
-      `UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`,
-    );
     const { scope } = await resolveServingScope("person_A", "tenant_A", db);
     const queries = new SqliteOpportunityQueries(db);
     expect(await queries.getDossier(scope, "source-job")).toMatchObject({
@@ -160,7 +187,7 @@ describe("rich staged serving activation", () => {
     await new SqliteDossierReviewQueue(db).enqueue(identity, evaluationFingerprint, pending);
     await publisher.publish(identity, { allowDraft: true });
     expect(await queries.getDossier(scope, "source-job")).toMatchObject({
-      memoReviewState: "pending",
+      memoReviewState: "withheld",
       decision: "PURSUE",
     });
 
@@ -181,7 +208,61 @@ describe("rich staged serving activation", () => {
     ).toBe(RICH_DOSSIER_VERSION);
   });
 
+  it("claims only composition work for the active evaluation context", async () => {
+    await db.execute(`UPDATE active_evaluation_contexts SET context_fingerprint='e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65' WHERE tenant_id='tenant_A' AND person_id='person_A' AND search_plan_id='plan_A'`);
+    const queue = new SqliteDossierCompositionQueue(db, () => 10_000);
+    await queue.enqueue({ ...identity, evaluationContextFingerprint: "stale-context" }, "stale-evaluation");
+    await queue.enqueue(identity, evaluationFingerprint);
+    await db.execute(`UPDATE dossier_composition_jobs SET created_at=1,next_attempt_at=1 WHERE evaluation_context_fingerprint='stale-context'`);
+    const claimed = await queue.claim();
+    expect(claimed?.evaluation_context_fingerprint).toBe("e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65");
+    expect(await db.one(`SELECT status FROM dossier_composition_jobs WHERE evaluation_context_fingerprint='stale-context'`)).toEqual({ status: "pending" });
+  });
+
+  it("requeues only an exact terminal composition job and clears only its resumable cache", async () => {
+    const queue = new SqliteDossierCompositionQueue(db, () => 25_000);
+    await queue.enqueue(identity, evaluationFingerprint);
+    const scope = compositionCheckpointScope(identity, evaluationFingerprint);
+    await db.execute(
+      "INSERT INTO dossier_model_checkpoints(scope_fingerprint,request_fingerprint,response_json,response_fingerprint) VALUES(?,?,?,?)",
+      [scope, "failed-request", "{}", "failed-response"],
+    );
+    await db.execute(
+      "INSERT INTO dossier_model_checkpoints(scope_fingerprint,request_fingerprint,response_json,response_fingerprint) VALUES(?,?,?,?)",
+      ["other-scope", "other-request", "{}", "other-response"],
+    );
+
+    expect(await queue.retryAttention(identity, evaluationFingerprint)).toBe(false);
+    expect(
+      await db.one("SELECT COUNT(*) n FROM dossier_model_checkpoints WHERE scope_fingerprint=?", [scope]),
+    ).toEqual({ n: 1 });
+
+    await db.execute(
+      "UPDATE dossier_composition_jobs SET status='needs_attention',attempts=3,last_error='contract failure',lease_token='stale',lease_until=99",
+    );
+    expect(await queue.retryAttention(identity, evaluationFingerprint)).toBe(true);
+    expect(await queue.find(identity, evaluationFingerprint)).toMatchObject({
+      status: "pending",
+      attempts: 0,
+      last_error: null,
+      lease_token: null,
+      lease_until: null,
+      next_attempt_at: 25_000,
+    });
+    expect(
+      await db.one("SELECT COUNT(*) n FROM dossier_model_checkpoints WHERE scope_fingerprint=?", [scope]),
+    ).toEqual({ n: 0 });
+    expect(
+      await db.one("SELECT COUNT(*) n FROM dossier_model_checkpoints WHERE scope_fingerprint='other-scope'"),
+    ).toEqual({ n: 1 });
+    expect(await queue.claim()).toMatchObject({
+      evaluation_fingerprint: evaluationFingerprint,
+      status: "processing",
+    });
+  });
+
   it("leases composition independently and records draft persistence before publication", async () => {
+    await db.execute(`UPDATE active_evaluation_contexts SET context_fingerprint='e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65' WHERE tenant_id='tenant_A' AND person_id='person_A' AND search_plan_id='plan_A'`);
     const queue=new SqliteDossierCompositionQueue(db);
     await queue.enqueue(identity,evaluationFingerprint);
     const compose=vi.spyOn(ProductionStagedDossierService.prototype,"compose").mockResolvedValue(dossier());
@@ -208,7 +289,7 @@ describe("rich staged serving activation", () => {
     }
   });
 
-  it("serves labelled drafts through 429, withholds defects and atomically promotes reviewed output", async () => {
+  it("withholds drafts through review retry and atomically promotes reviewed output", async () => {
     const pending = dossier();
     delete pending.generation.factualReviewer;
     delete pending.generation.factualReviews;
@@ -217,12 +298,9 @@ describe("rich staged serving activation", () => {
     await new StagedServingPublisher(db).publish(identity, { allowDraft: true });
     const { scope } = await resolveServingScope("person_A", "tenant_A", db);
     const queries = new SqliteOpportunityQueries(db);
-    expect((await queries.getFeed(scope)).items[0].evaluationState).toBe("UNMATERIALIZED");
-    await db.execute(
-      `UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`,
-    );
+    expect((await queries.getFeed(scope)).items[0].evaluationState).toBe("EVALUATED");
     const read = () => queries.getDossier(scope, "source-job");
-    expect(await read()).toMatchObject({ memoReviewState: "pending", decision: "PURSUE" });
+    expect(await read()).toMatchObject({ memoReviewState: "withheld", decision: "PURSUE" });
     expect(
       renderToStaticMarkup(
         createElement(DossierView, { dossier: pending, reviewState: "pending" }),
@@ -233,9 +311,8 @@ describe("rich staged serving activation", () => {
       "UPDATE dossier_review_jobs SET status='needs_attention',last_error='reviewer unavailable'",
     );
     expect(await read()).toMatchObject({
-      memoReviewState: "review_attention",
+      memoReviewState: "withheld",
       decision: "PURSUE",
-      richDossier: { executiveThesis: pending.executiveThesis },
     });
     expect(
       renderToStaticMarkup(
@@ -253,8 +330,7 @@ describe("rich staged serving activation", () => {
       compose.mockRejectedValueOnce(new ModelProviderUnavailableError("429", 429, 1000));
       expect(await worker.pollOnce()).toMatchObject({ status: "retry" });
       expect(await read()).toMatchObject({
-        memoReviewState: "pending",
-        richDossier: { executiveThesis: pending.executiveThesis },
+        memoReviewState: "withheld",
       });
       await db.execute("UPDATE dossier_review_lane SET next_attempt_at=0");
       await db.execute("UPDATE dossier_review_jobs SET next_attempt_at=0");
@@ -289,10 +365,7 @@ describe("rich staged serving activation", () => {
     await publisher.publish(identity);
     const queries = new SqliteOpportunityQueries(db);
     const { scope } = await resolveServingScope("person_A", "tenant_A", db);
-    expect((await queries.getFeed(scope)).items[0].evaluationState).toBe("UNMATERIALIZED");
-    await db.execute(
-      `UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`,
-    );
+    expect((await queries.getFeed(scope)).items[0].evaluationState).toBe("EVALUATED");
     const feed = await queries.getFeed(scope, undefined, { shortlistQueue: true });
     expect(feed.items).toHaveLength(1);
     expect(feed.items[0]).toMatchObject({
@@ -356,26 +429,6 @@ describe("rich staged serving activation", () => {
     await expect(new StagedServingPublisher(db).publish(identity)).rejects.toThrow(
       "SERVING_REQUIRES_MATCHING_DOSSIER",
     );
-    expect(
-      await selectStagedDossierWork(db, {
-        context: "staged-context",
-        limit: 10,
-        publishOnly: true,
-      }),
-    ).toEqual([]);
-    expect(
-      await selectStagedDossierWork(db, { context: "staged-context", limit: 10 }),
-    ).toHaveLength(1);
-    expect(
-      (
-        await stagedRolloutReadiness(db, {
-          tenantId: "tenant_A",
-          personId: "person_A",
-          searchPlanId: "plan_A",
-          contextFingerprint: "staged-context",
-        })
-      ).ready,
-    ).toBe(false);
   });
   it("does not present a previous layout as the current memo", async () => {
     const store = new SqliteRichDossierStore(db);
@@ -388,40 +441,13 @@ describe("rich staged serving activation", () => {
       "UPDATE materialized_evaluations SET evaluation_json=json_remove(evaluation_json,'$.presentationVersion')",
     );
     await db.execute(
-      "UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'",
+      "UPDATE active_evaluation_contexts SET context_fingerprint='e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65' WHERE person_id='person_A'",
     );
     const { scope } = await resolveServingScope("person_A", "tenant_A", db);
     expect(await store.get(identity, evaluationFingerprint)).toBeNull();
     expect(
       (await new SqliteOpportunityQueries(db).getDossier(scope, "source-job"))?.evaluationState,
     ).not.toBe("EVALUATED");
-    // Historical presentation cannot silently qualify as current rollout coverage.
-    expect(
-      await selectStagedDossierWork(db, { context: "staged-context", limit: 10 }),
-    ).toHaveLength(1);
-  });
-  it("will not approve a context-aware rollout merely because rows exist without Tavily", async () => {
-    await new SqliteRichDossierStore(db).save(identity, evaluationFingerprint, dossier());
-    await new StagedServingPublisher(db).publish(identity);
-    await db.execute(
-      "UPDATE evaluation_contexts SET policy_version='staged-v8' WHERE context_fingerprint='staged-context'",
-    );
-    const previous = process.env.TAVILY_API_KEY;
-    delete process.env.TAVILY_API_KEY;
-    try {
-      const result = await stagedRolloutReadiness(db, {
-        tenantId: "tenant_A",
-        personId: "person_A",
-        searchPlanId: "plan_A",
-        contextFingerprint: "staged-context",
-      });
-      expect(result.ready).toBe(false);
-      expect(result.blockers).toContain("CONTEXT_SEARCH_CONFIGURATION_REQUIRED");
-      expect(result.prepared).toBe(0);
-    } finally {
-      if (previous === undefined) delete process.env.TAVILY_API_KEY;
-      else process.env.TAVILY_API_KEY = previous;
-    }
   });
   it("rejects a dossier that keeps the headline but rewrites canonical decision detail", async () => {
     const wrongTrace = structuredClone(stagedEvaluation.trace) as unknown as JsonValue;
@@ -487,9 +513,6 @@ describe("rich staged serving activation", () => {
       sourceEvaluationFingerprint: evaluationFingerprint,
     });
     await new StagedServingPublisher(db).publish(identity);
-    await db.execute(
-      `UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`,
-    );
     const { scope } = await resolveServingScope("person_A", "tenant_A", db);
     const dto = await new SqliteOpportunityQueries(db).getDossier(scope, "source-job");
     expect(dto?.evaluationState).toBe("EVALUATED");
@@ -522,15 +545,42 @@ describe("rich staged serving activation", () => {
       vi.unstubAllGlobals();
     }
   });
+  it("renders unresolved scope as decision guidance rather than an internal acquisition prompt", () => {
+    const rich = dossier();
+    rich.resolutions = [
+      {
+        field: "reportingLine",
+        status: "OPEN",
+        value: null,
+        claimIds: [],
+        methods: ["ask"],
+        question: "What is the reporting structure for this role?",
+        consequence: "Authority changes the career value.",
+      },
+      {
+        field: "teamScale",
+        status: "OPEN",
+        value: null,
+        claimIds: [],
+        methods: ["ask"],
+        question: "What is the team scale or headcount responsibility for this role?",
+        consequence: "Team scope changes the career value.",
+      },
+    ];
+    const markup = renderToStaticMarkup(createElement(DossierView, { dossier: rich }));
+    expect(markup).toContain("Before you advance");
+    expect(markup).toContain("Authority and reporting");
+    expect(markup).toContain("Leadership scope");
+    expect(markup).not.toContain("What is the reporting structure for this role?");
+    expect(markup).not.toContain("What is the team scale or headcount responsibility for this role?");
+  });
+
   it("never uses the input fingerprint as an alias for an exact evaluation fingerprint", async () => {
     const store = new SqliteRichDossierStore(db);
     await store.save(identity, evaluationFingerprint, dossier());
     expect(await store.get(identity, "input")).toBeNull();
     expect(await store.get(identity, evaluationFingerprint)).not.toBeNull();
     await new StagedServingPublisher(db).publish(identity);
-    await db.execute(
-      `UPDATE active_evaluation_contexts SET context_fingerprint='staged-context' WHERE person_id='person_A'`,
-    );
     const { scope } = await resolveServingScope("person_A", "tenant_A", db);
     expect(
       (await new SqliteOpportunityQueries(db).getDossier(scope, "source-job"))?.evaluationState,
@@ -544,16 +594,7 @@ describe("rich staged serving activation", () => {
       (await new SqliteOpportunityQueries(db).getDossier(scope, "source-job"))?.evaluationState,
     ).toBe("INVALID");
   });
-  it("selects an existing v3.4 dossier for publish-only using the full evaluation fingerprint", async () => {
-    const options = { context: "staged-context", limit: 10, publishOnly: true };
-    expect(await selectStagedDossierWork(db, options)).toEqual([]);
-    await new SqliteRichDossierStore(db).save(identity, evaluationFingerprint, dossier());
-    expect(await selectStagedDossierWork(db, { ...options, publishOnly: false })).toEqual([]);
-    expect(await selectStagedDossierWork(db, options)).toHaveLength(1);
-    await new StagedServingPublisher(db).publish(identity);
-    expect(await selectStagedDossierWork(db, options)).toEqual([]);
-  });
-  it("keeps a missing legacy score invalid while accepting an explicitly staged scoreless contract", () => {
+  it("accepts only the staged-v8 scoreless evaluated contract", () => {
     const input = {
       engineVerdict: "PURSUE",
       userDecision: null,
@@ -563,20 +604,17 @@ describe("rich staged serving activation", () => {
       qualityScore: null,
     };
     expect(
-      resolveCanonicalServingReadModel({ ...input, evaluationState: "EVALUATED" }).evaluationState,
-    ).toBe("INVALID");
-    expect(
       resolveCanonicalServingReadModel({ ...input, evaluationState: "STAGED_EVALUATED" })
         .evaluationState,
     ).toBe("EVALUATED");
   });
   it("keeps pending and failed dossier work visible only in its owning search scope", async () => {
-    const active = { contextFingerprint: "staged-context", searchPlanId: "plan_A" };
+    const active = { contextFingerprint: "e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65", searchPlanId: "plan_A" };
     await db.execute(
-      `INSERT INTO evaluation_requirements(id,tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,required_enrichment_pipeline_version,evaluation_context_fingerprint,status) VALUES('req','tenant_A','person_A','plan_A','job','version','1.0.0','staged-context','SATISFIED')`,
+      `INSERT INTO evaluation_requirements(id,tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,required_enrichment_pipeline_version,evaluation_context_fingerprint,status) VALUES('req','tenant_A','person_A','plan_A','job','version','1.0.0','e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65','SATISFIED')`,
     );
     await db.execute(
-      `INSERT INTO evaluation_jobs(id,tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,status) VALUES('ej','tenant_A','person_A','plan_A','job','version','staged-context','staged_completed')`,
+      `INSERT INTO evaluation_jobs(id,tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,status) VALUES('ej','tenant_A','person_A','plan_A','job','version','e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65','staged_completed')`,
     );
     expect((await readAcquisitionFeed(db, identity, active)).rows[0].state).toBe("PREPARING");
     const store = new SqliteRichDossierStore(db);
@@ -592,36 +630,5 @@ describe("rich staged serving activation", () => {
     await store.save(identity, evaluationFingerprint, dossier());
     await new StagedServingPublisher(db).publish(identity);
     expect((await readAcquisitionFeed(db, identity, active)).rows[0].state).toBe("READY");
-  });
-  it("activates only complete serving coverage and never overwrites an independently changed context", async () => {
-    await db.execute(`UPDATE opportunity_versions SET acquisition_status='ACQUIRED'`);
-    const scope = { ...identity, contextFingerprint: "staged-context", searchPlanId: "plan_A" };
-    const old = (await db.one<{ context_fingerprint: string }>(
-      `SELECT context_fingerprint FROM active_evaluation_contexts WHERE person_id='person_A'`,
-    ))!.context_fingerprint;
-    expect(await stagedRolloutReadiness(db, scope)).toMatchObject({
-      total: 1,
-      unprepared: 1,
-      ready: false,
-    });
-    await expect(activateReadyStagedRollout(db, scope, old)).rejects.toThrow(
-      "ROLLOUT_COVERAGE_INCOMPLETE",
-    );
-    await new SqliteRichDossierStore(db).save(identity, evaluationFingerprint, dossier());
-    await new StagedServingPublisher(db).publish(identity);
-    expect(await stagedRolloutReadiness(db, scope)).toMatchObject({
-      prepared: 1,
-      unprepared: 0,
-      ready: true,
-    });
-    await expect(activateReadyStagedRollout(db, scope, "unrelated")).rejects.toThrow(
-      "ROLLOUT_ACTIVE_CONTEXT_CHANGED",
-    );
-    await activateReadyStagedRollout(db, scope, old);
-    expect(
-      (await db.one<{ context_fingerprint: string }>(
-        `SELECT context_fingerprint FROM active_evaluation_contexts WHERE person_id='person_A'`,
-      ))!.context_fingerprint,
-    ).toBe("staged-context");
   });
 });

@@ -78,6 +78,18 @@ export async function activateSearchPlanForIntent(
       operatingModels: [],
       ownership: [],
       generatedQueries: searchPlan.rankedQueries.map((q) => q.query),
+      // Decision intent is frozen into the same immutable snapshot as the
+      // search criteria so queued evaluations cannot accidentally consume a
+      // newer profile preference than the context they were created for.
+      candidateDecisionIntent: {
+        targetTitles: effectiveTitles,
+        preferredLocations: effectiveLocations,
+        preferredWorkModel: input.preferredWorkModel,
+        currency: input.currency,
+        targetSalaryAmount: input.targetSalaryAmount,
+        travelTolerance: input.travelTolerance,
+        decisionPreferences: input.decisionPreferences,
+      },
     },
   };
   const versions = loadEvaluationVersionManifest();

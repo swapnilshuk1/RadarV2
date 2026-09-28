@@ -17,7 +17,7 @@ Scrape run -> portal capture -> preserved payload -> canonical opportunity/versi
 | Payload and ingestion persistence | `scripts/scraper/persist/`, `src/lib/storage/blob-store.ts` |
 | Enrichment leases, completion and dependency release | `scripts/scraper/persist/queue.ts`, `scripts/enrich.ts` |
 | Evaluation scheduling | `src/lib/intelligence/EvaluationWorkScheduler.ts` |
-| Staged worker | `scripts/process-staged-evaluation-jobs.ts` |
+| Staged worker | `npm run worker:evaluations` (`scripts/run-evaluation-worker.ts`) |
 
 The configured database and canonical source/version lineage are authoritative.
 `live-scraped.json` is not the serving system of record. Local payload paths must

@@ -1,7 +1,6 @@
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
 import { SqliteScrapeRunStore } from "@/data/sqlite/repositories/SqliteScrapeRunStore";
 import { EnrichmentQueue } from "../../../scripts/scraper/persist/queue";
-import { stagedContextPredicate } from './evaluationQueuePolicy';
 import { failEvaluationDependency } from './evaluationDependency';
 
 export interface RunProgress {
@@ -161,6 +160,94 @@ export class RunReconciliationService {
     let requirementsHealed = 0;
     let jobsCreated = 0;
 
+    // A newer projected version supersedes obsolete executable/failed work for
+    // the same canonical opportunity in the active context. Completed history
+    // remains immutable; in-flight processing is never deleted underneath a worker.
+    await this.db.execute(
+      `DELETE FROM evaluation_jobs
+       WHERE status IN ('staged_pending','staged_waiting_enrichment','staged_dead_letter')
+         AND EXISTS (
+           SELECT 1
+           FROM active_evaluation_contexts aec
+           JOIN opportunity_versions current_ov
+             ON current_ov.id=evaluation_jobs.opportunity_version
+            AND current_ov.canonical_job_id=evaluation_jobs.canonical_job_id
+           JOIN search_plan_candidates newer_spc
+             ON newer_spc.tenant_id=evaluation_jobs.tenant_id
+            AND newer_spc.person_id=evaluation_jobs.person_id
+            AND newer_spc.search_plan_id=evaluation_jobs.search_plan_id
+            AND newer_spc.canonical_job_id=evaluation_jobs.canonical_job_id
+           JOIN opportunity_versions newer_ov
+             ON newer_ov.id=newer_spc.opportunity_version
+            AND newer_ov.canonical_job_id=newer_spc.canonical_job_id
+           WHERE aec.tenant_id=evaluation_jobs.tenant_id
+             AND aec.person_id=evaluation_jobs.person_id
+             AND aec.search_plan_id=evaluation_jobs.search_plan_id
+             AND aec.context_fingerprint=evaluation_jobs.evaluation_context_fingerprint
+             AND newer_ov.created_at > current_ov.created_at
+         )`,
+    );
+    const supersededRequirements = await this.db.execute(
+      `DELETE FROM evaluation_requirements
+       WHERE status IN ('READY','WAITING_ENRICHMENT','FAILED')
+         AND EXISTS (
+           SELECT 1
+           FROM active_evaluation_contexts aec
+           JOIN opportunity_versions current_ov
+             ON current_ov.id=evaluation_requirements.opportunity_version
+            AND current_ov.canonical_job_id=evaluation_requirements.canonical_job_id
+           JOIN search_plan_candidates newer_spc
+             ON newer_spc.tenant_id=evaluation_requirements.tenant_id
+            AND newer_spc.person_id=evaluation_requirements.person_id
+            AND newer_spc.search_plan_id=evaluation_requirements.search_plan_id
+            AND newer_spc.canonical_job_id=evaluation_requirements.canonical_job_id
+           JOIN opportunity_versions newer_ov
+             ON newer_ov.id=newer_spc.opportunity_version
+            AND newer_ov.canonical_job_id=newer_spc.canonical_job_id
+           WHERE aec.tenant_id=evaluation_requirements.tenant_id
+             AND aec.person_id=evaluation_requirements.person_id
+             AND aec.search_plan_id=evaluation_requirements.search_plan_id
+             AND aec.context_fingerprint=evaluation_requirements.evaluation_context_fingerprint
+             AND newer_ov.created_at > current_ov.created_at
+         )`,
+    );
+    requirementsHealed += supersededRequirements.rowsAffected;
+
+    // 0. An evaluation obligation without exact enrichment work is invalid in
+    // staged-v8. Fresh ingestion creates enrichment first; context rematerialization
+    // must not leave permanent WAITING_ENRICHMENT rows behind.
+    await this.db.execute(
+      `DELETE FROM evaluation_jobs
+       WHERE status='staged_waiting_enrichment'
+         AND EXISTS (
+           SELECT 1 FROM evaluation_requirements er
+           WHERE er.tenant_id=evaluation_jobs.tenant_id
+             AND er.person_id=evaluation_jobs.person_id
+             AND er.search_plan_id=evaluation_jobs.search_plan_id
+             AND er.canonical_job_id=evaluation_jobs.canonical_job_id
+             AND er.opportunity_version=evaluation_jobs.opportunity_version
+             AND er.evaluation_context_fingerprint=evaluation_jobs.evaluation_context_fingerprint
+             AND er.status='WAITING_ENRICHMENT'
+             AND NOT EXISTS (
+               SELECT 1 FROM enrichment_jobs ej
+               WHERE ej.canonical_job_id=er.canonical_job_id
+                 AND ej.opportunity_version=er.opportunity_version
+                 AND ej.pipeline_version=er.required_enrichment_pipeline_version
+             )
+         )`,
+    );
+    const pruned = await this.db.execute(
+      `DELETE FROM evaluation_requirements
+       WHERE status='WAITING_ENRICHMENT'
+         AND NOT EXISTS (
+           SELECT 1 FROM enrichment_jobs ej
+           WHERE ej.canonical_job_id=evaluation_requirements.canonical_job_id
+             AND ej.opportunity_version=evaluation_requirements.opportunity_version
+             AND ej.pipeline_version=evaluation_requirements.required_enrichment_pipeline_version
+         )`,
+    );
+    requirementsHealed += pruned.rowsAffected;
+
     // 1. WAITING_ENRICHMENT -> READY when exact matching enrichment is COMPLETE
     const readyCandidates = await this.db.many<{
       id: string;
@@ -204,21 +291,6 @@ export class RunReconciliationService {
       requirementsHealed += await failEvaluationDependency(this.db, req.id, 'ENRICHMENT_FAILED');
     }
 
-    // 2b. WAITING_ENRICHMENT -> FAILED when NO matching enrichment job exists at all
-    const missingEnrichments = await this.db.many<{ id: string }>(
-      `SELECT er.id
-       FROM evaluation_requirements er
-       LEFT JOIN enrichment_jobs ej
-         ON er.canonical_job_id = ej.canonical_job_id
-        AND er.opportunity_version = ej.opportunity_version
-        AND er.required_enrichment_pipeline_version = ej.pipeline_version
-       WHERE er.status = 'WAITING_ENRICHMENT' AND ej.id IS NULL`
-    );
-
-    for (const req of missingEnrichments) {
-      requirementsHealed += await failEvaluationDependency(this.db, req.id, 'MISSING_ENRICHMENT_JOB');
-    }
-
     // 3. For all READY requirements, ensure evaluation job exists in appropriate state
     const readyReqs = await this.db.many<{
       id: string;
@@ -250,9 +322,9 @@ export class RunReconciliationService {
           `INSERT INTO evaluation_jobs (
              id, tenant_id, person_id, search_plan_id, canonical_job_id,
              opportunity_version, evaluation_context_fingerprint, status, attempts, created_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN EXISTS (SELECT 1 FROM evaluation_contexts ec WHERE ec.context_fingerprint = ? AND ${stagedContextPredicate}) THEN 'staged_pending' ELSE 'pending' END, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, 'staged_pending', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
            ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
-           DO UPDATE SET status = CASE WHEN evaluation_jobs.status = 'waiting_enrichment' THEN 'pending' WHEN evaluation_jobs.status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE evaluation_jobs.status END, updated_at = CURRENT_TIMESTAMP`,
+           DO UPDATE SET status = CASE WHEN evaluation_jobs.status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE evaluation_jobs.status END, updated_at = CURRENT_TIMESTAMP`,
           [
             evalJobId,
             req.tenant_id,
@@ -260,24 +332,21 @@ export class RunReconciliationService {
             req.search_plan_id,
             req.canonical_job_id,
             req.opportunity_version,
-            req.evaluation_context_fingerprint, req.evaluation_context_fingerprint,
+            req.evaluation_context_fingerprint,
           ]
         );
         jobsCreated++;
-      } else if (job.status === "waiting_enrichment" || job.status === "staged_waiting_enrichment") {
+      } else if (job.status === "staged_waiting_enrichment") {
         await this.db.execute(
-          `UPDATE evaluation_jobs SET status = CASE WHEN status = 'staged_waiting_enrichment' THEN 'staged_pending' ELSE 'pending' END, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          `UPDATE evaluation_jobs SET status = 'staged_pending', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
           [job.id]
         );
-      } else if (job.status === "dead_letter" || job.status === "staged_dead_letter") {
-        await this.db.execute(
-          `UPDATE evaluation_requirements SET status = 'FAILED', blocked_reason = 'EVALUATION_JOB_DEAD_LETTER' WHERE id = ?`,
-          [req.id]
-        );
-        requirementsHealed++;
-      } else if (job.status === "completed" || job.status === "staged_completed") {
+      } else if (job.status === "staged_dead_letter") {
+        // Retry exhaustion is a parked evaluator state, not a source/dependency
+        // failure. Keep the requirement READY; Start/Resume owns explicit re-entry.
+      } else if (job.status === "staged_completed") {
         const mat = await this.db.one<{ id: string }>(
-          `SELECT id FROM ${job.status === 'staged_completed' ? 'staged_evaluations' : 'materialized_evaluations'}
+          `SELECT id FROM staged_evaluations
            WHERE tenant_id = ? AND person_id = ? AND canonical_job_id = ?
              AND opportunity_version = ? AND evaluation_context_fingerprint = ?
            LIMIT 1`,

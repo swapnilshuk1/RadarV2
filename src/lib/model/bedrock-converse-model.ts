@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import type { JsonModel } from './json-model';
-import { ModelProviderUnavailableError,providerRetryAfterMs } from './provider-unavailable';
+import { ModelInvalidOutputError, ModelProviderUnavailableError,providerRetryAfterMs } from './provider-unavailable';
 
 type BedrockUsage = { inputTokens?: number; outputTokens?: number; totalTokens?: number };
 
@@ -48,7 +48,7 @@ export class BedrockConverseJsonModel implements JsonModel {
         const content = payload.output?.message?.content?.map(block => block.text ?? '').join('');
         if (!content) throw new Error('Bedrock provider returned no JSON content');
         this.lastUsage = payload.usage;
-        try { return JSON.parse(content); } catch { throw new ModelProviderUnavailableError('Bedrock provider returned invalid JSON; no proposal accepted',undefined,30_000); }
+        try { return JSON.parse(content); } catch { throw new ModelInvalidOutputError('Bedrock provider returned invalid JSON; no proposal accepted'); }
       } catch (error) {
         if (error instanceof ModelProviderUnavailableError) throw error;
         failure = error;

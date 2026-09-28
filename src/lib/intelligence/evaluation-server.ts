@@ -6,13 +6,19 @@ import {
   EvaluationRuntimeControl,
   type EvaluationRuntimeState,
 } from "./EvaluationRuntimeControl";
+import { EvaluationWorkScheduler } from "./EvaluationWorkScheduler";
+import { isWorkerOnline } from "../health/worker-heartbeat";
+
+// Evaluation-stage GLM calls are hard-capped at 120s. Give telemetry 15s of
+// grace for the terminal write, then treat a lingering `running` row as stale.
+const EVALUATION_INVOCATION_STALE_MS = 135_000;
 
 export interface EvaluatorTelemetrySnapshot {
   control: {
     desiredState: EvaluationRuntimeState;
     updatedAt: number;
     updatedBy: string | null;
-    localDaemonRunning: boolean;
+    workerOnline: boolean;
     canControl: boolean;
   };
   queue: {
@@ -25,8 +31,8 @@ export interface EvaluatorTelemetrySnapshot {
     claimedWithoutModelCall: number;
     /** A processing row which can be reclaimed by a worker. */
     reclaimableProcessing: number;
+    waitingEnrichment: number;
     completed: number;
-    failed: number;
     deadLetter: number;
   };
   latestCompletedAt: string | null;
@@ -65,24 +71,15 @@ export interface EvaluatorTelemetrySnapshot {
   }>;
 }
 
-/** A captured-job evaluation is bound to a durable scrape run. */
-function capturedJobPredicate(jobAlias: string): string {
-  return `EXISTS (
-    SELECT 1
-    FROM evaluation_requirements er
-    JOIN scrape_run_evaluation_requirements srer
-      ON srer.evaluation_requirement_id=er.id
-    WHERE er.tenant_id=${jobAlias}.tenant_id
-      AND er.person_id=${jobAlias}.person_id
-      AND er.search_plan_id=${jobAlias}.search_plan_id
-      AND er.canonical_job_id=${jobAlias}.canonical_job_id
-      AND er.opportunity_version=${jobAlias}.opportunity_version
-      AND er.evaluation_context_fingerprint=${jobAlias}.evaluation_context_fingerprint
-  )`;
+type CandidateScopeRequest = { tenantId?: string; personId?: string };
+function requestedCandidateScope(data?: CandidateScopeRequest) {
+  if (Boolean(data?.tenantId) !== Boolean(data?.personId)) throw new AuthError("CANDIDATE_SCOPE_INCOMPLETE", 400);
+  return data;
 }
 
-async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getDatabaseAdapter>) {
-  const { scope } = await resolveServingScope(userId, undefined, db);
+async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getDatabaseAdapter>, requested?: CandidateScopeRequest) {
+  const scopeRequest = requestedCandidateScope(requested);
+  const { scope, activeContext } = await resolveServingScope(userId, scopeRequest?.tenantId, db, scopeRequest?.personId);
   const membership = await db.one<{ role: string }>(
     `SELECT role
      FROM memberships
@@ -94,34 +91,49 @@ async function resolveEvaluatorAccess(userId: string, db: ReturnType<typeof getD
     throw new AuthError("FORBIDDEN: Active tenant membership required", 403);
   }
 
-  // This controls a process-global daemon. Keep the operator boundary strict,
-  // but source it from the active tenant membership rather than the profile
-  // role cached in the browser session.
-  return { scope, canControl: membership.role === "admin" };
+  // Queue control is scoped to the candidate, while process supervision stays
+  // outside the serving process. Source authority from the active tenant
+  // membership rather than the profile role cached in the browser session.
+  return { scope, activeContext, canControl: membership.role === "admin" };
 }
 
-async function snapshotForUser(user: { id: string; role?: string }): Promise<EvaluatorTelemetrySnapshot> {
+async function snapshotForUser(user: { id: string; role?: string }, requested?: CandidateScopeRequest): Promise<EvaluatorTelemetrySnapshot> {
   const db = getDatabaseAdapter();
-  const { scope, canControl } = await resolveEvaluatorAccess(user.id, db);
-  const runtime = await new EvaluationRuntimeControl(db).get();
-  const { EvaluationDaemon } = await import("./EvaluationDaemon");
-  const local = EvaluationDaemon.getGlobalDaemonRuntimeStatus();
+  const { scope, activeContext, canControl } = await resolveEvaluatorAccess(user.id, db, requested);
+  const runtime = await new EvaluationRuntimeControl(db).get(scope);
+  const activeContextFingerprint = activeContext?.contextFingerprint ?? null;
+  const workerOnline = await isWorkerOnline("evaluation", { db });
+
+  const telemetryNow = Date.now();
+  const staleInvocationBefore = telemetryNow - EVALUATION_INVOCATION_STALE_MS;
+  await db.execute(
+    `UPDATE model_invocations
+     SET status='transport_error',
+         completed_at=?,
+         latency_ms=?-started_at,
+         error_code=COALESCE(error_code,'STALE_INVOCATION_RECONCILED')
+     WHERE tenant_id=? AND person_id=? AND pipeline='evaluation'
+       AND status='running' AND started_at<?`,
+    [telemetryNow, telemetryNow, scope.tenantId, scope.personId, staleInvocationBefore],
+  );
 
   const statusRows = await db.many<{ status: string; n: number }>(
     `SELECT ej.status AS status,COUNT(*) AS n
      FROM evaluation_jobs AS ej
-     WHERE ej.tenant_id=? AND ej.person_id=? AND ${capturedJobPredicate("ej")}
+     WHERE ej.tenant_id=? AND ej.person_id=?
+       AND ej.evaluation_context_fingerprint=?
      GROUP BY ej.status`,
-    [scope.tenantId, scope.personId],
+    [scope.tenantId, scope.personId, activeContextFingerprint],
   );
   const counts = Object.fromEntries(statusRows.map((row) => [row.status, Number(row.n)]));
 
   const latest = await db.one<{ completed_at: string | null }>(
     `SELECT MAX(ej.completed_at) AS completed_at
      FROM evaluation_jobs AS ej
-     WHERE ej.tenant_id=? AND ej.person_id=? AND ej.status='completed'
-       AND ${capturedJobPredicate("ej")}`,
-    [scope.tenantId, scope.personId],
+     WHERE ej.tenant_id=? AND ej.person_id=? AND ej.status='staged_completed'
+       AND ej.evaluation_context_fingerprint=?
+`,
+    [scope.tenantId, scope.personId, activeContextFingerprint],
   );
 
   const activeRows = await db.many<{
@@ -142,10 +154,10 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
               THEN 1 ELSE 0
             END AS reclaimable
      FROM evaluation_jobs AS ej
-     WHERE tenant_id=? AND person_id=? AND status IN ('processing','staged_processing')
-       AND ${capturedJobPredicate("ej")}
+     WHERE tenant_id=? AND person_id=? AND status='staged_processing'
+       AND evaluation_context_fingerprint=?
      ORDER BY COALESCE(first_claimed_at,created_at),created_at`,
-    [scope.tenantId, scope.personId],
+    [scope.tenantId, scope.personId, activeContextFingerprint],
   );
 
   const processingStateJobs = await Promise.all(
@@ -187,11 +199,11 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
         modelVersion: latestInvocation?.model_version ?? null,
         invocationAttempt: latestInvocation ? Number(latestInvocation.attempt) : null,
         totalTokens: Number(tokenRow?.total_tokens ?? 0),
-        telemetryState: Number(job.reclaimable) === 1
+        telemetryState: (Number(job.reclaimable) === 1
           ? "reclaimable"
           : hasLiveModelCall
             ? "live_model_call"
-            : "claimed_without_model_call",
+            : "claimed_without_model_call") as "live_model_call" | "claimed_without_model_call" | "reclaimable",
       };
     }),
   );
@@ -223,10 +235,10 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
      FROM model_invocations AS mi
      JOIN evaluation_jobs AS ej ON ej.id=mi.evaluation_job_id
      WHERE mi.tenant_id=? AND mi.person_id=? AND mi.pipeline='evaluation'
-       AND ${capturedJobPredicate("ej")}
+       AND ej.evaluation_context_fingerprint=?
      ORDER BY mi.started_at DESC
      LIMIT 30`,
-    [scope.tenantId, scope.personId],
+    [scope.tenantId, scope.personId, activeContextFingerprint],
   );
 
   return {
@@ -234,18 +246,21 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
       desiredState: runtime.desiredState,
       updatedAt: runtime.updatedAt,
       updatedBy: runtime.updatedBy,
-      localDaemonRunning: local.running,
+      // Process supervision remains outside the request/runtime boundary.
+      // A fresh heartbeat tells the UI whether a supervised evaluator can
+      // actually consume the durable RUNNING/PAUSED/STOPPED control state.
+      workerOnline,
       canControl,
     },
     queue: {
-      pending: Number(counts.staged_pending ?? 0) + Number(counts.pending ?? 0),
-      processing: Number(counts.staged_processing ?? 0) + Number(counts.processing ?? 0),
+      pending: Number(counts.staged_pending ?? 0),
+      processing: Number(counts.staged_processing ?? 0),
       liveModelCalls,
       claimedWithoutModelCall,
       reclaimableProcessing,
-      completed: Number(counts.completed ?? 0),
-      failed: Number(counts.failed ?? 0),
-      deadLetter: Number(counts.dead_letter ?? 0),
+      waitingEnrichment: Number(counts.staged_waiting_enrichment ?? 0),
+      completed: Number(counts.staged_completed ?? 0),
+      deadLetter: Number(counts.staged_dead_letter ?? 0),
     },
     latestCompletedAt: latest?.completed_at ?? null,
     processingStateJobs,
@@ -270,33 +285,38 @@ async function snapshotForUser(user: { id: string; role?: string }): Promise<Eva
 }
 
 export const getEvaluatorTelemetryFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    return snapshotForUser(user);
+    return snapshotForUser(user, data);
   });
 
 export const controlEvaluatorFn = createServerFn({ method: "POST" })
-  .validator((data: { action: "start" | "pause" | "resume" | "stop" }) => data)
+  .validator((data: { action: "start" | "pause" | "resume" | "stop" } & CandidateScopeRequest) => data)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const db = getDatabaseAdapter();
-    const { canControl } = await resolveEvaluatorAccess(user.id, db);
+    const { canControl } = await resolveEvaluatorAccess(user.id, db, data);
     if (!canControl) {
       throw new AuthError("FORBIDDEN: Active tenant administrator privileges required", 403);
     }
     const control = new EvaluationRuntimeControl(db);
 
+    const access = await resolveEvaluatorAccess(user.id, db, data);
     if (data.action === "pause") {
-      await control.set("PAUSED", user.id);
+      await control.set(access.scope, "PAUSED", user.id);
     } else if (data.action === "stop") {
-      await control.set("STOPPED", user.id);
-      const { EvaluationDaemon } = await import("./EvaluationDaemon");
-      EvaluationDaemon.stopGlobalDaemon();
+      await control.set(access.scope, "STOPPED", user.id);
     } else {
-      await control.set("RUNNING", user.id);
-      const { EvaluationDaemon } = await import("./EvaluationDaemon");
-      EvaluationDaemon.startGlobalDaemon(2000);
+      if (!access.activeContext) throw new AuthError("NO_ACTIVE_EVALUATION_CONTEXT", 409);
+      await new EvaluationWorkScheduler(db).retryRecoverableDeadLetters(
+        access.scope,
+        access.activeContext.contextFingerprint,
+      );
+      await control.set(access.scope, "RUNNING", user.id);
+      // The supervised evaluation daemon owns queue claims. The request must
+      // return immediately instead of executing a model call inside HTTP.
     }
 
-    return snapshotForUser(user);
+    return snapshotForUser(user, data);
   });

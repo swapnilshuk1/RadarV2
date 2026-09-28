@@ -6,6 +6,7 @@ import { Route as CallbackRoute } from "../../src/routes/api/auth/callback";
 
 const originalClientId = process.env.GOOGLE_CLIENT_ID;
 const originalClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const originalAuthSessionSecret = process.env.AUTH_SESSION_SECRET;
 
 function deps(overrides: Partial<OAuthHttpRouteDependencies> = {}): OAuthHttpRouteDependencies {
   return {
@@ -25,11 +26,14 @@ function deps(overrides: Partial<OAuthHttpRouteDependencies> = {}): OAuthHttpRou
 }
 
 describe("OAuth raw HTTP routes", () => {
+  process.env.AUTH_SESSION_SECRET = "test-oauth-state-secret-with-at-least-thirty-two-characters";
   afterEach(() => {
     if (originalClientId === undefined) delete process.env.GOOGLE_CLIENT_ID;
     else process.env.GOOGLE_CLIENT_ID = originalClientId;
     if (originalClientSecret === undefined) delete process.env.GOOGLE_CLIENT_SECRET;
     else process.env.GOOGLE_CLIENT_SECRET = originalClientSecret;
+    if (originalAuthSessionSecret === undefined) process.env.AUTH_SESSION_SECRET = "test-oauth-state-secret-with-at-least-thirty-two-characters";
+    else process.env.AUTH_SESSION_SECRET = originalAuthSessionSecret;
   });
 
   it("GET /api/auth/google returns a real Google redirect with callback and PKCE cookies", async () => {

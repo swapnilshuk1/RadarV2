@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BedrockConverseJsonModel } from '../../src/lib/model/bedrock-converse-model';
 import { extractValidatedSourceClaims, EmptySourceEvidenceError } from '../../src/dossier/evidence';
+import { sourceClaimsSchema } from '../../src/dossier/source-spans';
 import { bedrockJsonSchema } from '../../src/dossier/bedrock-schema';
 import { stagedScreeningAdjudicationSchema } from '../../src/dossier/staged-screening';
 import type { ReasoningModel } from '../../src/dossier/contracts';
@@ -8,6 +9,8 @@ import { ModelInvalidOutputError, ModelProviderUnavailableError } from '../../sr
 import { BedrockMantleJsonModel } from '../../src/lib/model/bedrock-mantle-model';
 import { parseMantleKey } from '../../src/lib/model/bedrock-credentials';
 import { createBedrockGlmResearchModel } from '../../src/lib/model/bedrock-glm-research-model';
+import { createDossierWriterModel } from '../../src/lib/model/dossier-writer-model';
+import { GeminiJsonModel } from '../../src/lib/model/json-model';
 
 describe('Bedrock Mantle JSON transport',()=>{
   const reply=(text:string,finish='stop')=>new Response(JSON.stringify({choices:[{finish_reason:finish,message:{content:text}}],usage:{prompt_tokens:13,completion_tokens:2,total_tokens:15}}));
@@ -15,6 +18,28 @@ describe('Bedrock Mantle JSON transport',()=>{
     const model=createBedrockGlmResearchModel();
     expect(model).toBeInstanceOf(BedrockMantleJsonModel);expect(model.version).toBe('zai.glm-5');
     expect(model.configurationFingerprint).not.toBe(new BedrockConverseJsonModel('zai.glm-5',async()=>'key').configurationFingerprint);
+  });
+  it('keeps GLM as the default dossier writer and supports an explicit Gemini writer route',()=>{
+    const previousProvider=process.env.RADAR_DOSSIER_WRITER_PROVIDER;
+    const previousProject=process.env.GCP_PROJECT_ID;
+    const previousModel=process.env.RADAR_DOSSIER_WRITER_MODEL;
+    try{
+      delete process.env.RADAR_DOSSIER_WRITER_PROVIDER;
+      const defaultWriter=createDossierWriterModel();
+      expect(defaultWriter).toBeInstanceOf(BedrockMantleJsonModel);
+      expect(defaultWriter.version).toBe('zai.glm-5');
+
+      process.env.RADAR_DOSSIER_WRITER_PROVIDER='gemini';
+      process.env.GCP_PROJECT_ID='test-project';
+      process.env.RADAR_DOSSIER_WRITER_MODEL='gemini-3.8-flash';
+      const geminiWriter=createDossierWriterModel();
+      expect(geminiWriter).toBeInstanceOf(GeminiJsonModel);
+      expect(geminiWriter.version).toBe('gemini-3.8-flash');
+    }finally{
+      if(previousProvider===undefined)delete process.env.RADAR_DOSSIER_WRITER_PROVIDER;else process.env.RADAR_DOSSIER_WRITER_PROVIDER=previousProvider;
+      if(previousProject===undefined)delete process.env.GCP_PROJECT_ID;else process.env.GCP_PROJECT_ID=previousProject;
+      if(previousModel===undefined)delete process.env.RADAR_DOSSIER_WRITER_MODEL;else process.env.RADAR_DOSSIER_WRITER_MODEL=previousModel;
+    }
   });
   it('loads a raw key or labelled download and rejects ambiguity',()=>{
     const key='fake-test-key-'.repeat(5);
@@ -171,17 +196,117 @@ describe('Bedrock Converse JSON transport', () => {
     await expect(extractValidatedSourceClaims(model,{id:'provider-failure-jd',plane:'JD',title:'Role',locator:'test',text:'Lead growth.',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'},'JD-1-')).rejects.toBeInstanceOf(ModelProviderUnavailableError);
     expect(calls).toBe(1);
   });
-  it('does not spend semantic repairs on a malformed provider JSON response', async () => {
+  it('uses bounded short semantic repairs for malformed provider JSON', async () => {
     let calls=0;
     const model=new BedrockConverseJsonModel('malformed-json-test',async()=>'secret',async()=>{calls++;return new Response(JSON.stringify({output:{message:{content:[{text:'{incomplete'}]}}}));});
-    await expect(extractValidatedSourceClaims(model,{id:'invalid-json-jd',plane:'JD',title:'Role',locator:'test',text:'Lead growth.',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'},'JD-1-')).rejects.toBeInstanceOf(ModelProviderUnavailableError);
-    expect(calls).toBe(1);
+    await expect(extractValidatedSourceClaims(model,{id:'invalid-json-jd',plane:'JD',title:'Role',locator:'test',text:'Lead growth.',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'},'JD-1-')).rejects.toThrow();
+    expect(calls).toBe(4);
   });
-  it('reports empty source extraction distinctly after bounded local repairs', async () => {
+  it('stops repeated empty source extraction after one local repair', async () => {
     let attempts=0;
     const model:ReasoningModel={id:'empty-source-test',version:'1',async generate(){attempts++;return {claims:[]};}};
     await expect(extractValidatedSourceClaims(model,{id:'empty-jd',plane:'JD',title:'Captured page',locator:'test',text:'Navigation only',capturedAt:'2026-01-01T00:00:00.000Z',attribution:'JOB_POST'},'JD-1-')).rejects.toBeInstanceOf(EmptySourceEvidenceError);
-    expect(attempts).toBe(4);
+    expect(attempts).toBe(2);
+  });
+
+  it('keeps raw source extraction explicit and lineage-free', () => {
+    const base = {
+      id: 'CONTEXT-1-1',
+      text: 'Reach Digital has 2-10 employees.',
+      confidence: 1,
+      plane: 'CONTEXT',
+      citations: [{ sourceId: 'reach-context', spanId: 's0' }],
+      reasoning: 'Source-reported company size.',
+    };
+    expect(sourceClaimsSchema.parse({
+      claims: [{ ...base, state: 'EXPLICIT', derivedFrom: [] }],
+    }).claims).toHaveLength(1);
+    expect(() => sourceClaimsSchema.parse({
+      claims: [{ ...base, state: 'INFERRED', derivedFrom: [] }],
+    })).toThrow();
+    expect(() => sourceClaimsSchema.parse({
+      claims: [{ ...base, state: 'EXPLICIT', derivedFrom: ['CONTEXT-0-1'] }],
+    })).toThrow();
+  });
+
+  it('keeps valid context claims when a sibling claim is not directly grounded', async () => {
+    let attempts=0;
+    const model:ReasoningModel={
+      id:'context-partial-grounding-test',
+      version:'1',
+      async generate(){
+        attempts++;
+        return {claims:[
+          {
+            id:'CONTEXT-1-size',
+            text:'Reach Digital has 2-10 employees.',
+            state:'EXPLICIT',
+            confidence:1,
+            plane:'CONTEXT',
+            citations:[{sourceId:'reach-linkedin',spanId:'s2'}],
+            derivedFrom:[],
+          },
+          {
+            id:'CONTEXT-1-bad-scale',
+            text:'Reach Digital creates 500 ads monthly.',
+            state:'EXPLICIT',
+            confidence:1,
+            plane:'CONTEXT',
+            citations:[{sourceId:'reach-linkedin',spanId:'s2'}],
+            derivedFrom:[],
+          },
+        ]};
+      },
+    };
+    const claims=await extractValidatedSourceClaims(model,{
+      id:'reach-linkedin',
+      plane:'CONTEXT',
+      title:'Reach Digital company page',
+      locator:'test',
+      text:'Reach Digital\nCompany Size\n2-10 employees\n',
+      capturedAt:'2026-01-01T00:00:00.000Z',
+      attribution:'INDEPENDENT',
+    },'CONTEXT-1-');
+    expect(attempts).toBe(1);
+    expect(claims).toHaveLength(1);
+    expect(claims[0]).toMatchObject({
+      id:'CONTEXT-1-1',
+      text:'Reach Digital has 2-10 employees.',
+    });
+    expect(claims[0].citations[0].quote).toBe('2-10 employees');
+  });
+
+  it('drops unsupported duplicate-job claims when extracting CONTEXT evidence', async () => {
+    let attempts=0;
+    const instructions:string[]=[];
+    const repairInputs:any[]=[];
+    const model:ReasoningModel={
+      id:'context-repair-test',version:'1',
+      async generate(instruction,input){
+        attempts++;
+        instructions.push(instruction);
+        repairInputs.push(input);
+        if(attempts===1){
+          return {claims:[{
+            id:'CONTEXT-1-bad',
+            text:'The role has end-to-end creative ownership.',
+            state:'EXPLICIT',confidence:1,plane:'CONTEXT',
+            citations:[{sourceId:'reach-job-repost',spanId:'s99'}],
+            derivedFrom:[],
+          }]};
+        }
+        return {claims:[]};
+      },
+    };
+    await expect(extractValidatedSourceClaims(model,{
+      id:'reach-job-repost',plane:'CONTEXT',title:'Reach Digital job repost',locator:'test',
+      text:'Reach Digital is an AI-first performance marketing agency.',
+      capturedAt:'2026-01-01T00:00:00.000Z',attribution:'INDEPENDENT',
+    },'CONTEXT-1-')).resolves.toEqual([]);
+    expect(attempts).toBe(2);
+    expect(instructions[0]).toContain('independent company/context evidence');
+    expect(repairInputs[1].repair).toContain('Remove any claim that cannot be grounded directly');
+    expect(repairInputs[1].repair).toContain('returning an empty claims array is valid');
   });
   it('sends the common structured request without putting a credential in its body', async () => {
     let url = ''; let init: RequestInit | undefined;

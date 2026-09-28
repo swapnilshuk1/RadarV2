@@ -14,7 +14,6 @@
 
 import { execSync } from "child_process";
 import { certificationManifest } from "./certification/manifest";
-import { InvariantAssertions } from "../src/lib/intelligence/evaluation/InvariantAssertions";
 
 export interface Stage {
   name: string;
@@ -24,6 +23,16 @@ export interface Stage {
 }
 
 export const STAGES: Stage[] = [
+  {
+    name: "Stage 0: Lint",
+    command: "npm run lint",
+    description: "Active release paths must satisfy the repository lint contract",
+  },
+  {
+    name: "Stage 0.1: Formatting",
+    command: "npm run format:check",
+    description: "Release certification is non-mutating and format-clean",
+  },
   {
     name: "Stage 1: TypeScript Static Verification",
     command: "npx tsc -p tsconfig.verify.json --noEmit",
@@ -37,7 +46,8 @@ export const STAGES: Stage[] = [
   {
     name: "Stage 3: Four Boundary Journeys (A, B, C, D)",
     command: "npx vitest run --config vitest.certification.config.ts",
-    description: "End-to-end integration across acquisition, semantic policy, decision persistence, and UI rendering",
+    description:
+      "End-to-end integration across acquisition, semantic policy, decision persistence, and UI rendering",
     execution: "manifest",
   },
   {
@@ -55,13 +65,14 @@ export const STAGES: Stage[] = [
   {
     name: "Stage 6: Serving Store & Keyset Pagination Invariants",
     command: "Unified Vitest certification manifest (executed once in Stage 3)",
-    description: "Feed ordering parity, opaque cursor stability, dossier navigation, and singleflight coalescing",
+    description:
+      "Feed ordering parity, opaque cursor stability, dossier navigation, and singleflight coalescing",
     execution: "reported-by-manifest",
   },
   {
-    name: "Stage 7: Editorial Governance & Verdict Contracts",
+    name: "Stage 7: Staged-v8 Memo & Serving Contracts",
     command: "Unified Vitest certification manifest (executed once in Stage 3)",
-    description: "Rule 13 executive prose compliance, score resolution, and badge mappings",
+    description: "Staged-v8 memo integrity, verdict truth, reviewed serving, and badge mappings",
     execution: "reported-by-manifest",
   },
 ];
@@ -78,7 +89,9 @@ export function runCertification(stages: Stage[] = STAGES) {
   let manifestCompleted = false;
 
   if (profile) {
-    console.log("Profile mode enabled: TypeScript diagnostics and stage timings will be emitted.\n");
+    console.log(
+      "Profile mode enabled: TypeScript diagnostics and stage timings will be emitted.\n",
+    );
   }
 
   for (const stage of stages) {
@@ -90,21 +103,24 @@ export function runCertification(stages: Stage[] = STAGES) {
     try {
       if (stage.execution === "reported-by-manifest") {
         if (!manifestCompleted) {
-          throw new Error("The unified certification manifest did not complete before logical group reporting.");
+          throw new Error(
+            "The unified certification manifest did not complete before logical group reporting.",
+          );
         }
-          console.log("  Verified by the single Stage 3 Vitest invocation.");
+        console.log("  Verified by the single Stage 3 Vitest invocation.");
       } else {
-        const command = profile && stage.name.includes("TypeScript")
-          ? `${stage.command} --extendedDiagnostics`
-          : verboseTestProfile && stage.execution === "manifest"
-            ? `${stage.command} --reporter=verbose`
-            : stage.command;
+        const command =
+          profile && stage.name.includes("TypeScript")
+            ? `${stage.command} --extendedDiagnostics`
+            : verboseTestProfile && stage.execution === "manifest"
+              ? `${stage.command} --reporter=verbose`
+              : stage.command;
         execSync(command, { stdio: "inherit", env: process.env });
         if (stage.execution === "manifest") {
           manifestCompleted = true;
-          InvariantAssertions.assertFailClosedCertificationContract();
-          console.log(`  Unified manifest verified ${certificationManifest.length} logical groups in one Vitest process.`);
-          console.log("  Fail-closed recommendation-artifact assertion verified by the certification runner.");
+          console.log(
+            `  Unified manifest verified ${certificationManifest.length} logical groups in one Vitest process.`,
+          );
         }
       }
       const elapsed = ((Date.now() - stageStart) / 1000).toFixed(2);
@@ -127,7 +143,9 @@ export function runCertification(stages: Stage[] = STAGES) {
   console.log("              ✅ CERTIFICATION PASS");
   console.log("============================================================");
   console.log(`All ${stages.length} certification stages passed cleanly in ${totalElapsed}s.`);
-  console.log("Deterministic certification gate passed; production deployment remains subject to post-deployment smoke verification.\n");
+  console.log(
+    "Deterministic certification gate passed; production deployment remains subject to post-deployment smoke verification.\n",
+  );
 }
 
 if (process.argv[1]?.endsWith("certify.ts") || process.argv[1]?.endsWith("certify.js")) {

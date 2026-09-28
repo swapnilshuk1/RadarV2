@@ -1,7 +1,7 @@
 // src/lib/intelligence/builders/CandidateProjectionBuilder.ts
 
 import { CandidateEvidenceReference, CandidateProjection } from "../../domain/candidate_projection";
-import { CandidateProfile } from "../../../data/candidate-profile";
+import type { CandidateProfile } from "../../../domain/candidate";
 import { OperatingLevelClassifier } from "../classifiers/OperatingLevelClassifier";
 import { CandidateSeniorityClassifier } from "../classifiers/CandidateSeniorityClassifier";
 import { WorkNatureClassifier } from "../classifiers/WorkNatureClassifier";

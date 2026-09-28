@@ -1,5 +1,5 @@
 import { runMigrations } from "../src/data/sqlite/migrations/runner";
-import { getDatabaseTargetIdentity } from "../src/data/database";
+import { closeDatabaseAdapter, getDatabaseTargetIdentity } from "../src/data/database";
 
 async function main() {
   const identity = getDatabaseTargetIdentity();
@@ -10,7 +10,9 @@ async function main() {
   console.log(`Skipped migrations (${result.skipped.length}):`, result.skipped);
 }
 
-main().catch((error) => {
-  console.error("Database migration failed; application startup is blocked.", error);
-  process.exitCode = 1;
-});
+main()
+  .catch((error) => {
+    console.error("Database migration failed; application startup is blocked.", error);
+    process.exitCode = 1;
+  })
+  .finally(closeDatabaseAdapter);

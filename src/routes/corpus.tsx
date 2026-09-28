@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getCorpusHealthFn, triggerCorpusRegenerationFn, getCorpusRegenerationStatusFn } from "../lib/intelligence/scrape-server";
 import type { CorpusHealthStats } from "../../scripts/corpus/health";
 
@@ -40,7 +40,7 @@ function CorpusHealth() {
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
   const [currentStage, setCurrentStage] = useState<string | null>(null);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const res = await getCorpusHealthFn();
       if (res) {
@@ -49,7 +49,12 @@ function CorpusHealth() {
     } catch (err) {
       console.error("Failed to fetch corpus stats:", err);
     }
-  };
+  }, []);
+
+  const refreshingRef = useRef(refreshing);
+  refreshingRef.current = refreshing;
+  const currentStageRef = useRef(currentStage);
+  currentStageRef.current = currentStage;
 
   // Poll background corpus status
   useEffect(() => {
@@ -65,7 +70,7 @@ function CorpusHealth() {
             setConsoleLogs(job.logs || []);
             timer = setTimeout(pollStatus, 1500);
           } else if (job.status === "completed") {
-            if (refreshing || currentStage === "PUBLISHING" || currentStage === "ENRICHING") {
+            if (refreshingRef.current || currentStageRef.current === "PUBLISHING" || currentStageRef.current === "ENRICHING") {
               setConsoleLogs(job.logs || []);
               setCurrentStage("COMPLETE");
               setRefreshing(false);
@@ -87,7 +92,7 @@ function CorpusHealth() {
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, []);
+  }, [fetchStats]);
 
   const handleRegenerate = async () => {
     setRefreshing(true);

@@ -1,9 +1,35 @@
 import {z} from 'zod';
 import {candidateConflictSchema, type AcquisitionAttempt, type Claim, type EvidenceSource, type SliceInput} from './contracts';
 
+export interface CandidateDecisionProfile {
+  projection: {
+    currentTitle?: string;
+    yearsExperience?: number;
+    archetype?: string;
+    operatingLevel?: unknown;
+    candidateSeniorityLevel?: unknown;
+    workNature?: unknown;
+    decisionAuthority?: unknown;
+    commercialScope?: unknown;
+    coreCapabilities?: string[];
+    demonstratedCapabilities?: string[];
+    executiveThemes?: string[];
+  } | null;
+  intent: {
+    targetTitles: string[];
+    preferredLocations: string[];
+    preferredWorkModel?: string;
+    currency?: string;
+    targetSalaryAmount?: number;
+    travelTolerance?: string;
+    decisionPreferences?: Record<string, unknown>;
+  } | null;
+}
+
 export interface StagedResearchInput {
   opportunity: SliceInput['opportunity'];
   candidate: SliceInput['candidate'];
+  candidateDecisionProfile?: CandidateDecisionProfile;
   sources: EvidenceSource[];
   evidence: Claim[];
   candidateSourceRefs: { id: string; title: string }[];
@@ -90,12 +116,35 @@ function exactIds(ids: readonly string[], known: Set<string>, label: string) {
   if (unknown) throw new Error(`Unknown ${label} reference: ${unknown}`);
 }
 
+type HighFrictionConditionKind='FOUNDER_ECONOMICS'|'FOUNDER_STATUS'|'RELOCATION'|'WORKING_HOURS';
+
+function highFrictionConditionKind(claim: Claim): HighFrictionConditionKind | null {
+  if (claim.plane !== 'JD' || claim.state !== 'EXPLICIT') return null;
+  if(/\b(?:equity[- ]only|no\s+(?:fixed\s+)?salary|without\s+(?:a\s+)?salary|personal\s+capital|capital\s+investment|investment\s+commitment|must\s+invest)\b/i.test(claim.text))return 'FOUNDER_ECONOMICS';
+  if(/\b(?:co[- ]founder|founder\s+opportunity|not\s+(?:an?\s+)?employment)\b/i.test(claim.text))return 'FOUNDER_STATUS';
+  if(/\b(?:relocat(?:e|ion)\s+(?:is\s+)?required|must\s+relocate)\b/i.test(claim.text))return 'RELOCATION';
+  if(/\b(?:work(?:ing)?\s+(?:US|U\.S\.|EST|PST|CST)\s+hours|mandatory\s+(?:US|U\.S\.)\s+hours)\b/i.test(claim.text))return 'WORKING_HOURS';
+  return null;
+}
+
 export function materializeStagedRoleAnalysis(value: unknown, roleClaims: Claim[]): StagedRoleAnalysis {
   const parsed = stagedRoleAnalysisSchema.parse(value);
   const known = new Set(roleClaims.map(claim => claim.id));
   parsed.requirements.forEach(item => exactIds(item.roleClaimIds, known, 'role requirement claim'));
   parsed.operatingConditions.forEach(item => exactIds(item.roleClaimIds, known, 'role operating-condition claim'));
   parsed.roleSideConditions.forEach(item => exactIds(item.roleClaimIds, known, 'role-side condition claim'));
+  const claimById=new Map(roleClaims.map(claim=>[claim.id,claim]));
+  const requiredKinds=new Set(roleClaims.map(highFrictionConditionKind).filter((kind):kind is HighFrictionConditionKind=>kind!==null));
+  const representedKinds=new Set(
+    parsed.roleSideConditions
+      .flatMap(item=>item.roleClaimIds)
+      .map(id=>highFrictionConditionKind(claimById.get(id)!))
+      .filter((kind):kind is HighFrictionConditionKind=>kind!==null),
+  );
+  const missingKinds=[...requiredKinds].filter(kind=>!representedKinds.has(kind));
+  if(missingKinds.length){
+    throw new Error(`Explicit joining condition must survive as roleSideCondition: ${missingKinds.join(', ')}`);
+  }
   return {
     ...parsed,
     requirements: parsed.requirements.map((item, index) => ({ ...item, id: `REQ-${String(index + 1).padStart(3, '0')}` })),

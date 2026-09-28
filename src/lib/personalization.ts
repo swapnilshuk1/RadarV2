@@ -1,4 +1,3 @@
-import { candidateProfile } from "../data/candidate-profile";
 
 /**
  * Personalization rules — see RADAR_LANGUAGE_GUIDE and DESIGN_CHARTER §7.
@@ -7,27 +6,19 @@ import { candidateProfile } from "../data/candidate-profile";
  */
 
 export function candidateSignature(): string {
-  const id = candidateProfile.identity;
-  const exec = candidateProfile.executiveIdentity;
-  return `${id.name} · ${id.currentTitle} · ${exec.archetype}`;
+  return "RADAR · Candidate-scoped intelligence";
 }
 
 export function shortlistCaption(): string {
-  const yrs = candidateProfile.experience.yearsExperience;
-  const team = candidateProfile.experience.teamSizeManaged;
-  const book = candidateProfile.experience.feeBookScale;
-  return `Curated against ${yrs} years, a ${team}-person org, and a ${book} commercial track record.`;
+  return "Curated against the authorized candidate evidence record.";
 }
 
 /** Returns the strongest candidate proof for a given evidence type keyword. */
 export function findProof(keyword: string): string | null {
-  const kw = keyword.toLowerCase();
-  const match = candidateProfile.evidence.find(
-    (e) => e.type.toLowerCase().includes(kw) || e.proof.toLowerCase().includes(kw),
-  );
-  return match?.proof ?? null;
+  void keyword;
+  return null;
 }
 
 export function achievements(): string[] {
-  return candidateProfile.experience.achievements;
+  return [];
 }

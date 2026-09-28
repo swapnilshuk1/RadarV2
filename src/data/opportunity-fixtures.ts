@@ -41,8 +41,6 @@ export type OpportunitySource = {
   | "headspaceInvestment"
   | "hiringRisk"
   | "alternativePath"
-  | "dossierPresentation"
-  | "dossierPresentationV2"
 > & {
   rawText?: string;
   normalizedText?: string;
@@ -146,17 +144,14 @@ export type EvaluatedOpportunity = {
   userDecision?: import("@/domain/decision_v4").UserDecisionStateV4 | null;
   effectiveDecision?: import("@/domain/decision_v4").EffectiveDecision;
   reviewWorkflowState?: import("@/domain/decision_v4").ReviewWorkflowState;
-  /** Canonical fingerprint freshness, independent of the legacy workflow label. */
+  /** Canonical fingerprint freshness for the active staged-v8 evaluation. */
   reviewState?: import("@/domain/decision_v4").CanonicalReviewState;
   evaluationContextFingerprint?: string | null;
   evaluationFingerprint?: string | null;
   displayScore?: string;
   uiBadge?: { label: string; variant: "signal" | "caution" | "pass" | "muted" };
-  /** Optional evaluation-time presentation only; canonical scalars remain authoritative. */
-  dossierPresentation?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV1;
-  dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
   richDossier?: import('@/dossier/contracts').Dossier;
-  memoReviewState?: 'preparing' | 'preparation_attention' | 'pending' | 'review_attention' | 'reviewed' | 'withheld';
+  memoReviewState?: 'preparing' | 'preparation_attention' | 'review_attention' | 'reviewed' | 'withheld';
 };
 
 export interface ApplicationAction {
@@ -568,7 +563,6 @@ export type UnavailableOpportunity = {
   reviewState?: import("../domain/decision_v4").CanonicalReviewState;
   evaluationContextFingerprint?: string | null;
   evaluationFingerprint?: string | null;
-  dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
 };
 
 export type UnmaterializedOpportunity = {
@@ -586,7 +580,6 @@ export type UnmaterializedOpportunity = {
   reviewState?: import("../domain/decision_v4").CanonicalReviewState;
   evaluationContextFingerprint?: string | null;
   evaluationFingerprint?: string | null;
-  dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
 };
 
 export type ServedOpportunity = EvaluatedOpportunity | UnavailableOpportunity | UnmaterializedOpportunity;

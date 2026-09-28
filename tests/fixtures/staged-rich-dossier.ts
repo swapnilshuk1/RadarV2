@@ -84,8 +84,9 @@ export const stagedEvaluation = parseCanonicalStagedDecisionResult({
     },
   },
 });
+export const evaluationContextFingerprint = "e0afa52de510dfec864e3bd3bc0007e09b33cb6e708160d693ae136361a16e65";
 export const evaluationFingerprint = createStagedEvaluationFingerprint({
-  evaluationContextFingerprint: "staged-context",
+  evaluationContextFingerprint,
   inputFingerprint: "input",
   evaluation: stagedEvaluation,
 });

@@ -192,4 +192,53 @@ describe("Phase 4A: Scrape Run State Machine & Atomic Uniqueness Contract", () =
     expect(events[0].portal).toBe("LinkedIn");
     expect(events[1].portal).toBe("Naukri");
   });
+
+  it("6. Lease takeover fences a stale scraper after expiry", async () => {
+    const run = await store.createRun(scopeA, {
+      id: "run-lease-takeover",
+      searchPlanId: "plan_A",
+      portalTargets: ["Naukri"],
+      initialStatus: "queued",
+    });
+
+    const first = await store.claimNextForWorker("scraper-a", 60_000);
+    expect(first?.id).toBe(run.id);
+    expect(first?.status).toBe("initializing");
+    expect(first?.leaseOwner).toBe("scraper-a");
+    expect(first?.leaseToken).toBeTruthy();
+
+    await store.heartbeatWorkerLease(run.id, "scraper-a", first!.leaseToken!, 60_000);
+    expect(await store.claimNextForWorker("scraper-b", 60_000)).toBeNull();
+
+    await db.execute(
+      "UPDATE scrape_runs SET lease_expires_at = ? WHERE id = ?",
+      [Date.now() - 1, run.id],
+    );
+    const second = await store.claimNextForWorker("scraper-b", 60_000);
+    expect(second?.id).toBe(run.id);
+    expect(second?.leaseOwner).toBe("scraper-b");
+    expect(second?.leaseToken).toBeTruthy();
+    expect(second?.leaseToken).not.toBe(first?.leaseToken);
+
+    const staleChanged = await store.transitionRunStatus(
+      scopeA,
+      run.id,
+      "initializing",
+      "running",
+      undefined,
+      { owner: "scraper-a", token: first!.leaseToken! },
+    );
+    expect(staleChanged).toBe(false);
+
+    const currentChanged = await store.transitionRunStatus(
+      scopeA,
+      run.id,
+      "initializing",
+      "running",
+      undefined,
+      { owner: "scraper-b", token: second!.leaseToken! },
+    );
+    expect(currentChanged).toBe(true);
+  });
+
 });

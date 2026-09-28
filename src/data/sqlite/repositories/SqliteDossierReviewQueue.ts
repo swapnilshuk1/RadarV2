@@ -5,7 +5,7 @@ import { DOSSIER_COMPOSITION_RECIPE, reviewFingerprint } from "@/dossier/factual
 import { assertMemoIntegrity } from "@/dossier/memo-integrity";
 import { validateComposition, validateClaims } from "@/dossier/grounding";
 import type { ProductionStagedIdentity } from "@/lib/intelligence/staged/ProductionStagedInputAdapter";
-import type { DossierPresentationIdentity } from "./SqliteDossierPresentationStore";
+import type { DossierPresentationIdentity } from "./SqliteRichDossierStore";
 
 export const DRAFT_DOSSIER_VERSION = "dossier-v4.1-draft";
 export interface ReviewJob {
@@ -90,6 +90,18 @@ export class SqliteDossierReviewQueue {
       params(identity, fp),
     );
   }
+  /** Retry only the exact factual-review job that reached attention. */
+  async retryAttention(identity: DossierPresentationIdentity, fp: string): Promise<boolean> {
+    const now = this.now();
+    const result = await this.db.execute(
+      `UPDATE dossier_review_jobs
+       SET status='pending',attempts=0,next_attempt_at=?,lease_token=NULL,lease_until=NULL,
+           last_error=NULL,withheld=0,updated_at=?
+       WHERE ${exact} AND status='needs_attention'`,
+      [now, now, ...params(identity, fp)],
+    );
+    return result.rowsAffected > 0;
+  }
   async getDraft(identity: DossierPresentationIdentity, fp: string): Promise<Dossier | null> {
     const row = await this.find(identity, fp);
     if (!row || row.withheld || row.status === "completed") return null;
@@ -129,7 +141,16 @@ export class SqliteDossierReviewQueue {
       );
       if (!lane.rowsAffected) return null;
       const row = await tx.one<ReviewJob>(
-        `SELECT * FROM dossier_review_jobs WHERE recipe=? AND ((status IN ('pending','retry') AND next_attempt_at<=?) OR (status='processing' AND lease_until<=?)) ORDER BY next_attempt_at,created_at LIMIT 1`,
+        `SELECT * FROM dossier_review_jobs AS drj
+         WHERE recipe=?
+           AND EXISTS (
+             SELECT 1 FROM active_evaluation_contexts aec
+             WHERE aec.tenant_id=drj.tenant_id
+               AND aec.person_id=drj.person_id
+               AND aec.context_fingerprint=drj.evaluation_context_fingerprint
+           )
+           AND ((status IN ('pending','retry') AND next_attempt_at<=?) OR (status='processing' AND lease_until<=?))
+         ORDER BY next_attempt_at,created_at LIMIT 1`,
         [DOSSIER_COMPOSITION_RECIPE, now, now],
       );
       if (!row) {

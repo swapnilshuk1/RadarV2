@@ -6,77 +6,14 @@ import { requireAuthUser } from "../auth/guard";
 import { getRepositories } from "../../data/sqlite/provider";
 import { getDatabaseAdapter } from "../../data/database";
 
-let rebuildTimeout: NodeJS.Timeout | null = null;
-
-// Debounced notification after canonical ingestion; legacy JSON is not rebuilt.
-export function triggerDebouncedRebuild() {
-  if (rebuildTimeout) {
-    clearTimeout(rebuildTimeout);
-  }
-  rebuildTimeout = setTimeout(async () => {
-    try {
-      // Notify EvaluationCoordinator that corpus has expanded
-      const { EvaluationCoordinator } = await import("./EvaluationCoordinator");
-      await EvaluationCoordinator.notify({ event: "CORPUS_UPDATED" });
-    } catch (err: any) {
-      console.error("[Server] Debounced rebuild failed:", err.message);
-    }
-  }, 10000);
+type CandidateScopeRequest = { tenantId?: string; personId?: string };
+function requestedCandidateScope(data?: CandidateScopeRequest) {
+  if (Boolean(data?.tenantId) !== Boolean(data?.personId)) throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
+  return data;
 }
 
-// Worker startup is an explicit control-plane action. Importing a server
-// function module must never start enrichment or evaluation from a read path.
-export async function startRuntimeWorkers(): Promise<void> {
-  if (typeof globalThis === "undefined") return;
-  const g = globalThis as any;
-  if (!g.__RADAR_DAEMON__) {
-    g.__RADAR_DAEMON__ = {
-      started: false,
-      start: async () => {
-        if (g.__RADAR_DAEMON__.started) return;
-        g.__RADAR_DAEMON__.started = true;
-        console.log("[Daemon] Starting self-healing RADAR background daemon...");
-        
-        try {
-          // 1. Recover expired leases
-          const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
-          const queue = new EnrichmentQueue();
-          const recovered = await queue.recoverExpiredLeases();
-          if (recovered > 0) {
-            console.log(`[Daemon] Recovered ${recovered} expired leases.`);
-          }
-          
-          // 2. A global raw-enrichment worker can lease jobs created by a
-          // different host. Do not let a serving host consume locally stored
-          // scraper artifacts: only a shared object store makes that safe.
-          const { supportsCrossHostEnrichment } = await import("../storage/blob-store");
-          if (supportsCrossHostEnrichment()) {
-            const { enrichGlobalQueue } = await import("../../../scripts/enrich");
-            void enrichGlobalQueue(triggerDebouncedRebuild).catch(err => {
-              console.error("[Daemon] Queue loop error:", err);
-              g.__RADAR_DAEMON__.started = false; // allow restart
-            });
-          } else {
-            console.warn("[Daemon] Global raw enrichment disabled: local BlobStore payloads may only be consumed by their acquisition host.");
-          }
-
-          // 4. Start background Evaluation Daemon singleton for evaluation_jobs
-          const { EvaluationDaemon } = await import("./EvaluationDaemon");
-          EvaluationDaemon.startGlobalDaemon(2000);
-
-          
-        } catch (err: any) {
-          console.error("[Daemon] Startup failure:", err.message);
-          g.__RADAR_DAEMON__.started = false;
-        }
-      }
-    };
-  }
-  await g.__RADAR_DAEMON__.start();
-}
-
-let activeScrapeRunLock: { runId: string; startedAt: number } | null = null;
-const activeManualEnrichmentRuns = new Map<string, Promise<void>>();
+// Web handlers only create durable work. Worker processes own execution and
+// notification; no server-global timers or in-memory run ownership are valid.
 
 export interface CapturedEnrichmentRun {
   runId: string;
@@ -90,10 +27,12 @@ export interface CapturedEnrichmentRun {
 
 /** Captures are shown separately from the shortlist until their enrichment produces an evaluation. */
 export const getCapturedEnrichmentRunsFn = createServerFn({ method: "GET" })
-  .handler(async (): Promise<CapturedEnrichmentRun[]> => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }): Promise<CapturedEnrichmentRun[]> => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const db = getDatabaseAdapter();
     const rows = await db.many<any>(
       `SELECT r.id AS run_id, r.status AS run_status,
@@ -122,13 +61,14 @@ export const getCapturedEnrichmentRunsFn = createServerFn({ method: "GET" })
     }));
   });
 
-/** Starts a local, run-scoped worker. The user invokes this explicitly from the shortlist. */
+/** Queues scoped enrichment; an explicit worker process performs the work. */
 export const startCapturedEnrichmentFn = createServerFn({ method: "POST" })
-  .validator((data: { runId: string }) => data)
+  .validator((data: { runId: string } & CandidateScopeRequest) => data)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
     const run = await getRepositories().scrapeRuns.getRun(scope, data.runId);
     if (!run) {
       const { TenantIsolationError } = await import("../security/auth");
@@ -137,10 +77,6 @@ export const startCapturedEnrichmentFn = createServerFn({ method: "POST" })
 
     const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
     const queue = new EnrichmentQueue();
-    if (activeManualEnrichmentRuns.has(data.runId)) {
-      return { started: false, reason: "ALREADY_RUNNING" };
-    }
-
     let stats = await queue.getRunStats(data.runId);
     // A deliberate retry from the shortlist is scoped to this authorized run.
     // It is the recovery path for a repaired worker or transient fatal state;
@@ -153,15 +89,7 @@ export const startCapturedEnrichmentFn = createServerFn({ method: "POST" })
       return { started: false, reason: "NO_PENDING_CAPTURED_JOBS" };
     }
 
-    const worker = (async () => {
-      const { enrichJobsForRun } = await import("../../../scripts/enrich");
-      await enrichJobsForRun(data.runId, { queue, allowTerminalRun: true });
-      triggerDebouncedRebuild();
-    })().finally(() => activeManualEnrichmentRuns.delete(data.runId));
-    activeManualEnrichmentRuns.set(data.runId, worker);
-    void worker.catch((error) => console.error(`[Server] Run-scoped enrichment failed for ${data.runId}:`, error));
-
-    return { started: true, pending: stats.pending, processing: stats.processing };
+    return { started: false, queued: true, pending: stats.pending, processing: stats.processing };
   });
 
 /**
@@ -170,11 +98,13 @@ export const startCapturedEnrichmentFn = createServerFn({ method: "POST" })
  * display a reconstructed or stale interpretation of the next search.
  */
 export const getScrapePlanPreviewFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
     try {
       const { resolveScraperAuthContext } = await import("../security/scope-resolver");
-      const { scope, activeContext } = await resolveScraperAuthContext(user.id);
+      const requested = requestedCandidateScope(data);
+      const { scope, activeContext } = await resolveScraperAuthContext(user.id, requested?.tenantId, undefined, requested?.personId);
       const { ScraperPlanResolver } = await import("./ScraperPlanResolver");
       const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(scope, activeContext);
       const { compileCoverageVariants } = await import("../../../scripts/scraper/run/acquisition-variants");
@@ -203,25 +133,17 @@ export const getScrapePlanPreviewFn = createServerFn({ method: "GET" })
     }
   });
 
-export function getActiveScrapeLock(): { runId: string; startedAt: number } | null {
-  if (!activeScrapeRunLock) return null;
-  const state = getActiveScrapeState();
-  if (!state || !state.isActive) {
-    activeScrapeRunLock = null;
-    return null;
-  }
-  return activeScrapeRunLock;
-}
-
 export const triggerScrapeFn = createServerFn({ method: "POST" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     // 1. Enforce Authentication
     const user = await requireAuthUser();
 
     try {
       console.log("[Server] triggerScrapeFn: resolving verified scraper auth scope…");
       const { resolveScraperAuthContext } = await import("../security/scope-resolver");
-      const { authContext, scope, activeContext } = await resolveScraperAuthContext(user.id);
+      const requested = requestedCandidateScope(data);
+      const { scope, activeContext } = await resolveScraperAuthContext(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
       const { ScraperPlanResolver } = await import("./ScraperPlanResolver");
       const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(scope, activeContext);
       const repos = getRepositories();
@@ -238,48 +160,27 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
         };
       }
 
-      console.log(`[Server] triggerScrapeFn: launching background scraper for tenant ${authContext.tenantId} (person: ${scope.personId})…`);
-      // Dynamic import isolates Playwright/Node modules from the browser bundler.
-      const { startRun } = await import("../../../scripts/scrape");
-      const { runId, completion } = await startRun({
-        resume: false,
-        autoConfirm: true,
-        authContext,
-        searchPlanId: activeContext?.searchPlanId,
-        resolvedPlan,
+      const run = await repos.scrapeRuns.createRun(scope, {
+        searchPlanId: activeContext?.searchPlanId ?? resolvedPlan.searchPlanId,
+        portalTargets: ["LinkedIn", "Naukri", "Indeed"],
+        initialStatus: "queued",
+        config: { worker: "scrape", searchPlanId: resolvedPlan.searchPlanId, contextFingerprint: resolvedPlan.contextFingerprint },
       });
-      
-      activeScrapeRunLock = { runId, startedAt: Date.now() };
-
-      // Fire and forget
-      void completion
-        .then(() => {
-          if (activeScrapeRunLock?.runId === runId) {
-            activeScrapeRunLock = null;
-          }
-        })
-        .catch((err: any) => {
-          console.error(`[Server] background scrape ${runId} failed:`, err);
-          if (activeScrapeRunLock?.runId === runId) {
-            activeScrapeRunLock = null;
-          }
-        });
-
-      return { success: true, runId };
+      return { success: true, runId: run.id, queued: true };
     } catch (error: any) {
       console.error("[Server] triggerScrapeFn failed:", error);
-      activeScrapeRunLock = null;
       return { success: false, error: error?.message ?? String(error) };
     }
   });
 
 export const getRunEventsFn = createServerFn({ method: "GET" })
-  .validator((d: { runId: string; afterIndex: number }) => d)
+  .validator((d: { runId: string; afterIndex: number } & CandidateScopeRequest) => d)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { runId, afterIndex } = data;
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const scopedRun = await getRepositories().scrapeRuns.getRun(scope, runId);
     if (!scopedRun) {
       const { TenantIsolationError } = await import("../security/auth");
@@ -405,13 +306,6 @@ export function getActiveScrapeState() {
 
     const runData = buildCanonicalRunData(latest.runId);
     if (runData && runData.isActive) {
-      // If there is no active process lock and updatedAt is >30s old, the run is orphaned
-      const updatedAt = runData.updatedAt ? new Date(runData.updatedAt).getTime() : 0;
-      const ageMs = Date.now() - updatedAt;
-      if (!activeScrapeRunLock && ageMs > 30000) {
-        abortScrapeState(latest.runId, true);
-        return null;
-      }
       return runData;
     }
     return null; // Active-only per Directive #2
@@ -435,73 +329,88 @@ export async function abortScrapeState(runId: string, force = false) {
       fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
       console.log(`[Server] Abort requested for run ${runId}. Manifest status set to '${manifest.status}'.`);
     }
-    // Forcefully trigger live abort on the running scraper process
-    if (!force) {
-      try {
-        const { abortLiveRun } = await import("../../../scripts/scrape");
-        await abortLiveRun(runId);
-      } catch (e: any) {
-        console.warn(`[Server] Note: abortLiveRun call: ${e.message}`);
-      }
-    }
+    // A web instance never owns a scraper process. The durable status above is
+    // the stop command observed by the dedicated worker between work units.
     return { success: true, status: force ? "aborted" : "stopping" };
   } catch (e: any) {
     return { success: false, error: e.message };
   }
 }
 
+async function canonicalProgress(run: import("../../data/sqlite/repositories/SqliteScrapeRunStore").ScrapeRun) {
+  const disk = buildCanonicalRunData(run.id);
+  const db = getDatabaseAdapter();
+  const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
+  const enrichment = await new EnrichmentQueue().getRunStats(run.id);
+  const activeContext = run.searchPlanId
+    ? await db.one<{ context_fingerprint: string }>(
+        `SELECT context_fingerprint FROM active_evaluation_contexts
+         WHERE tenant_id=? AND person_id=? AND search_plan_id=?`,
+        [run.tenantId, run.personId, run.searchPlanId],
+      )
+    : null;
+  const evaluation = activeContext
+    ? await db.one<{total: number; completed: number; failed: number}>(
+        `SELECT COUNT(*) AS total,
+          SUM(CASE WHEN er.status='SATISFIED' THEN 1 ELSE 0 END) AS completed,
+          SUM(CASE WHEN er.status='FAILED' THEN 1 ELSE 0 END) AS failed
+         FROM scrape_run_evaluation_requirements r
+         JOIN evaluation_requirements er ON er.id=r.evaluation_requirement_id
+         WHERE r.run_id=? AND er.tenant_id=? AND er.person_id=? AND er.search_plan_id=?
+           AND er.evaluation_context_fingerprint=?`,
+        [run.id, run.tenantId, run.personId, run.searchPlanId, activeContext.context_fingerprint],
+      )
+    : { total: 0, completed: 0, failed: 0 };
+  const active = ["queued", "initializing", "waiting_for_confirmation", "running", "stopping", "enriching", "completing"].includes(run.status);
+  return {
+    runId: run.id, tenantId: run.tenantId, personId: run.personId,
+    status: run.status, isActive: active,
+    stage: run.status === "completed" ? "complete" : run.status === "aborted" ? "stopped" : run.status,
+    opportunitiesFound: Math.max(run.totalDiscovered, disk?.opportunitiesFound || 0),
+    enrichedCount: enrichment.completed,
+    evaluatedCount: Number(evaluation?.completed || 0),
+    remainingCount: Math.max(0, Number(evaluation?.total || 0) - Number(evaluation?.completed || 0) - Number(evaluation?.failed || 0)),
+    sources: disk?.sources || Object.fromEntries(run.portalTargets.map(portal => [portal, "pending"])),
+    portalHealth: disk?.portalHealth || {}, recentActivities: disk?.recentActivities || [],
+    errorMessage: run.errorMessage,
+    startedAt: run.startedAt || run.createdAt, updatedAt: run.updatedAt, finishedAt: run.finishedAt || undefined,
+  };
+}
+
 export const getActiveScrapeFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
-    return getRepositories().scrapeRuns.getLatestRun(scope);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
+    const run = await getRepositories().scrapeRuns.getActiveRun(scope);
+    return run ? canonicalProgress(run) : null;
   });
 
 export const getLatestRunFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const repos = getRepositories();
 
     // 1. Query Turso Cloud for the caller's scoped latest run
     const latestDbRun = await repos.scrapeRuns.getLatestRun(scope);
     if (!latestDbRun) return null;
 
-    // 2. Hydrate canonical run data (fall back to disk manifest if available for local activity details)
-    const diskData = buildCanonicalRunData(latestDbRun.id);
-    if (diskData) {
-      return {
-        ...diskData,
-        status: latestDbRun.status,
-        opportunitiesFound: Math.max(diskData.opportunitiesFound || 0, latestDbRun.totalDiscovered),
-      };
-    }
-
-    return {
-      runId: latestDbRun.id,
-      status: latestDbRun.status,
-      isActive: ["queued", "initializing", "running", "waiting_for_confirmation"].includes(latestDbRun.status),
-      stage: latestDbRun.status === "completed" ? "complete" : latestDbRun.status,
-      opportunitiesFound: latestDbRun.totalDiscovered,
-      evaluatedCount: latestDbRun.totalEnqueued,
-      remainingCount: 0,
-      sources: {},
-      startedAt: latestDbRun.startedAt || latestDbRun.createdAt,
-      updatedAt: latestDbRun.updatedAt,
-      finishedAt: latestDbRun.finishedAt || undefined,
-      portalHealth: {},
-      recentActivities: [],
-    };
+    return canonicalProgress(latestDbRun);
   });
 
 export const getRunProgressFn = createServerFn({ method: "GET" })
-  .validator((d: { runId: string }) => d)
+  .validator((d: { runId: string } & CandidateScopeRequest) => d)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const repos = getRepositories();
 
     const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
@@ -510,37 +419,16 @@ export const getRunProgressFn = createServerFn({ method: "GET" })
       throw new TenantIsolationError(`Scrape run '${data.runId}' not found or unauthorized for current tenant/person.`);
     }
 
-    const diskData = getRunProgressState(data.runId);
-    if (diskData) {
-      return {
-        ...diskData,
-        status: dbRun.status,
-      };
-    }
-
-    return {
-      runId: dbRun.id,
-      status: dbRun.status,
-      isActive: ["queued", "initializing", "running", "waiting_for_confirmation"].includes(dbRun.status),
-      stage: dbRun.status === "completed" ? "complete" : dbRun.status,
-      opportunitiesFound: dbRun.totalDiscovered,
-      evaluatedCount: dbRun.totalEnqueued,
-      remainingCount: 0,
-      sources: {},
-      startedAt: dbRun.startedAt || dbRun.createdAt,
-      updatedAt: dbRun.updatedAt,
-      finishedAt: dbRun.finishedAt || undefined,
-      portalHealth: {},
-      recentActivities: [],
-    };
+    return canonicalProgress(dbRun);
   });
 
 export const confirmScrapeFn = createServerFn({ method: "POST" })
-  .validator((d: { runId: string }) => d)
+  .validator((d: { runId: string } & CandidateScopeRequest) => d)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
     const repos = getRepositories();
 
     const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
@@ -567,11 +455,12 @@ export const confirmScrapeFn = createServerFn({ method: "POST" })
   });
 
 export const abortScrapeFn = createServerFn({ method: "POST" })
-  .validator((d: { runId: string }) => d)
+  .validator((d: { runId: string } & CandidateScopeRequest) => d)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
+    const requested = requestedCandidateScope(data);
+    const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
     const repos = getRepositories();
 
     const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
@@ -580,15 +469,21 @@ export const abortScrapeFn = createServerFn({ method: "POST" })
       throw new TenantIsolationError(`Cannot abort run '${data.runId}': unauthorized or not found.`);
     }
 
-    await repos.scrapeRuns.updateRunStatus(scope, data.runId, "stopping");
-    const result = abortScrapeState(data.runId);
+    // Repeating Stop explicitly cancels an interrupted stopping run. Queued work
+    // has no browser to wait for. Terminal state fences any late worker writes.
+    const cancel = dbRun.status === "queued" || dbRun.status === "stopping";
+    const changed = await repos.scrapeRuns.updateRunStatus(scope, data.runId, cancel ? "aborted" : "stopping");
+    if (!changed) return { success: true, status: dbRun.status };
+    const result = await abortScrapeState(data.runId, cancel);
     return result;
   });
 
 export const getLiveScrapedFn = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .validator((data?: CandidateScopeRequest) => data)
+  .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    await import("../security/scope-resolver").then(({ resolveServingScope }) => resolveServingScope(user.id));
+    const requested = requestedCandidateScope(data);
+    await import("../security/scope-resolver").then(({ resolveServingScope }) => resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId));
     // Process-local scrape artifacts have no canonical person/tenant ownership.
     // They are deliberately no longer a production serving authority.
     return [];
@@ -604,81 +499,22 @@ export interface CorpusJobState {
   completedAt?: string;
 }
 
-if (typeof globalThis !== "undefined") {
-  const g = globalThis as any;
-  if (!g.__RADAR_CORPUS_JOB__) {
-    g.__RADAR_CORPUS_JOB__ = {
-      status: "idle",
-      stage: "IDLE",
-      logs: [],
-      processedCount: 0,
-    } as CorpusJobState;
-  }
-}
-
-function getCorpusJob(): CorpusJobState {
-  const g = globalThis as any;
-  return g.__RADAR_CORPUS_JOB__ || { status: "idle", stage: "IDLE", logs: [], processedCount: 0 };
+async function getCorpusJob(): Promise<CorpusJobState> {
+  const row = await getDatabaseAdapter().one<any>("SELECT * FROM corpus_regeneration_jobs WHERE id='corpus-regeneration'");
+  if (!row) return { status: "idle", stage: "IDLE", logs: [], processedCount: 0 };
+  return { status: row.status === "processing" ? "running" : row.status, stage: row.stage, logs: JSON.parse(row.logs_json || "[]"), processedCount: row.processed_count, error: row.error || undefined, startedAt: row.started_at || undefined, completedAt: row.completed_at || undefined };
 }
 
 export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
   .handler(async () => {
     await requireAuthUser({ requireAdmin: true });
-    try {
-      const job = getCorpusJob();
-      if (job.status === "running") {
-        return { success: true, running: true, message: "Corpus regeneration already in progress." };
-      }
-
-      job.status = "running";
-      job.stage = "INGESTING";
-      job.logs = [];
-      job.processedCount = 0;
-      job.error = undefined;
-      job.startedAt = new Date().toISOString();
-      job.completedAt = undefined;
-
-      const addLog = (msg: string, stage: string) => {
-        const time = new Date().toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
-        job.logs.push(`[${time}] ${msg}`);
-        job.stage = stage as any;
-      };
-
-      console.log("[Server] triggerCorpusRegenerationFn: launching corpus pipeline in background...");
-
-      // Launch background asynchronous task
-      void (async () => {
-        try {
-          const { runCorpusPipeline } = await import("../../../scripts/corpus/pipeline");
-          const result = await runCorpusPipeline((msg, stage) => {
-            addLog(msg, stage);
-          });
-
-          if (result && result.success) {
-            job.status = "completed";
-            job.stage = "COMPLETE";
-            job.processedCount = result.processedCount || 0;
-            job.completedAt = new Date().toISOString();
-          } else {
-            job.status = "failed";
-            job.stage = "FAILED";
-            job.error = result.error || result.reason || "Unknown error";
-            job.completedAt = new Date().toISOString();
-          }
-        } catch (err: any) {
-          console.error("[Server] Background corpus pipeline failed:", err);
-          job.status = "failed";
-          job.stage = "FAILED";
-          job.error = err.message || String(err);
-          job.completedAt = new Date().toISOString();
-        }
-      })();
-
-      return { success: true, running: true, message: "Corpus regeneration started in background." };
-    } catch (err: any) {
-      console.error("[Server] triggerCorpusRegenerationFn failed:", err.message);
-      return { success: false, error: err.message };
-    }
+    const db = getDatabaseAdapter();
+    await db.execute(`INSERT INTO corpus_regeneration_jobs(id,status,stage,logs_json,processed_count)
+      VALUES('corpus-regeneration','queued','INGESTING','[]',0)
+      ON CONFLICT(id) DO UPDATE SET status='queued',stage='INGESTING',logs_json='[]',processed_count=0,error=NULL,locked_by=NULL,lease_token=NULL,started_at=NULL,completed_at=NULL,updated_at=CURRENT_TIMESTAMP
+      WHERE corpus_regeneration_jobs.status IN ('completed','failed')`);
+    const job = await getCorpusJob();
+    return { success: true, running: job.status === "running" || job.status === "idle", queued: job.status === "idle", message: job.status === "running" ? "Corpus regeneration already in progress." : "Corpus regeneration queued." };
   });
 
 export const getCorpusRegenerationStatusFn = createServerFn({ method: "GET" })

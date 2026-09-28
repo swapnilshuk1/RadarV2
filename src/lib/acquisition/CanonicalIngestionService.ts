@@ -42,6 +42,7 @@ import { getBlobStore, type BlobStore } from "@/lib/storage/blob-store";
 import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
 import { classifyOpportunityCategories } from "@/lib/domain/category_taxonomy";
 import { parseVerifiedIndeedListingUrl } from "./indeed-listing-identity";
+import { EvaluationWorkScheduler } from "@/lib/intelligence/EvaluationWorkScheduler";
 
 export interface IngestOpportunityPayload {
   sourcePortal: string;
@@ -489,6 +490,14 @@ export class CanonicalIngestionService {
     const candidateEligibility: Record<string, "ELIGIBLE" | "REVIEW" | "INELIGIBLE"> = {};
     let candidatesProjected = 0;
     let jobsEnqueued = 0;
+    const evaluationWork: Array<{
+      tenantId: string;
+      personId: string;
+      searchPlanId: string;
+      canonicalJobId: string;
+      opportunityVersion: string;
+      evaluationContextFingerprint: string;
+    }> = [];
     let isNewOpportunity = false;
     let isNewVersion = false;
     let effectiveVersionId = versionId;
@@ -810,10 +819,14 @@ export class CanonicalIngestionService {
         );
         candidatesProjected++;
 
-        // Persist evaluation obligations atomically with candidate projection.
-        // Invariant: Every Attention-Gate CANDIDATE creates a durable evaluation obligation.
-        // Candidate and requirement commit together or roll back together.
+        // Persist evaluation obligations only when their exact enrichment work exists.
+        // Candidate projection may exist independently; evaluator work may not.
         if (gateResult.decision === "CANDIDATE") {
+          // Staged-v8 evaluation has an exact enrichment dependency. Persist the
+          // candidate association even when enrichment is not requested, but do
+          // not create an obligation that no durable enrichment job can satisfy.
+          if (!enrichmentJobId) continue;
+
           const evalContext = await tx.one<{ context_fingerprint: string }>(
             `SELECT aec.context_fingerprint
              FROM active_evaluation_contexts aec
@@ -869,7 +882,14 @@ export class CanonicalIngestionService {
               [verifiedRunId, reqId]
             );
           }
-          jobsEnqueued++;
+          evaluationWork.push({
+            tenantId: plan.tenant_id,
+            personId: plan.person_id,
+            searchPlanId: plan.id,
+            canonicalJobId,
+            opportunityVersion: effectiveVersionId,
+            evaluationContextFingerprint: evalContext.context_fingerprint,
+          });
         }
       }
     });
@@ -887,6 +907,15 @@ export class CanonicalIngestionService {
         `Canonical ingestion failed for ${canonicalJobId}/${versionId}: ${(err as Error).message}`,
         err
       );
+    }
+
+    // The canonical candidate and enrichment requirement have committed. Add
+    // executable work now so fresh captures advance automatically through
+    // enrichment → GLM evaluation → dossier composition → Gemini review.
+    const scheduler = new EvaluationWorkScheduler(this.db);
+    for (const work of evaluationWork) {
+      const scheduled = await scheduler.ensureWork(work);
+      if (scheduled.queued) jobsEnqueued++;
     }
 
     return {

@@ -6,9 +6,9 @@
   line-height: 1.55;
 }
 .dossier-body {
-  max-width: 60rem;
-  margin: auto;
-  padding: 0 var(--space-5);
+  width: min(100% - 3rem, 88rem);
+  margin: 0 auto;
+  padding: 0;
 }
 .dossier-top {
   display: flex;
@@ -83,6 +83,63 @@
   font-size: 0.75rem;
   color: var(--muted-foreground);
 }
+.dossier-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+}
+.dossier-decision-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.dossier-decision-action,
+.dossier-apply-action,
+.dossier-return-link {
+  min-height: 2.4rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  font: 0.66rem/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.dossier-decision-action {
+  color: var(--muted-foreground);
+  background: var(--background);
+}
+.dossier-decision-action:hover,
+.dossier-decision-action[aria-pressed="true"] {
+  color: var(--background);
+  background: var(--foreground);
+  border-color: var(--foreground);
+}
+.dossier-decision-action:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+.dossier-apply-action {
+  color: var(--signal-foreground);
+  background: var(--signal);
+  border-color: var(--signal);
+  text-decoration: none;
+  font-weight: 700;
+}
+.dossier-apply-action:hover {
+  filter: brightness(0.94);
+}
+.dossier-return-link {
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+.dossier-return-link:hover {
+  color: var(--foreground);
+  background: var(--surface-raised);
+}
 .dossier-verdict {
   font-family: var(--font-mono);
   font-size: 0.65rem;
@@ -114,15 +171,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  vertical-align: middle;
+  vertical-align: 0.08em;
   font-family: var(--font-mono);
-  font-size: 0.58rem;
-  width: 1.1rem;
-  height: 1.1rem;
+  font-size: 0.52rem;
+  width: 1rem;
+  height: 1rem;
+  margin-left: 0.15rem;
   border: 1px solid var(--border);
+  border-radius: 999px;
   color: var(--muted-foreground);
-  background: transparent;
+  background: var(--background);
   cursor: pointer;
+  opacity: 0.72;
 }
 .dossier-cue.inferred {
   color: var(--caution);
@@ -143,9 +203,9 @@
 }
 .dossier-chapter {
   display: grid;
-  grid-template-columns: 6rem minmax(0, 1fr);
-  gap: 1.5rem;
-  padding: 1.75rem 0;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: clamp(1.5rem, 3vw, 3rem);
+  padding: 2.1rem 0 2.25rem;
   border-top: 1px solid var(--border);
 }
 .dossier-chapter aside {
@@ -182,6 +242,69 @@
 }
 .dossier-scope dd {
   font-size: 0.85rem;
+}
+.dossier-value-grid,
+.dossier-mandate-grid,
+.dossier-approach-grid {
+  display: grid;
+  gap: 1rem 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.dossier-value-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dossier-value-grid li,
+.dossier-mandate-grid > section,
+.dossier-approach-grid > section {
+  min-width: 0;
+  padding: 1.05rem 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--surface-raised);
+}
+.dossier-value-grid li {
+  font-size: 0.96rem;
+  line-height: 1.55;
+}
+.dossier-mandate-grid .dossier-bullets,
+.dossier-approach-grid .dossier-bullets {
+  margin-bottom: 0;
+}
+.dossier-unresolved-scope {
+  margin: var(--space-4) 0 0;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--caution);
+  background: var(--surface-raised);
+}
+.dossier-unresolved-scope > p {
+  max-width: 70ch;
+  margin: 0.55rem 0 0;
+  color: var(--muted-foreground);
+}
+.dossier-unresolved-scope ul {
+  display: grid;
+  gap: 0.7rem 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.dossier-unresolved-scope li {
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.dossier-unresolved-scope li strong,
+.dossier-condition .label-mono {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
 }
 .dossier-tabs {
   margin-top: 1.25rem;
@@ -241,14 +364,18 @@
 }
 .dossier-template-b .dossier-hero {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1.45fr) minmax(18rem, 0.75fr);
+  gap: clamp(2rem, 5vw, 4.5rem);
+  align-items: start;
+  padding: 3rem 0 2.25rem;
 }
 .dossier-overview {
   background: var(--surface-raised);
-  padding: var(--space-4);
+  padding: 1.4rem 1.5rem;
   border: 1px solid var(--border);
+  border-radius: 0.75rem;
   align-self: start;
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--foreground) 5%, transparent);
 }
 .dossier-modal-backdrop {
   position: fixed;
@@ -355,9 +482,9 @@
 
 /* The rail is bounded by its own grid section, not a viewport overlay. */
 .dossier-chapter > .dossier-rail {
-  position: sticky;
-  top: 6rem;
+  position: static;
   align-self: start;
+  color: var(--muted-foreground);
 }
 .dossier-chapter-content {
   min-width: 0;
@@ -366,6 +493,7 @@
   list-style: disc;
   padding-left: 1.25rem;
   margin: 0.75rem 0 1.25rem;
+  max-width: 72rem;
 }
 .dossier-bullets li {
   padding-left: 0.35rem;
@@ -376,9 +504,10 @@
 }
 .dossier-fit-row {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.25rem;
-  padding: 0.8rem 0;
+  grid-template-columns: minmax(11rem, 0.7fr) minmax(0, 1.5fr);
+  gap: 1.5rem;
+  align-items: start;
+  padding: 1rem 0;
   border-bottom: 1px solid var(--border);
 }
 .dossier-fit-row h3 {
@@ -390,10 +519,11 @@
 }
 .dossier-condition {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.3rem;
+  grid-template-columns: minmax(12rem, 0.8fr) minmax(0, 1.4fr);
+  gap: 1.5rem;
+  align-items: start;
   border-bottom: 1px solid var(--border);
-  padding: 0.8rem 0;
+  padding: 1rem 0;
 }
 .dossier-opening {
   border-left: 2px solid var(--signal);
@@ -427,8 +557,15 @@
   .dossier-chapter > .dossier-rail {
     position: static;
   }
+  .dossier-hero-actions,
+  .dossier-decision-actions {
+    width: 100%;
+  }
   .dossier-fit-row,
-  .dossier-condition {
+  .dossier-condition,
+  .dossier-value-grid,
+  .dossier-mandate-grid,
+  .dossier-approach-grid {
     grid-template-columns: 1fr;
     gap: 0.75rem;
   }
@@ -439,19 +576,24 @@
   }
 }
 .dossier-review-status {
-  margin: 1.5rem 0;
-  padding: 1rem 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.5rem 0 0;
+  padding: 0.45rem 0.7rem;
   border: 1px solid currentColor;
-  border-radius: 0.4rem;
-  font: 0.9rem/1.5 sans-serif;
+  border-radius: 999px;
+  font: 0.74rem/1.3 var(--font-mono);
+  letter-spacing: 0.04em;
 }
 .dossier-review-status.pending {
-  color: #805211;
-  background: #fff8e9;
+  color: var(--caution);
+  background: var(--surface-raised);
 }
 .dossier-review-status.reviewed {
-  color: #34634a;
+  color: var(--signal);
+  background: var(--surface-raised);
 }
 .dossier-review-status p {
-  margin: 0.35rem 0 0;
+  display: none;
 }

@@ -17,10 +17,7 @@ export function parseEnvContent(content: string): Record<string, string> {
     if (eqIdx === -1) continue;
     const key = trimmed.slice(0, eqIdx).trim();
     let val = trimmed.slice(eqIdx + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     if (key) {
@@ -57,8 +54,7 @@ export interface LoadUnifiedEnvironmentOptions {
  * 1. Existing process.env (Shell variables always win)
  * 2. In development (NODE_ENV !== "production" && RADAR_ENV !== "production"):
  *    .env.development.local -> .env.local -> .env.development -> .env -> gemini.env -> groq.env
- * 3. In production:
- *    .env.local -> .env -> gemini.env -> groq.env
+ * 3. In production, variables are supplied by the process supervisor only.
  *
  * Uses 'set only if currently undefined' evaluated from highest priority to lowest priority.
  */
@@ -72,21 +68,23 @@ export function loadUnifiedEnvironment(options?: LoadUnifiedEnvironmentOptions):
   const radarEnv = process.env.RADAR_ENV;
   const isDev = nodeEnv !== "production" && radarEnv !== "production";
 
-  const filesInPriorityOrder = options?.envFiles || (isDev
-    ? [
-        ".env.development.local",
-        ".env.local",
-        ".env.development",
-        ".env",
-        "gemini.env",
-        "groq.env",
-      ]
-    : [
-        ".env.local",
-        ".env",
-        "gemini.env",
-        "groq.env",
-      ]);
+  if (!isDev && !options?.envFiles) {
+    _hasLoadedUnifiedEnvironment = true;
+    return;
+  }
+
+  const filesInPriorityOrder =
+    options?.envFiles ||
+    (isDev
+      ? [
+          ".env.development.local",
+          ".env.local",
+          ".env.development",
+          ".env",
+          "gemini.env",
+          "groq.env",
+        ]
+      : []);
 
   for (const filename of filesInPriorityOrder) {
     const fullPath = path.isAbsolute(filename) ? filename : path.join(rootDir, filename);

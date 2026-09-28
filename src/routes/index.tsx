@@ -45,18 +45,22 @@ export const Route = createFileRoute("/")({
     ],
   }),
   staleTime: 0,
-  loader: async () => {
+  loader: async ({ location }) => {
+    const raw = location.search as { tenantId?: unknown; personId?: unknown };
+    const deps = { tenantId: typeof raw.tenantId === "string" ? raw.tenantId : undefined, personId: typeof raw.personId === "string" ? raw.personId : undefined };
+    if (Boolean(deps.tenantId) !== Boolean(deps.personId)) throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
     const [opportunitiesList, metrics, searchPlanPreview, capturedEnrichmentRuns] = await Promise.all([
-      getOpportunitiesFn(),
-      getShortlistMetricsFn(),
-      getScrapePlanPreviewFn(),
-      getCapturedEnrichmentRunsFn(),
+      getOpportunitiesFn({ data: deps }),
+      getShortlistMetricsFn({ data: deps }),
+      getScrapePlanPreviewFn({ data: deps }),
+      getCapturedEnrichmentRunsFn({ data: deps }),
     ]);
     return {
       opportunitiesList,
       metrics,
       searchPlanPreview,
       capturedEnrichmentRuns,
+      scope: deps,
     };
   },
   component: Shortlist,
@@ -77,8 +81,8 @@ export function isCurrentDossierResponse(
 }
 
 function Shortlist() {
-  const { opportunitiesList, metrics, searchPlanPreview, capturedEnrichmentRuns } = Route.useLoaderData();
-  const { decide: recordDecision } = useDecisions();
+  const { opportunitiesList, metrics, searchPlanPreview, capturedEnrichmentRuns, scope } = Route.useLoaderData();
+  const { decide: recordDecision } = useDecisions(scope);
   const { progress, markArrivalSeen } = useOnboarding();
   const [open, setOpen] = useState<string | null>(null);
   const [openedTimes, setOpenedTimes] = useState<Record<string, number>>({});
@@ -91,6 +95,9 @@ function Shortlist() {
   const [enrichmentStartError, setEnrichmentStartError] = useState<string | null>(null);
   const categoryCacheRef = useRef<Map<string, ServedOpportunity[]>>(new Map());
 
+  const tenantId = scope?.tenantId;
+  const personId = scope?.personId;
+
   useEffect(() => {
     categoryCacheRef.current.clear();
   }, [opportunitiesList]);
@@ -101,13 +108,13 @@ function Shortlist() {
 
   useEffect(() => {
     if (!startingEnrichmentRunId) return;
-    const refresh = () => getCapturedEnrichmentRunsFn()
+    const refresh = () => getCapturedEnrichmentRunsFn({ data: { tenantId, personId } })
       .then(setPendingCaptureRuns)
       .catch((error) => console.error("Failed to refresh captured-job enrichment status:", error));
     refresh();
     const timer = window.setInterval(refresh, 3000);
     return () => window.clearInterval(timer);
-  }, [startingEnrichmentRunId]);
+  }, [startingEnrichmentRunId, tenantId, personId]);
 
   useEffect(() => {
     if (startingEnrichmentRunId && !pendingCaptureRuns.some((run) => run.runId === startingEnrichmentRunId)) {
@@ -130,7 +137,7 @@ function Shortlist() {
 
     let active = true;
     setIsLoadingCategory(true);
-    getOpportunitiesFn({ data: { categoryId: selectedCategoryId } })
+    getOpportunitiesFn({ data: { categoryId: selectedCategoryId, tenantId, personId } })
       .then((ops) => {
         if (active) {
           categoryCacheRef.current.set(selectedCategoryId, ops);
@@ -146,7 +153,7 @@ function Shortlist() {
     return () => {
       active = false;
     };
-  }, [selectedCategoryId]);
+  }, [selectedCategoryId, tenantId, personId]);
 
   const activeOps = categoryOps ?? opportunitiesList;
 
@@ -154,7 +161,7 @@ function Shortlist() {
     const cacheKey = dossierCacheKey(opportunity);
     if (dossierByJobHash[cacheKey] !== undefined) return;
     setDossierByJobHash((current) => ({ ...current, [cacheKey]: null }));
-    getOpportunityDetailsFn({ data: opportunity.jobHash })
+    getOpportunityDetailsFn({ data: { jobHash: opportunity.jobHash, ...scope } })
       .then((details) => setDossierByJobHash((current) => {
         if (!isCurrentDossierResponse(opportunity, details.opportunity)) {
           const { [cacheKey]: _discarded, ...withoutMismatchedResponse } = current;
@@ -170,6 +177,7 @@ function Shortlist() {
 
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [extraScraped, setExtraScraped] = useState(0);
+  const [decisionStatus, setDecisionStatus] = useState<string | null>(null);
   const router = useRouter();
 
   const sourceCounts = useMemo(() => {
@@ -217,22 +225,27 @@ function Shortlist() {
     }
   };
 
-  const decide = (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
+  const decide = async (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
     // UNKNOWN is presentation of absent evaluation, never an action to persist.
     if (verb === "UNKNOWN") return;
     const openTime = openedTimes[jobHash];
     const duration = openTime ? Date.now() - openTime : 0;
     logTelemetry(jobHash, verb, duration);
 
-    recordDecision(jobHash, verb, reviewedFingerprint);
-    void router.invalidate();
-    setOpen((cur) => (cur === jobHash ? null : cur));
-
-    setOpenedTimes((prev) => {
-      const next = { ...prev };
-      delete next[jobHash];
-      return next;
-    });
+    setDecisionStatus(null);
+    try {
+      await recordDecision(jobHash, verb, reviewedFingerprint);
+      await router.invalidate();
+      setDecisionStatus(`Your decision is saved as ${verb}.`);
+      setOpen((cur) => (cur === jobHash ? null : cur));
+      setOpenedTimes((prev) => {
+        const next = { ...prev };
+        delete next[jobHash];
+        return next;
+      });
+    } catch {
+      setDecisionStatus("RADAR could not save your decision. Please try again.");
+    }
   };
 
   const { runState, startScrape, isStarting, restore } = useScrapeProgress();
@@ -243,8 +256,8 @@ function Shortlist() {
     setStartingEnrichmentRunId(runId);
     setEnrichmentStartError(null);
     try {
-      await startCapturedEnrichmentFn({ data: { runId } });
-      const runs = await getCapturedEnrichmentRunsFn();
+      await startCapturedEnrichmentFn({ data: { runId, ...scope } });
+      const runs = await getCapturedEnrichmentRunsFn({ data: scope });
       setPendingCaptureRuns(runs);
     } catch (error: any) {
       setEnrichmentStartError(error?.message || "Could not start captured-job enrichment.");
@@ -254,7 +267,7 @@ function Shortlist() {
 
   return (
     <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
-      <main className="mx-auto max-w-[1180px] px-5 sm:px-8 pt-4">
+      <main className="mx-auto max-w-[1320px] px-5 sm:px-8 pt-4">
         {/* Metric Integrity Warning Banner */}
         {integrity && integrity.status !== "PASS" && (
           <div className="mb-4 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200 text-xs font-mono flex items-start gap-3">
@@ -376,6 +389,7 @@ function Shortlist() {
                 {isBothSkipped ? (
                   <Link
                     to="/profile"
+                    search={scope}
                     className="mono text-[11px] font-bold uppercase tracking-wider bg-foreground text-background px-4 py-2.5 rounded-full hover:opacity-90 transition-opacity shadow-xs"
                   >
                     Complete setup →
@@ -393,6 +407,8 @@ function Shortlist() {
             </div>
           </section>
         )}
+
+        {decisionStatus && <p role="status" className="mb-4 text-sm text-muted-foreground">{decisionStatus}</p>}
 
         {/* ────────────────────────────────────────────────────────────────────────
             SHORTLIST QUEUE
@@ -539,6 +555,7 @@ function Shortlist() {
               {(cursorIndex > 0 || activeOps.length > attentionWindow) && (
                 <Link
                   to="/decisions"
+                  search={scope}
                   className="inline-flex items-center text-[11.5px] font-mono text-muted-foreground hover:text-foreground transition-colors"
                   data-testid="escape-hatch-link"
                 >
@@ -606,14 +623,14 @@ function Shortlist() {
             </p>
           )}
 
-          <EvaluatorControlPanel embedded />
+          <EvaluatorControlPanel embedded scope={scope} />
         </details>
       </main>
 
       {/* ────────────────────────────────────────────────────────────────────────
           FLOATING FOOTER STATUS BAR
           ──────────────────────────────────────────────────────────────────────── */}
-      <div className="floating-dock gap-4 pointer-events-auto">
+      {open === null && <div className="floating-dock gap-4 pointer-events-auto">
         <button
           type="button"
           onClick={() => {
@@ -649,7 +666,7 @@ function Shortlist() {
         <span className="dock-text text-emerald-600 dark:text-emerald-400 font-bold">
           → {selectedCategoryId === "all" ? (metrics?.discoveryMetrics?.actionableReviewQueue ?? activeOps.length) : (metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? activeOps.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? activeOps.length)} to review
         </span>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -807,11 +824,17 @@ function ShortlistCardRow({
   const coverage = o.engineRecommendation?.evidenceCoverage;
   const { primaryLabel, badgeClass, isStale, staleLabel, previousAction } = resolveShortlistCardBadgeState(o);
   const evaluatedDossier = (dossier && isEvaluated(dossier) ? dossier : undefined) ?? o;
-  const dossierBrief = evaluatedDossier?.dossierPresentation?.brief as {
-    memory?: { retentionSentence?: string };
-    frictionPreview?: string;
-    topUnknownPreview?: string;
-  } | undefined;
+  const reviewedDossier = evaluatedDossier.richDossier;
+  const firstDecisionCondition = reviewedDossier?.decisionConditions[0]?.question.text;
+  const evidenceSummary = coverage
+    ? [
+        coverage.direct ? `${coverage.direct} direct` : null,
+        coverage.adjacent ? `${coverage.adjacent} adjacent` : null,
+        coverage.transferable ? `${coverage.transferable} transferable` : null,
+        coverage.notEvidenced ? `${coverage.notEvidenced} to verify` : null,
+        coverage.contradicted ? `${coverage.contradicted} conflict${coverage.contradicted === 1 ? "" : "s"}` : null,
+      ].filter(Boolean).join(" · ")
+    : null;
 
   useEffect(() => {
     if (isOpen && rowRef.current) {
@@ -889,18 +912,8 @@ function ShortlistCardRow({
             {o.company} · {o.location}{(o as { workModel?: string }).workModel ? ` (${(o as { workModel?: string }).workModel})` : ""} · {o.scrapedFrom}
           </span>
 
-          {coverage && <span className="mt-2 block text-xs text-muted-foreground">Evidence: {coverage.direct} direct &middot; {coverage.adjacent} adjacent &middot; {coverage.transferable} transferable{coverage.notEvidenced>0?` / ${coverage.notEvidenced} not evidenced`:''}{coverage.contradicted>0?` / ${coverage.contradicted} conflicting`:''}</span>}
+          {evidenceSummary && <span className="mt-2 block text-xs text-muted-foreground">Evidence · {evidenceSummary}</span>}
 
-          {dossierBrief?.memory?.retentionSentence && <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
-            {dossierBrief.memory.retentionSentence}
-          </span>}
-
-          {(dossierBrief?.frictionPreview || dossierBrief?.topUnknownPreview) && (
-            <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[0.68rem] text-amber-700 dark:text-amber-300 border border-amber-500/20 font-mono">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-              Needs verification: {dossierBrief?.frictionPreview || dossierBrief?.topUnknownPreview}
-            </span>
-          )}
         </span>
 
         <span className="flex shrink-0 flex-col items-end gap-2">
@@ -924,6 +937,7 @@ function ShortlistCardRow({
             <InlineBrief
               opportunity={o}
               dossier={evaluatedDossier}
+              decisionCondition={firstDecisionCondition}
               onDecide={(verb) =>
                 decide(
                   o.jobHash,

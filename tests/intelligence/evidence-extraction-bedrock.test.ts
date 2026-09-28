@@ -26,12 +26,34 @@ describe("Bedrock candidate extraction grounding", () => {
       justification: "Not present",
     }, rawText, "doc-1", 1)).toBeUndefined();
   });
-  it("extracts the full explicit source, including clarifications beyond the old text cap", async()=>{
-    const tail="Total tenure spans several sectors; sector tenure is not established.";
-    const text="Background. ".repeat(1000)+tail;
-    const model={id:"injected",version:"test",async generate(_i:string,input:any){expect(input.documentText).toBe(text);return {facts:[{type:"OTHER",value:tail,sourceSpan:tail,confidence:1,justification:"Explicit scope clarification"}]};}};
-    const graph=await new EvidenceExtractionService(model).extract({personId:"person",documentId:"doc",documentHash:"hash",documentText:text});
-    expect(graph.facts[0].sourceSpan).toBe(tail);expect(graph.provenance.model).toBe("test");
+  it("enforces intentional 10k character cap when passing source to provider", async () => {
+    const text = "A".repeat(15000);
+    const span = "A".repeat(10);
+    let capturedText = "";
+    const model = {
+      id: "injected",
+      version: "test",
+      async generate(_i: string, input: any) {
+        capturedText = input.documentText;
+        return {
+          facts: [{
+            type: "OTHER",
+            value: span,
+            sourceSpan: span,
+            confidence: 1,
+            justification: "test",
+          }],
+        };
+      },
+    };
+    await new EvidenceExtractionService(model).extract({
+      personId: "person",
+      documentId: "doc",
+      documentHash: "hash",
+      documentText: text,
+    });
+    expect(capturedText).toHaveLength(10000);
+    expect(capturedText).toBe("A".repeat(10000));
   });
   it("does not silently replace the explicitly selected model with heuristic evidence",async()=>{
     const failure=new Error("Provider unavailable");

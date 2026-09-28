@@ -9,9 +9,9 @@ export async function failEvaluationDependency(db: DatabaseAdapter, requirementI
     );
     if (!changed.rowsAffected) return 0;
     await tx.execute(
-      `UPDATE evaluation_jobs SET status=CASE WHEN status='staged_waiting_enrichment' THEN 'staged_dead_letter' ELSE 'dead_letter' END,
+      `UPDATE evaluation_jobs SET status='staged_dead_letter',
          last_error=?, completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP
-       WHERE status IN ('waiting_enrichment','staged_waiting_enrichment') AND EXISTS (
+       WHERE status='staged_waiting_enrichment' AND EXISTS (
          SELECT 1 FROM evaluation_requirements er WHERE er.id=? AND er.tenant_id=evaluation_jobs.tenant_id
            AND er.person_id=evaluation_jobs.person_id AND er.search_plan_id=evaluation_jobs.search_plan_id
            AND er.canonical_job_id=evaluation_jobs.canonical_job_id AND er.opportunity_version=evaluation_jobs.opportunity_version

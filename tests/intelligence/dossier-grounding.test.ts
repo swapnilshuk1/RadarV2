@@ -67,6 +67,67 @@ describe('Dossier evidence and field resolution', () => {
     expect(resolveSourceClaims({claims:[{...claim,citations:[{sourceId:'cv',spanId:'s1'}]}]},[source])[0].citations[0].quote).toBe('Revenue contribution rose from 3% to 32%.');
     expect(()=>resolveSourceClaims({claims:[{...claim,citations:[{sourceId:'cv',spanId:'missing'}]}]},[source])).toThrow('Unknown source passage');
   });
+  it('preserves newline-delimited company metadata as citeable source passages', () => {
+    const source={
+      ...sources[0],
+      id:'linkedin-company',
+      plane:'CONTEXT' as const,
+      text:'Reach Digital\r\nCompany Size\r\n2-10 employees\r\nFounded\r\n2020\r\nLocations\r\nAustin, Texas 78750, US, New York City, NY 10003, US',
+    };
+    const spans=sourceSpans(source);
+    expect(spans.map(span=>span.text)).toEqual([
+      'Reach Digital',
+      'Company Size',
+      '2-10 employees',
+      'Founded',
+      '2020',
+      'Locations',
+      'Austin, Texas 78750, US, New York City, NY 10003, US',
+    ]);
+    const employeeSpan=spans.find(span=>span.text==='2-10 employees')!;
+    const resolved=resolveSourceClaims({
+      claims:[{
+        id:'CONTEXT-1-1',
+        text:'Reach Digital has 2-10 employees.',
+        state:'EXPLICIT',
+        confidence:1,
+        plane:'CONTEXT',
+        citations:[{sourceId:source.id,spanId:employeeSpan.id}],
+        derivedFrom:[],
+      }],
+    },[source]);
+    expect(resolved[0].citations[0].quote).toBe('2-10 employees');
+  });
+
+  it('rejects explicit context facts when the selected passage does not contain their hard factual anchors', () => {
+    const source={
+      ...sources[0],
+      id:'linkedin-direct-support',
+      plane:'CONTEXT' as const,
+      title:'Reach Digital',
+      text:'Reach Digital\r\nWe help eCommerce brands grow through performance marketing.\r\nCompany Size\r\n2-10 employees',
+    };
+    const spans=sourceSpans(source);
+    const genericSpan=spans.find(span=>span.text.includes('performance marketing'))!;
+    const employeeSpan=spans.find(span=>span.text==='2-10 employees')!;
+    const claim={
+      id:'CONTEXT-1-1',
+      text:'Reach Digital has 2-10 employees.',
+      state:'EXPLICIT' as const,
+      confidence:1,
+      plane:'CONTEXT' as const,
+      derivedFrom:[],
+    };
+
+    expect(()=>resolveSourceClaims({
+      claims:[{...claim,citations:[{sourceId:source.id,spanId:genericSpan.id}]}],
+    },[source])).toThrow('Explicit context claim lacks direct cited support');
+
+    expect(resolveSourceClaims({
+      claims:[{...claim,citations:[{sourceId:source.id,spanId:employeeSpan.id}]}],
+    },[source])[0].citations[0].quote).toBe('2-10 employees');
+  });
+
   it('keeps minified JD qualifications local and permits contiguous multi-span evidence', () => {
     const minified={...sources[0],id:'jd-minified',text:`Role overview ${'hands-on delivery across complex stakeholder groups '.repeat(12)}; Relevant experience in regulated product operations is required; ${'cross-functional execution across priority programs '.repeat(12)}; This is an individual contributor role leading through craft and judgment rather than headcount; ${'customer outcomes and operating rhythm '.repeat(8)}`};
     const spans=sourceSpans(minified);

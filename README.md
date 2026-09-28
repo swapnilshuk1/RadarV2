@@ -74,8 +74,12 @@ be recovered from Git history. Database migrations remain ordered and intact.
 ## Local development
 
 Install the Node/npm versions declared in `package.json`, then `npm ci`.
-Use an explicitly selected isolated local database. `npm run dev` runs database
-bootstrap/migrations; do not let a production URL in `.env` select its target.
+Use an explicitly selected isolated local database. `npm run dev` starts the web
+application on port 3000 plus the supervised evaluator service. The evaluator is
+non-consuming until an authorized user presses **Start evaluation** in RADAR; merely
+starting development does not spend model credits. It does not start scrape,
+enrichment, dossier, document or corpus workers. Apply migrations explicitly with
+`npm run db:migrate` when the selected non-production database needs them.
 
 ```powershell
 $env:RADAR_ENV = 'dev'
@@ -84,6 +88,10 @@ $env:TURSO_DATABASE_URL = $env:TURSO_CONNECTION_URL
 $env:TURSO_AUTH_TOKEN = 'local-only'
 npm run dev
 ```
+
+To intentionally run the web application plus the complete local worker fleet, use
+`npm run dev:full`. The evaluator still obeys the same Start/Pause/Resume/Stop control;
+other workers may consume their own queues.
 
 Review an already generated dossier without running models:
 
@@ -107,9 +115,9 @@ The certification manifest in `scripts/certification/manifest.ts` is the
 authoritative release check. CI retains verified Linux output for its exact
 commit. Pushing code does not deploy it.
 
-Backfill uses the existing `backfill-staged-evaluations.ts`,
-`process-staged-evaluation-jobs.ts`, `compose-staged-dossiers.ts` and
-`complete-staged-rollout.ts` scripts. Inspect their flags and database target
+Worker processing runs via dedicated PM2 worker commands:
+`npm run worker:evaluations`, `npm run worker:dossiers`, `npm run worker:reviews`,
+`npm run worker:corpus`, and `npm run worker:scrape`. Inspect their configuration and database target
 before execution. Keep ingestion, evaluation, composition, publication and
 activation counts separate. An idle queue is not a completed backfill, and PASS
 results need not appear on the shortlist.

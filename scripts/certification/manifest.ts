@@ -6,8 +6,6 @@
  * this manifest rather than maintaining independent lists.
  */
 
-export const EXPECTED_CERTIFICATION_FILE_COUNT = 68;
-
 export const certificationManifest = [
   {
     id: "boundary-journeys",
@@ -16,9 +14,8 @@ export const certificationManifest = [
       "End-to-end integration across acquisition, semantic policy, decision persistence, and UI rendering",
     files: [
       "tests/certification/certification-gate-integrity.test.ts",
-      "tests/certification/journey_a_acquisition_to_evaluation.test.ts",
-      "tests/certification/journey_b_semantic_grounding_to_policy.test.ts",
-      "tests/certification/journey_c_decision_persistence_to_dto.test.ts",
+      "tests/intelligence/staged-production-integration.test.ts",
+      "tests/intelligence/staged-context-input.test.ts",
       "tests/certification/journey_d_loader_to_ui_rendering.test.ts",
       "tests/certification/test-inventory-audit.test.ts",
     ],
@@ -29,18 +26,14 @@ export const certificationManifest = [
     description:
       "FK integrity, content hashing, version lineage, operational queue crash recovery, and global metric aggregations",
     files: [
-      "tests/intelligence/canonical-ingestion-fk-regression.test.ts",
       "tests/intelligence/canonical-acquisition-integrity.test.ts",
       "tests/acquisition/ingestion-lineage.test.ts",
-      "tests/intelligence/semantic-evidence-integrity-regression.test.ts",
-      "tests/intelligence/metrics-portal-breakdown.test.ts",
       "tests/persistence/queue-crash-restart.test.ts",
       "tests/persistence/scrape-run-state-machine.test.ts",
       "tests/persistence/cross-instance-payload-retrieval.test.ts",
       "tests/persistence/distributed-lease-contention.test.ts",
       "tests/persistence/blob-store-connectivity.test.ts",
       "tests/scraper/acquisition-variant-contract.test.ts",
-      "tests/scraper/scraper-operability.test.ts",
     ],
   },
   {
@@ -53,6 +46,10 @@ export const certificationManifest = [
       "tests/security/deploy-attack-surface-removed.test.ts",
       "tests/security/scrape-tenant-identity.test.ts",
       "tests/security/scrape-run-ownership.test.ts",
+      "tests/security/candidate-profile-tenant-isolation.test.ts",
+      "tests/security/tenant-isolation.test.ts",
+      "tests/security/oauth-scope-provisioning.test.ts",
+      "tests/security/m62-credential-vault.test.ts",
       "tests/ontology/tenant-ontology-compiler.test.ts",
     ],
   },
@@ -63,54 +60,31 @@ export const certificationManifest = [
       "Feed ordering parity, opaque cursor stability, dossier navigation, and singleflight coalescing",
     files: [
       "tests/serving/cursor.test.ts",
-      "tests/serving/dossier_and_navigation.test.ts",
-      "tests/serving/keyset_pagination.test.ts",
+      "tests/serving/navigation-and-shortlist-contract.test.ts",
       "tests/serving/opportunity-queries-contract.test.ts",
       "tests/serving/route_server_functions_parity.test.ts",
       "tests/serving/singleflight_and_observability.test.ts",
       "tests/serving/singleflight-scope-isolation.test.ts",
-      "tests/serving/sql_feed_parity.test.ts",
-      "tests/serving/sql_metrics_aggregation.test.ts",
-      "tests/serving/active-context-dossier-boundary.test.ts",
+      "tests/editorial/shortlist-badge-resolution.test.ts",
+      "tests/serving/current-serving-boundary.test.ts",
       "tests/persistence/deployment-determinism.test.ts",
     ],
   },
   {
-    id: "editorial-governance",
-    name: "Editorial Governance & Verdict Contracts",
-    description: "Rule 13 executive prose compliance, score resolution, and badge mappings",
-    files: [
-      "tests/editorial/career-value-integrity.test.ts",
-      "tests/editorial/explanation-composition.test.ts",
-      "tests/editorial/explanation-contract.test.ts",
-      "tests/editorial/shortlist-badge-resolution.test.ts",
-      "tests/editorial/ui-score-resolution.test.ts",
-      "tests/editorial/verdict-coverage.test.ts",
-      "tests/editorial/evidence-sufficiency-contract.test.ts",
-      "tests/editorial/editorial-intelligence-contract.test.ts",
-      "tests/intelligence/knowledge-narrative.test.ts",
-      "tests/intelligence/invariant-assertions.test.ts",
-    ],
-  },
-  {
-    id: "dossier-v2-merge-gate",
-    name: "Dossier V2 Merge-Gate Integrity",
+    id: "staged-dossier-merge-gate",
+    name: "Staged Dossier Merge-Gate Integrity",
     description:
       "Exact evaluated identity/scalar attachment, source trust, presentation provenance, and account isolation",
     files: [
-      "tests/intelligence/opportunity-version-pinning.test.ts",
-      "tests/pipeline/EvaluationWorker.test.ts",
       "tests/intelligence/context-materialization.test.ts",
-      "tests/editorial/editorial-proposition-composer.test.ts",
       "tests/security/decisions-account-isolation.test.ts",
       "tests/intelligence/staged-decision.test.ts",
-      "tests/intelligence/staged-production-integration.test.ts",
-      "tests/intelligence/staged-context-input.test.ts",
       "tests/intelligence/staged-queue-lifecycle.test.ts",
       "tests/scraper/enrichment-payload-resolution.test.ts",
       "tests/intelligence/staged-composition.test.ts",
       "tests/intelligence/dossier-review-queue.test.ts",
       "tests/intelligence/gemini-context-cache.test.ts",
+      "tests/intelligence/editorial-boundary.test.ts",
       "tests/intelligence/memo-contract.test.ts",
       "tests/serving/staged-rich-serving.test.ts",
       "tests/intelligence/bedrock-converse-model.test.ts",
@@ -122,14 +96,27 @@ export const certificationManifest = [
     description:
       "Fail-closed profile resolution, non-escalating permissions, canonical verdicts, reproducibility, and durable worker recovery",
     files: [
-      "tests/intelligence/worker-profile-resolution.test.ts",
       "tests/intelligence/profile-projection-version-compat.test.ts",
       "tests/security/scraper-auth-permission-non-escalation.test.ts",
-      "tests/intelligence/m8-canonical-serving.test.ts",
-      "tests/policy/headspace-serving-contract.test.ts",
-      "tests/intelligence/m9_4_1-evaluation-determinism.test.ts",
-      "tests/intelligence/m53-worker.test.ts",
       "tests/security/evaluation-context-isolation.test.ts",
+    ],
+  },
+  {
+    id: "runtime-release-safety",
+    name: "Runtime & Release Safety Regressions",
+    description:
+      "Canonical candidate truth, worker separation, corpus durability, migration integrity, and release safety",
+    files: [
+      "tests/intelligence/candidate-truth-boundary.test.ts",
+      "tests/intelligence/phase-c-runtime-separation.test.ts",
+      "tests/intelligence/corpus-regeneration-worker.test.ts",
+      "tests/intelligence/evaluator-control-worker-liveness.test.ts",
+      "tests/persistence/migration-runner.test.ts",
+      "tests/persistence/populated-migration.test.ts",
+      "tests/release/readiness.test.ts",
+      "tests/release/artifact-integrity.test.ts",
+      "tests/release/runtime-topology.test.ts",
+      "tests/release/deployment.test.ts",
     ],
   },
 ] as const;
@@ -137,3 +124,17 @@ export const certificationManifest = [
 export const certificationTestFiles = certificationManifest.flatMap((group) => group.files);
 
 export const uniqueCertificationTestFiles = [...new Set(certificationTestFiles)];
+
+export const requiredCertificationRegressionFiles = [
+  "tests/security/candidate-profile-tenant-isolation.test.ts",
+  "tests/security/tenant-isolation.test.ts",
+  "tests/security/oauth-scope-provisioning.test.ts",
+  "tests/security/m62-credential-vault.test.ts",
+  "tests/intelligence/candidate-truth-boundary.test.ts",
+  "tests/intelligence/phase-c-runtime-separation.test.ts",
+  "tests/intelligence/corpus-regeneration-worker.test.ts",
+] as const;
+
+if (uniqueCertificationTestFiles.length !== certificationTestFiles.length) {
+  throw new Error("CERTIFICATION_MANIFEST_DUPLICATE_FILE");
+}

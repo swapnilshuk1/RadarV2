@@ -6,8 +6,8 @@ import * as path from "path";
 describe("CandidateProofExtractorV1 (13 Focused Tests)", () => {
   const extractor = new CandidateProofExtractorV1();
 
-  const resumeMPath = path.resolve(__dirname, "../../audit-reports/phase5-100-case-corpus/Swapnil_Shukla_Resume_M.md");
-  const resumeV3Path = path.resolve(__dirname, "../../audit-reports/phase5-100-case-corpus/Swapnil_Shukla_Executive_Resume_v3.md");
+  const resumeMPath = path.resolve(__dirname, "../fixtures/resumes/Synthetic_Executive_Resume_M.md");
+  const resumeV3Path = path.resolve(__dirname, "../fixtures/resumes/Synthetic_Executive_Resume_v3.md");
 
   const resumeMText = fs.readFileSync(resumeMPath, "utf-8");
   const resumeV3Text = fs.readFileSync(resumeV3Path, "utf-8");
@@ -20,8 +20,8 @@ describe("CandidateProofExtractorV1 (13 Focused Tests)", () => {
     });
 
     expect(resM.masthead).toBeDefined();
-    expect(resM.masthead?.rawText).toContain("SWAPNIL SHUKLA");
-    expect(resM.masthead?.rawText).toContain("swapnilshuk@gmail.com");
+    expect(resM.masthead?.rawText).toContain("ALEXANDER STERLING");
+    expect(resM.masthead?.rawText).toContain("alexander.sterling@example.com");
     expect(resM.positions.length).toBe(7);
     expect(resM.positions[0].employer).toBe("VML (WPP Group)");
   });

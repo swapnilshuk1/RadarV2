@@ -1,5 +1,5 @@
 import { type OpportunitySource, type ScrapeSource } from "./opportunity-fixtures";
-import { readOpportunities } from "../lib/intelligence/engine";
+import { readOpportunities } from "../lib/intelligence/opportunity-source";
 
 export type ScrapedJob = {
   id: string;

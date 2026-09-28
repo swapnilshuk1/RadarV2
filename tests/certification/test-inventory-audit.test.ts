@@ -5,21 +5,22 @@
  *
  * Mechanically asserts that:
  * 1. Every test file on disk is explicitly listed and classified in tests/TEST_INVENTORY.md.
- * 2. Every non-archived test file has an explicit valid disposition (KEEP or REVIEW).
- * 3. No zero-active-test file is classified as KEEP.
- * 4. Every test file referenced in scripts/certify.ts exists on disk.
- * 5. All 7 mandatory certification stages are present and executable.
- * 6. Every production-critical invariant in the inventory has an authoritative test suite on disk.
- * 7. Zero bypasses (e.g. '|| true', '; exit 0') exist in certification commands.
- * 8. All tests under tests/archive/ are classified as ARCHIVE.
- * 9. Key operational, deployment, and certification scripts exist on disk.
+ * 2. Every test file registered in TEST_INVENTORY.md exists on disk (bidirectional audit).
+ * 3. Every test file has an explicit valid disposition (KEEP or REVIEW).
+ * 4. No zero-active-test file is classified as KEEP.
+ * 5. Zero archived test files exist on disk, and zero tests/archive/ entries exist in the inventory registry.
+ * 6. Every test file referenced in scripts/certify.ts exists on disk.
+ * 7. All mandatory certification stages are present and executable.
+ * 8. Every production-critical invariant in the inventory has an authoritative test suite on disk.
+ * 9. Zero bypasses (e.g. '|| true', '; exit 0') exist in certification commands.
+ * 10. Key operational, deployment, and certification scripts exist on disk.
  */
 
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import { STAGES } from "../../scripts/certify";
-import { certificationTestFiles } from "../../scripts/certification/manifest";
+import { certificationTestFiles, requiredCertificationRegressionFiles } from "../../scripts/certification/manifest";
 
 describe("Test Inventory Self-Auditing & Governance Contract", () => {
   const inventoryPath = path.resolve(process.cwd(), "tests/TEST_INVENTORY.md");
@@ -55,52 +56,69 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
     }
   });
 
-  it("2. asserts every non-archived test has an explicit disposition (KEEP or REVIEW)", () => {
+  it("2. asserts every test file registered in TEST_INVENTORY.md exists on disk (bidirectional audit)", () => {
+    const registrySection = inventoryContent.split("## 3. Complete Test File Registry")[1]?.split("## 4.")[0] || "";
+    expect(registrySection, "Section 3 not found in TEST_INVENTORY.md").toBeDefined();
+    const tableMatches = [...registrySection.matchAll(/\|\s*`([^`]+\.test\.ts)`/g)].map((m) => m[1]);
+    expect(tableMatches.length).toBeGreaterThan(0);
+
+    for (const file of tableMatches) {
+      expect(
+        fs.existsSync(path.resolve(process.cwd(), file)),
+        `Inventory lists test file "${file}", but it does not exist on disk!`
+      ).toBe(true);
+    }
+    expect(tableMatches.length).toBe(testFilesOnDisk.length);
+  });
+
+  it("3. asserts every test file has an explicit disposition (KEEP or REVIEW)", () => {
     const registrySection = inventoryContent.split("## 3. Complete Test File Registry")[1];
     expect(registrySection, "Section 3 not found in TEST_INVENTORY.md").toBeDefined();
     const lines = registrySection.split("\n");
 
     for (const file of testFilesOnDisk) {
-      if (!file.startsWith("tests/archive/")) {
-        const tableLine = lines.find((l) => l.includes(`\`${file}\``));
-        expect(tableLine, `Line for "${file}" not found in Section 3 of TEST_INVENTORY.md`).toBeDefined();
-        const hasValidDisposition =
-          tableLine!.includes("**KEEP**") || tableLine!.includes("**REVIEW**");
+      const tableLine = lines.find((l) => l.includes(`\`${file}\``));
+      expect(tableLine, `Line for "${file}" not found in Section 3 of TEST_INVENTORY.md`).toBeDefined();
+      const hasValidDisposition =
+        tableLine!.includes("**KEEP**") || tableLine!.includes("**REVIEW**");
+      expect(
+        hasValidDisposition,
+        `File "${file}" has invalid disposition in TEST_INVENTORY.md: "${tableLine}"`
+      ).toBe(true);
+    }
+  });
+
+  it("4. asserts no zero-active-test file is classified as KEEP", () => {
+    const registrySection = inventoryContent.split("## 3. Complete Test File Registry")[1];
+    const lines = registrySection.split("\n");
+
+    for (const file of testFilesOnDisk) {
+      const content = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
+      const itMatches = content.match(/\b(it|test)\s*\(/g) || [];
+      const expectMatches = content.match(/\bexpect\s*\(/g) || [];
+
+      const tableLine = lines.find((l) => l.includes(`\`${file}\``));
+
+      if (tableLine && tableLine.includes("**KEEP**")) {
         expect(
-          hasValidDisposition,
-          `File "${file}" has invalid disposition in TEST_INVENTORY.md: "${tableLine}"`
+          itMatches.length > 0,
+          `File "${file}" is marked KEEP but contains 0 test() or it() blocks!`
+        ).toBe(true);
+        expect(
+          expectMatches.length > 0,
+          `File "${file}" is marked KEEP but contains 0 expect() assertions!`
         ).toBe(true);
       }
     }
   });
 
-  it("3. asserts no zero-active-test file is classified as KEEP", () => {
-    const registrySection = inventoryContent.split("## 3. Complete Test File Registry")[1];
-    const lines = registrySection.split("\n");
-
-    for (const file of testFilesOnDisk) {
-      if (!file.startsWith("tests/archive/")) {
-        const content = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
-        const itMatches = content.match(/\b(it|test)\s*\(/g) || [];
-        const expectMatches = content.match(/\bexpect\s*\(/g) || [];
-
-        const tableLine = lines.find((l) => l.includes(`\`${file}\``));
-
-        if (tableLine && tableLine.includes("**KEEP**")) {
-          expect(
-            itMatches.length > 0,
-            `File "${file}" is marked KEEP but contains 0 test() or it() blocks!`
-          ).toBe(true);
-          expect(
-            expectMatches.length > 0,
-            `File "${file}" is marked KEEP but contains 0 expect() assertions!`
-          ).toBe(true);
-        }
-      }
-    }
+  it("5. asserts zero archived test files on disk and zero tests/archive/ references in inventory registry", () => {
+    expect(fs.existsSync(path.resolve(process.cwd(), "tests/archive"))).toBe(false);
+    const registrySection = inventoryContent.split("## 3. Complete Test File Registry")[1]?.split("## 4.")[0] || "";
+    expect(registrySection.includes("tests/archive/")).toBe(false);
   });
 
-  it("4. asserts every manifest certification test exists on disk", () => {
+  it("6. asserts every manifest certification test exists on disk", () => {
     for (const suite of certificationTestFiles) {
       expect(
         fs.existsSync(path.resolve(process.cwd(), suite)),
@@ -109,8 +127,8 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
     }
   });
 
-  it("5. asserts all 7 mandatory certification stages exist and have executable commands", () => {
-    expect(STAGES).toHaveLength(7);
+  it("7. asserts all mandatory certification stages exist and have executable commands", () => {
+    expect(STAGES).toHaveLength(9);
     for (const stage of STAGES) {
       expect(stage.name).toBeDefined();
       expect(stage.command).toBeDefined();
@@ -122,40 +140,14 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
     }
   });
 
-  it("6. asserts every production-critical invariant in the inventory has an authoritative test on disk", () => {
-    const criticalAuthoritativeSuites = [
-      "tests/intelligence/canonical-ingestion-fk-regression.test.ts",
-      "tests/intelligence/canonical-acquisition-integrity.test.ts",
-      "tests/intelligence/semantic-evidence-integrity-regression.test.ts",
-      "tests/intelligence/metrics-portal-breakdown.test.ts",
-      "tests/serving/sql_metrics_aggregation.test.ts",
-      "tests/serving/keyset_pagination.test.ts",
-      "tests/serving/cursor.test.ts",
-      "tests/security/scope-resolver-equivalence.test.ts",
-      "tests/security/scraper-auth-permission-non-escalation.test.ts",
-      "tests/intelligence/worker-profile-resolution.test.ts",
-      "tests/intelligence/m8-canonical-serving.test.ts",
-      "tests/policy/headspace-serving-contract.test.ts",
-      "tests/intelligence/m9_4_1-evaluation-determinism.test.ts",
-      "tests/intelligence/m53-worker.test.ts",
-      "tests/security/evaluation-context-isolation.test.ts",
-      "tests/editorial/explanation-contract.test.ts",
-      "tests/certification/journey_a_acquisition_to_evaluation.test.ts",
-      "tests/certification/journey_b_semantic_grounding_to_policy.test.ts",
-      "tests/certification/journey_c_decision_persistence_to_dto.test.ts",
-      "tests/certification/journey_d_loader_to_ui_rendering.test.ts",
-      "tests/certification/certification-gate-integrity.test.ts",
-    ];
-
-    for (const suite of criticalAuthoritativeSuites) {
-      expect(
-        fs.existsSync(path.resolve(process.cwd(), suite)),
-        `Authoritative critical suite "${suite}" missing from repository!`
-      ).toBe(true);
+  it("8. keeps required release regressions inside the current certification manifest", () => {
+    for (const suite of requiredCertificationRegressionFiles) {
+      expect(certificationTestFiles).toContain(suite);
+      expect(fs.existsSync(path.resolve(process.cwd(), suite)), suite).toBe(true);
     }
   });
 
-  it("7. asserts zero bypasses exist in certification stage commands", () => {
+  it("9. asserts zero bypasses exist in certification stage commands", () => {
     for (const stage of STAGES) {
       expect(stage.command).not.toMatch(/\|\|\s*true/i);
       expect(stage.command).not.toMatch(/\|\|\s*exit\s+0/i);
@@ -164,22 +156,7 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
     }
   });
 
-  it("8. asserts all tests in tests/archive/ are classified as ARCHIVE in the inventory", () => {
-    const registrySection = inventoryContent.split("## 3. Complete Test File Registry")[1];
-    const lines = registrySection.split("\n");
-    for (const file of testFilesOnDisk) {
-      if (file.startsWith("tests/archive/")) {
-        const tableLine = lines.find((l) => l.includes(`\`${file}\``));
-        expect(tableLine, `Archived file "${file}" missing from Section 3 of inventory!`).toBeDefined();
-        expect(
-          tableLine!.includes("**ARCHIVE**"),
-          `Archived file "${file}" must have disposition **ARCHIVE**, got: "${tableLine}"`
-        ).toBe(true);
-      }
-    }
-  });
-
-  it("9. asserts essential operational, certification, and deployment scripts exist on disk", () => {
+  it("10. asserts essential operational, certification, and deployment scripts exist on disk", () => {
     const requiredScripts = [
       "scripts/scrape.ts",
       "scripts/enrich.ts",

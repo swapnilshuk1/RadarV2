@@ -1,6 +1,12 @@
 import crypto from "crypto";
 
-const SECRET = process.env.SESSION_SECRET || "radar-session-secret-key-32chars!";
+function oauthStateSecret(): string {
+  const secret = process.env.AUTH_SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("AUTH_SESSION_SECRET must be configured with at least 32 characters before OAuth can start.");
+  }
+  return secret;
+}
 
 export interface OAuthStatePayload {
   state: string;
@@ -16,7 +22,7 @@ export function createSignedOAuthState(rawState: string, verifier: string): stri
   };
   const json = JSON.stringify(payload);
   const base64 = Buffer.from(json).toString("base64url");
-  const hmac = crypto.createHmac("sha256", SECRET).update(base64).digest("base64url");
+  const hmac = crypto.createHmac("sha256", oauthStateSecret()).update(base64).digest("base64url");
   return `${base64}.${hmac}`;
 }
 
@@ -27,7 +33,7 @@ export function verifySignedOAuthState(signedState: string | null): OAuthStatePa
     if (parts.length !== 2) return null;
 
     const [base64, sig] = parts;
-    const expectedHmac = crypto.createHmac("sha256", SECRET).update(base64).digest("base64url");
+    const expectedHmac = crypto.createHmac("sha256", oauthStateSecret()).update(base64).digest("base64url");
 
     if (sig.length !== expectedHmac.length) return null;
 

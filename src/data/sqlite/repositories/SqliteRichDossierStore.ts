@@ -3,7 +3,13 @@ import type { DatabaseAdapter } from "@/data/database";
 import { dossierSchema, type Dossier } from "@/dossier/contracts";
 import { assertFactualReviewProvenance } from "@/dossier/factual-review-integrity";
 import { validateComposition } from "@/dossier/grounding";
-import type { DossierPresentationIdentity } from "./SqliteDossierPresentationStore";
+export interface DossierPresentationIdentity {
+  tenantId: string;
+  personId: string;
+  canonicalJobId: string;
+  opportunityVersion: string;
+  evaluationContextFingerprint: string;
+}
 
 export const RICH_DOSSIER_VERSION = "dossier-v4.1";
 export const RICH_DOSSIER_FAILURE_VERSION = `${RICH_DOSSIER_VERSION}-unavailable`;

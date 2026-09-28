@@ -90,18 +90,3 @@ export function validateCandidateProjection(projection: unknown): ProjectionVali
   };
 }
 
-export const DEFAULT_CANDIDATE_PROJECTION: CandidateProjection = {
-  operatingLevel: { value: "STRATEGIC", confidence: 0.9, evidenceIds: [] },
-  workNature: { value: "STRATEGIC_WORK", confidence: 0.9, evidenceIds: [] },
-  decisionAuthority: { value: "ENTERPRISE", confidence: 0.9, evidenceIds: [] },
-  commercialScope: { value: "ENTERPRISE", confidence: 0.9, evidenceIds: [] },
-  yearsOfExperience: 20,
-  coreCapabilities: ["COMMERCIAL_GROWTH", "DIGITAL_TRANSFORMATION", "GLOBAL_GTM", "STRATEGIC_LEADERSHIP"],
-  preferredLocations: ["Bengaluru", "Remote", "San Francisco"],
-  preferredWorkModel: "HYBRID",
-  executiveThemes: ["commercial_growth", "transformation"],
-  attentionWindow: 6,
-  headspaceCapacityPerMonth: 4,
-};
-
-

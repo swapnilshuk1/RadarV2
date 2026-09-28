@@ -37,11 +37,14 @@ function writeLocal(scope: string | null, next: DecisionMap) {
   }
 }
 
-export function useDecisions() {
+export function useDecisions(scope?: { tenantId?: string; personId?: string }) {
   const [decisions, setDecisions] = useState<DecisionMap>({});
   const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scopeRef = useRef<string | null>(null);
+
+  const tenantId = scope?.tenantId;
+  const personId = scope?.personId;
 
   useEffect(() => {
     let isMounted = true;
@@ -49,7 +52,7 @@ export function useDecisions() {
       // Canonical server state wins on every authenticated hydration. Browser
       // cache is a scoped convenience mirror, never an import source.
       try {
-        const res = await getDecisionsFn();
+        const res = await getDecisionsFn({ data: { tenantId, personId } });
         if (res && res.success && res.decisions) {
           let currentServerMap: DecisionMap = {};
           for (const [hash, val] of Object.entries(res.decisions)) {
@@ -87,12 +90,12 @@ export function useDecisions() {
       window.removeEventListener("radar:decisions", onChange);
       window.removeEventListener("storage", onChange);
     };
-  }, []);
+  }, [tenantId, personId]);
 
   const decide = async (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
     // A browser fingerprint is display metadata only. Canonical provenance is
     // acknowledged by the server after it resolves the scoped current artifact.
-    const result = await saveDecisionFn({ data: { jobHash, verb, reviewedFingerprint } });
+    const result = await saveDecisionFn({ data: { jobHash, verb, reviewedFingerprint, tenantId, personId } });
     if (!result?.success) throw new Error("Decision persistence was not acknowledged by the server.");
     setDecisions((prev) => {
       const next = { ...prev, [jobHash]: { verb, at: Date.now(), reviewedFingerprint: result.reviewedFingerprint ?? null } };
@@ -105,7 +108,7 @@ export function useDecisions() {
     setError(null);
     const message = "Decision removal was not acknowledged by the server.";
     try {
-      await requireDecisionAcknowledgement(() => undoDecisionFn({ data: { jobHash } }), message);
+      await requireDecisionAcknowledgement(() => undoDecisionFn({ data: { jobHash, tenantId, personId } }), message);
     } catch (error) {
       setError(message);
       throw error;
@@ -122,7 +125,7 @@ export function useDecisions() {
     setError(null);
     const message = "Decision clearing was not acknowledged by the server.";
     try {
-      await requireDecisionAcknowledgement(() => clearDecisionsFn(), message);
+      await requireDecisionAcknowledgement(() => clearDecisionsFn({ data: { tenantId, personId } }), message);
     } catch (error) {
       setError(message);
       throw error;

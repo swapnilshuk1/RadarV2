@@ -135,6 +135,53 @@ export class DevDeterministicKeyProvider implements CredentialKeyProvider {
   }
 }
 
+/** Production key provider. Key material is supplied by the deployment secret
+ * store through the process environment; repository-known keys are test-only. */
+export class EnvironmentCredentialKeyProvider implements CredentialKeyProvider {
+  private readonly keys = new Map<string, Buffer>();
+  private readonly version: string;
+
+  constructor() {
+    const encoded = process.env.RADAR_CREDENTIAL_ENCRYPTION_KEY;
+    this.version = process.env.RADAR_CREDENTIAL_KEY_VERSION || "env_v1";
+    if (!encoded) throw new CredentialVaultError("RADAR_CREDENTIAL_ENCRYPTION_KEY is required outside test execution", "KEY_VERSION_NOT_FOUND");
+    this.keys.set(this.version, this.decodeKey(encoded, "RADAR_CREDENTIAL_ENCRYPTION_KEY"));
+
+    // During a one-time rotation, retain old *configured* versions only long
+    // enough to decrypt and re-encrypt existing envelopes. Never derive or
+    // silently restore the retired repository development keys.
+    const keyring = process.env.RADAR_CREDENTIAL_DECRYPTION_KEYRING;
+    if (keyring) {
+      let entries: unknown;
+      try { entries = JSON.parse(keyring); } catch { throw new CredentialVaultError("RADAR_CREDENTIAL_DECRYPTION_KEYRING must be a JSON object", "INVALID_INPUT"); }
+      if (!entries || typeof entries !== "object" || Array.isArray(entries)) {
+        throw new CredentialVaultError("RADAR_CREDENTIAL_DECRYPTION_KEYRING must be a JSON object", "INVALID_INPUT");
+      }
+      for (const [version, value] of Object.entries(entries as Record<string, unknown>)) {
+        if (!version || typeof value !== "string") throw new CredentialVaultError("Credential keyring entries must map versions to encoded keys", "INVALID_INPUT");
+        if (version === this.version) {
+          throw new CredentialVaultError("RADAR_CREDENTIAL_DECRYPTION_KEYRING must not redefine the active RADAR_CREDENTIAL_KEY_VERSION", "INVALID_INPUT");
+        }
+        this.keys.set(version, this.decodeKey(value, `RADAR_CREDENTIAL_DECRYPTION_KEYRING.${version}`));
+      }
+    }
+  }
+
+  private decodeKey(encoded: string, source: string): Buffer {
+    const key = /^[0-9a-f]{64}$/i.test(encoded) ? Buffer.from(encoded, "hex") : Buffer.from(encoded, "base64");
+    if (key.length !== 32) throw new CredentialVaultError(`${source} must decode to exactly 32 bytes`, "INVALID_KEY_LENGTH");
+    return key;
+  }
+
+  getKey(keyVersion: string): Buffer {
+    const key = this.keys.get(keyVersion);
+    if (!key) throw new CredentialKeyVersionError(keyVersion);
+    return key;
+  }
+  getDefaultKeyVersion(): string { return this.version; }
+  hasKey(keyVersion: string): boolean { return this.keys.has(keyVersion); }
+}
+
 // ============================================================================
 // 3. CANONICAL CREDENTIAL VAULT (AES-256-GCM Envelope Encryption)
 // ============================================================================
@@ -145,7 +192,9 @@ export class CredentialVault {
   private readonly keyProvider: CredentialKeyProvider;
 
   constructor(keyProvider?: CredentialKeyProvider) {
-    this.keyProvider = keyProvider ?? new DevDeterministicKeyProvider();
+    this.keyProvider = keyProvider ?? (process.env.NODE_ENV === "test"
+      ? new DevDeterministicKeyProvider()
+      : new EnvironmentCredentialKeyProvider());
   }
 
   /**

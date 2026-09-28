@@ -73,35 +73,35 @@ describe('Tenant Isolation Foundation (Phase M1)', () => {
   describe('authorizePersonScope', () => {
     it('allows access to person in same tenant', async () => {
       const db = getDatabaseAdapter();
-      const auth: AuthContext = { userId: 'u1', tenantId: 'tenant_a', permissions: [] };
+      const auth: AuthContext = { userId: 'u1', tenantId: 'tenant_a', role: 'admin', permissions: [] };
       
-      const scope = await authorizePersonScope(auth, 'person1', db);
+      const scope = await authorizePersonScope(auth, 'person1', db, 'read:person');
       expect(scope.tenantId).toBe('tenant_a');
       expect(scope.personId).toBe('person1');
     });
 
     it('denies access to person in different tenant', async () => {
       const db = getDatabaseAdapter();
-      const auth: AuthContext = { userId: 'u1', tenantId: 'tenant_a', permissions: [] };
+      const auth: AuthContext = { userId: 'u1', tenantId: 'tenant_a', role: 'admin', permissions: [] };
       
-      await expect(authorizePersonScope(auth, 'person2', db)).rejects.toThrow(TenantIsolationError);
-      await expect(authorizePersonScope(auth, 'person2', db)).rejects.toThrow('Access denied. Person person2 does not belong to tenant tenant_a.');
+      await expect(authorizePersonScope(auth, 'person2', db, 'read:person')).rejects.toThrow(TenantIsolationError);
+      await expect(authorizePersonScope(auth, 'person2', db, 'read:person')).rejects.toThrow('Access denied. Person person2 does not belong to tenant tenant_a.');
     });
 
     it('denies access to legacy person with NULL tenant_id', async () => {
       const db = getDatabaseAdapter();
-      const auth: AuthContext = { userId: 'u1', tenantId: 'tenant_a', permissions: [] };
+      const auth: AuthContext = { userId: 'u1', tenantId: 'tenant_a', role: 'admin', permissions: [] };
       
-      await expect(authorizePersonScope(auth, 'person3_legacy', db)).rejects.toThrow(TenantIsolationError);
-      await expect(authorizePersonScope(auth, 'person3_legacy', db)).rejects.toThrow('is a legacy/unassigned record');
+      await expect(authorizePersonScope(auth, 'person3_legacy', db, 'read:person')).rejects.toThrow(TenantIsolationError);
+      await expect(authorizePersonScope(auth, 'person3_legacy', db, 'read:person')).rejects.toThrow('is a legacy/unassigned record');
     });
 
     it('denies access to non-existent person', async () => {
       const db = getDatabaseAdapter();
-      const auth: AuthContext = { userId: 'u1', tenantId: 'tenant_a', permissions: [] };
+      const auth: AuthContext = { userId: 'u1', tenantId: 'tenant_a', role: 'admin', permissions: [] };
       
-      await expect(authorizePersonScope(auth, 'person4_ghost', db)).rejects.toThrow(TenantIsolationError);
-      await expect(authorizePersonScope(auth, 'person4_ghost', db)).rejects.toThrow('not found');
+      await expect(authorizePersonScope(auth, 'person4_ghost', db, 'read:person')).rejects.toThrow(TenantIsolationError);
+      await expect(authorizePersonScope(auth, 'person4_ghost', db, 'read:person')).rejects.toThrow('not found');
     });
   });
 

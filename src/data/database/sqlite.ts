@@ -4,8 +4,15 @@ import type Database from "better-sqlite3";
 export class SqliteAdapter implements DatabaseAdapter {
   constructor(private db: Database.Database) {
     // In-memory safety assurance: alert if instantiated with non-memory file in non-test mode
-    if (!db.memory && db.name !== ":memory:" && db.name !== "" && process.env.RADAR_ENV !== "test") {
-      console.warn(`[SqliteAdapter] Warning: SqliteAdapter instantiated with persistent file: ${db.name}`);
+    if (
+      !db.memory &&
+      db.name !== ":memory:" &&
+      db.name !== "" &&
+      process.env.RADAR_ENV !== "test"
+    ) {
+      console.warn(
+        `[SqliteAdapter] Warning: SqliteAdapter instantiated with persistent file: ${db.name}`,
+      );
     }
   }
 
@@ -19,7 +26,10 @@ export class SqliteAdapter implements DatabaseAdapter {
     return (rows as T[]) || [];
   }
 
-  async execute(sql: string, params: QueryParams = []): Promise<{ rowsAffected: number; lastInsertRowid?: any }> {
+  async execute(
+    sql: string,
+    params: QueryParams = [],
+  ): Promise<{ rowsAffected: number; lastInsertRowid?: any }> {
     const info = this.db.prepare(sql).run(...(params as any[]));
     return {
       rowsAffected: info.changes,
@@ -41,7 +51,10 @@ export class SqliteAdapter implements DatabaseAdapter {
     }
   }
 
-  async executeMigration(statements: readonly string[], options?: { disableForeignKeys?: boolean }): Promise<void> {
+  async executeMigration(
+    statements: readonly string[],
+    options?: { disableForeignKeys?: boolean },
+  ): Promise<void> {
     const disableFk = options?.disableForeignKeys ?? false;
     if (disableFk) {
       this.db.pragma("foreign_keys = OFF");
@@ -62,9 +75,15 @@ export class SqliteAdapter implements DatabaseAdapter {
         this.db.pragma("foreign_keys = ON");
         const violations = this.db.pragma("foreign_key_check") as any[];
         if (violations && violations.length > 0) {
-          throw new Error(`Foreign key constraint check failed after migration: ${JSON.stringify(violations)}`);
+          throw new Error(
+            `Foreign key constraint check failed after migration: ${JSON.stringify(violations)}`,
+          );
         }
       }
     }
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
   }
 }

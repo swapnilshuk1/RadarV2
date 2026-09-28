@@ -26,6 +26,29 @@ function activationInput(profileVersion: string) {
   };
 }
 
+function makeEnrichmentDispatch(cardHash: string, title: string, company: string, location: string, description: string, portal: "LinkedIn" | "Naukri" = "LinkedIn") {
+  return {
+    pipelineVersion: "1.0.0",
+    detailedCard: {
+      cardHash,
+      title,
+      company,
+      location,
+      portal,
+      rawText: description,
+      description,
+      summary: description.slice(0, 100),
+      directUrl: "https://example.com/job",
+      applyUrl: "https://example.com/apply",
+      dimensions: [],
+      timestamp: new Date().toISOString(),
+      enrichmentStatus: "UNENRICHED" as const,
+      detailFetchStatus: "SUCCESS" as const,
+      contentOrigin: "DETAIL_DOCUMENT" as const,
+    },
+  };
+}
+
 describe("Atomic career-intent plan activation", () => {
   let db: SqliteAdapter;
   let store: SqliteEvaluationContextStore;
@@ -168,7 +191,20 @@ describe("Atomic career-intent plan activation", () => {
       ],
     );
     await activateLineageTestContext(db);
+    await db.execute(
+      `INSERT INTO scrape_runs (id, tenant_id, person_id, search_plan_id, status, portal_targets)
+       VALUES (?, ?, ?, ?, 'running', '["LinkedIn", "Naukri"]')`,
+      ["run_backfill_1", scope.tenantId, scope.personId, "plan_A"]
+    );
+    const ingestScope = {
+      mode: "SCOPED" as const,
+      tenantId: scope.tenantId,
+      personId: scope.personId,
+      searchPlanId: "plan_A",
+      runId: "run_backfill_1",
+    };
     const ingestion = new CanonicalIngestionService(db);
+    const firstDesc = "Executive VP Growth role leading commercial growth, enterprise demand generation, revenue strategy, and a cross-functional leadership team. Own the regional P&L, define the annual growth plan, partner with product and sales executives, set measurable acquisition and retention targets, build operating cadence for funnel performance, and present strategic outcomes to the executive committee. The role requires proven commercial leadership, executive stakeholder management, scalable go-to-market execution, and accountability for sustainable revenue growth across complex customer segments.";
     const first = await ingestion.ingestOpportunity({
       sourcePortal: "LinkedIn",
       sourceJobId: "context-backfill-job",
@@ -176,8 +212,11 @@ describe("Atomic career-intent plan activation", () => {
       jobTitle: "VP Growth",
       companyName: "Acme",
       location: "Bengaluru",
-      rawContent: "Executive VP Growth role leading commercial growth, enterprise demand generation, revenue strategy, and a cross-functional leadership team. Own the regional P&L, define the annual growth plan, partner with product and sales executives, set measurable acquisition and retention targets, build operating cadence for funnel performance, and present strategic outcomes to the executive committee. The role requires proven commercial leadership, executive stakeholder management, scalable go-to-market execution, and accountability for sustainable revenue growth across complex customer segments.",
-    }, { tenantId: scope.tenantId, personId: scope.personId, searchPlanId: "plan_A" });
+      rawContent: firstDesc,
+      contentOrigin: "DETAIL_DOCUMENT",
+      enrichmentDispatch: makeEnrichmentDispatch("cbj-1", "VP Growth", "Acme", "Bengaluru", firstDesc, "LinkedIn"),
+    }, ingestScope);
+    const secondDesc = "Executive VP Growth role owning regional P&L, leading commercial teams, scaling cross-functional operations, and driving repeatable enterprise revenue growth. Partner closely with functional heads and global executives to establish market entry frameworks, pipeline conversion metrics, and key partner alliances across enterprise portfolios.";
     const second = await ingestion.ingestOpportunity({
       sourcePortal: "Naukri",
       sourceJobId: "context-backfill-job-2",
@@ -185,8 +224,10 @@ describe("Atomic career-intent plan activation", () => {
       jobTitle: "VP Growth",
       companyName: "Beta",
       location: "Bengaluru",
-      rawContent: "Executive VP Growth role owning a regional P&L and commercial team.",
-    }, { tenantId: scope.tenantId, personId: scope.personId, searchPlanId: "plan_A" });
+      rawContent: secondDesc,
+      contentOrigin: "DETAIL_DOCUMENT",
+      enrichmentDispatch: makeEnrichmentDispatch("cbj-2", "VP Growth", "Beta", "Bengaluru", secondDesc, "Naukri"),
+    }, ingestScope);
     const prepared = await store.prepareSearchPlan(scope, activationInput("profile-backfill"));
     const firstBackfill = await materializeExistingCanonicalPool(scope, prepared, {
       sourceSearchPlanId: "plan_A",
@@ -226,22 +267,7 @@ describe("Atomic career-intent plan activation", () => {
     );
     const parsedPayload = JSON.parse(evaluationPayload!.evaluation_json) as { evaluationInputHash?: string };
     expect((parsedPayload as { evaluationState?: string }).evaluationState).toBe("EVALUATED");
-    const dossierPresentation = await db.one<{ presentation_json: string; source_evaluation_fingerprint: string }>(
-      `SELECT presentation_json, source_evaluation_fingerprint
-       FROM materialized_dossier_presentations
-       WHERE tenant_id = ? AND person_id = ? AND canonical_job_id = ?
-         AND opportunity_version = ? AND evaluation_context_fingerprint = ?
-         AND presentation_version = 'dossier-v2'`,
-      [
-        scope.tenantId,
-        scope.personId,
-        first.canonicalJobId,
-        first.opportunityVersion,
-        prepared.context.contextFingerprint,
-      ],
-    );
-    expect(dossierPresentation?.source_evaluation_fingerprint).toBe(parsedPayload.evaluationInputHash);
-    expect(JSON.parse(dossierPresentation!.presentation_json)).toMatchObject({ schemaVersion: "dossier-v2" });
+    expect(parsedPayload.evaluationInputHash).toBeTruthy();
     const secondPoolCount = await db.one<{ count: number }>(
       `SELECT COUNT(*) AS count FROM canonical_opportunities WHERE id = ?`,
       [second.canonicalJobId]
@@ -251,7 +277,20 @@ describe("Atomic career-intent plan activation", () => {
 
   it("materializes only the explicit source plan when the same scope has multiple plans", async () => {
     await activateLineageTestContext(db);
+    await db.execute(
+      `INSERT INTO scrape_runs (id, tenant_id, person_id, search_plan_id, status, portal_targets)
+       VALUES (?, ?, ?, ?, 'running', '["LinkedIn", "Naukri"]')`,
+      ["run_backfill_2", scope.tenantId, scope.personId, "plan_A"]
+    );
+    const ingestScope = {
+      mode: "SCOPED" as const,
+      tenantId: scope.tenantId,
+      personId: scope.personId,
+      searchPlanId: "plan_A",
+      runId: "run_backfill_2",
+    };
     const ingestion = new CanonicalIngestionService(db);
+    const sourceADesc = "Executive VP Growth role leading commercial growth, enterprise demand generation, and cross-functional leadership teams across India and APAC. Own strategic planning, executive governance, and multi-market commercial expansion to deliver sustainable revenue and market share.";
     const sourceA = await ingestion.ingestOpportunity({
       sourcePortal: "LinkedIn",
       sourceJobId: "source-plan-a",
@@ -259,13 +298,16 @@ describe("Atomic career-intent plan activation", () => {
       jobTitle: "VP Growth",
       companyName: "Plan A Co",
       location: "Bengaluru",
-      rawContent: "Executive VP Growth role leading commercial growth and a cross-functional team.",
-    }, { tenantId: scope.tenantId, personId: scope.personId, searchPlanId: "plan_A" });
+      rawContent: sourceADesc,
+      contentOrigin: "DETAIL_DOCUMENT",
+      enrichmentDispatch: makeEnrichmentDispatch("spa-1", "VP Growth", "Plan A Co", "Bengaluru", sourceADesc, "LinkedIn"),
+    }, ingestScope);
     await db.execute(
       `INSERT INTO search_plans (id, tenant_id, person_id, status, title, criteria_json)
        VALUES (?, ?, ?, ?, ?, ?)`,
       ["plan_same_scope_B", scope.tenantId, scope.personId, "archived", "Plan B", JSON.stringify(criteria)],
     );
+    const sourceBDesc = "Executive VP Growth role owning a regional P&L and commercial team, driving strategic business partnerships and executive customer acquisitions. Coordinate marketing, sales operations, and senior stakeholder engagement across all regional business units.";
     const sourceB = await ingestion.ingestOpportunity({
       sourcePortal: "Naukri",
       sourceJobId: "source-plan-b",
@@ -273,10 +315,24 @@ describe("Atomic career-intent plan activation", () => {
       jobTitle: "VP Growth",
       companyName: "Plan B Co",
       location: "Bengaluru",
-      rawContent: "Executive VP Growth role owning a regional P&L and commercial team.",
-    }, { tenantId: scope.tenantId, personId: scope.personId, searchPlanId: "plan_A" });
+      rawContent: sourceBDesc,
+      contentOrigin: "DETAIL_DOCUMENT",
+      enrichmentDispatch: makeEnrichmentDispatch("spb-1", "VP Growth", "Plan B Co", "Bengaluru", sourceBDesc, "Naukri"),
+    }, ingestScope);
     // Ingestion projects into the fixture's active plan. Move this record to
-    // the second plan so the two source cohorts are genuinely disjoint.
+    // the second plan so the two source cohorts are genuinely disjoint. The
+    // production ingestion path now creates its durable worker job immediately,
+    // so remove the fixture-only obligation before moving the association.
+    await db.execute(
+      `DELETE FROM evaluation_jobs
+       WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ? AND canonical_job_id = ? AND opportunity_version = ?`,
+      [scope.tenantId, scope.personId, "plan_A", sourceB.canonicalJobId, sourceB.opportunityVersion],
+    );
+    await db.execute(
+      `DELETE FROM evaluation_requirements
+       WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ? AND canonical_job_id = ? AND opportunity_version = ?`,
+      [scope.tenantId, scope.personId, "plan_A", sourceB.canonicalJobId, sourceB.opportunityVersion],
+    );
     await db.execute(
       `DELETE FROM search_plan_candidates
        WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ? AND canonical_job_id = ? AND opportunity_version = ?`,

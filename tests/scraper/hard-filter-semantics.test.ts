@@ -38,6 +38,20 @@ describe("Hard Filter Semantics Contract (Gate 3)", () => {
       expect(res.pass).toBe(false);
       expect(res.decision).toBe("PROVABLY_DISQUALIFIED");
       expect(res.reasonCode).toBe("SENIORITY_EXCLUSION");
+
+      const devRes = passesHardFilter({
+        title: "Junior Developer",
+        company: "Acme Corp",
+        location: "Bengaluru, India",
+      });
+      expect(devRes.pass).toBe(false);
+
+      const internRes = passesHardFilter({
+        title: "Software Engineering Intern",
+        company: "Acme Corp",
+        location: "Bengaluru, India",
+      });
+      expect(internRes.pass).toBe(false);
     });
 
     it("disqualifies universal junior experience brackets", () => {

@@ -10,7 +10,7 @@ import {
   createSqliteModelInvocationSink,
   type ModelInvocationContext,
 } from "@/lib/model/model-invocation";
-import { createBedrockGlmResearchModel } from "@/lib/model/bedrock-glm-research-model";
+import { createDossierWriterModel } from "@/lib/model/dossier-writer-model";
 import { ProductionStagedDossierService } from "./ProductionStagedDossierService";
 import { StagedServingPublisher } from "./StagedServingPublisher";
 
@@ -23,7 +23,7 @@ export class DossierCompositionWorker {
   constructor(
     private readonly db: DatabaseAdapter,
     private readonly writerFactory: DossierWriterFactory = (context) =>
-      createBedrockGlmResearchModel({
+      createDossierWriterModel({
         invocationSink: createSqliteModelInvocationSink(db, context),
       }),
   ) {}

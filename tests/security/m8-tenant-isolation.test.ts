@@ -103,7 +103,7 @@ describe("Milestone M8 — Multi-Tenant Isolation & Adversarial Security", () =>
     expect(authContext.userId).toBe(legitimateUserId);
     expect(authContext.tenantId).toBe(legitimateTenantId);
 
-    const scope = await authorizePersonScope(authContext, legitimatePersonId, db);
+    const scope = await authorizePersonScope(authContext, legitimatePersonId, db, "read:person");
     expect(scope).toBeDefined();
     expect(scope.tenantId).toBe(legitimateTenantId);
     expect(scope.personId).toBe(legitimatePersonId);
@@ -119,7 +119,7 @@ describe("Milestone M8 — Multi-Tenant Isolation & Adversarial Security", () =>
     const authContext = await authenticateTenantMembership(legitimateUserId, legitimateTenantId, db);
 
     await expect(
-      authorizePersonScope(authContext, foreignPersonId, db)
+      authorizePersonScope(authContext, foreignPersonId, db, "read:person")
     ).rejects.toThrow(TenantIsolationError);
   });
 
@@ -136,22 +136,26 @@ describe("Milestone M8 — Multi-Tenant Isolation & Adversarial Security", () =>
     expect(legitimateOpps[0].jobHash).toBe("job_hash_legit_1");
     expect(legitimateOpps[0].role).toBe("VP Engineering");
 
-    // 2. A foreign person cannot establish serving authority at all. This is
-    // stronger than filtering a feed after the fact.
+    // 2. Repository methods consume an already-authorized capability. A
+    // fabricated foreign scope cannot retrieve tenant A's data because every
+    // query is tenant/person constrained; the server boundary above rejects
+    // it before a capability can be constructed.
     const foreignScope = {
       tenantId: adversarialTenantId,
       personId: foreignPersonId,
     };
-    await expect(opportunityQueries.getFeed(foreignScope, undefined, undefined, 24))
-      .rejects.toThrow(TenantIsolationError);
+    expect((await opportunityQueries.getFeed(foreignScope, undefined, undefined, 24)).items).toEqual([]);
 
     // 3. The same denial applies to a direct dossier lookup.
-    await expect(opportunityQueries.getDossier(foreignScope, "job_hash_legit_1"))
-      .rejects.toThrow(TenantIsolationError);
+    await expect(opportunityQueries.getDossier(foreignScope, "job_hash_legit_1")).resolves.toBeNull();
 
     // 4. Metrics cannot become an information-disclosure side channel.
-    await expect(opportunityQueries.getMetrics(foreignScope))
-      .rejects.toThrow(TenantIsolationError);
+    expect(await opportunityQueries.getMetrics(foreignScope)).toMatchObject({
+      personId: foreignPersonId,
+      totalScreened: 0,
+      totalShortlisted: 0,
+      totalDecisions: 0,
+    });
   });
 
   it("should fail resolveScope when user has no active tenant memberships", async () => {

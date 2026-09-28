@@ -48,7 +48,9 @@ export class StagedServingPublisher {
     const reviewed = await new SqliteRichDossierStore(this.db).get(identity, fingerprint);
     const queue = new SqliteDossierReviewQueue(this.db);
     const queued = options.allowDraft && !reviewed ? await queue.find(identity, fingerprint) : null;
-    const dossier = reviewed ?? (queued ? await queue.getDraft(identity, fingerprint) : null);
+    // Review drafts may establish lifecycle progress, but are never used as a
+    // serving payload or a source of user-facing prose.
+    const dossier = reviewed;
     const preparing = Boolean(options.allowPreparing && !reviewed && !queued && !dossier);
     if (!dossier && !queued && !preparing)
       throw new Error("SERVING_REQUIRES_MATCHING_DOSSIER");

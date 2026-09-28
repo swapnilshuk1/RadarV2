@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { useRouter } from "@tanstack/react-router";
+import { useLocation, useRouter } from "@tanstack/react-router";
 import {
   triggerScrapeFn,
   getActiveScrapeFn,
@@ -17,6 +17,8 @@ export interface CanonicalScrapeState {
   stage: ScrapeStage;
   opportunitiesFound: number;
   evaluatedCount: number;
+  enrichedCount?: number;
+  errorMessage?: string | null;
   remainingCount: number;
   sources: Record<string, "pending" | "searching" | "completed" | "failed">;
   portalHealth?: Record<string, any>;
@@ -48,6 +50,13 @@ interface ScrapeProgressContextType {
 }
 
 const ScrapeProgressContext = createContext<ScrapeProgressContextType | null>(null);
+function currentCandidateScope() {
+  if (typeof window === "undefined") return {};
+  const params = new URLSearchParams(window.location.search);
+  const tenantId = params.get("tenantId") || undefined;
+  const personId = params.get("personId") || undefined;
+  return { tenantId, personId };
+}
 
 export function ScrapeProgressProvider({ children }: { children: React.ReactNode }) {
   const [runState, setRunState] = useState<CanonicalScrapeState | null>(null);
@@ -59,6 +68,8 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
   const [isStarting, setIsStarting] = useState(false);
 
   const router = useRouter();
+  const location = useLocation();
+  const scopeKey = JSON.stringify(currentCandidateScope());
 
   // Helper to sync canonical state from server response
   const syncServerState = useCallback((data: any) => {
@@ -73,6 +84,9 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
       stage: data.stage || "discover",
       opportunitiesFound: data.opportunitiesFound || 0,
       evaluatedCount: data.evaluatedCount || 0,
+      enrichedCount: data.enrichedCount || 0,
+      errorMessage: data.errorMessage,
+      recentActivities: data.recentActivities || [],
       remainingCount: data.remainingCount || 0,
       sources: data.sources || { LinkedIn: "pending", Naukri: "pending", Indeed: "pending" },
       portalHealth: data.portalHealth || {},
@@ -86,8 +100,9 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
   useEffect(() => {
     let mounted = true;
     async function hydrate() {
+      setRunState(null);
       try {
-        const active = await getActiveScrapeFn();
+        const active = await getActiveScrapeFn({ data: currentCandidateScope() });
         if (mounted && active) {
           syncServerState(active);
           // Active server state wins over transient dismissal on page load!
@@ -99,7 +114,7 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
     }
     void hydrate();
     return () => { mounted = false; };
-  }, [syncServerState]);
+  }, [scopeKey, syncServerState]);
 
   // 2. Reconciliation Polling Loop while Run is Active
   useEffect(() => {
@@ -107,7 +122,7 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
 
     const interval = setInterval(async () => {
       try {
-        const updated = await getRunProgressFn({ data: { runId: runState.runId } });
+        const updated = await getRunProgressFn({ data: { runId: runState.runId, ...currentCandidateScope() } });
         if (updated) {
           syncServerState(updated);
           if (!updated.isActive && runState.isActive) {
@@ -145,12 +160,12 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
     });
 
     try {
-      const res = await triggerScrapeFn();
+      const res = await triggerScrapeFn({ data: currentCandidateScope() });
       if (res.success && res.runId) {
         setIsDismissed(false);
         setIsMinimized(false);
         // Hydrate initial progress immediately
-        const fresh = await getRunProgressFn({ data: { runId: res.runId } });
+        const fresh = await getRunProgressFn({ data: { runId: res.runId, ...currentCandidateScope() } });
         if (fresh) {
           syncServerState(fresh);
         } else {
@@ -187,8 +202,8 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
 
     try {
       if (targetRunId !== "starting") {
-        await abortScrapeFn({ data: { runId: targetRunId } });
-        const updated = await getRunProgressFn({ data: { runId: targetRunId } });
+        await abortScrapeFn({ data: { runId: targetRunId, ...currentCandidateScope() } });
+        const updated = await getRunProgressFn({ data: { runId: targetRunId, ...currentCandidateScope() } });
         if (updated) syncServerState(updated);
       } else {
         setRunState(null);
@@ -201,8 +216,8 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
   const confirmScrape = useCallback(async () => {
     if (!runState?.runId) return;
     try {
-      await confirmScrapeFn({ data: { runId: runState.runId } });
-      const updated = await getRunProgressFn({ data: { runId: runState.runId } });
+      await confirmScrapeFn({ data: { runId: runState.runId, ...currentCandidateScope() } });
+      const updated = await getRunProgressFn({ data: { runId: runState.runId, ...currentCandidateScope() } });
       if (updated) syncServerState(updated);
     } catch (err) {
       console.error("[ScrapeProgressProvider] confirmScrape failed:", err);

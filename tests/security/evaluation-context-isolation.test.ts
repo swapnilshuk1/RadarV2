@@ -5,7 +5,6 @@ import { SqliteAdapter } from "@/data/database/sqlite";
 import Database from "better-sqlite3";
 
 import { SqliteEvaluationContextStore } from "@/data/sqlite/repositories/SqliteEvaluationContextStore";
-import { SqliteMaterializedEvaluationStore } from "@/data/sqlite/repositories/SqliteMaterializedEvaluationStore";
 import { TenantAuthorizationError } from "@/lib/security/auth";
 import {
   computeSearchPlanSnapshotHash,
@@ -20,7 +19,6 @@ describe("Phase M3: Evaluation Context & Read Model Isolation", () => {
   let db: DatabaseAdapter;
   let sqliteDb: Database.Database;
   let contextStore: SqliteEvaluationContextStore;
-  let evalStore: SqliteMaterializedEvaluationStore;
 
   const authTenantA = { tenantId: "tenant_A", personId: "person_A1" };
   const authTenantB = { tenantId: "tenant_B", personId: "person_B1" };
@@ -53,7 +51,6 @@ describe("Phase M3: Evaluation Context & Read Model Isolation", () => {
     sqliteDb.exec(`INSERT INTO people (id, email, tenant_id) VALUES ('person_A1', 'a1@test.com', 'tenant_A'), ('person_B1', 'b1@test.com', 'tenant_B')`);
 
     contextStore = new SqliteEvaluationContextStore(db);
-    evalStore = new SqliteMaterializedEvaluationStore(db);
   });
 
   afterEach(async () => {
@@ -98,80 +95,6 @@ describe("Phase M3: Evaluation Context & Read Model Isolation", () => {
     // Tenant B attempts to create snapshot for Tenant A's plan
     await expect(contextStore.createSearchPlanSnapshot(authTenantB, planA.id, { targetRoles: ["CTO"] }))
       .rejects.toThrow(TenantAuthorizationError);
-  });
-
-  test("Invariant 5: Historical Evaluations & Immutability", async () => {
-    const plan = await contextStore.createSearchPlan(authTenantA, "Search", { targetRoles: ["CEO"] });
-    const snapshot = await contextStore.createSearchPlanSnapshot(authTenantA, plan.id, { targetRoles: ["CEO"] });
-    
-    const context = await contextStore.createEvaluationContext(authTenantA, {
-      searchPlanSnapshotId: snapshot.id,
-      ontologyVersion: "v1",
-      ontologyFingerprint: "hash_v1",
-      policyVersion: "1.0",
-      profileVersion: "1.0"
-    });
-
-    const evalPayload = {
-      id: "",
-      tenantId: authTenantA.tenantId,
-      personId: authTenantA.personId,
-      canonicalJobId: "job1",
-      opportunityVersion: "v1",
-      evaluationContextFingerprint: context.contextFingerprint,
-      evaluationFingerprint: "eval_context_1",
-      decision: "PURSUE" as const,
-      qualityScore: 90,
-      rationale: "Good fit",
-      evidenceIds: [],
-      evaluationJson: JSON.stringify({ evaluationInputHash: "eval_context_1", decision: "PURSUE", qualityScore: 90 }),
-      materializedAt: new Date().toISOString()
-    };
-    
-    await evalStore.materializeEvaluation(authTenantA, evalPayload);
-
-    // Ensure we cannot update the context
-    // There is no update API by design on contextStore, confirming immutability.
-    
-    // New profile version -> new context -> new evaluation
-    const context2 = await contextStore.createEvaluationContext(authTenantA, {
-      searchPlanSnapshotId: snapshot.id,
-      ontologyVersion: "v1",
-      ontologyFingerprint: "hash_v1",
-      policyVersion: "1.0",
-      profileVersion: "2.0" // Changed
-    });
-
-    expect(context2.contextFingerprint).not.toBe(context.contextFingerprint);
-    
-    const evalPayload2 = { ...evalPayload, evaluationContextFingerprint: context2.contextFingerprint, evaluationFingerprint: "eval_context_2", decision: "PASS" as const, evaluationJson: JSON.stringify({ evaluationInputHash: "eval_context_2", decision: "PASS", qualityScore: 90 }) };
-    await evalStore.materializeEvaluation(authTenantA, evalPayload2);
-
-    // Read both
-    const evals = await evalStore.listEvaluations(authTenantA);
-    expect(evals.length).toBe(2);
-    expect(evals.find(e => e.evaluationContextFingerprint === context.contextFingerprint)?.decision).toBe("PURSUE");
-    expect(evals.find(e => e.evaluationContextFingerprint === context2.contextFingerprint)?.decision).toBe("PASS");
-  });
-
-  test("Invariant: Consistency Validation", async () => {
-    const plan = await contextStore.createSearchPlan(authTenantA, "Search", { targetRoles: ["CEO"] });
-    const snapshot = await contextStore.createSearchPlanSnapshot(authTenantA, plan.id, { targetRoles: ["CEO"] });
-    const context = await contextStore.createEvaluationContext(authTenantA, {
-      searchPlanSnapshotId: snapshot.id, ontologyVersion: "v1", ontologyFingerprint: "hash_v1", policyVersion: "1.0", profileVersion: "1.0"
-    });
-
-    const badPayload = {
-      id: "", tenantId: authTenantA.tenantId, personId: authTenantA.personId, canonicalJobId: "job1", opportunityVersion: "v1",
-      evaluationContextFingerprint: context.contextFingerprint,
-      evaluationFingerprint: "eval_bad",
-      decision: "PURSUE" as const, qualityScore: 90, rationale: "Good fit", evidenceIds: [],
-      evaluationJson: JSON.stringify({ evaluationInputHash: "eval_bad", decision: "PASS", qualityScore: 90 }), // Mismatch!
-      materializedAt: new Date().toISOString()
-    };
-
-    await expect(evalStore.materializeEvaluation(authTenantA, badPayload))
-      .rejects.toThrow(/mismatch/i);
   });
 
   test("Freshness Matrix (M3.5)", async () => {

@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { describe, test, expect, beforeEach } from "vitest";
 import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
@@ -7,7 +7,6 @@ import { DatabaseAdapter, QueryParams } from "../../src/data/database";
 import { type CandidateProjection } from "../../src/lib/domain/candidate_projection";
 import { TenantScopedPersonStore } from "../../src/data/sqlite/repositories/TenantScopedPersonStore";
 import { deriveCandidateProjectionVersion } from "../../src/data/sqlite/repositories/profile-projection-version";
-import * as staticProfileModule from "../../src/data/candidate-profile";
 
 class TestSqliteAdapter implements DatabaseAdapter {
   constructor(private db: InstanceType<typeof Database>) {}
@@ -163,7 +162,7 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
 
     sqliteDb.prepare(
       `INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version)
-       VALUES (?, ?, ?, ?, '1.0', 'ont_fp', '1.0', ?)`
+       VALUES (?, ?, ?, ?, '1.0', 'ont_fp', 'staged-v8', ?)`
     ).run(ctxFp, tenantId, personId, snapId, pinnedProfileVersion);
 
     // Ensure candidate row exists for FK invariant
@@ -176,7 +175,7 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
       `INSERT INTO evaluation_jobs (
          id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version,
          evaluation_context_fingerprint, status, locked_by, lease_token, locked_at, attempts, max_attempts
-       ) VALUES (?, ?, ?, ?, 'opp_canon_1', 'v1_opp_1', ?, 'processing', 'test_worker_1', 'lease_tok_123', CURRENT_TIMESTAMP, 0, 3)`
+       ) VALUES (?, ?, ?, ?, 'opp_canon_1', 'v1_opp_1', ?, 'staged_processing', 'test_worker_1', 'lease_tok_123', CURRENT_TIMESTAMP, 0, 3)`
     ).run(jobId, tenantId, personId, planId, ctxFp);
 
     return {
@@ -268,18 +267,11 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
     expect(jobRow.last_error).toContain("Simulated worker processing failure");
   });
 
-  test("TEST 7: Static candidate-profile seed is NOT consulted by EvaluationWorker during processing", async () => {
-    // Spy on candidateProfile object access to prove it is completely decoupled
-    const staticProfileSpy = vi.spyOn(staticProfileModule, "candidateProfile", "get");
-
+  test("TEST 7: EvaluationWorker consumes only the persisted scoped projection", async () => {
     const job = seedEvaluationContextAndJob("job_test_7", "{}", "user_alpha", "tenant_alpha", "plan_alpha");
     const result = await worker.processJob(job);
 
     expect(result.status).toBe("completed");
-    // Verify that the static seed getter was never invoked
-    expect(staticProfileSpy).not.toHaveBeenCalled();
-
-    staticProfileSpy.mockRestore();
   });
 
   test("TEST 8: missing authoritative projection materializes NOT_EVALUABLE without a score or verdict", async () => {

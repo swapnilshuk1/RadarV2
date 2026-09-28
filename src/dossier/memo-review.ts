@@ -150,10 +150,17 @@ export async function reviewMemo(
   };
   let result: z.infer<typeof memoReviewSchema> | undefined;
   let repair = "";
+  let previousReview: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
     const response = await model.generate(
       memoReviewInstruction,
-      attempt ? { ...input, reviewRepair: repair } : input,
+      attempt
+        ? {
+            ...input,
+            previousReview,
+            reviewRepair: `Repair the previousReview only for this validation defect: ${repair}. Preserve its factual judgments unless this defect requires changing them. Return the complete review object with every required passage/check/point exactly once.`,
+          }
+        : input,
       model.schemaFormat === "json-schema" || /bedrock/i.test(model.id)
         ? bedrockJsonSchema(memoReviewSchema)
         : modelSchema(memoReviewSchema),
@@ -214,6 +221,7 @@ export async function reviewMemo(
       result = parsed;
       break;
     } catch (error) {
+      previousReview = response;
       await model.discardResponse?.(response);
       repair = error instanceof Error ? error.message : "Malformed review";
     }

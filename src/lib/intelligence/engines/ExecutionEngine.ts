@@ -18,7 +18,6 @@ import {
   SafeLinkedInStrategy,
   SafeInterviewStrategy
 } from "../execution/types";
-import candidateProfileData from "../../../data/candidate-profile.json";
 
 export type {
   ScreeningQuestionItem,
@@ -29,13 +28,14 @@ export type {
 };
 
 export class ExecutionEngine {
-  private static defaultEvidenceGraph = new CandidateEvidenceGraph(candidateProfileData);
+  /** Legacy convenience methods are intentionally unavailable without an authorized projection. */
+  private static defaultEvidenceGraph(): CandidateEvidenceGraph { throw new Error("CANDIDATE_PROJECTION_REQUIRED"); }
 
   /**
    * Extracts mandatory conditions underlying the recommendation.
    */
   public static extractRecommendationConditions(job: JobProjection): string[] {
-    const pkg = TruthPreservingRewriteEngine.generateExecutionPackage(this.defaultEvidenceGraph, job);
+    const pkg = TruthPreservingRewriteEngine.generateExecutionPackage(this.defaultEvidenceGraph(), job);
     return pkg.package.recommendationConditions;
   }
 
@@ -43,7 +43,7 @@ export class ExecutionEngine {
    * Extracts screening questions with "Why it matters" explanations.
    */
   public static extractScreeningQuestions(job: JobProjection): ScreeningQuestionItem[] {
-    const pkg = TruthPreservingRewriteEngine.generateExecutionPackage(this.defaultEvidenceGraph, job);
+    const pkg = TruthPreservingRewriteEngine.generateExecutionPackage(this.defaultEvidenceGraph(), job);
     return pkg.package.screeningQuestions;
   }
 
@@ -54,7 +54,7 @@ export class ExecutionEngine {
     candidate: CandidateProjection,
     job: JobProjection
   ): ResumeSuggestion[] {
-    const pkg = TruthPreservingRewriteEngine.generateExecutionPackage(this.defaultEvidenceGraph, job);
+    const pkg = TruthPreservingRewriteEngine.generateExecutionPackage(this.defaultEvidenceGraph(), job);
     return pkg.package.resumeGaps;
   }
 
@@ -65,7 +65,7 @@ export class ExecutionEngine {
     candidate: CandidateProjection,
     job: JobProjection
   ): SafeLinkedInStrategy {
-    const pkg = TruthPreservingRewriteEngine.generateExecutionPackage(this.defaultEvidenceGraph, job);
+    const pkg = TruthPreservingRewriteEngine.generateExecutionPackage(this.defaultEvidenceGraph(), job);
     return pkg.package.linkedInStrategy;
   }
 
@@ -76,7 +76,7 @@ export class ExecutionEngine {
     candidate: CandidateProjection,
     job: JobProjection
   ): SafeInterviewStrategy {
-    const pkg = TruthPreservingRewriteEngine.generateExecutionPackage(this.defaultEvidenceGraph, job);
+    const pkg = TruthPreservingRewriteEngine.generateExecutionPackage(this.defaultEvidenceGraph(), job);
     return pkg.package.interviewPrep;
   }
 

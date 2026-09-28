@@ -1,9 +1,0 @@
-DIRECTOR OF CORE APPLICATIONS & SUSTENANCE ENGINEERING
-Company: LegacyCore Banking Software
-Location: Chennai, India (On-site)
-
-ENGINEERING MANDATE:
-Maintain, patch, and support our core COBOL/Java banking platform installed across 40 regional rural banks.
-
-SCOPE BOUNDARY:
-This is a legacy sustenance and maintenance mandate. This role does NOT involve greenfield architecture, zero-to-one platform builds, or next-generation product innovation. All engineering activity focuses strictly on regulatory compliance updates, defect remediation, and batch job stabilization.

@@ -160,14 +160,10 @@ export interface PersonStore {
   registerPerson(person: Person): Promise<void>;
   getPersonByEmail(email: string): Promise<Person | undefined>;
   
-  saveProjection(personId: string, projection: CandidateProjection): Promise<void>;
   saveResumeVersion(version: ResumeVersion): Promise<void>;
   
-  getLatestProjection(personId: string): Promise<CandidateProjection | undefined>;
   getResumeVersions(candidateProfileId: string): Promise<ResumeVersion[]>;
 
-  getCandidateState(personId: string): Promise<any | undefined>;
-  saveCandidateState(personId: string, state: any): Promise<void>;
 }
 
 export interface DecisionSupportStore {
@@ -216,7 +212,6 @@ import type { SqliteEvaluationStore } from "../data/sqlite/repositories/SqliteEv
 import type { SqliteOpportunityQueries } from "../data/sqlite/repositories/SqliteOpportunityQueries";
 import type { SqliteEvaluationContextStore } from "../data/sqlite/repositories/SqliteEvaluationContextStore";
 import type { SqliteScrapeRunStore } from "../data/sqlite/repositories/SqliteScrapeRunStore";
-import type { SqliteDossierPresentationStore } from "../data/sqlite/repositories/SqliteDossierPresentationStore";
 
 export interface StorageProvider {
   sources: SourceStore;
@@ -234,6 +229,5 @@ export interface StorageProvider {
   canonicalServing: SqliteOpportunityQueries;
   evaluationContexts: SqliteEvaluationContextStore;
   scrapeRuns: SqliteScrapeRunStore;
-  dossierPresentations: SqliteDossierPresentationStore;
 }
 

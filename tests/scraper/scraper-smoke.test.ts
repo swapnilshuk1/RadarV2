@@ -4,7 +4,6 @@ import { indeedHandler } from "../../scripts/scraper/portals/indeed";
 import { naukriHandler } from "../../scripts/scraper/portals/naukri";
 import { RunController } from "../../scripts/scraper/run/manager";
 import { compileG2ControlledCohort } from "../../scripts/scraper/run/g2-controlled-cohort";
-import { getActiveScrapeLock } from "../../src/lib/intelligence/scrape-server";
 import { bindEvaluationEvidence } from "../../scripts/scraper/persist/writer";
 import type { DetailedCard } from "../../scripts/scraper/types";
 
@@ -53,11 +52,6 @@ describe("Scraper Infrastructure Smoke Test", () => {
 
     expect(mgr.manifest.units).toHaveLength(15);
     expect(mgr.manifest.units.every((unit) => unit.variant?.postedWithinDays === 7)).toBe(true);
-  });
-
-  it("single-process mutex prevents concurrent triggers and cleans up state", () => {
-    const lock = getActiveScrapeLock();
-    expect(lock === null || typeof lock.runId === "string").toBe(true);
   });
 
   it("binds the run snapshot to the exact canonical document version used downstream", () => {

@@ -27,6 +27,8 @@ describe("durable factual review lane", () => {
     now = 1_000_000;
     raw.exec(readFileSync("src/data/sqlite/migrations/052_dossier_review_queue.sql", "utf8"));
     raw.exec("ALTER TABLE dossier_review_jobs ADD COLUMN reviewed_at INTEGER");
+    raw.exec(`CREATE TABLE active_evaluation_contexts(tenant_id TEXT NOT NULL,person_id TEXT NOT NULL,search_plan_id TEXT NOT NULL,context_fingerprint TEXT NOT NULL,PRIMARY KEY(tenant_id,person_id,search_plan_id));`);
+    raw.exec(`INSERT INTO active_evaluation_contexts VALUES('t','p','plan','ctx'),('t','p2','plan','ctx')`);
     queue = new SqliteDossierReviewQueue(db, () => now);
   });
   afterEach(() => raw.close());
@@ -45,6 +47,15 @@ describe("durable factual review lane", () => {
     await db.execute(`UPDATE dossier_review_jobs SET draft_json='{}'`);
     expect(await queue.getDraft(identity, evaluationFingerprint)).toBeNull();
   });
+  it("claims only review work for an active evaluation context", async () => {
+    await queue.enqueue({ ...identity, evaluationContextFingerprint: "stale" }, evaluationFingerprint, draft());
+    await queue.enqueue(identity, evaluationFingerprint, draft());
+    await db.execute(`UPDATE dossier_review_jobs SET created_at=1,next_attempt_at=1 WHERE evaluation_context_fingerprint='stale'`);
+    const claimed = await queue.claim();
+    expect(claimed?.evaluation_context_fingerprint).toBe("ctx");
+    expect(await db.one(`SELECT status FROM dossier_review_jobs WHERE evaluation_context_fingerprint='stale'`)).toEqual({ status: "pending" });
+  });
+
   it("shares provider cooldown across jobs and restarts without hiding a throttled draft", async () => {
     await queue.enqueue(identity, evaluationFingerprint, draft());
     await queue.enqueue({ ...identity, personId: "p2" }, evaluationFingerprint, draft());

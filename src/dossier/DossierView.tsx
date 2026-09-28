@@ -5,9 +5,11 @@ import "./dossier.css";
 export function DossierView({
   dossier: d,
   reviewState,
+  actions,
 }: {
   dossier: Dossier;
   reviewState?: "pending" | "attention" | "reviewed";
+  actions?: ReactNode;
 }) {
   const reviewed =
     reviewState === "reviewed" || (!reviewState && Boolean(d.generation.factualReviews?.length));
@@ -54,6 +56,13 @@ export function DossierView({
       ))}
     </ul>
   );
+  const valueList = (items: Passage[]) => (
+    <ul className="dossier-value-grid">
+      {items.map((p, i) => (
+        <li key={i}>{passage(p)}</li>
+      ))}
+    </ul>
+  );
   const chapter = (number: string, label: string, title: string, children: ReactNode) => (
     <section className="dossier-chapter">
       <aside className="dossier-rail">
@@ -66,6 +75,10 @@ export function DossierView({
       </div>
     </section>
   );
+  const scopeResolutions = d.resolutions.filter((r) => Object.keys(fieldLabels).includes(r.field));
+  const resolvedScopeResolutions = scopeResolutions.filter((r) => r.status !== "OPEN");
+  const unresolvedScopeResolutions = scopeResolutions.filter((r) => r.status === "OPEN");
+  const unresolvedScopeGroups = groupUnresolvedScopeFields(unresolvedScopeResolutions.map((r) => r.field));
   const selectResolution = (r: Dossier["resolutions"][number]) => {
     const planes = new Set(r.claimIds.map((id) => claims.find((c) => c.id === id)?.plane));
     const labels = [
@@ -78,7 +91,7 @@ export function DossierView({
     setSelected({
       text:
         r.status === "OPEN"
-          ? r.question || r.consequence
+          ? "This decision-relevant detail is not established in the available source material."
           : Array.isArray(r.value)
             ? r.value.join(" / ")
             : String(r.value),
@@ -94,16 +107,17 @@ export function DossierView({
               ? "CANDIDATE"
               : "JD",
       evidenceRefs: r.claimIds,
-      reasoning: r.consequence,
+      reasoning:
+        r.status === "OPEN"
+          ? "RADAR does not infer this detail when the available source material is silent."
+          : r.consequence,
     });
   };
   const resolution = (r: Dossier["resolutions"][number]) => (
     <div key={r.field}>
       <dt>{fieldLabels[r.field] || r.field.replace(/([A-Z])/g, " $1")}</dt>
       <dd>
-        {r.status === "OPEN"
-          ? r.question
-          : Array.isArray(r.value)
+        {Array.isArray(r.value)
             ? r.value.join(" / ")
             : String(r.value)}{" "}
         <button
@@ -111,7 +125,7 @@ export function DossierView({
           onClick={() => selectResolution(r)}
           aria-label={`Show evidence for ${r.field}`}
         >
-          {r.status === "OPEN" ? "?" : r.status === "INFERRED" ? "I" : "E"}
+          {r.status === "INFERRED" ? "I" : "E"}
         </button>
       </dd>
     </div>
@@ -168,6 +182,7 @@ export function DossierView({
                 year: "numeric",
               })}
             </p>
+            {actions && <div className="dossier-hero-actions">{actions}</div>}
           </div>
           <aside className="dossier-overview">
             <span className="label-mono">The call</span>
@@ -185,24 +200,49 @@ export function DossierView({
           "I",
           "Opportunity value",
           "Why this deserves your attention",
-          list(d.opportunityValue),
+          valueList(d.opportunityValue),
         )}
         {chapter(
           "II",
           "Mandate & authority",
           "What you would own",
           <>
-            <h3>Priorities and milestones</h3>
-            {list(d.mandate.priorities)}
-            <h3>Outcomes that matter</h3>
-            {list(d.mandate.outcomes)}
+            <div className="dossier-mandate-grid">
+              <section>
+                <h3>Priorities and milestones</h3>
+                {list(d.mandate.priorities)}
+              </section>
+              <section>
+                <h3>Outcomes that matter</h3>
+                {list(d.mandate.outcomes)}
+              </section>
+            </div>
             <details className="dossier-scope-reference">
-              <summary>Scope, authority and economics</summary>
-              <dl className="dossier-scope">
-                {d.resolutions
-                  .filter((r) => Object.keys(fieldLabels).includes(r.field))
-                  .map(resolution)}
-              </dl>
+              <summary>
+                Scope, authority and economics
+                {unresolvedScopeGroups.length > 0 && ` · ${unresolvedScopeGroups.length} areas to settle`}
+              </summary>
+              {resolvedScopeResolutions.length > 0 && (
+                <dl className="dossier-scope">
+                  {resolvedScopeResolutions.map(resolution)}
+                </dl>
+              )}
+              {unresolvedScopeResolutions.length > 0 && (
+                <section className="dossier-unresolved-scope" aria-label="Scope details to clarify">
+                  <span className="label-mono">Before you advance</span>
+                  <p>
+                    These decision-relevant details are not established in the available evidence.
+                    RADAR is deliberately not filling them with assumptions.
+                  </p>
+                  <ul>
+                    {unresolvedScopeGroups.map((group) => (
+                      <li key={group.label}>
+                        <strong>{group.label}:</strong> {group.guidance}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
             </details>
           </>,
         )}
@@ -229,8 +269,8 @@ export function DossierView({
           <div className="dossier-conditions">
             {d.decisionConditions.map((row, i) => (
               <div className="dossier-condition" key={i}>
-                <p className="dossier-condition-question">{passage(row.question)}</p>
-                <p>{passage(row.consequence)}</p>
+                <p className="dossier-condition-question"><span className="label-mono">Decision hinge</span>{passage(row.question)}</p>
+                <p><span className="label-mono">Why it matters</span>{passage(row.consequence)}</p>
               </div>
             ))}
           </div>,
@@ -239,11 +279,18 @@ export function DossierView({
           {chapter(
             "V",
             "Next action",
-            "How to approach it",
-            <>
-              {list(d.approach.nextSteps)}
-              <h3>Suggested opening</h3>
-              <blockquote className="dossier-opening">{passage(d.approach.opening)}</blockquote>
+          "How to approach it",
+          <>
+              <div className="dossier-approach-grid">
+                <section>
+                  <h3>Recommended move</h3>
+                  {list(d.approach.nextSteps)}
+                </section>
+                <section>
+                  <h3>Suggested opening</h3>
+                  <blockquote className="dossier-opening">{passage(d.approach.opening)}</blockquote>
+                </section>
+              </div>
               {activeWorkspace && (
                 <details className="dossier-preparation">
                   <summary>Prepare for the conversation</summary>
@@ -464,3 +511,40 @@ const fieldLabels: Record<string, string> = {
   commercialScope: "Commercial accountability",
   compensation: "Economics",
 };
+
+function groupUnresolvedScopeFields(fields: string[]): Array<{ label: string; guidance: string }> {
+  const groups = [
+    {
+      fields: ["reportingLine", "executiveDistance"],
+      label: "Authority and reporting",
+      guidance: "Confirm the executive sponsor, reporting line, and real decision latitude before advancing.",
+    },
+    {
+      fields: ["leadershipMode", "teamScale", "functionState"],
+      label: "Leadership scope",
+      guidance: "Do not assume people leadership. Establish whether this is a direct, matrix, or individual-contributor mandate—and whether the function is being built, scaled, or inherited.",
+    },
+    {
+      fields: ["geography", "commercialScope"],
+      label: "Remit and commercial ownership",
+      guidance: "Clarify the geographic remit plus P&L, budget, and revenue ownership before judging the scope of the move.",
+    },
+    {
+      fields: ["compensation"],
+      label: "Compensation",
+      guidance: "The economics are not disclosed. Confirm the structure, upside, and trade-offs before committing.",
+    },
+  ];
+  const known = new Set(groups.flatMap((group) => group.fields));
+  const matched = groups
+    .filter((group) => group.fields.some((field) => fields.includes(field)))
+    .map(({ label, guidance }) => ({ label, guidance }));
+  const remaining = fields.filter((field) => !known.has(field));
+  if (remaining.length) {
+    matched.push({
+      label: "Other material detail",
+      guidance: "The available source material does not establish this detail. Confirm it before advancing.",
+    });
+  }
+  return matched;
+}
