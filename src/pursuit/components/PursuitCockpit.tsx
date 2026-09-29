@@ -79,9 +79,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
         const status = await fetchStatus({ data: { ...scope, jobHash } });
         if (cancelled) return;
         const settled =
-          status &&
-          status.preparationState !== "QUEUED" &&
-          status.preparationState !== "DERIVING";
+          status && status.preparationState !== "QUEUED" && status.preparationState !== "DERIVING";
         if (settled) {
           // One full read, only once preparation has actually settled.
           const full = await fetchCockpit({ data: { ...scope, jobHash } });
@@ -122,14 +120,17 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
   }, []);
 
   const handleDerive = (preferredArchetypeId?: string | null) =>
-    run(() => derive({ data: { ...scope, jobHash, preferredArchetypeId: preferredArchetypeId ?? null } }));
+    run(() =>
+      derive({ data: { ...scope, jobHash, preferredArchetypeId: preferredArchetypeId ?? null } }),
+    );
 
   const handleSave = (
     artifactId: string,
     content: ArtifactContent,
     signals: LearningSignal[],
     approve = false,
-  ) => run(() => saveArtifact({ data: { ...scope, jobHash, artifactId, content, signals, approve } }));
+  ) =>
+    run(() => saveArtifact({ data: { ...scope, jobHash, artifactId, content, signals, approve } }));
 
   const handleExport = async (artifactId: string, format: "PDF" | "DOCX" | "TXT") => {
     setBusy(true);
@@ -169,9 +170,13 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
               {view.pursuit.company ? ` · ${view.pursuit.company}` : ""}
             </p>
             <p className="label-mono mt-1 text-muted-foreground">
-              Pursuit stage: {view.pursuit.status === "READY" ? "Preparing" : pursuitStatusLabels[view.pursuit.status]} · Package
-              readiness {readiness.done}/{readiness.total} · {view.ledgerCoverage.sourceBacked} verified
-              claims from {view.ledgerCoverage.documents} document
+              Pursuit stage:{" "}
+              {view.pursuit.status === "READY"
+                ? "Preparing"
+                : pursuitStatusLabels[view.pursuit.status]}{" "}
+              · Package readiness {readiness.done}/{readiness.total} ·{" "}
+              {view.ledgerCoverage.sourceBacked} verified claims from{" "}
+              {view.ledgerCoverage.documents} document
               {view.ledgerCoverage.documents === 1 ? "" : "s"}
             </p>
           </div>
@@ -274,9 +279,13 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
           <OutreachKit
             artifacts={view.artifacts}
             busy={busy}
-            onSave={(artifactId, content, signals, approve) => handleSave(artifactId, content, signals, approve)}
+            onSave={(artifactId, content, signals, approve) =>
+              handleSave(artifactId, content, signals, approve)
+            }
             onExport={handleExport}
-            onLogSent={(artifactId) => run(() => markOutreachSent({ data: { ...scope, jobHash, artifactId } }))}
+            onLogSent={(artifactId) =>
+              run(() => markOutreachSent({ data: { ...scope, jobHash, artifactId } }))
+            }
           />
         )}
 
@@ -284,7 +293,9 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
           <InterviewBriefPanel
             artifact={interview}
             busy={busy}
-            onSave={(artifactId, content, signals, approve) => handleSave(artifactId, content, signals, approve)}
+            onSave={(artifactId, content, signals, approve) =>
+              handleSave(artifactId, content, signals, approve)
+            }
             onExport={handleExport}
           />
         )}

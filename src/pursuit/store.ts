@@ -188,7 +188,10 @@ export async function upsertClaims(scope: Scope, claims: readonly ClaimUpsert[])
 }
 
 /** Only claims from the canonical binding are served; the rest stay for lineage. */
-export async function markCurrentProjection(scope: Scope, graphIds: readonly string[]): Promise<void> {
+export async function markCurrentProjection(
+  scope: Scope,
+  graphIds: readonly string[],
+): Promise<void> {
   if (graphIds.length === 0) {
     await db().execute(
       `UPDATE candidate_claims SET current_projection = 0 WHERE tenant_id = ? AND person_id = ?`,
@@ -212,7 +215,12 @@ export async function listSourceDocuments(
 ): Promise<Array<{ id: string; filename: string; createdAt: string; claimCount: number }>> {
   if (documentIds.length === 0) return [];
   const marks = documentIds.map(() => "?").join(",");
-  const rows = await db().many<{ id: string; filename: string; created_at: string; claim_count: number }>(
+  const rows = await db().many<{
+    id: string;
+    filename: string;
+    created_at: string;
+    claim_count: number;
+  }>(
     `SELECT d.id, d.filename, d.created_at,
             (SELECT COUNT(*) FROM candidate_claims c WHERE c.tenant_id = d.tenant_id
                AND c.person_id = d.person_id AND c.source_document_id = d.id
@@ -222,7 +230,12 @@ export async function listSourceDocuments(
      ORDER BY d.created_at DESC`,
     [scope.tenantId, scope.personId, ...documentIds],
   );
-  return rows.map((r) => ({ id: r.id, filename: r.filename, createdAt: r.created_at, claimCount: r.claim_count }));
+  return rows.map((r) => ({
+    id: r.id,
+    filename: r.filename,
+    createdAt: r.created_at,
+    claimCount: r.claim_count,
+  }));
 }
 
 export async function ledgerCoverage(
@@ -461,10 +474,19 @@ export async function openPursuitInTransaction(
        evaluation_fingerprint, profile_version, created_at, updated_at)
      VALUES (?,?,?,?,?,?,'PREPARING','QUEUED',?,?,?,?,?,?,?)`,
     [
-      id, scope.tenantId, scope.personId, input.jobHash,
-      input.company ?? null, input.roleTitle ?? null,
-      lineage.canonicalJobId, lineage.opportunityVersion, lineage.evaluationContextFingerprint,
-      lineage.evaluationFingerprint, lineage.profileVersion, timestamp, timestamp,
+      id,
+      scope.tenantId,
+      scope.personId,
+      input.jobHash,
+      input.company ?? null,
+      input.roleTitle ?? null,
+      lineage.canonicalJobId,
+      lineage.opportunityVersion,
+      lineage.evaluationContextFingerprint,
+      lineage.evaluationFingerprint,
+      lineage.profileVersion,
+      timestamp,
+      timestamp,
     ],
   );
   await tx.execute(
@@ -472,9 +494,14 @@ export async function openPursuitInTransaction(
        id, pursuit_id, activity_type, channel, counterparty, summary, occurred_at, created_at)
      VALUES (?,?,?,?,?,?,?,?)`,
     [
-      `activity-${randomUUID()}`, id, "PURSUIT_OPENED", null, null,
+      `activity-${randomUUID()}`,
+      id,
+      "PURSUIT_OPENED",
+      null,
+      null,
       `Pursuit opened for ${input.roleTitle ?? "role"} at ${input.company ?? "company"}.`,
-      timestamp, timestamp,
+      timestamp,
+      timestamp,
     ],
   );
   await enqueueInitialPreparation(tx, scope, id, input.jobHash, requestedBy);
@@ -499,8 +526,16 @@ async function enqueueInitialPreparation(
     `INSERT INTO pursuit_preparation_jobs
      (id,tenant_id,person_id,pursuit_id,job_hash,requested_by,status,created_at,updated_at)
      VALUES (?,?,?,?,?,?,'queued',?,?)`,
-    [`pprep-${randomUUID()}`, scope.tenantId, scope.personId, pursuitId, jobHash,
-      requestedBy, timestamp, timestamp],
+    [
+      `pprep-${randomUUID()}`,
+      scope.tenantId,
+      scope.personId,
+      pursuitId,
+      jobHash,
+      requestedBy,
+      timestamp,
+      timestamp,
+    ],
   );
 }
 
@@ -665,21 +700,21 @@ export async function insertThesis(
   checkpointJob?: PreparationJob,
 ): Promise<PursuitThesis> {
   return db().transaction(async (tx) => {
-  if (checkpointJob) {
-    const lease = await tx.one<{ id: string }>(
-      "SELECT id FROM pursuit_preparation_jobs WHERE id = ? AND lease_token = ? AND status = 'processing' AND lease_expires_at > ?",
-      [checkpointJob.id, checkpointJob.leaseToken, now()],
+    if (checkpointJob) {
+      const lease = await tx.one<{ id: string }>(
+        "SELECT id FROM pursuit_preparation_jobs WHERE id = ? AND lease_token = ? AND status = 'processing' AND lease_expires_at > ?",
+        [checkpointJob.id, checkpointJob.leaseToken, now()],
+      );
+      if (!lease) throw new Error("LEASE_LOST");
+    }
+    const next = await tx.one<{ v: number | null }>(
+      `SELECT MAX(version) AS v FROM pursuit_theses WHERE pursuit_id = ?`,
+      [pursuitId],
     );
-    if (!lease) throw new Error("LEASE_LOST");
-  }
-  const next = await tx.one<{ v: number | null }>(
-    `SELECT MAX(version) AS v FROM pursuit_theses WHERE pursuit_id = ?`,
-    [pursuitId],
-  );
-  const version = (next?.v ?? 0) + 1;
-  const id = `thesis-${randomUUID()}`;
-  await tx.execute(
-    `INSERT INTO pursuit_theses (
+    const version = (next?.v ?? 0) + 1;
+    const id = `thesis-${randomUUID()}`;
+    await tx.execute(
+      `INSERT INTO pursuit_theses (
        id, pursuit_id, version, archetype_id, target_mandate, win_theme,
        recommended_positioning, primary_proof_json, objections_json,
        narratives_to_avoid_json, target_audience_json, archetype_scores_json,
@@ -687,45 +722,48 @@ export async function insertThesis(
        canonical_job_id, opportunity_version, evaluation_context_fingerprint, evaluation_fingerprint,
        profile_version, ledger_binding_fingerprint, anchor_document_id)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [
-      id,
-      pursuitId,
-      version,
-      thesis.archetypeId,
-      thesis.targetMandate,
-      thesis.winTheme,
-      thesis.recommendedPositioning,
-      JSON.stringify(thesis.primaryProof),
-      JSON.stringify(thesis.objections),
-      JSON.stringify(thesis.narrativesToAvoid),
-      JSON.stringify(thesis.targetAudience),
-      JSON.stringify(thesis.archetypeScores),
-      thesis.archetypeMatchReasoning,
-      JSON.stringify(thesis.routeStrategy),
-      thesis.semantic ? JSON.stringify(thesis.semantic) : null,
-      thesis.derivation,
-      thesis.modelId,
-      now(),
-      thesis.lineage?.canonicalJobId ?? null,
-      thesis.lineage?.opportunityVersion ?? null,
-      thesis.lineage?.evaluationContextFingerprint ?? null,
-      thesis.lineage?.evaluationFingerprint ?? null,
-      thesis.lineage?.profileVersion ?? null,
-      thesis.lineage?.ledgerBindingFingerprint ?? null,
-      thesis.lineage?.anchorDocumentId ?? null,
-    ],
-  );
-  const row = await tx.one<ThesisRow>(`SELECT ${THESIS_COLUMNS} FROM pursuit_theses WHERE id = ?`, [id]);
-  const created = row ? toThesis(row) : null;
-  if (!created) throw new Error("THESIS_INSERT_FAILED");
-  if (checkpointJob) {
-    await tx.execute(
-      `INSERT INTO pursuit_stage_checkpoints (job_id, stage, payload, created_at)
-       VALUES (?, 'thesis_row', ?, ?)`,
-      [checkpointJob.id, JSON.stringify(created), now()],
+      [
+        id,
+        pursuitId,
+        version,
+        thesis.archetypeId,
+        thesis.targetMandate,
+        thesis.winTheme,
+        thesis.recommendedPositioning,
+        JSON.stringify(thesis.primaryProof),
+        JSON.stringify(thesis.objections),
+        JSON.stringify(thesis.narrativesToAvoid),
+        JSON.stringify(thesis.targetAudience),
+        JSON.stringify(thesis.archetypeScores),
+        thesis.archetypeMatchReasoning,
+        JSON.stringify(thesis.routeStrategy),
+        thesis.semantic ? JSON.stringify(thesis.semantic) : null,
+        thesis.derivation,
+        thesis.modelId,
+        now(),
+        thesis.lineage?.canonicalJobId ?? null,
+        thesis.lineage?.opportunityVersion ?? null,
+        thesis.lineage?.evaluationContextFingerprint ?? null,
+        thesis.lineage?.evaluationFingerprint ?? null,
+        thesis.lineage?.profileVersion ?? null,
+        thesis.lineage?.ledgerBindingFingerprint ?? null,
+        thesis.lineage?.anchorDocumentId ?? null,
+      ],
     );
-  }
-  return created;
+    const row = await tx.one<ThesisRow>(
+      `SELECT ${THESIS_COLUMNS} FROM pursuit_theses WHERE id = ?`,
+      [id],
+    );
+    const created = row ? toThesis(row) : null;
+    if (!created) throw new Error("THESIS_INSERT_FAILED");
+    if (checkpointJob) {
+      await tx.execute(
+        `INSERT INTO pursuit_stage_checkpoints (job_id, stage, payload, created_at)
+       VALUES (?, 'thesis_row', ?, ?)`,
+        [checkpointJob.id, JSON.stringify(created), now()],
+      );
+    }
+    return created;
   });
 }
 
@@ -823,8 +861,13 @@ export async function recordApprovedOutreachSent(
       `INSERT INTO pursuit_activities
        (id,pursuit_id,activity_type,channel,counterparty,summary,occurred_at,created_at)
        VALUES (?,?,'OUTREACH_SENT',NULL,NULL,?,?,?)`,
-      [`activity-${randomUUID()}`, row.pursuit_id,
-        `Sent ${row.artifact_type.replace(/_/g, " ").toLowerCase()}.`, timestamp, timestamp],
+      [
+        `activity-${randomUUID()}`,
+        row.pursuit_id,
+        `Sent ${row.artifact_type.replace(/_/g, " ").toLowerCase()}.`,
+        timestamp,
+        timestamp,
+      ],
     );
   });
 }
@@ -880,7 +923,11 @@ export async function updateArtifactContent(
   pursuitId: string,
   artifactId: string,
   content: ArtifactContent,
-  options: { status?: ArtifactStatus; renderedText?: string | null; provenanceFlags?: string[] } = {},
+  options: {
+    status?: ArtifactStatus;
+    renderedText?: string | null;
+    provenanceFlags?: string[];
+  } = {},
 ): Promise<PursuitArtifact> {
   await db().execute(
     `UPDATE pursuit_artifacts SET content_json = ?, rendered_text = ?, status = ?,
@@ -1047,7 +1094,6 @@ export async function loadStyleProfile(scope: Scope): Promise<StyleProfile> {
   return profile;
 }
 
-
 /**
  * One-time / incremental backfill of intrinsic claim classification. Uses the
  * deterministic classifier; claims already stamped with the current version are
@@ -1055,7 +1101,11 @@ export async function loadStyleProfile(scope: Scope): Promise<StyleProfile> {
  */
 export async function backfillClaimClassifications(
   scope: Scope,
-  classify: (claim: CandidateClaim) => { semanticType: string; renderState: string; version: string },
+  classify: (claim: CandidateClaim) => {
+    semanticType: string;
+    renderState: string;
+    version: string;
+  },
 ): Promise<number> {
   const rows = await db().many<ClaimRow & { classification_version: string | null }>(
     `SELECT ${CLAIM_COLUMNS}, classification_version FROM candidate_claims
@@ -1097,7 +1147,12 @@ export interface PreparationJob {
 /** Idempotent: an existing live job for the pursuit absorbs the request. */
 export async function enqueuePreparation(
   scope: Scope,
-  input: { pursuitId: string; jobHash: string; requestedBy: string; preferredArchetypeId: string | null },
+  input: {
+    pursuitId: string;
+    jobHash: string;
+    requestedBy: string;
+    preferredArchetypeId: string | null;
+  },
 ): Promise<{ jobId: string; coalesced: boolean }> {
   const live = await db().one<{ id: string; status: string }>(
     `SELECT id, status FROM pursuit_preparation_jobs
@@ -1120,8 +1175,17 @@ export async function enqueuePreparation(
         status, created_at, updated_at)
      VALUES (?,?,?,?,?,?,?,'queued',?,?)
      ON CONFLICT DO NOTHING`,
-    [id, scope.tenantId, scope.personId, input.pursuitId, input.jobHash, input.requestedBy,
-     input.preferredArchetypeId, ts, ts],
+    [
+      id,
+      scope.tenantId,
+      scope.personId,
+      input.pursuitId,
+      input.jobHash,
+      input.requestedBy,
+      input.preferredArchetypeId,
+      ts,
+      ts,
+    ],
   );
   if (inserted.rowsAffected === 0) {
     // A concurrent enqueue won the race: return the actual persisted live job
@@ -1158,7 +1222,11 @@ export async function readCheckpoint(job: PreparationJob, stage: string): Promis
 }
 
 /** Persists a stage checkpoint. Token-fenced by the caller before use. */
-export async function writeCheckpoint(job: PreparationJob, stage: string, payload: unknown): Promise<void> {
+export async function writeCheckpoint(
+  job: PreparationJob,
+  stage: string,
+  payload: unknown,
+): Promise<void> {
   await db().transaction(async (tx) => {
     const held = await tx.one<{ id: string }>(
       `SELECT id FROM pursuit_preparation_jobs WHERE id = ? AND lease_token = ?
@@ -1204,8 +1272,17 @@ export async function publishPreparation(
         `INSERT INTO pursuit_artifacts
          (id,pursuit_id,thesis_id,artifact_type,version,content_json,rendered_text,status,provenance_flags_json,created_at,updated_at)
          VALUES (?,?,?,?,?,?,?,'DRAFT','[]',?,?)`,
-        [`artifact-${randomUUID()}`, job.pursuitId, thesis.id, artifact.artifactType,
-          (max?.v ?? 0) + 1, JSON.stringify(artifact.content), artifact.renderedText, timestamp, timestamp],
+        [
+          `artifact-${randomUUID()}`,
+          job.pursuitId,
+          thesis.id,
+          artifact.artifactType,
+          (max?.v ?? 0) + 1,
+          JSON.stringify(artifact.content),
+          artifact.renderedText,
+          timestamp,
+          timestamp,
+        ],
       );
     }
     const updated = await tx.execute(
@@ -1213,10 +1290,19 @@ export async function publishPreparation(
        preparation_error = NULL, canonical_job_id = ?, opportunity_version = ?, evaluation_context_fingerprint = ?,
        evaluation_fingerprint = ?, profile_version = ?, updated_at = ?
        WHERE id = ? AND tenant_id = ? AND person_id = ?`,
-      [thesis.id, thesis.archetypeId, thesis.lineage?.canonicalJobId ?? null,
-        thesis.lineage?.opportunityVersion ?? null, thesis.lineage?.evaluationContextFingerprint ?? null,
-        thesis.lineage?.evaluationFingerprint ?? null, thesis.lineage?.profileVersion ?? null, now(),
-        job.pursuitId, job.tenantId, job.personId],
+      [
+        thesis.id,
+        thesis.archetypeId,
+        thesis.lineage?.canonicalJobId ?? null,
+        thesis.lineage?.opportunityVersion ?? null,
+        thesis.lineage?.evaluationContextFingerprint ?? null,
+        thesis.lineage?.evaluationFingerprint ?? null,
+        thesis.lineage?.profileVersion ?? null,
+        now(),
+        job.pursuitId,
+        job.tenantId,
+        job.personId,
+      ],
     );
     if (updated.rowsAffected !== 1) throw new Error("PURSUIT_SCOPE_MISMATCH");
     await tx.execute(
@@ -1234,7 +1320,10 @@ export async function publishPreparation(
 }
 
 /** Claims one queued (or lease-expired) job. The lease token fences completion. */
-export async function claimPreparation(workerId: string, leaseMs: number): Promise<PreparationJob | null> {
+export async function claimPreparation(
+  workerId: string,
+  leaseMs: number,
+): Promise<PreparationJob | null> {
   const ts = now();
   const candidate = await db().one<{ id: string }>(
     `SELECT id FROM pursuit_preparation_jobs
@@ -1256,16 +1345,32 @@ export async function claimPreparation(workerId: string, leaseMs: number): Promi
   );
   if (result.rowsAffected === 0) return null;
   const row = await db().one<{
-    id: string; tenant_id: string; person_id: string; pursuit_id: string; job_hash: string;
-    requested_by: string; preferred_archetype_id: string | null; attempts: number;
-    max_attempts: number; lease_token: string;
-  }>(`SELECT * FROM pursuit_preparation_jobs WHERE id = ? AND lease_token = ?`, [candidate.id, token]);
+    id: string;
+    tenant_id: string;
+    person_id: string;
+    pursuit_id: string;
+    job_hash: string;
+    requested_by: string;
+    preferred_archetype_id: string | null;
+    attempts: number;
+    max_attempts: number;
+    lease_token: string;
+  }>(`SELECT * FROM pursuit_preparation_jobs WHERE id = ? AND lease_token = ?`, [
+    candidate.id,
+    token,
+  ]);
   if (!row) return null;
   return {
-    id: row.id, tenantId: row.tenant_id, personId: row.person_id, pursuitId: row.pursuit_id,
-    jobHash: row.job_hash, requestedBy: row.requested_by,
-    preferredArchetypeId: row.preferred_archetype_id, attempts: row.attempts,
-    maxAttempts: row.max_attempts, leaseToken: row.lease_token,
+    id: row.id,
+    tenantId: row.tenant_id,
+    personId: row.person_id,
+    pursuitId: row.pursuit_id,
+    jobHash: row.job_hash,
+    requestedBy: row.requested_by,
+    preferredArchetypeId: row.preferred_archetype_id,
+    attempts: row.attempts,
+    maxAttempts: row.max_attempts,
+    leaseToken: row.lease_token,
   };
 }
 
@@ -1285,8 +1390,15 @@ export async function finishPreparation(
      SET status = ?, last_error = ?, completed_at = ?, locked_by = NULL, lease_expires_at = NULL,
          next_attempt_at = ?, updated_at = ?
      WHERE id = ? AND lease_token = ? AND status = 'processing'`,
-    [status, outcome.ok ? null : outcome.error, outcome.ok || !outcome.retry ? ts : null,
-     nextAttemptAt, ts, job.id, job.leaseToken],
+    [
+      status,
+      outcome.ok ? null : outcome.error,
+      outcome.ok || !outcome.retry ? ts : null,
+      nextAttemptAt,
+      ts,
+      job.id,
+      job.leaseToken,
+    ],
   );
   return result.rowsAffected > 0;
 }
@@ -1294,13 +1406,30 @@ export async function finishPreparation(
 export async function livePreparation(
   scope: Scope,
   pursuitId: string,
-): Promise<{ status: string; attempts: number; lastError: string | null; createdAt: string } | null> {
-  const row = await db().one<{ status: string; attempts: number; last_error: string | null; created_at: string }>(
+): Promise<{
+  status: string;
+  attempts: number;
+  lastError: string | null;
+  createdAt: string;
+} | null> {
+  const row = await db().one<{
+    status: string;
+    attempts: number;
+    last_error: string | null;
+    created_at: string;
+  }>(
     `SELECT status, attempts, last_error, created_at FROM pursuit_preparation_jobs
      WHERE pursuit_id = ? AND tenant_id = ? AND person_id = ? ORDER BY created_at DESC LIMIT 1`,
     [pursuitId, scope.tenantId, scope.personId],
   );
-  return row ? { status: row.status, attempts: row.attempts, lastError: row.last_error, createdAt: row.created_at } : null;
+  return row
+    ? {
+        status: row.status,
+        attempts: row.attempts,
+        lastError: row.last_error,
+        createdAt: row.created_at,
+      }
+    : null;
 }
 
 /**

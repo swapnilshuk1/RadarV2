@@ -7,12 +7,7 @@
  */
 
 import { useMemo, useState } from "react";
-import type {
-  CandidateClaim,
-  LearningSignal,
-  PursuitArtifact,
-  ResumeContent,
-} from "../types";
+import type { CandidateClaim, LearningSignal, PursuitArtifact, ResumeContent } from "../types";
 import { CopyButton, EditableText, ProvenanceBadge, SectionLabel } from "./shared";
 
 interface Props {
@@ -42,7 +37,9 @@ const metricsDiverged = (original: string, edited: string): boolean => {
 
 export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props) {
   const [swapTarget, setSwapTarget] = useState<number | null>(null);
-  const [selected, setSelected] = useState<{ role: number | "anchors"; index: number } | null>(null);
+  const [selected, setSelected] = useState<{ role: number | "anchors"; index: number } | null>(
+    null,
+  );
 
   const resume = artifact?.content.kind === "RESUME" ? artifact.content.resume : null;
   const approved = artifact?.status === "APPROVED";
@@ -76,7 +73,12 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
     bullet.edited = source ? text.trim() !== source.statement.trim() : true;
     bullet.metricDrift = source?.metricLocked ? metricsDiverged(original, text) : false;
     commit(next, [
-      { signalType: "PHRASE_REWRITTEN", subject: bullet.claimId ?? null, originalValue: original, newValue: text },
+      {
+        signalType: "PHRASE_REWRITTEN",
+        subject: bullet.claimId ?? null,
+        originalValue: original,
+        newValue: text,
+      },
     ]);
   };
 
@@ -87,7 +89,12 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
         ? next.impactAnchors.splice(bulletIndex, 1)[0]
         : next.roles[roleIndex]?.bullets.splice(bulletIndex, 1)[0];
     commit(next, [
-      { signalType: "BULLET_REJECTED", subject: removed?.claimId ?? null, originalValue: removed?.text ?? null, newValue: null },
+      {
+        signalType: "BULLET_REJECTED",
+        subject: removed?.claimId ?? null,
+        originalValue: removed?.text ?? null,
+        newValue: null,
+      },
     ]);
   };
 
@@ -144,7 +151,9 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
       : selected.role === "anchors"
         ? resume.impactAnchors[selected.index]
         : resume.roles[selected.role]?.bullets[selected.index];
-  const selectedSource = selectedBullet?.claimId ? claimById.get(selectedBullet.claimId) : undefined;
+  const selectedSource = selectedBullet?.claimId
+    ? claimById.get(selectedBullet.claimId)
+    : undefined;
   const select = (next: Sel) => {
     setSelected(next);
     setSwapTarget(null);
@@ -174,10 +183,20 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" disabled={busy || !approved} onClick={() => onExport(artifact.id, "PDF")} className="pursuit-chip">
+          <button
+            type="button"
+            disabled={busy || !approved}
+            onClick={() => onExport(artifact.id, "PDF")}
+            className="pursuit-chip"
+          >
             Export PDF
           </button>
-          <button type="button" disabled={busy || !approved} onClick={() => onExport(artifact.id, "DOCX")} className="pursuit-chip">
+          <button
+            type="button"
+            disabled={busy || !approved}
+            onClick={() => onExport(artifact.id, "DOCX")}
+            className="pursuit-chip"
+          >
             Export Word
           </button>
           <CopyButton text={artifact.renderedText ?? ""} label="Copy text" disabled={!approved} />
@@ -196,14 +215,20 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
         {/* Left: the document itself, in resume typography. Click any text to edit. */}
         <article className="memo-card space-y-4" data-testid="resume-document">
           <header>
-            <EditableText value={resume.fullName} onCommit={(value) => commit({ ...resume, fullName: value })} />
+            <EditableText
+              value={resume.fullName}
+              onCommit={(value) => commit({ ...resume, fullName: value })}
+            />
             <EditableText
               value={resume.contactLine}
               placeholder="email · phone · city · LinkedIn"
               onCommit={(value) => commit({ ...resume, contactLine: value })}
             />
             <div className="mt-1 font-display text-lg">
-              <EditableText value={resume.headline} onCommit={(value) => commit({ ...resume, headline: value })} />
+              <EditableText
+                value={resume.headline}
+                onCommit={(value) => commit({ ...resume, headline: value })}
+              />
             </div>
           </header>
           <section>
@@ -213,7 +238,12 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
               value={resume.executiveSummary}
               onCommit={(value) =>
                 commit({ ...resume, executiveSummary: value }, [
-                  { signalType: "SUMMARY_REWRITTEN", subject: null, originalValue: resume.executiveSummary, newValue: value },
+                  {
+                    signalType: "SUMMARY_REWRITTEN",
+                    subject: null,
+                    originalValue: resume.executiveSummary,
+                    newValue: value,
+                  },
                 ])
               }
             />
@@ -221,37 +251,55 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
           <section>
             <SectionLabel>Selected impact</SectionLabel>
             <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
-              {resume.impactAnchors.map((anchor, index) => bulletRow("anchors", index, anchor.text, anchor.metricDrift))}
+              {resume.impactAnchors.map((anchor, index) =>
+                bulletRow("anchors", index, anchor.text, anchor.metricDrift),
+              )}
             </ul>
           </section>
           {resume.roles.map((role, roleIndex) => (
             <section key={`${role.employer}-${roleIndex}`}>
               <p className="font-medium">
                 {role.employer}
-                {role.roleTitle ? <span className="text-muted-foreground"> · {role.roleTitle}</span> : null}
-                {role.period && <span className="label-mono ml-2 text-muted-foreground">{role.period}</span>}
+                {role.roleTitle ? (
+                  <span className="text-muted-foreground"> · {role.roleTitle}</span>
+                ) : null}
+                {role.period && (
+                  <span className="label-mono ml-2 text-muted-foreground">{role.period}</span>
+                )}
               </p>
               <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
-                {role.bullets.map((bullet, bulletIndex) => bulletRow(roleIndex, bulletIndex, bullet.text, bullet.metricDrift))}
+                {role.bullets.map((bullet, bulletIndex) =>
+                  bulletRow(roleIndex, bulletIndex, bullet.text, bullet.metricDrift),
+                )}
               </ul>
             </section>
           ))}
           {resume.capabilities.length > 0 && (
             <section>
               <SectionLabel>Capabilities</SectionLabel>
-              <p className="mt-1 text-sm text-muted-foreground">{resume.capabilities.join(" · ")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {resume.capabilities.join(" · ")}
+              </p>
             </section>
           )}
         </article>
 
         {/* Right: evidence inspector for the selected line. */}
-        <aside className="memo-card h-fit space-y-3 lg:sticky lg:top-24" data-testid="evidence-inspector">
+        <aside
+          className="memo-card h-fit space-y-3 lg:sticky lg:top-24"
+          data-testid="evidence-inspector"
+        >
           <SectionLabel>Evidence inspector</SectionLabel>
           {!selectedBullet ? (
-            <p className="text-sm text-muted-foreground">Select a line in the resume to see where it comes from.</p>
+            <p className="text-sm text-muted-foreground">
+              Select a line in the resume to see where it comes from.
+            </p>
           ) : (
             <>
-              <ProvenanceBadge provenance={selectedBullet.provenance} edited={selectedBullet.edited} />
+              <ProvenanceBadge
+                provenance={selectedBullet.provenance}
+                edited={selectedBullet.edited}
+              />
               <div>
                 <span className="label-mono text-muted-foreground">Source</span>
                 <p className="text-sm">
@@ -270,16 +318,26 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
                   <button
                     type="button"
                     className="pursuit-chip"
-                    onClick={() => setSwapTarget(swapTarget === selected!.index ? null : selected!.index)}
+                    onClick={() =>
+                      setSwapTarget(swapTarget === selected!.index ? null : selected!.index)
+                    }
                   >
                     Replace
                   </button>
                 ) : (
                   <>
-                    <button type="button" className="pursuit-chip" onClick={() => moveBullet(selected!.role as number, selected!.index, -1)}>
+                    <button
+                      type="button"
+                      className="pursuit-chip"
+                      onClick={() => moveBullet(selected!.role as number, selected!.index, -1)}
+                    >
                       Move up
                     </button>
-                    <button type="button" className="pursuit-chip" onClick={() => moveBullet(selected!.role as number, selected!.index, 1)}>
+                    <button
+                      type="button"
+                      className="pursuit-chip"
+                      onClick={() => moveBullet(selected!.role as number, selected!.index, 1)}
+                    >
                       Move down
                     </button>
                   </>

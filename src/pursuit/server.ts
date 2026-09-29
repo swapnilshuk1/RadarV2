@@ -35,7 +35,6 @@ import {
   type LearningSignal,
 } from "./types";
 
-
 /**
  * Scope is resolved server-side from the authenticated session.
  *
@@ -155,9 +154,7 @@ export const saveArchetypeFn = createServerFn({ method: "POST" })
   });
 
 export const deleteArchetypeFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) =>
-    scopeInput.extend({ archetypeId: z.string().min(1) }).parse(data),
-  )
+  .validator((data: unknown) => scopeInput.extend({ archetypeId: z.string().min(1) }).parse(data))
   .handler(async ({ data }) => {
     const scope = await authorize(data, "write:person");
     await store.deleteArchetype(scope, data.archetypeId);
@@ -168,25 +165,11 @@ export const deleteArchetypeFn = createServerFn({ method: "POST" })
 // Cockpit lifecycle
 // ---------------------------------------------------------------------------
 
-/**
- * PURSUE. Idempotent: reopening an existing pursuit returns the saved strategy
- * rather than regenerating it, so a candidate never loses edits by clicking twice.
- */
+/** Reopen an existing scoped pursuit without changing the canonical decision. */
 export const openPursuitFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) =>
-    scopeInput.extend({ jobHash: z.string().min(1) }).parse(data),
-  )
+  .validator((data: unknown) => scopeInput.extend({ jobHash: z.string().min(1) }).parse(data))
   .handler(async ({ data }): Promise<CockpitView> => {
-    const user = await requireAuthUser();
-    const scope = await authorize(data, "write:person");
-    const brief = await loadBrief(user.id, scope, data.jobHash);
-    const lineage = await resolveLineage(scope, brief);
-    await getDatabaseAdapter().transaction(async (tx) => {
-      await writeAuthorizedDecision(tx, scope.personId, scope.tenantId, data.jobHash, "PURSUE");
-      await store.openPursuitInTransaction(tx, scope, {
-        jobHash: data.jobHash, company: brief.company, roleTitle: brief.roleTitle,
-      }, user.id, lineage);
-    });
+    const scope = await authorize(data, "read:person");
     return readCockpit(scope, data.jobHash);
   });
 
@@ -216,12 +199,19 @@ export const pursueOpportunityFn = createServerFn({ method: "POST" })
     const lineage = await resolveLineage(scope, brief);
     const acknowledgement = await getDatabaseAdapter().transaction(async (tx) => {
       const ack = await writeAuthorizedDecision(
-        tx, scope.personId, scope.tenantId, data.jobHash, "PURSUE", data.reason,
+        tx,
+        scope.personId,
+        scope.tenantId,
+        data.jobHash,
+        "PURSUE",
+        data.reason,
       );
       await store.openPursuitInTransaction(
-        tx, scope,
+        tx,
+        scope,
         { jobHash: data.jobHash, company: brief.company, roleTitle: brief.roleTitle },
-        user.id, lineage,
+        user.id,
+        lineage,
       );
       return ack;
     });
@@ -275,7 +265,10 @@ export const derivePursuitFn = createServerFn({ method: "POST" })
       requestedBy: user.id,
       preferredArchetypeId: data.preferredArchetypeId ?? null,
     });
-    await store.updatePursuit(scope, pursuit.id, { preparationState: "QUEUED", preparationError: null });
+    await store.updatePursuit(scope, pursuit.id, {
+      preparationState: "QUEUED",
+      preparationError: null,
+    });
     return readCockpit(scope, data.jobHash);
   });
 
@@ -339,7 +332,7 @@ export const saveArtifactFn = createServerFn({ method: "POST" })
           claims,
           contextText: brief ? JSON.stringify(brief) : "",
           proofRelationships: existing.thesisId
-            ? (await store.getThesis(existing.thesisId))?.semantic?.proofRelationships ?? {}
+            ? ((await store.getThesis(existing.thesisId))?.semantic?.proofRelationships ?? {})
             : {},
         }),
       );
@@ -413,9 +406,14 @@ export const updatePursuitStateFn = createServerFn({ method: "POST" })
   });
 
 export const markOutreachSentFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => scopeInput.extend({
-    jobHash: z.string().min(1), artifactId: z.string().min(1),
-  }).parse(data))
+  .validator((data: unknown) =>
+    scopeInput
+      .extend({
+        jobHash: z.string().min(1),
+        artifactId: z.string().min(1),
+      })
+      .parse(data),
+  )
   .handler(async ({ data }): Promise<CockpitView> => {
     const scope = await authorize(data, "write:person");
     await store.recordApprovedOutreachSent(scope, data.jobHash, data.artifactId);

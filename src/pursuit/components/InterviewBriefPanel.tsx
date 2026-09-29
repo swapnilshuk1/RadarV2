@@ -53,7 +53,11 @@ export function InterviewBriefPanel({ artifact, busy, onSave, onExport }: Props)
   };
 
   const lists: Array<[string, "questionsToAsk" | "firstNinetyDays" | "risksToAddress", string]> = [
-    ["Questions to ask", "questionsToAsk", "What the dossier could not resolve — ask it in the room."],
+    [
+      "Questions to ask",
+      "questionsToAsk",
+      "What the dossier could not resolve — ask it in the room.",
+    ],
     ["First 90 days", "firstNinetyDays", "Hypotheses, offered as hypotheses."],
     ["Risks to address", "risksToAddress", "What a sceptical panel will probe."],
   ];
@@ -63,11 +67,25 @@ export function InterviewBriefPanel({ artifact, busy, onSave, onExport }: Props)
       <div className="flex flex-wrap items-center justify-between gap-2">
         <SectionLabel>Interview brief — v{artifact.version}</SectionLabel>
         <div className="flex gap-2">
-          <CopyButton text={artifact.renderedText ?? ""} label="Copy brief" disabled={artifact.status !== "APPROVED"} />
-          <button type="button" disabled={busy || artifact.status !== "APPROVED"} onClick={() => onExport(artifact.id, "PDF")} className="pursuit-chip">
+          <CopyButton
+            text={artifact.renderedText ?? ""}
+            label="Copy brief"
+            disabled={artifact.status !== "APPROVED"}
+          />
+          <button
+            type="button"
+            disabled={busy || artifact.status !== "APPROVED"}
+            onClick={() => onExport(artifact.id, "PDF")}
+            className="pursuit-chip"
+          >
             Export PDF
           </button>
-          <button type="button" disabled={busy} onClick={() => onSave(artifact.id, { kind: "INTERVIEW_BRIEF", brief }, [], true)} className="pursuit-chip pursuit-chip-primary">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onSave(artifact.id, { kind: "INTERVIEW_BRIEF", brief }, [], true)}
+            className="pursuit-chip pursuit-chip-primary"
+          >
             Mark approved
           </button>
         </div>

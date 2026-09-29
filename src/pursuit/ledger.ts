@@ -75,19 +75,33 @@ function parseRoleHeader(span: string): RoleHeader | null {
   if (line.length < 5 || line.length > 140) return null;
   if (PERIOD_ONLY.test(line) || SOURCE_NOISE.test(line)) return null;
   // Sentences are bullets, not headers.
-  if (/[.!?]\s+\S/.test(line) || /\b(led|managed|scaled|delivered|built|drove|owned)\b/i.test(line)) {
+  if (
+    /[.!?]\s+\S/.test(line) ||
+    /\b(led|managed|scaled|delivered|built|drove|owned)\b/i.test(line)
+  ) {
     return null;
   }
 
   const [head] = line.split(/\s*\((?:19|20)\d{2}\b/);
-  const parts = head.split(/\s+[—–]\s+|\s+@\s+|\s+\bat\b\s+/i).map((p) => p.trim()).filter(Boolean);
+  const parts = head
+    .split(/\s+[—–]\s+|\s+@\s+|\s+\bat\b\s+/i)
+    .map((p) => p.trim())
+    .filter(Boolean);
   if (parts.length < 2) return null;
 
   const title = parts[0];
-  let employer = parts.slice(1).join(" — ").replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
+  let employer = parts
+    .slice(1)
+    .join(" — ")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   // "Digital Marketing, TVS Motor Company" — the trailing segment is the company,
   // unless it is only the office location ("Patt & Hoff Group, Singapore").
-  const commaParts = employer.split(",").map((p) => p.trim()).filter(Boolean);
+  const commaParts = employer
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
   if (commaParts.length > 1) {
     const meaningful = commaParts.filter((part) => !LOCATION_TAIL.test(part));
     employer = (meaningful.length > 0 ? meaningful : commaParts)[
@@ -103,12 +117,27 @@ function parseRoleHeader(span: string): RoleHeader | null {
 
 const CAPABILITY_VOCABULARY: Array<{ capability: string; pattern: RegExp }> = [
   { capability: "Brand & Marketing", pattern: /\b(brand|marketing|campaign|advertis)/i },
-  { capability: "Digital & Performance", pattern: /\b(digital|performance marketing|seo|sem|paid media|programmatic)/i },
-  { capability: "MarTech & Automation", pattern: /\b(martech|salesforce|sfmc|crm|automation|adobe|hubspot)/i },
+  {
+    capability: "Digital & Performance",
+    pattern: /\b(digital|performance marketing|seo|sem|paid media|programmatic)/i,
+  },
+  {
+    capability: "MarTech & Automation",
+    pattern: /\b(martech|salesforce|sfmc|crm|automation|adobe|hubspot)/i,
+  },
   { capability: "P&L & Commercial", pattern: /\b(p&l|revenue|margin|budget|cost|pricing|profit)/i },
-  { capability: "Team Leadership", pattern: /\b(led|leading|managed|mentor|hired|built a team|headcount)/i },
-  { capability: "Transformation", pattern: /\b(transform|migrat|re-?platform|turnaround|restructur)/i },
-  { capability: "Global Capability Centre", pattern: /\b(gcc|global capability|shared services|gss|offshore)/i },
+  {
+    capability: "Team Leadership",
+    pattern: /\b(led|leading|managed|mentor|hired|built a team|headcount)/i,
+  },
+  {
+    capability: "Transformation",
+    pattern: /\b(transform|migrat|re-?platform|turnaround|restructur)/i,
+  },
+  {
+    capability: "Global Capability Centre",
+    pattern: /\b(gcc|global capability|shared services|gss|offshore)/i,
+  },
   { capability: "Automotive", pattern: /\b(automotive|auto|vehicle|mobility|oem|dealer)/i },
   { capability: "Agency", pattern: /\b(agency|client servicing|pitch|account management)/i },
   { capability: "Analytics", pattern: /\b(analytic|data|dashboard|attribution|measurement)/i },
@@ -132,18 +161,17 @@ function deriveCapabilities(text: string): string[] {
 export async function resolveCanonicalSources(
   scope: Scope,
   profileVersion?: string | null,
-): Promise<{ profileVersion: string | null; graphIds: string[]; documentIds: string[]; fingerprint: string }> {
+): Promise<{
+  profileVersion: string | null;
+  graphIds: string[];
+  documentIds: string[];
+  fingerprint: string;
+}> {
   const db = getDatabaseAdapter();
+  const explicitVersion = profileVersion !== undefined;
+  if (explicitVersion && !profileVersion) throw new Error("PROFILE_BINDING_NOT_FOUND");
   let version = profileVersion ?? null;
-  if (version) {
-    const exists = await db.one<{ n: number }>(
-      `SELECT COUNT(*) AS n FROM profile_projection_source_bindings
-       WHERE tenant_id = ? AND person_id = ? AND profile_version = ?`,
-      [scope.tenantId, scope.personId, version],
-    );
-    if (!exists?.n) version = null;
-  }
-  if (!version) {
+  if (!explicitVersion) {
     const latest = await db.one<{ profile_version: string }>(
       `SELECT profile_version FROM profile_projection_source_bindings
        WHERE tenant_id = ? AND person_id = ? ORDER BY created_at DESC, profile_version DESC LIMIT 1`,
@@ -157,6 +185,7 @@ export async function resolveCanonicalSources(
      WHERE tenant_id = ? AND person_id = ? AND profile_version = ? ORDER BY document_id`,
     [scope.tenantId, scope.personId, version],
   );
+  if (explicitVersion && rows.length === 0) throw new Error("PROFILE_BINDING_NOT_FOUND");
   const graphIds = rows.map((r) => r.evidence_graph_id);
   return {
     profileVersion: version,
@@ -176,21 +205,32 @@ export interface LedgerState {
 
 export async function readLedgerState(scope: Scope): Promise<LedgerState | null> {
   const row = await getDatabaseAdapter().one<{
-    profile_version: string | null; binding_fingerprint: string; claim_count: number;
-    document_count: number; projected_at: string;
+    profile_version: string | null;
+    binding_fingerprint: string;
+    claim_count: number;
+    document_count: number;
+    projected_at: string;
   }>(
     `SELECT profile_version, binding_fingerprint, claim_count, document_count, projected_at
      FROM pursuit_ledger_projection_state WHERE tenant_id = ? AND person_id = ?`,
     [scope.tenantId, scope.personId],
   );
   return row
-    ? { profileVersion: row.profile_version, bindingFingerprint: row.binding_fingerprint,
-        claims: row.claim_count, documents: row.document_count, projectedAt: row.projected_at }
+    ? {
+        profileVersion: row.profile_version,
+        bindingFingerprint: row.binding_fingerprint,
+        claims: row.claim_count,
+        documents: row.document_count,
+        projectedAt: row.projected_at,
+      }
     : null;
 }
 
 /** Cheap staleness check: bindings only, never graph bodies. */
-export async function isLedgerStale(scope: Scope, profileVersion?: string | null): Promise<boolean> {
+export async function isLedgerStale(
+  scope: Scope,
+  profileVersion?: string | null,
+): Promise<boolean> {
   const [sources, state] = await Promise.all([
     resolveCanonicalSources(scope, profileVersion),
     readLedgerState(scope),
@@ -207,13 +247,24 @@ export async function isLedgerStale(scope: Scope, profileVersion?: string | null
 export async function projectLedger(
   scope: Scope,
   options: { profileVersion?: string | null; force?: boolean } = {},
-): Promise<{ claims: number; documents: number; skipped: boolean; fingerprint: string; profileVersion: string | null }> {
+): Promise<{
+  claims: number;
+  documents: number;
+  skipped: boolean;
+  fingerprint: string;
+  profileVersion: string | null;
+}> {
   const db = getDatabaseAdapter();
   const sources = await resolveCanonicalSources(scope, options.profileVersion);
   const state = await readLedgerState(scope);
   if (!options.force && state && state.bindingFingerprint === sources.fingerprint) {
-    return { claims: state.claims, documents: state.documents, skipped: true,
-             fingerprint: sources.fingerprint, profileVersion: sources.profileVersion };
+    return {
+      claims: state.claims,
+      documents: state.documents,
+      skipped: true,
+      fingerprint: sources.fingerprint,
+      profileVersion: sources.profileVersion,
+    };
   }
 
   const graphs = sources.graphIds.length
@@ -284,9 +335,21 @@ export async function projectLedger(
        profile_version = excluded.profile_version, binding_fingerprint = excluded.binding_fingerprint,
        claim_count = excluded.claim_count, document_count = excluded.document_count,
        projected_at = excluded.projected_at`,
-    [scope.tenantId, scope.personId, sources.profileVersion, sources.fingerprint, written,
-     documents.size, new Date().toISOString()],
+    [
+      scope.tenantId,
+      scope.personId,
+      sources.profileVersion,
+      sources.fingerprint,
+      written,
+      documents.size,
+      new Date().toISOString(),
+    ],
   );
-  return { claims: written, documents: documents.size, skipped: false,
-           fingerprint: sources.fingerprint, profileVersion: sources.profileVersion };
+  return {
+    claims: written,
+    documents: documents.size,
+    skipped: false,
+    fingerprint: sources.fingerprint,
+    profileVersion: sources.profileVersion,
+  };
 }

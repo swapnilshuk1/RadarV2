@@ -85,12 +85,18 @@ export function OutreachKit({ artifacts, busy, onSave, onExport, onLogSent }: Pr
                       : message.message.body
                   }
                 />
-                {artifact.status === "APPROVED" ? <a
-                  className="pursuit-chip"
-                  href={`mailto:?subject=${encodeURIComponent(message.message.subject ?? "")}&body=${encodeURIComponent(message.message.body)}`}
-                >
-                  Open in email
-                </a> : <button type="button" disabled className="pursuit-chip">Open in email</button>}
+                {artifact.status === "APPROVED" ? (
+                  <a
+                    className="pursuit-chip"
+                    href={`mailto:?subject=${encodeURIComponent(message.message.subject ?? "")}&body=${encodeURIComponent(message.message.body)}`}
+                  >
+                    Open in email
+                  </a>
+                ) : (
+                  <button type="button" disabled className="pursuit-chip">
+                    Open in email
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={busy || artifact.status !== "APPROVED"}
@@ -99,7 +105,12 @@ export function OutreachKit({ artifacts, busy, onSave, onExport, onLogSent }: Pr
                 >
                   Mark sent
                 </button>
-                <button type="button" disabled={busy} onClick={() => commit(message.message, [], true)} className="pursuit-chip">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => commit(message.message, [], true)}
+                  className="pursuit-chip"
+                >
                   Mark approved
                 </button>
               </div>
@@ -125,7 +136,9 @@ export function OutreachKit({ artifacts, busy, onSave, onExport, onLogSent }: Pr
                   ])
                 }
               />
-              <p className={`label-mono ${overLength ? "text-amber-500" : "text-muted-foreground"}`}>
+              <p
+                className={`label-mono ${overLength ? "text-amber-500" : "text-muted-foreground"}`}
+              >
                 {words} words · target {target}
                 {overLength ? " · long for this format" : ""}
               </p>

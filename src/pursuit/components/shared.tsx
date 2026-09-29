@@ -39,7 +39,15 @@ export function ProvenanceBadge({
 }
 
 /** Copy-to-clipboard with a short confirmation, no toast dependency. */
-export function CopyButton({ text, label = "Copy", disabled = false }: { text: string; label?: string; disabled?: boolean }) {
+export function CopyButton({
+  text,
+  label = "Copy",
+  disabled = false,
+}: {
+  text: string;
+  label?: string;
+  disabled?: boolean;
+}) {
   const [copied, setCopied] = useState(false);
   const copy = useCallback(async () => {
     if (disabled) return;
