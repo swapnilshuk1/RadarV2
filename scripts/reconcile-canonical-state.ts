@@ -150,6 +150,27 @@ async function main(): Promise<void> {
     "SELECT * FROM profile_projection_source_bindings WHERE tenant_id=? AND person_id=? AND profile_version=?",
     [tenantId, personId, sourceContext.profile_version],
   );
+  const sourceProfileArtifacts = await Promise.all(
+    sourceProfileBindings.map(async (binding) => {
+      const document = await row(
+        local,
+        "SELECT * FROM candidate_documents WHERE id=? AND tenant_id=? AND person_id=?",
+        [binding.document_id, tenantId, personId],
+      );
+      const contents = await rows(
+        local,
+        "SELECT * FROM document_contents WHERE document_id=? AND tenant_id=? AND person_id=?",
+        [binding.document_id, tenantId, personId],
+      );
+      const graph = await row(
+        local,
+        "SELECT * FROM evidence_graphs WHERE id=? AND document_id=? AND tenant_id=? AND person_id=?",
+        [binding.evidence_graph_id, binding.document_id, tenantId, personId],
+      );
+      if (!document || !graph) fail("SOURCE_PROFILE_LINEAGE_INCOMPLETE");
+      return { binding, document, contents, graph };
+    }),
+  );
   // Shortlist membership is evaluation-based. A reviewed dossier enriches a
   // card, but it is not a prerequisite for serving an accepted evaluation.
   // Select exactly the local P/C serving population, rather than accidentally
@@ -289,14 +310,19 @@ async function main(): Promise<void> {
       "context_fingerprint=?",
       [context],
     );
-    for (const binding of sourceProfileBindings)
+    for (const artifact of sourceProfileArtifacts) {
+      await insertExact(tx, "candidate_documents", artifact.document, "id=?", [artifact.document.id]);
+      for (const content of artifact.contents)
+        await insertExact(tx, "document_contents", content, "id=?", [content.id]);
+      await insertExact(tx, "evidence_graphs", artifact.graph, "id=?", [artifact.graph.id]);
       await insertExact(
         tx,
         "profile_projection_source_bindings",
-        binding,
+        artifact.binding,
         "tenant_id=? AND person_id=? AND profile_version=? AND document_id=?",
-        [tenantId, personId, binding.profile_version, binding.document_id],
+        [tenantId, personId, artifact.binding.profile_version, artifact.binding.document_id],
       );
+    }
     for (const candidate of sourceCandidates) {
       const opportunity = await row(local, "SELECT * FROM canonical_opportunities WHERE id=?", [
         candidate.canonical_job_id,
