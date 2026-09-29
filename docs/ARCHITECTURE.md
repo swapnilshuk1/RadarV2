@@ -157,14 +157,22 @@ The `pursuit-preparation` worker prepares a versioned thesis and artifact
 package through a durable queue. Successful model stages are checkpointed, and
 thesis insertion commits with its checkpoint. Artifact publication, active
 thesis selection and job completion commit together under the current lease.
-The worker is part of PM2 deployment and system readiness. Model calls use the
-shared `model_invocations` table with `pipeline='pursuit'`, pursuit and
+When a target runs Pursuit, the worker is supervised and included in that target's
+readiness checks. Model calls use the shared `model_invocations` table with
+`pipeline='pursuit'`, pursuit and
 preparation IDs. Migration 069 widens that table while retaining its existing
 status constraint and indexes. The Cockpit polls a narrow preparation status
 read and refreshes the full view after a state change.
 
 ## Runtime boundaries
 
+RADAR is pre-production and runtime topology is target-specific. Repository
+capability does not imply that every worker must run on every deployed host. In
+particular, browser scraping and its Chromium/Playwright dependency belong only on
+a runtime that actually executes scraping; web/Pursuit/dossier readiness should not
+invent a scraper requirement for a target where scraping is intentionally absent.
+Verification and deployment policy is defined in
+`docs/VERIFICATION_AND_RELEASE.md`.
 
 The live semantic screening lab remains in `src/dossier/screening-semantic-lab.ts`
 with `scripts/run-corpus-regeneration-worker.ts` and `scripts/corpus/`. Scraper dependencies, migrations,

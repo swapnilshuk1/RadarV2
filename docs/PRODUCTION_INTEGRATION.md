@@ -45,10 +45,18 @@ explicit person/profile/context scope rather than relying on selection defaults.
 | `npm run worker:pursuit` | Pursuit preparation worker (`scripts/run-pursuit-preparation-worker.ts`) consuming queued Pursuit packages. |
 | `scripts/dossier/preview-staged.ts` | Read-only local dossier preview; `--file=<path>` avoids database/model access. |
 | `npm run db:migrate` | Runs pending database migrations (`scripts/migrate.ts`). |
-| `npm run certify` | Authoritative pre-release certification gate (`scripts/certify.ts`). |
-| `npm run deploy` | Exact-artifact deployment script (`scripts/deploy.ts`). |
+| `npm run certify:affected` | Fast mapped regression feedback during implementation; not a release certificate. |
+| `npm run certify` | Full release certification; normally run once on the final release candidate. |
+| `npm run deploy` | Full-topology deployment script; use only when its configured process set matches the actual target. |
 
 Inspect the implementation before using additional flags. Workers operate against durable queues. Do not pass a worker's `--watch` option as PM2 filesystem watching.
+
+Verification follows `docs/VERIFICATION_AND_RELEASE.md`: use focused/affected
+checks while iterating and reserve full certification for the final release
+candidate. A pre-production deployment should supervise only the workers used by
+that target. The scraper is not a generic server prerequisite; Chromium/Playwright
+belongs only on a machine that actually executes browser scraping or scraper
+preflight.
 
 ## Pursuit preparation
 

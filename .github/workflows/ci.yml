@@ -65,11 +65,7 @@ jobs:
         run: npm ci
 
       - name: Run authoritative release certification
-        # The scraper preflight test launches a real offline Chromium instance.
-        # Browser availability is a prerequisite, not a mocked success.
-        run: |
-          npx playwright install --with-deps chromium
-          npm run certify
+        run: npm run certify
 
       - name: Package exact certified release artifact
         run: npm run release:package

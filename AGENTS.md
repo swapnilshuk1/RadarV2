@@ -245,6 +245,23 @@ understand the dossier outcome
 
 Tests exist to accelerate confidence, not to become the project.
 
+Verification is incremental. A successful check remains valid until a later change
+can reasonably invalidate it. During implementation, run focused tests or
+`npm run certify:affected`; do not reflexively rerun TypeScript, the production
+build, browser acceptance, or the full certification suite after every small fix.
+Run `npm run certify` once on the final release candidate. If it fails, iterate on
+the failed/affected stage and rerun the complete certification only after all known
+issues are resolved.
+
+Before repeating a successful check, state what changed and why that change
+invalidates the earlier result. "Run everything again to be safe" is not a reason.
+
+RADAR is pre-production. Keep tenant/person isolation, canonical truth, migrations,
+queue durability and data safety hard, but do not impose production change-management
+ceremony on routine pre-production work. Deployment must match the runtime actually
+being exercised; unused subsystems are not prerequisites. See
+`docs/VERIFICATION_AND_RELEASE.md`.
+
 ---
 
 ## 10. WHEN YOU MUST STOP AND ASK
@@ -298,7 +315,9 @@ Keep this simple:
 - do not bypass source/provenance integrity;
 - keep UI, domain and persistence dependencies sensible;
 - run focused tests for changed behavior;
-- run TypeScript/build checks before claiming completion when feasible;
+- run TypeScript/build only when the change can affect them, or rely on the final
+  certification instead of duplicating those checks immediately beforehand;
+- reuse still-valid verification evidence rather than restarting the whole gate set;
 - do not claim a test or build passed unless it actually ran successfully.
 
 No additional governance layer is implied by these rules.

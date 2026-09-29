@@ -13,7 +13,16 @@ All future coding agents and engineers modifying or adding tests MUST adhere to 
 3. **If Unique and Valid**: Keep and modernize the test in its proper canonical domain.
 4. **If Duplicate**: Consolidate into the authoritative suite rather than proliferating milestone-numbered files (`mXX`, `pXX`, `phaseXX`).
 5. **If Obsolete**: Delete obsolete tests after verifying invariant coverage is preserved in the canonical domain suites; Git history is the archive. Zero archive test directories or files are retained on disk.
-6. **Continuous Certification Gate**: Always ensure `npm run certify` and `npm run smoke` pass cleanly.
+6. **Incremental Verification**: Run the smallest authoritative suite that covers the
+   change. Use `npm run certify:affected` for mapped regression feedback and run the
+   full `npm run certify` once on the final release candidate. Do not rerun unrelated
+   suites after a narrow fix merely because the SHA changed.
+
+A registry label such as **Full Suite** describes where a test belongs; it does not
+mean the full suite must run after every edit. Successful evidence remains valid
+until a later change can reasonably affect that invariant. Test-only, inventory-only,
+formatting-only and documentation-only changes invalidate only their directly
+dependent checks. See `docs/VERIFICATION_AND_RELEASE.md`.
 
 ---
 
