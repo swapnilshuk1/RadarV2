@@ -184,7 +184,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (174 Total Files)
+## 3. Complete Test File Registry (178 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -285,6 +285,10 @@ Every test file in the repository is mechanically tracked below:
 | `tests/policy/pursue-queue-isolation.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 5 |
 | `tests/policy/read-economics.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 14 |
 | `tests/policy/shortlist-unresolved-queue.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 8 |
+| `tests/pursuit/approval-ledger.test.ts` | Pursuit evidence approval | **KEEP** | Full Suite | 6 | 7 |
+| `tests/pursuit/core-host-integration.test.ts` | Pursuit host integration | **KEEP** | Full Suite | 13 | 48 |
+| `tests/pursuit/integration-boundaries.test.ts` | Pursuit integration boundaries | **KEEP** | Full Suite | 9 | 20 |
+| `tests/pursuit/semantic-acceptance.test.ts` | Pursuit semantic acceptance | **KEEP** | Full Suite | 34 | 41 |
 | `tests/regression/p0-enrichment-extraction-pipeline.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 8 | 22 |
 | `tests/regression/p0-invariant-candidate-level.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 6 | 20 |
 | `tests/regression/p0-invariant-capability-unknown.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 5 | 11 |
