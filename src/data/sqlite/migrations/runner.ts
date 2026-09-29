@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { fileURLToPath } from "url";
 import { getDatabaseAdapter, type DatabaseAdapter } from "../../database";
 
 export interface MigrationResult {
@@ -208,7 +207,7 @@ export async function verifyMigrationChecksums(
       "[MigrationRunner] MIGRATION_CHECKSUM_UNAVAILABLE: migration ledger has no checksum column.",
     );
   }
-  const dir = migrationsDir || path.dirname(fileURLToPath(import.meta.url));
+  const dir = migrationsDir || path.resolve(process.cwd(), "src/data/sqlite/migrations");
   const files = new Set(
     fs.readdirSync(dir).filter((file) => file.endsWith(".sql") && !file.endsWith("_rollback.sql")),
   );
@@ -356,7 +355,7 @@ export async function runMigrations(
   const appliedSet = new Set(appliedRows.map((r) => r.migration_name));
 
   // 3. Discover migration SQL files
-  const dir = migrationsDir || path.dirname(fileURLToPath(import.meta.url));
+  const dir = migrationsDir || path.resolve(process.cwd(), "src/data/sqlite/migrations");
   const files = fs
     .readdirSync(dir)
     .filter((f) => f.endsWith(".sql") && !f.endsWith("_rollback.sql"))
