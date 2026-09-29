@@ -98,6 +98,20 @@ async function insertExact(
   return "inserted";
 }
 
+/** Canonical URLs are acquisition metadata. When the canonical identity already
+ * exists in Turso, retain its current URL but require every immutable field to
+ * remain byte-for-byte compatible with the accepted local lineage. */
+async function insertCanonicalOpportunity(
+  target: DatabaseAdapter,
+  source: Row,
+): Promise<"existing" | "inserted"> {
+  const winner = await row(target, "SELECT * FROM canonical_opportunities WHERE id=?", [source.id]);
+  if (!winner) return insertExact(target, "canonical_opportunities", source, "id=?", [source.id]);
+  const sourceWithTargetUrl = { ...source, canonical_url: winner.canonical_url };
+  if (stable(winner) !== stable(sourceWithTargetUrl)) fail("CANONICAL_OPPORTUNITIES_CONFLICT");
+  return "existing";
+}
+
 async function main(): Promise<void> {
   if (!context) fail("CONTEXT_REQUIRED");
   if (!apply) fail("APPLY_REQUIRED");
@@ -335,7 +349,7 @@ async function main(): Promise<void> {
         [candidate.opportunity_version, candidate.canonical_job_id],
       );
       if (!opportunity || !version) fail("SOURCE_OPPORTUNITY_LINEAGE_MISSING");
-      await insertExact(tx, "canonical_opportunities", opportunity, "id=?", [opportunity.id]);
+      await insertCanonicalOpportunity(tx, opportunity);
       await insertExact(tx, "opportunity_versions", version, "id=?", [version.id]);
       await insertExact(
         tx,
