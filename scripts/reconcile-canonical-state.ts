@@ -112,6 +112,35 @@ async function insertCanonicalOpportunity(
   return "existing";
 }
 
+/** The target database owns scraper/acquisition metadata for a version that
+ * already has the same durable version ID. The frozen staged input and all
+ * evaluation lineage remain source-verified; all other version fields still
+ * conflict closed. */
+async function insertOpportunityVersion(
+  target: DatabaseAdapter,
+  source: Row,
+): Promise<"existing" | "inserted"> {
+  const winner = await row(
+    target,
+    "SELECT * FROM opportunity_versions WHERE id=? AND canonical_job_id=?",
+    [source.id, source.canonical_job_id],
+  );
+  if (!winner)
+    return insertExact(target, "opportunity_versions", source, "id=? AND canonical_job_id=?", [
+      source.id,
+      source.canonical_job_id,
+    ]);
+  const sourceWithTargetAcquisition = {
+    ...source,
+    source_payload_key: winner.source_payload_key,
+    source_media_type: winner.source_media_type,
+    posted_at: winner.posted_at,
+    posted_precision: winner.posted_precision,
+  };
+  if (stable(winner) !== stable(sourceWithTargetAcquisition)) fail("OPPORTUNITY_VERSIONS_CONFLICT");
+  return "existing";
+}
+
 async function main(): Promise<void> {
   if (!context) fail("CONTEXT_REQUIRED");
   if (!apply) fail("APPLY_REQUIRED");
@@ -350,7 +379,7 @@ async function main(): Promise<void> {
       );
       if (!opportunity || !version) fail("SOURCE_OPPORTUNITY_LINEAGE_MISSING");
       await insertCanonicalOpportunity(tx, opportunity);
-      await insertExact(tx, "opportunity_versions", version, "id=?", [version.id]);
+      await insertOpportunityVersion(tx, version);
       await insertExact(
         tx,
         "search_plan_candidates",
