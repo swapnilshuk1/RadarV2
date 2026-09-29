@@ -511,6 +511,12 @@ Improve the full vertical slice before broadening the system.
 
 Do not spend months perfecting extraction while the downstream dossier remains absent.
 
+The same proportionality applies to verification: prove the changed behavior,
+reuse still-valid evidence, and reserve full release certification for the final
+candidate. Repeatedly running the entire test/build/deployment apparatus after
+narrow fixes is not product progress. The operational standard is
+`docs/VERIFICATION_AND_RELEASE.md`.
+
 ---
 
 ## 14. Scraper Preservation Boundary

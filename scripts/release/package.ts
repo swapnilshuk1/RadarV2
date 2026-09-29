@@ -27,9 +27,17 @@ export function releasePayloadChecksum(directory: string): string {
       if (entry.name === "release-manifest.json") continue;
       const absolute = path.join(current, entry.name);
       const relative = path.relative(directory, absolute).replaceAll("\\", "/");
-      hash.update(`${entry.isDirectory() ? "d" : "f"}:${relative}\0`);
-      if (entry.isDirectory()) visit(absolute);
-      else hash.update(fs.readFileSync(absolute));
+      const stat = fs.lstatSync(absolute);
+      if (stat.isSymbolicLink()) {
+        hash.update(`l:${relative}\0`);
+        hash.update(fs.readlinkSync(absolute));
+      } else if (stat.isDirectory()) {
+        hash.update(`d:${relative}\0`);
+        visit(absolute);
+      } else {
+        hash.update(`f:${relative}\0`);
+        hash.update(fs.readFileSync(absolute));
+      }
     }
   };
   visit(directory);
@@ -66,6 +74,8 @@ export function createReleaseBundle(outputDirectory = path.join(root, "release")
       ".output",
       "src",
       "scripts",
+      "config",
+      "tsconfig.json",
       "ecosystem.config.cjs",
       "package.json",
       "package-lock.json",
@@ -73,7 +83,11 @@ export function createReleaseBundle(outputDirectory = path.join(root, "release")
     ]) {
       const source = path.join(root, entry);
       if (!fs.existsSync(source)) throw new Error(`RELEASE_PAYLOAD_MISSING: ${entry}`);
-      fs.cpSync(source, path.join(staging, entry), { recursive: true, force: true });
+      fs.cpSync(source, path.join(staging, entry), {
+        recursive: true,
+        force: true,
+        verbatimSymlinks: true,
+      });
     }
     const manifest: ReleaseManifest = {
       commitSha,

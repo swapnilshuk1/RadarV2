@@ -243,7 +243,7 @@ describe("deterministic release deployment", () => {
     expect(rollbackCmd).toContain("pm2 startOrRestart ecosystem.config.cjs --update-env");
     expect(rollbackCmd).not.toContain(`cd '/srv/radar/releases/${testSha}'`);
     expect(rollbackCmd).toContain(`printf '%s' '${priorSha}' > '/srv/radar/CURRENT_SHA'`);
-    expect(rollbackCmd).toContain("radar-scrape");
+    expect(rollbackCmd).not.toContain("radar-scrape");
     expect(rollbackCmd).toContain("radar-enrich");
     expect(rollbackCmd).toContain('"databaseRestored":false');
     expect(rollbackCmd).toContain('"rollback":"previous-release-restored"');
@@ -415,8 +415,8 @@ describe("deterministic release deployment", () => {
     );
   });
 
-  it("does not start a competing server scraper in distributed mode", () => {
-    const config = { ...makeConfig(), deploymentMode: "distributed" as const };
+  it("does not start a server scraper on the pre-production app host", () => {
+    const config = makeConfig();
     let activation = "";
     const mockRunner: CommandRunner = (command, args) => {
       if (command === "ssh") {
@@ -441,7 +441,25 @@ describe("deterministic release deployment", () => {
     };
     deploy(config, mockRunner);
     expect(activation).toContain("stop_pm2_process 'radar-scrape'");
-    expect(activation).toContain("RADAR_DEPLOYMENT_MODE='distributed'");
+    expect(activation).toContain("RADAR_DEPLOYMENT_MODE='single_host'");
+    expect(activation).toContain("RADAR_SERVER_SCRAPER_ENABLED='false'");
     expect(activation).not.toContain('RADAR_PM2_REQUIRED=\'["radar-v2","radar-scrape"');
+  });
+
+  it("includes the scraper only for an explicitly enabled host", () => {
+    const config = { ...makeConfig(), serverScraperEnabled: true };
+    let activation = "";
+    const mockRunner: CommandRunner = (command, args) => {
+      if (command === "ssh") {
+        const cmd = args[args.length - 1];
+        if (cmd.includes("echo rec-12345")) return "rec-12345";
+        if (cmd.includes("rm -rf") && cmd.includes("scripts/release/verify.ts")) activation = cmd;
+      }
+      if (command === "curl") return JSON.stringify({ status: "ready", releaseSha: testSha });
+      return "";
+    };
+    deploy(config, mockRunner);
+    expect(activation).toContain("RADAR_SERVER_SCRAPER_ENABLED='true'");
+    expect(activation).toContain('RADAR_PM2_REQUIRED=\'["radar-v2","radar-scrape"');
   });
 });

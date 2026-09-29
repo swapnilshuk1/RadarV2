@@ -1,8 +1,7 @@
 // Production configuration is supplied by PM2/the process environment. Never
 // search the checkout for an arbitrary .env file at runtime.
 const envVars = {};
-const deploymentMode = process.env.RADAR_DEPLOYMENT_MODE;
-const runServerScraper = deploymentMode !== "distributed";
+const runServerScraper = process.env.RADAR_SERVER_SCRAPER_ENABLED === "true";
 
 module.exports = {
   apps: [
@@ -47,6 +46,7 @@ module.exports = {
       ["radar-dossiers", "scripts/run-dossier-composition-worker.ts"],
       ["radar-reviews", "scripts/run-dossier-review-worker.ts"],
       ["radar-corpus", "scripts/run-corpus-regeneration-worker.ts"],
+      ["radar-pursuit", "scripts/run-pursuit-preparation-worker.ts"],
     ].map(([name, args]) => ({
       name,
       script: "node_modules/tsx/dist/cli.mjs",

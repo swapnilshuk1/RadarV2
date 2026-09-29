@@ -5,7 +5,11 @@ import {
   getDatabaseTargetIdentity,
   resetDatabaseAdapter,
 } from "../../src/data/database";
-import { isWorkerOnline, REQUIRED_WORKERS } from "../../src/lib/health/worker-heartbeat";
+import {
+  isWorkerOnline,
+  REQUIRED_WORKERS,
+  requiredWorkersForEnvironment,
+} from "../../src/lib/health/worker-heartbeat";
 
 describe("release readiness", () => {
   const original = { ...process.env };
@@ -29,13 +33,16 @@ describe("release readiness", () => {
     expect(JSON.stringify(readiness.body)).not.toMatch(/turso|token|candidate|person/i);
   });
 
-  it("requires every core worker heartbeat on the same release and database target", async () => {
+  it("requires the app-host workers on the same release and database target", async () => {
     process.env.RADAR_ENV = "test";
     process.env.RADAR_RELEASE_SHA = "b".repeat(40);
+    process.env.RADAR_SERVER_SCRAPER_ENABLED = "false";
     const db = getDatabaseAdapter();
     const fingerprint = getDatabaseTargetIdentity().fingerprint;
     const now = new Date().toISOString();
-    for (const name of REQUIRED_WORKERS) {
+    const required = requiredWorkersForEnvironment();
+    expect(required).not.toContain("scrape");
+    for (const name of required) {
       await db.execute(
         `INSERT INTO worker_heartbeats (worker_name,instance_id,release_sha,database_fingerprint,last_seen_at)
          VALUES (?,?,?,?,?)`,
@@ -47,8 +54,8 @@ describe("release readiness", () => {
       body: {
         status: "ready",
         workers: {
-          required: REQUIRED_WORKERS.length,
-          healthy: REQUIRED_WORKERS.length,
+          required: required.length,
+          healthy: required.length,
           missing: [],
         },
       },
@@ -59,6 +66,13 @@ describe("release readiness", () => {
       status: 503,
       body: { status: "unavailable", workers: { missing: ["corpus"] } },
     });
+  });
+
+  it("requires a scraper heartbeat only when server scraping is enabled", () => {
+    const env = { RADAR_SERVER_SCRAPER_ENABLED: "true" } as NodeJS.ProcessEnv;
+    expect(requiredWorkersForEnvironment(env)).toEqual(REQUIRED_WORKERS);
+    env.RADAR_SERVER_SCRAPER_ENABLED = "false";
+    expect(requiredWorkersForEnvironment(env)).not.toContain("scrape");
   });
 
   it("reports an evaluator online only for a fresh heartbeat on the same release and database", async () => {

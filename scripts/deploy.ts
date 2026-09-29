@@ -16,6 +16,7 @@ export type DeployConfig = {
   readonly recoveryCommand: string;
   readonly readinessUrl: string;
   readonly deploymentMode: "single_host" | "distributed";
+  readonly serverScraperEnabled?: boolean;
 };
 
 export type CommandRunner = (command: string, args: string[]) => string;
@@ -49,6 +50,7 @@ function parseConfig(): DeployConfig {
     recoveryCommand: required("RADAR_DEPLOY_RECOVERY_COMMAND"),
     readinessUrl: required("RADAR_DEPLOY_READINESS_URL"),
     deploymentMode,
+    serverScraperEnabled: process.env.RADAR_SERVER_SCRAPER_ENABLED === "true",
   };
 }
 
@@ -104,17 +106,17 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     "radar-dossiers",
     "radar-reviews",
     "radar-corpus",
+    "radar-pursuit",
   ];
-  const writers =
-    config.deploymentMode === "distributed"
-      ? allManagedWorkers.filter((name) => name !== "radar-scrape")
-      : allManagedWorkers;
+  const runServerScraper = config.serverScraperEnabled === true;
+  const writers = runServerScraper
+    ? allManagedWorkers
+    : allManagedWorkers.filter((name) => name !== "radar-scrape");
   const requiredProcesses = ["radar-v2", ...writers];
   const startAllProcesses = "pm2 startOrRestart ecosystem.config.cjs --update-env";
-  const enforceProcessTopology =
-    config.deploymentMode === "distributed"
-      ? "pm2 stop 'radar-scrape' >/dev/null 2>&1 || true"
-      : ":";
+  const enforceProcessTopology = runServerScraper
+    ? ":"
+    : "pm2 stop 'radar-scrape' >/dev/null 2>&1 || true";
   const verifyAllProcesses = [
     `RADAR_PM2_REQUIRED=${shellQuote(JSON.stringify(requiredProcesses))}`,
     "node -e",
@@ -197,6 +199,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     `export RADAR_RELEASE_SHA=${shellQuote(config.sha)}`,
     `export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)}`,
     `export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)}`,
+    `export RADAR_SERVER_SCRAPER_ENABLED=${shellQuote(String(runServerScraper))}`,
     stopWriters,
     "stop_pm2_process radar-v2",
     "npm run db:migrate",
@@ -256,7 +259,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
       canRestorePrior
         ? [
             `printf '%s' ${shellQuote(rollbackFailedReceipt)} > ${shellQuote(receipt)}`,
-            `if (cd ${shellQuote(priorReleaseDirectory!)} && export RADAR_RELEASE_SHA=${shellQuote(priorSha!)} && export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)} && export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)} && ${startAllProcesses} && ${enforceProcessTopology} && ${verifyAllProcesses} && ${waitForSystemReadiness} && printf '%s' ${shellQuote(priorSha!)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}); then`,
+            `if (cd ${shellQuote(priorReleaseDirectory!)} && export RADAR_RELEASE_SHA=${shellQuote(priorSha!)} && export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)} && export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)} && ${startAllProcesses} && ${verifyAllProcesses} && ${waitForSystemReadiness} && printf '%s' ${shellQuote(priorSha!)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}); then`,
             `  printf '%s' ${shellQuote(rollbackSuccessReceipt)} > ${shellQuote(receipt)}`,
             `else`,
             ...requiredProcesses.map((name) => `  pm2 stop ${shellQuote(name)} || true`),

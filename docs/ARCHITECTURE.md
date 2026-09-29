@@ -142,7 +142,37 @@ excluded/out-of-cohort record. The captured-opportunities surface distinguishes
 evaluated PASS results from outstanding processing. Historical population backfill
 is outside the current fresh-scrape scope.
 
+## Pursuit execution
+
+`src/pursuit/` is the execution continuation of a reviewed opportunity. The
+canonical decision store records PURSUE in the same transaction that opens the
+tenant/person scoped pursuit. The Candidate Evidence Ledger projects only the
+current profile source bindings; edits to Pursuit artifacts do not change
+candidate truth. A thesis retains the opportunity, evaluation, profile and
+source-binding lineage used to derive it. Mandate relationships remain separate
+from source provenance, and dossier judgments cap the strength of a Pursuit
+claim.
+
+The `pursuit-preparation` worker prepares a versioned thesis and artifact
+package through a durable queue. Successful model stages are checkpointed, and
+thesis insertion commits with its checkpoint. Artifact publication, active
+thesis selection and job completion commit together under the current lease.
+When a target runs Pursuit, the worker is supervised and included in that target's
+readiness checks. Model calls use the shared `model_invocations` table with
+`pipeline='pursuit'`, pursuit and
+preparation IDs. Migration 069 widens that table while retaining its existing
+status constraint and indexes. The Cockpit polls a narrow preparation status
+read and refreshes the full view after a state change.
+
 ## Runtime boundaries
+
+RADAR is pre-production and runtime topology is target-specific. Repository
+capability does not imply that every worker must run on every deployed host. In
+particular, browser scraping and its Chromium/Playwright dependency belong only on
+a runtime that actually executes scraping; web/Pursuit/dossier readiness should not
+invent a scraper requirement for a target where scraping is intentionally absent.
+Verification and deployment policy is defined in
+`docs/VERIFICATION_AND_RELEASE.md`.
 
 The live semantic screening lab remains in `src/dossier/screening-semantic-lab.ts`
 with `scripts/run-corpus-regeneration-worker.ts` and `scripts/corpus/`. Scraper dependencies, migrations,

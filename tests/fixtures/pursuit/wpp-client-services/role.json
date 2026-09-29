@@ -1,0 +1,82 @@
+{
+ "jobHash": "4461472172",
+ "company": "WPP Media",
+ "roleTitle": "Associate Vice President, Client Services",
+ "location": "Gurgaon, Haryana, India (Hybrid)",
+ "verdict": "CONSIDER",
+ "recommendation": "This Associate Vice President role within WPP Media offers ecosystem continuity and automotive sector alignment, but the title step down from your current SVP position raises a scope question you should resolve before committing.",
+ "whyNow": null,
+ "mandateArchetype": null,
+ "primaryDriver": null,
+ "primaryRisk": null,
+ "hiringRisk": "What team scale and organizational authority does this Associate Vice President role carry vis-à-vis your 40-member Performance Marketing COE precedent? Without knowing direct-report scope, you cannot assess whether this role maintains, expands, or compresses your actual leadership reach.",
+ "positioning": [
+  "You exceed the 10-year threshold with 20+ years across automotive, healthcare, and consumer sectors. Your integrated mainline, digital, and PR mandates for BMW India and 360-degree campaigns generating S$1.8M pipeline evidence offline-online fluency. Your Digital Analytics Lab and O2O attribution work with Google proves measurement competency across touchpoints.",
+  "Your P&L management, accountability for an $8M agency fee book and projected ₹36Cr retainer, plus outperforming commercial targets by up to 14%, directly satisfy the revenue responsibility and business acumen requirement. You have proven resource allocation across 13 APAC and Middle East markets.",
+  "Your TVS Motor Company work on premium and electric vehicle portfolios provides adjacency to the 2-wheeler segment, though not explicitly specializing in two-wheelers. Mindset traits are not evidenced in supplied materials—these should surface through interview discussion rather than document claims."
+ ],
+ "requirements": [
+  {
+   "requirement": "Minimum 10 years of experience",
+   "mandatory": true,
+   "decisionRole": "HARD_SCREEN",
+   "status": "DIRECT",
+   "reasoning": "CANDIDATE-1-1 explicitly states '20+ years of documented experience,' which exceeds the minimum 10-year threshold."
+  },
+  {
+   "requirement": "Strong business acumen for resource allocation and effective proposition selling to clients, with revenue responsibility",
+   "mandatory": true,
+   "decisionRole": "CORE_CAPABILITY",
+   "status": "DIRECT",
+   "reasoning": "Candidate demonstrates business acumen through P&L management (CANDIDATE-1-2), accountability for commercial performance and profitability (CANDIDATE-1-4), outperforming commercial targets (CANDIDATE-1-22), and managing an ₹80M marketing mix (CANDIDATE-1-27), directly evidencing resource allocation, proposition selling, and revenue responsibility."
+  },
+  {
+   "requirement": "Understanding of 360-degree mediums (offline & online) and their impact on client businesses, including media buying, planning, brand investments, and tool utilization",
+   "mandatory": true,
+   "decisionRole": "CORE_CAPABILITY",
+   "status": "DIRECT",
+   "reasoning": "Candidate demonstrates understanding of 360-degree mediums through integrated mainline, digital, and PR mandates (CANDIDATE-1-7), 360-degree campaign development (CANDIDATE-1-25), integrated performance marketing driving revenue growth (CANDIDATE-1-16), collaboration on attribution models (CANDIDATE-1-17), and use of digital/marketing tools (CANDIDATE-1-2)."
+  },
+  {
+   "requirement": "Acute inquisitiveness and an entrepreneurial mindset",
+   "mandatory": true,
+   "decisionRole": "ENABLER",
+   "status": "NOT_EVIDENCED",
+   "reasoning": "No candidate claims directly attest to personal traits of inquisitiveness or an entrepreneurial mindset. While entrepreneurial outputs may be implied by initiatives, the specific behavioral traits are not evidenced."
+  },
+  {
+   "requirement": "Category expertise in the 2-wheeler segment",
+   "mandatory": true,
+   "decisionRole": "CORE_CAPABILITY",
+   "status": "ADJACENT",
+   "reasoning": "Candidate has extensive automotive experience at TVS Motor Company (CANDIDATE-1-11 through 1-14) with documented work across premium and electric vehicle portfolios. However, TVS is not explicitly classified as '2-wheeler segment' specialized by category, making this adjacent automotive domain expertise rather than direct 2-wheeler category expertise."
+  },
+  {
+   "requirement": "Hands-on industry knowledge",
+   "mandatory": true,
+   "decisionRole": "CORE_CAPABILITY",
+   "status": "DIRECT",
+   "reasoning": "Candidate demonstrates hands-on industry knowledge through technical execution of CRM migrations (CANDIDATE-1-6), Salesforce CDP implementation (CANDIDATE-1-2), performance marketing across 13 markets (CANDIDATE-1-5), integrated digital commerce growth (CANDIDATE-1-16), and O2O attribution model development (CANDIDATE-1-17)."
+  },
+  {
+   "requirement": "Ability to discuss measurement metrics across touchpoints based on campaign objectives",
+   "mandatory": true,
+   "decisionRole": "CORE_CAPABILITY",
+   "status": "DIRECT",
+   "reasoning": "Candidate demonstrates ability to discuss measurement metrics through O2O attribution modeling (CANDIDATE-1-17), established Digital Analytics and Experimentation Lab (CANDIDATE-1-9), attributed $14M additional revenue to customer journey redesign (CANDIDATE-1-8), and measurable performance marketing contributing to revenue growth (CANDIDATE-1-16)."
+  }
+ ],
+ "mandatePriorities": [
+  "Earn client confidence within three months through deep business understanding and strategic brand conversation leadership.",
+  "Build and mentor a cohesive team while establishing internal WPP ecosystem relationships for efficient navigation.",
+  "Drive end-to-end campaign planning and secure industry recognition through awards at forums like Cannes and Smarties."
+ ],
+ "mandateOutcomes": [
+  "Client confidence and strategic brand conversation leadership within three months."
+ ],
+ "openQuestions": [
+  "What team scale and organizational authority does this Associate Vice President role carry vis-à-vis your 40-member Performance Marketing COE precedent? Without knowing direct-report scope, you cannot assess whether this role maintains, expands, or compresses your actual leadership reach."
+ ],
+ "executiveThesis": "This Associate Vice President role within WPP Media offers ecosystem continuity and automotive sector alignment, but the title step down from your current SVP position raises a scope question you should resolve before committing.",
+ "applyUrl": "https://www.linkedin.com/jobs/view/4461472172"
+}

@@ -7,8 +7,13 @@ to prepare the first fresh scrape.
 
 ## Local proof
 
-Run typecheck, the production build and the certification manifest at the exact
-release commit. `scripts/dossier/validate-memo.ts` accepts an explicit local SQLite
+During iteration, run the memo/evaluation tests affected by the change rather than
+restarting the entire release gate. On the final release candidate, run the
+authoritative certification once; it already includes TypeScript and the production
+build. Do not run those separately immediately beforehand. Follow
+`docs/VERIFICATION_AND_RELEASE.md`.
+
+`scripts/dossier/validate-memo.ts` accepts an explicit local SQLite
 source, a distinct `.radar` output directory and up to three selected job IDs.
 It opens the source read-only, copies it, probes Bedrock and Gemini once, composes
 through ProductionStagedDossierService, publishes only to the private copy and

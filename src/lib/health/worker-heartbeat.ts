@@ -14,6 +14,7 @@ export const REQUIRED_WORKERS = [
   "dossier-composition",
   "dossier-review",
   "corpus",
+  "pursuit-preparation",
 ] as const;
 export type RequiredWorkerName = (typeof REQUIRED_WORKERS)[number];
 export const WORKER_HEARTBEAT_STALE_MS = 150_000;
@@ -51,9 +52,10 @@ export async function isWorkerOnline(
 export function requiredWorkersForEnvironment(
   env: NodeJS.ProcessEnv = process.env,
 ): readonly RequiredWorkerName[] {
-  return describeBlobStoreConfiguration(env).mode === "distributed"
-    ? REQUIRED_WORKERS.filter((name) => name !== "scrape")
-    : REQUIRED_WORKERS;
+  describeBlobStoreConfiguration(env);
+  return env.RADAR_SERVER_SCRAPER_ENABLED === "true"
+    ? REQUIRED_WORKERS
+    : REQUIRED_WORKERS.filter((name) => name !== "scrape");
 }
 
 export async function startWorkerHeartbeat(

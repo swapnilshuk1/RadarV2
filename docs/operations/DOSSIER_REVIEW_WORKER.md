@@ -65,10 +65,13 @@ SELECT next_attempt_at, failures, lease_until FROM dossier_review_lane;
 
 ## Verification and release
 
-The certification manifest covers draft composition without review, exact seeded
-review without rewriting, 429 persistence, cross-process cooldown, restart leases,
-late-worker rejection, atomic rollback, withholding, DTO labels and reviewed
-promotion. Receipt validation for reviewed dossiers stays mandatory.
+During review-worker changes, run the review suites that cover the changed lifecycle
+or provider behavior. The final release certification covers draft composition
+without review, exact seeded review without rewriting, 429 persistence,
+cross-process cooldown, restart leases, late-worker rejection, atomic rollback,
+withholding, DTO labels and reviewed promotion. Do not repeatedly rerun the full
+certification while repairing one review test. Receipt validation for reviewed
+dossiers stays mandatory.
 
 Prove a real draft/review on an isolated local database before deployment. Apply
 the migration and start the supervised worker as part of an approved deployment;

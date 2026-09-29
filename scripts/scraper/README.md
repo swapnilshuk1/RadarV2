@@ -32,6 +32,10 @@ to reconcile captures that have not reached the end user.
 
 Inspect CLI flags and the explicit database target before invoking `npm run
 scrape`, `npm run scrape:preflight` or `npm run enrich`. These commands are not
-read-only inventory tools. Production execution follows the approved plan.
+read-only inventory tools. `scrape:preflight` launches an offline Chromium instance,
+so Playwright/Chromium is required only on a machine that actually runs scraper
+preflight or browser scraping. It is not a generic web, Pursuit, dossier,
+certification or pre-production deployment dependency. Production execution follows
+the approved plan.
 Generated browser proofs go under `.radar/portal-browser-proof`; reusable DOM
 snapshots are under `tests/fixtures/acquisition/portal-snapshots`.

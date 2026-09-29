@@ -13,7 +13,16 @@ All future coding agents and engineers modifying or adding tests MUST adhere to 
 3. **If Unique and Valid**: Keep and modernize the test in its proper canonical domain.
 4. **If Duplicate**: Consolidate into the authoritative suite rather than proliferating milestone-numbered files (`mXX`, `pXX`, `phaseXX`).
 5. **If Obsolete**: Delete obsolete tests after verifying invariant coverage is preserved in the canonical domain suites; Git history is the archive. Zero archive test directories or files are retained on disk.
-6. **Continuous Certification Gate**: Always ensure `npm run certify` and `npm run smoke` pass cleanly.
+6. **Incremental Verification**: Run the smallest authoritative suite that covers the
+   change. Use `npm run certify:affected` for mapped regression feedback and run the
+   full `npm run certify` once on the final release candidate. Do not rerun unrelated
+   suites after a narrow fix merely because the SHA changed.
+
+A registry label such as **Full Suite** describes where a test belongs; it does not
+mean the full suite must run after every edit. Successful evidence remains valid
+until a later change can reasonably affect that invariant. Test-only, inventory-only,
+formatting-only and documentation-only changes invalidate only their directly
+dependent checks. See `docs/VERIFICATION_AND_RELEASE.md`.
 
 ---
 
@@ -184,7 +193,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (174 Total Files)
+## 3. Complete Test File Registry (178 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -285,6 +294,10 @@ Every test file in the repository is mechanically tracked below:
 | `tests/policy/pursue-queue-isolation.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 5 |
 | `tests/policy/read-economics.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 14 |
 | `tests/policy/shortlist-unresolved-queue.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 8 |
+| `tests/pursuit/approval-ledger.test.ts` | Pursuit evidence approval | **KEEP** | Full Suite | 6 | 7 |
+| `tests/pursuit/core-host-integration.test.ts` | Pursuit host integration | **KEEP** | Full Suite | 13 | 48 |
+| `tests/pursuit/integration-boundaries.test.ts` | Pursuit integration boundaries | **KEEP** | Full Suite | 9 | 20 |
+| `tests/pursuit/semantic-acceptance.test.ts` | Pursuit semantic acceptance | **KEEP** | Full Suite | 34 | 41 |
 | `tests/regression/p0-enrichment-extraction-pipeline.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 8 | 22 |
 | `tests/regression/p0-invariant-candidate-level.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 6 | 20 |
 | `tests/regression/p0-invariant-capability-unknown.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 5 | 11 |

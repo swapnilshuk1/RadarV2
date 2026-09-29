@@ -6,9 +6,10 @@ This directory contains current guidance only.
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | [Product mission](PRODUCT_MISSION.md)                                  | Executive dossier outcome and non-negotiable product requirements             |
 | [Architecture](ARCHITECTURE.md)                                        | Code map, evidence, identities, semantic stages, persistence and serving      |
-| [Production integration](PRODUCTION_INTEGRATION.md)                    | Current versions, script entry points and compatibility limits                |
+| [Production integration](PRODUCTION_INTEGRATION.md)                    | Current versions, worker commands, Pursuit model configuration and compatibility limits |
 | [Backfill runbook](operations/CONTEXT_REEVALUATION_DOSSIER_RUNBOOK.md) | Population accounting, recovery, reviewed dossiers and activation             |
-| [Deployment guide](../DEPLOYMENT.md)                                   | Local proof, exact release artifact and production verification               |
+| [Verification and release](VERIFICATION_AND_RELEASE.md)                | Incremental verification, final certification and pre-production deployment   |
+| [Deployment guide](../DEPLOYMENT.md)                                   | Target-specific deployment and activation verification                        |
 | [Repository README](../README.md)                                      | Primary workspace, setup and validation commands                              |
 | [Agent instructions](../AGENTS.md)                                     | Working boundaries and required reading                                       |
 | [Scraper guide](../scripts/scraper/README.md)                          | Acquisition and enrichment responsibilities                                   |

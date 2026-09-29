@@ -3,6 +3,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState, useMemo, useCallback } from "react";
 import { applicationActionFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
 import { useDecisions } from "../lib/decisions-store";
+import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/components/PursuitLauncher";
 import { DecisionBadge } from "../components/radar/DecisionBadge";
 import { getDecidedOpportunitiesFn } from "../lib/intelligence/opportunity-server";
 
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/decisions")({
       opportunitiesList: await getDecidedOpportunitiesFn({ data: scope }), scope,
     };
   },
-  component: OpportunitiesPage,
+  component: OpportunitiesPageRoot,
 });
 
 export function resolveDecisionsCardScore(
@@ -42,6 +43,16 @@ export function resolveDecisionsCardScore(
 
 export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS";
 
+/** Any mandate already marked PURSUE must be able to reopen its cockpit. */
+function OpportunitiesPageRoot() {
+  const { scope } = Route.useLoaderData();
+  return (
+    <PursuitLauncherProvider scope={scope}>
+      <OpportunitiesPage />
+    </PursuitLauncherProvider>
+  );
+}
+
 function OpportunitiesPage() {
   const { opportunitiesList: loadedOpportunities, scope } = Route.useLoaderData();
   const { decisions, undo, clear, hydrated, error: decisionError } = useDecisions(scope);
@@ -53,6 +64,7 @@ function OpportunitiesPage() {
     [rawOpportunities, decisions]
   );
   
+  const pursuit = usePursuitLauncher();
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -324,6 +336,28 @@ function OpportunitiesPage() {
                       )}
                     </div>
                   </div>
+
+                  {verb === "PURSUE" && (
+                    <div className="flex items-center gap-3 border-t border-hairline mt-5 pt-3">
+                      <button
+                        type="button"
+                        disabled={pursuit.pending}
+                        onClick={() => void pursuit.launch(o.jobHash)}
+                        className="rounded-sm border border-decision-pursue px-3 py-1 label-mono text-xs text-decision-pursue hover:bg-decision-pursue hover:text-white transition-colors disabled:opacity-50"
+                        data-testid={`pursuit-cockpit-btn-${o.jobHash}`}
+                      >
+                        {pursuit.pending ? "Opening…" : "Pursuit cockpit"}
+                      </button>
+                      <Link
+                        to="/pursuit/$jobHash"
+                        params={{ jobHash: o.jobHash }}
+                        className="label-mono text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                        data-testid={`pursuit-page-link-${o.jobHash}`}
+                      >
+                        Open as page
+                      </Link>
+                    </div>
+                  )}
 
                   {verb === "PURSUE" && applicationAction && (
                     <div className="flex items-center gap-4 border-t border-hairline mt-5 pt-3">

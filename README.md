@@ -32,6 +32,14 @@ Portal scrape -> preserved payload -> canonical opportunity/version
 The current release contracts are `staged-v8`, `staged-decision-v8`,
 `dossier-v4.1` and `memo-facts-v4`. Publication does not activate a context.
 
+Pursuit preparation runs through its own durable worker after migrations
+065–070: `npm run worker:pursuit`. It always has deterministic semantic output;
+Mantle can enrich the package, with Gemini as an optional secondary. A completed
+job does not by itself prove model use. Check `model_invocations` with
+`pipeline='pursuit'`, thesis `model_id`/`derivation`, and recorded tokens for a
+model-backed run. See [production integration](docs/PRODUCTION_INTEGRATION.md)
+for configuration and readiness details.
+
 GLM-5 evaluation and memo writing use **Bedrock Mantle Chat Completions** in
 `us-east-1`. Keep the local key in `mantle.key` in the repository root (a raw key or
 the console's labelled download). Alternatively set `BEDROCK_MANTLE_API_KEY`, or
@@ -105,20 +113,27 @@ Never copy local credentials to a deployment automatically.
 
 ## Validation and operations
 
-```text
-npx tsc -p tsconfig.verify.json --noEmit
-npm run build
-npx vitest run --config vitest.certification.config.ts
-```
+Verification is incremental. During implementation, run the smallest relevant
+tests or `npm run certify:affected`; do not repeatedly run TypeScript, the
+production build and the full certification suite after every correction.
+`npm run certify` is the authoritative full release gate and should normally run
+once on the final release candidate. It already contains TypeScript and the
+production build.
 
-The certification manifest in `scripts/certification/manifest.ts` is the
-authoritative release check. CI retains verified Linux output for its exact
-commit. Pushing code does not deploy it.
+If a narrow check fails, fix that behavior and rerun the failed/affected checks
+while iterating. Documentation, formatting or inventory-only changes do not
+invalidate unrelated browser, migration, security or build evidence. See
+[verification and release standard](docs/VERIFICATION_AND_RELEASE.md).
 
-Worker processing runs via dedicated PM2 worker commands:
+CI retains verified Linux output for its exact commit. Pushing code does not deploy it.
+
+Worker processing runs via dedicated commands such as
 `npm run worker:evaluations`, `npm run worker:dossiers`, `npm run worker:reviews`,
-`npm run worker:corpus`, and `npm run worker:scrape`. Inspect their configuration and database target
-before execution. Keep ingestion, evaluation, composition, publication and
+`npm run worker:corpus`, `npm run worker:scrape`, and `npm run worker:pursuit`.
+A pre-production target should run only the workers it actually needs. In
+particular, a remote target that does not scrape does not need Chromium/Playwright
+or a scraper heartbeat. Inspect configuration and database target before execution. Keep ingestion,
+evaluation, composition, publication and
 activation counts separate. An idle queue is not a completed backfill, and PASS
 results need not appear on the shortlist.
 

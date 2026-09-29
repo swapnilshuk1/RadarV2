@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import {
   getRequiredSchemaStatus,
+  migrationChecksum,
   runMigrations,
   splitSqlStatements,
   verifyMigrationChecksums,
@@ -316,5 +317,16 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
     } finally {
       fs.rmSync(copiedDir, { recursive: true, force: true });
     }
+  });
+
+  it("10. retains the deployed acquisition-ingress migration with its original content", () => {
+    const migration = path.resolve(
+      process.cwd(),
+      "src/data/sqlite/migrations/058_acquisition_ingress.sql",
+    );
+    expect(fs.existsSync(migration)).toBe(true);
+    expect(migrationChecksum(fs.readFileSync(migration, "utf8"))).toBe(
+      "b1e1cb4d09daec1780d9ed64412a43981efecf7ecb672b32cf888ccf1fa023a8",
+    );
   });
 });

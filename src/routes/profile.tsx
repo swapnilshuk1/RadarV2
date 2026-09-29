@@ -13,6 +13,8 @@ import { useAttentionPreference } from "../lib/attention-store";
 import { getUserPreferencesFn } from "../lib/intelligence/preferences-server";
 import { PROFILE_PIPELINE_STAGES, isIntentRequiredProfileState, resolveProfilePipelineStepState } from "../lib/intelligence/profile-pipeline-presentation";
 import { resolveIntentActivationPresentation } from "../lib/intelligence/profile-intent-presentation";
+import { getPursuitVaultFn } from "../pursuit/server";
+import { ArchetypeVault } from "../pursuit/components/ArchetypeVault";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -26,12 +28,15 @@ export const Route = createFileRoute("/profile")({
     const deps = { tenantId: typeof raw.tenantId === "string" ? raw.tenantId : undefined, personId: typeof raw.personId === "string" ? raw.personId : undefined };
     if (Boolean(deps.tenantId) !== Boolean(deps.personId)) throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
     const scope = deps.tenantId && deps.personId ? { tenantId: deps.tenantId, personId: deps.personId } : await getDefaultProfileScopeFn();
-    const [intent, overview, preferences] = await Promise.all([
+    const [intent, overview, preferences, vault] = await Promise.all([
       getLatestIntentFn({ data: scope }),
       getProfileOverviewFn({ data: scope }),
       getUserPreferencesFn(),
+      // The vault is non-critical to the rest of the page, so a failure here
+      // must not take the profile down.
+      getPursuitVaultFn({ data: scope }).catch(() => null),
     ]);
-    return { intent, scope, overview, initialAttentionWindow: preferences.preferences.attentionWindow };
+    return { intent, scope, overview, vault, initialAttentionWindow: preferences.preferences.attentionWindow };
   },
   component: ProfileRoute
 });
@@ -42,7 +47,7 @@ function ProfileRoute() {
 }
 
 function ProfilePage() {
-  const { intent, scope, overview, initialAttentionWindow } = Route.useLoaderData();
+  const { intent, scope, overview, vault, initialAttentionWindow } = Route.useLoaderData();
   const requireScope = useCallback(() => {
     return scope;
   }, [scope]);
@@ -723,6 +728,19 @@ function ProfilePage() {
           </div>
         </form>
       </div>
+
+      {vault && (
+        <div className="memo-container pb-16">
+          <ArchetypeVault
+            scope={scope}
+            archetypes={vault.archetypes}
+            claims={vault.claims}
+            coverage={vault.coverage}
+            documents={vault.documents}
+            ledgerStale={vault.ledgerStale}
+          />
+        </div>
+      )}
     </div>
   );
 }
