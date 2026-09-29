@@ -42,12 +42,35 @@ explicit person/profile/context scope rather than relying on selection defaults.
 | `npm run worker:scrape` | Dedicated scraper worker (`scripts/run-scrape-worker.ts`) executing queued scrape runs. |
 | `npm run worker:enrichment` | Enrichment worker (`scripts/enrich.ts`) enriching opportunities with dimension proofs. |
 | `npm run worker:documents` | Document processing worker (`scripts/process-document-jobs.ts`). |
+| `npm run worker:pursuit` | Pursuit preparation worker (`scripts/run-pursuit-preparation-worker.ts`) consuming queued Pursuit packages. |
 | `scripts/dossier/preview-staged.ts` | Read-only local dossier preview; `--file=<path>` avoids database/model access. |
 | `npm run db:migrate` | Runs pending database migrations (`scripts/migrate.ts`). |
 | `npm run certify` | Authoritative pre-release certification gate (`scripts/certify.ts`). |
 | `npm run deploy` | Exact-artifact deployment script (`scripts/deploy.ts`). |
 
 Inspect the implementation before using additional flags. Workers operate against durable queues. Do not pass a worker's `--watch` option as PM2 filesystem watching.
+
+## Pursuit preparation
+
+Apply migrations **065–070** to the selected database before starting the Pursuit
+worker. Run `npm run worker:pursuit` as a separate supervised process with the
+same database target and release as the web server. Its heartbeat appears as
+`pursuit-preparation` in system readiness. `RADAR_PURSUIT_JOB_CONCURRENCY`
+controls parallel jobs (default `2`, allowed `1`–`8`).
+
+Deterministic semantic derivation always produces a complete fallback package.
+Model enrichment is separate: Mantle is primary and Gemini is optional secondary,
+normally making about four provider calls for a package. Configure Mantle with
+`BEDROCK_MANTLE_API_KEY` or `BEDROCK_MANTLE_KEY_FILE`; optional overrides are
+`RADAR_PURSUIT_MANTLE_MODEL` and `AWS_REGION`. Enable Gemini with
+`RADAR_PURSUIT_ENABLE_GEMINI=true`, working Google ADC, and `GCP_PROJECT_ID`;
+`RADAR_PURSUIT_GEMINI_MODEL` optionally selects its model. Missing or failed
+providers leave the deterministic package available.
+
+A completed preparation job alone does not establish that model enrichment ran.
+For a model-backed production check, inspect `model_invocations` with
+`pipeline='pursuit'`, the active thesis `model_id` and `derivation`, and token
+usage when the provider supplies it.
 
 ## Persistence, recovery and visibility
 

@@ -303,6 +303,14 @@ Keep this simple:
 
 No additional governance layer is implied by these rules.
 
+Pursuit preparation has deterministic semantic derivation and optional model
+enrichment. A completed job proves the package was prepared, not that a provider
+ran. When validating the model-backed path, check `model_invocations` with
+`pipeline='pursuit'`, the thesis `model_id`/`derivation`, and provider token usage.
+The deployed `npm run worker:pursuit` process needs migrations 065–070 and the
+same database target as the web server. Operational configuration is in
+`docs/PRODUCTION_INTEGRATION.md`.
+
 ---
 
 ## 12. FINAL INVARIANT

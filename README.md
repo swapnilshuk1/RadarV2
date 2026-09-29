@@ -32,6 +32,14 @@ Portal scrape -> preserved payload -> canonical opportunity/version
 The current release contracts are `staged-v8`, `staged-decision-v8`,
 `dossier-v4.1` and `memo-facts-v4`. Publication does not activate a context.
 
+Pursuit preparation runs through its own durable worker after migrations
+065–070: `npm run worker:pursuit`. It always has deterministic semantic output;
+Mantle can enrich the package, with Gemini as an optional secondary. A completed
+job does not by itself prove model use. Check `model_invocations` with
+`pipeline='pursuit'`, thesis `model_id`/`derivation`, and recorded tokens for a
+model-backed run. See [production integration](docs/PRODUCTION_INTEGRATION.md)
+for configuration and readiness details.
+
 GLM-5 evaluation and memo writing use **Bedrock Mantle Chat Completions** in
 `us-east-1`. Keep the local key in `mantle.key` in the repository root (a raw key or
 the console's labelled download). Alternatively set `BEDROCK_MANTLE_API_KEY`, or
@@ -117,8 +125,9 @@ commit. Pushing code does not deploy it.
 
 Worker processing runs via dedicated PM2 worker commands:
 `npm run worker:evaluations`, `npm run worker:dossiers`, `npm run worker:reviews`,
-`npm run worker:corpus`, and `npm run worker:scrape`. Inspect their configuration and database target
-before execution. Keep ingestion, evaluation, composition, publication and
+`npm run worker:corpus`, `npm run worker:scrape`, and `npm run worker:pursuit`.
+Inspect their configuration and database target before execution. Keep ingestion,
+evaluation, composition, publication and
 activation counts separate. An idle queue is not a completed backfill, and PASS
 results need not appear on the shortlist.
 
