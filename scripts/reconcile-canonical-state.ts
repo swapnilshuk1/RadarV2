@@ -311,7 +311,9 @@ async function main(): Promise<void> {
       [context],
     );
     for (const artifact of sourceProfileArtifacts) {
-      await insertExact(tx, "candidate_documents", artifact.document, "id=?", [artifact.document.id]);
+      await insertExact(tx, "candidate_documents", artifact.document, "id=?", [
+        artifact.document.id,
+      ]);
       for (const content of artifact.contents)
         await insertExact(tx, "document_contents", content, "id=?", [content.id]);
       await insertExact(tx, "evidence_graphs", artifact.graph, "id=?", [artifact.graph.id]);
