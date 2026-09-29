@@ -232,9 +232,21 @@ async function main(): Promise<void> {
         "SELECT * FROM canonical_decisions WHERE tenant_id=? AND person_id=? AND canonical_job_id=?",
         [tenantId, personId, identity.canonicalJobId],
       );
-      if (decision && decision.reviewed_fingerprint !== evaluationFingerprint)
-        fail("SOURCE_DECISION_STALE");
-      return { identity, frozen, input, staged, evaluationFingerprint, dossier, decision };
+      // Decisions are evidence-bound. A historical decision whose fingerprint
+      // no longer matches this accepted evaluation is intentionally left behind;
+      // it must never be rebound to a newer evaluation during promotion.
+      const matchingDecision =
+        decision?.reviewed_fingerprint === evaluationFingerprint ? decision : null;
+      return {
+        identity,
+        frozen,
+        input,
+        staged,
+        evaluationFingerprint,
+        dossier,
+        decision: matchingDecision,
+        staleDecisionSkipped: Boolean(decision && !matchingDecision),
+      };
     }),
   );
 
@@ -248,6 +260,8 @@ async function main(): Promise<void> {
     validEvaluations: prepared.length,
     validReviewedDossiers: prepared.filter((item) => item.dossier).length,
     preparingDossiers: prepared.filter((item) => !item.dossier).length,
+    copiedDecisions: prepared.filter((item) => item.decision).length,
+    staleDecisionsSkipped: prepared.filter((item) => item.staleDecisionSkipped).length,
     recoveryPoint: process.env.RADAR_RECONCILE_RECOVERY_POINT,
     target: targetIdentity.fingerprint,
   };
@@ -405,7 +419,8 @@ async function main(): Promise<void> {
   if (Number(targetCount?.count) !== prepared.length) fail("POST_APPLY_SHORTLIST_PARITY_FAILED");
   console.log(
     `CANONICAL_RECONCILIATION_APPLIED context=${context} promoted=${prepared.length} ` +
-      `reviewed=${prepared.filter((item) => item.dossier).length} preparing=${prepared.filter((item) => !item.dossier).length}`,
+      `reviewed=${prepared.filter((item) => item.dossier).length} preparing=${prepared.filter((item) => !item.dossier).length} ` +
+      `decisions=${prepared.filter((item) => item.decision).length} staleDecisionsSkipped=${prepared.filter((item) => item.staleDecisionSkipped).length}`,
   );
 }
 
