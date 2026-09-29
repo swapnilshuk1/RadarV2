@@ -116,7 +116,7 @@ export interface ClaimUpsert {
   metricResult?: string | null;
   capabilities?: string[];
   sourceDocumentId?: string | null;
-  sourceEvidenceGraphId?: string | null;
+  sourceEvidenceGraphId: string;
   sourceFactId: string;
   sourceLocator?: string | null;
   provenance?: ClaimProvenance;
@@ -127,8 +127,8 @@ export interface ClaimUpsert {
 }
 
 /**
- * Upsert on (tenant, person, source_fact_id). Re-running the projection over the
- * same canonical evidence is therefore idempotent and never duplicates truth.
+ * Reprojection of one graph is idempotent; a later immutable graph creates a
+ * distinct claim even when its extractor reuses the same fact ID.
  */
 export async function upsertClaims(scope: Scope, claims: readonly ClaimUpsert[]): Promise<number> {
   if (claims.length === 0) return 0;
@@ -143,7 +143,7 @@ export async function upsertClaims(scope: Scope, claims: readonly ClaimUpsert[])
          verification_state, confidence, metric_locked, created_at, updated_at,
          source_ordinal, profile_version, current_projection)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)
-       ON CONFLICT (tenant_id, person_id, source_fact_id) DO UPDATE SET
+       ON CONFLICT (tenant_id, person_id, source_evidence_graph_id, source_fact_id) DO UPDATE SET
          statement = excluded.statement,
          claim_type = excluded.claim_type,
          employer = excluded.employer,
@@ -169,7 +169,7 @@ export async function upsertClaims(scope: Scope, claims: readonly ClaimUpsert[])
         claim.metricResult ?? null,
         JSON.stringify(claim.capabilities ?? []),
         claim.sourceDocumentId ?? null,
-        claim.sourceEvidenceGraphId ?? null,
+        claim.sourceEvidenceGraphId,
         claim.sourceFactId,
         claim.sourceLocator ?? null,
         claim.provenance ?? "SOURCE_BACKED",
@@ -434,6 +434,7 @@ export async function openPursuitInTransaction(
   tx: DatabaseAdapter,
   scope: Scope,
   input: { jobHash: string; company?: string | null; roleTitle?: string | null },
+  requestedBy: string,
   lineage: {
     canonicalJobId: string | null;
     opportunityVersion: string | null;
@@ -442,11 +443,15 @@ export async function openPursuitInTransaction(
     profileVersion: string | null;
   },
 ): Promise<{ pursuitId: string; created: boolean }> {
-  const found = await tx.one<{ id: string }>(
-    `SELECT id FROM opportunity_pursuits WHERE tenant_id = ? AND person_id = ? AND job_hash = ?`,
+  const found = await tx.one<{ id: string; preparation_state: string }>(
+    `SELECT id, preparation_state FROM opportunity_pursuits WHERE tenant_id = ? AND person_id = ? AND job_hash = ?`,
     [scope.tenantId, scope.personId, input.jobHash],
   );
-  if (found) return { pursuitId: found.id, created: false };
+  if (found) {
+    if (found.preparation_state === "QUEUED")
+      await enqueueInitialPreparation(tx, scope, found.id, input.jobHash, requestedBy);
+    return { pursuitId: found.id, created: false };
+  }
   const timestamp = now();
   const id = `pursuit-${randomUUID()}`;
   await tx.execute(
@@ -472,7 +477,31 @@ export async function openPursuitInTransaction(
       timestamp, timestamp,
     ],
   );
+  await enqueueInitialPreparation(tx, scope, id, input.jobHash, requestedBy);
   return { pursuitId: id, created: true };
+}
+
+async function enqueueInitialPreparation(
+  tx: DatabaseAdapter,
+  scope: Scope,
+  pursuitId: string,
+  jobHash: string,
+  requestedBy: string,
+): Promise<void> {
+  const live = await tx.one<{ id: string }>(
+    `SELECT id FROM pursuit_preparation_jobs WHERE pursuit_id = ? AND tenant_id = ?
+     AND person_id = ? AND status IN ('queued','processing') LIMIT 1`,
+    [pursuitId, scope.tenantId, scope.personId],
+  );
+  if (live) return;
+  const timestamp = now();
+  await tx.execute(
+    `INSERT INTO pursuit_preparation_jobs
+     (id,tenant_id,person_id,pursuit_id,job_hash,requested_by,status,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,'queued',?,?)`,
+    [`pprep-${randomUUID()}`, scope.tenantId, scope.personId, pursuitId, jobHash,
+      requestedBy, timestamp, timestamp],
+  );
 }
 
 export async function updatePursuit(
@@ -758,6 +787,46 @@ export async function getArtifact(
     [artifactId, pursuitId],
   );
   return row ? toArtifact(row) : null;
+}
+
+export async function requireApprovedArtifact(
+  pursuitId: string,
+  artifactId: string,
+): Promise<PursuitArtifact> {
+  const artifact = await getArtifact(pursuitId, artifactId);
+  if (!artifact) throw new Error("ARTIFACT_NOT_FOUND");
+  if (artifact.status !== "APPROVED") throw new Error("ARTIFACT_NOT_APPROVED");
+  return artifact;
+}
+
+export async function recordApprovedOutreachSent(
+  scope: Scope,
+  jobHash: string,
+  artifactId: string,
+): Promise<void> {
+  await db().transaction(async (tx) => {
+    const row = await tx.one<{ pursuit_id: string; artifact_type: string }>(
+      `SELECT a.pursuit_id, a.artifact_type FROM pursuit_artifacts a
+       JOIN opportunity_pursuits p ON p.id = a.pursuit_id
+       WHERE p.tenant_id = ? AND p.person_id = ? AND p.job_hash = ?
+         AND a.id = ? AND a.status = 'APPROVED' AND a.artifact_type IN
+         ('EXEC_NOTE','WARM_INTRO','RECRUITER_BRIEF','APPLICATION_STATEMENT','FOLLOW_UP_1','FOLLOW_UP_2')`,
+      [scope.tenantId, scope.personId, jobHash, artifactId],
+    );
+    if (!row) throw new Error("APPROVED_OUTREACH_REQUIRED");
+    const timestamp = now();
+    await tx.execute(
+      "UPDATE opportunity_pursuits SET status = 'OUTREACH_SENT', updated_at = ? WHERE id = ?",
+      [timestamp, row.pursuit_id],
+    );
+    await tx.execute(
+      `INSERT INTO pursuit_activities
+       (id,pursuit_id,activity_type,channel,counterparty,summary,occurred_at,created_at)
+       VALUES (?,?,'OUTREACH_SENT',NULL,NULL,?,?,?)`,
+      [`activity-${randomUUID()}`, row.pursuit_id,
+        `Sent ${row.artifact_type.replace(/_/g, " ").toLowerCase()}.`, timestamp, timestamp],
+    );
+  });
 }
 
 export async function insertArtifact(

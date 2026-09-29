@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getDatabaseAdapter, resetDatabaseAdapter } from "../../src/data/database";
 import { writeAuthorizedDecision } from "../../src/data/sqlite/repositories/SqliteDecisionSupportStore";
-import { openPursuitInTransaction, insertThesis, publishPreparation, type PreparationJob } from "../../src/pursuit/store";
+import { openPursuitInTransaction, insertThesis, publishPreparation, requireApprovedArtifact, recordApprovedOutreachSent, listArchetypes, saveArchetype, type PreparationJob } from "../../src/pursuit/store";
+import { projectLedger } from "../../src/pursuit/ledger";
 import { ledgerApprovalBlockers } from "../../src/pursuit/approval";
 import { createSqliteModelInvocationSink } from "../../src/lib/model/model-invocation";
 import type { PursuitThesis, CandidateClaim } from "../../src/pursuit/types";
@@ -36,23 +37,28 @@ describe("Pursuit in the RADAR host", () => {
   it("uses the canonical decision store and rolls back both writes together", async () => {
     await expect(db.transaction(async (tx) => {
       await writeAuthorizedDecision(tx, scope.personId, scope.tenantId, "hash_A", "PURSUE");
-      await openPursuitInTransaction(tx, scope, { jobHash: "hash_A", roleTitle: "Director" }, lineage);
+      await openPursuitInTransaction(tx, scope, { jobHash: "hash_A", roleTitle: "Director" }, "user", lineage);
       throw new Error("simulate launch failure");
     })).rejects.toThrow("simulate launch failure");
     expect(await db.one("SELECT id FROM canonical_decisions WHERE canonical_job_id='job_A'")).toBeNull();
     expect(await db.one("SELECT id FROM opportunity_pursuits WHERE job_hash='hash_A'")).toBeNull();
+    expect(await db.one("SELECT id FROM pursuit_preparation_jobs WHERE job_hash='hash_A'")).toBeNull();
+    expect(await db.one("SELECT id FROM pursuit_activities WHERE activity_type='PURSUIT_OPENED'")).toBeNull();
 
     for (let i = 0; i < 2; i++) await db.transaction(async (tx) => {
       await writeAuthorizedDecision(tx, scope.personId, scope.tenantId, "hash_A", "PURSUE");
-      await openPursuitInTransaction(tx, scope, { jobHash: "hash_A" }, lineage);
+      await openPursuitInTransaction(tx, scope, { jobHash: "hash_A" }, "user", lineage);
     });
     expect((await db.one<{ n: number }>("SELECT count(*) AS n FROM canonical_decisions WHERE canonical_job_id='job_A'"))?.n).toBe(1);
     expect((await db.one<{ n: number }>("SELECT count(*) AS n FROM opportunity_pursuits WHERE job_hash='hash_A'"))?.n).toBe(1);
+    expect((await db.one<{ n: number }>("SELECT count(*) AS n FROM pursuit_preparation_jobs WHERE job_hash='hash_A' AND status='queued'"))?.n).toBe(1);
+    expect((await db.one<{ n: number }>("SELECT count(*) AS n FROM pursuit_activities WHERE activity_type='PURSUIT_OPENED'"))?.n).toBe(1);
     await expect(writeAuthorizedDecision(db, "person_B", "tenant_B", "hash_A", "PURSUE")).rejects.toThrow("OUT_OF_SCOPE_OPPORTUNITY");
   });
 
   it("commits thesis and checkpoint together and fences stale publication", async () => {
     const pursuit = await db.one<{ id: string }>("SELECT id FROM opportunity_pursuits WHERE job_hash='hash_A'");
+    await db.execute("UPDATE pursuit_preparation_jobs SET status='completed' WHERE pursuit_id=? AND status='queued'", [pursuit!.id]);
     const job: PreparationJob = { id: "prep_A", tenantId: scope.tenantId, personId: scope.personId, pursuitId: pursuit!.id, jobHash: "hash_A", requestedBy: "user", preferredArchetypeId: null, attempts: 1, maxAttempts: 3, leaseToken: "token_A" };
     await db.execute(
       `INSERT INTO pursuit_preparation_jobs(id,tenant_id,person_id,pursuit_id,job_hash,requested_by,status,lease_token,lease_expires_at,created_at,updated_at)
@@ -96,5 +102,44 @@ describe("Pursuit in the RADAR host", () => {
     expect(ledgerApprovalBlockers(message("I have done this before: owned a $8M fee book.", ["proof"]), { claims: [claim], proofRelationships: { proof: "ANALOGOUS" } })).not.toEqual([]);
     expect(ledgerApprovalBlockers(message("I have done this before: owned a $8M fee book.", ["proof"]), { claims: [claim], proofRelationships: { proof: "DIRECT" } })).toEqual([]);
     expect(ledgerApprovalBlockers(message("I have done this before: owned a €8M fee book.", ["proof"]), { claims: [claim], proofRelationships: { proof: "DIRECT" } })).not.toEqual([]);
+  });
+
+  it("leaves archetypes absent on read until an explicit save", async () => {
+    expect(await listArchetypes(scope)).toEqual([]);
+    expect((await db.one<{ n: number }>("SELECT count(*) AS n FROM candidate_archetypes WHERE tenant_id='tenant_A' AND person_id='person_A'"))?.n).toBe(0);
+    await saveArchetype(scope, { name: "Builder", emphasize: [], deEmphasize: [], targetRoles: [], pinnedClaimIds: [], anchorDocumentIds: [], isDefault: true });
+    expect((await listArchetypes(scope)).map((item) => item.name)).toEqual(["Builder"]);
+  });
+
+  it("requires approval before artifact export or outreach sent", async () => {
+    const pursuit = await db.one<{ id: string }>("SELECT id FROM opportunity_pursuits WHERE job_hash='hash_A'");
+    for (const [id, type, version, status] of [["draft_note", "EXEC_NOTE", 1, "DRAFT"], ["approved_note", "EXEC_NOTE", 2, "APPROVED"], ["approved_resume", "RESUME", 1, "APPROVED"]]) {
+      await db.execute("INSERT INTO pursuit_artifacts(id,pursuit_id,artifact_type,version,content_json,status,created_at,updated_at) VALUES (?,?,?,?, '{}',?,'now','now')", [id, pursuit!.id, type, version, status]);
+    }
+    await expect(requireApprovedArtifact(pursuit!.id, "draft_note")).rejects.toThrow("ARTIFACT_NOT_APPROVED");
+    await expect(recordApprovedOutreachSent(scope, "hash_A", "draft_note")).rejects.toThrow("APPROVED_OUTREACH_REQUIRED");
+    await expect(recordApprovedOutreachSent(scope, "hash_A", "approved_resume")).rejects.toThrow("APPROVED_OUTREACH_REQUIRED");
+    expect((await db.one<{ status: string }>("SELECT status FROM opportunity_pursuits WHERE id=?", [pursuit!.id]))?.status).not.toBe("OUTREACH_SENT");
+    expect((await requireApprovedArtifact(pursuit!.id, "approved_note")).id).toBe("approved_note");
+    await recordApprovedOutreachSent(scope, "hash_A", "approved_note");
+    expect((await db.one<{ status: string }>("SELECT status FROM opportunity_pursuits WHERE id=?", [pursuit!.id]))?.status).toBe("OUTREACH_SENT");
+    expect((await db.one<{ n: number }>("SELECT count(*) AS n FROM pursuit_activities WHERE pursuit_id=? AND activity_type='OUTREACH_SENT'", [pursuit!.id]))?.n).toBe(1);
+  });
+
+  it("keeps claims from an older graph unchanged when a new graph reuses a fact ID", async () => {
+    await db.execute("INSERT INTO candidate_documents(id,person_id,tenant_id,filename,storage_uri,mime_type,document_hash) VALUES ('doc_A','person_A','tenant_A','cv.txt','memory://cv','text/plain','doc-hash')");
+    const graph = (value: string) => JSON.stringify({ facts: [{ id: "reused_fact", type: "ACHIEVEMENT", value, sourceSpan: value }] });
+    await db.execute("INSERT INTO evidence_graphs(id,person_id,tenant_id,document_id,graph_json,extractor_version,prompt_version,model) VALUES ('graph_v1','person_A','tenant_A','doc_A',?,'1','1','test')", [graph("Owned a $8M fee book")]);
+    await db.execute("INSERT INTO profile_projection_source_bindings(tenant_id,person_id,profile_version,document_id,evidence_graph_id,document_text_hash) VALUES ('tenant_A','person_A','v1','doc_A','graph_v1','doc-hash')");
+    await projectLedger(scope, { profileVersion: "v1" });
+    const old = await db.one<{ id: string; statement: string; current_projection: number }>("SELECT id,statement,current_projection FROM candidate_claims WHERE source_evidence_graph_id='graph_v1'");
+    await db.execute("INSERT INTO evidence_graphs(id,person_id,tenant_id,document_id,graph_json,extractor_version,prompt_version,model) VALUES ('graph_v2','person_A','tenant_A','doc_A',?,'2','2','test')", [graph("Owned a €12M fee book")]);
+    await db.execute("INSERT INTO profile_projection_source_bindings(tenant_id,person_id,profile_version,document_id,evidence_graph_id,document_text_hash) VALUES ('tenant_A','person_A','v2','doc_A','graph_v2','doc-hash')");
+    await projectLedger(scope, { profileVersion: "v2" });
+    const rows = await db.many<{ id: string; statement: string; current_projection: number; source_evidence_graph_id: string }>("SELECT id,statement,current_projection,source_evidence_graph_id FROM candidate_claims WHERE source_fact_id='reused_fact' ORDER BY source_evidence_graph_id");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ ...old, source_evidence_graph_id: "graph_v1", current_projection: 0 });
+    expect(rows[1]).toMatchObject({ statement: "Owned a €12M fee book", source_evidence_graph_id: "graph_v2", current_projection: 1 });
+    expect(rows[1].id).not.toBe(old?.id);
   });
 });

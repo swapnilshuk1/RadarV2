@@ -39,9 +39,10 @@ export function ProvenanceBadge({
 }
 
 /** Copy-to-clipboard with a short confirmation, no toast dependency. */
-export function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+export function CopyButton({ text, label = "Copy", disabled = false }: { text: string; label?: string; disabled?: boolean }) {
   const [copied, setCopied] = useState(false);
   const copy = useCallback(async () => {
+    if (disabled) return;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -49,9 +50,9 @@ export function CopyButton({ text, label = "Copy" }: { text: string; label?: str
     } catch {
       setCopied(false);
     }
-  }, [text]);
+  }, [text, disabled]);
   return (
-    <button type="button" onClick={copy} className="pursuit-chip">
+    <button type="button" disabled={disabled} onClick={copy} className="pursuit-chip">
       {copied ? "Copied" : label}
     </button>
   );

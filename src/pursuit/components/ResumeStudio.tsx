@@ -45,6 +45,7 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
   const [selected, setSelected] = useState<{ role: number | "anchors"; index: number } | null>(null);
 
   const resume = artifact?.content.kind === "RESUME" ? artifact.content.resume : null;
+  const approved = artifact?.status === "APPROVED";
   const claimById = useMemo(() => new Map(claims.map((claim) => [claim.id, claim])), [claims]);
 
   if (!artifact || !resume) {
@@ -173,13 +174,13 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" disabled={busy} onClick={() => onExport(artifact.id, "PDF")} className="pursuit-chip">
+          <button type="button" disabled={busy || !approved} onClick={() => onExport(artifact.id, "PDF")} className="pursuit-chip">
             Export PDF
           </button>
-          <button type="button" disabled={busy} onClick={() => onExport(artifact.id, "DOCX")} className="pursuit-chip">
+          <button type="button" disabled={busy || !approved} onClick={() => onExport(artifact.id, "DOCX")} className="pursuit-chip">
             Export Word
           </button>
-          <CopyButton text={artifact.renderedText ?? ""} label="Copy text" />
+          <CopyButton text={artifact.renderedText ?? ""} label="Copy text" disabled={!approved} />
           <button
             type="button"
             disabled={busy}

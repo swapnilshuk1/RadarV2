@@ -16,6 +16,7 @@ import { StrategyPanel } from "./StrategyPanel";
 import {
   derivePursuitFn,
   exportArtifactFn,
+  markOutreachSentFn,
   getCockpitFn,
   getPursuitPreparationStatusFn,
   saveArtifactFn,
@@ -50,6 +51,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
   const saveArtifact = useServerFn(saveArtifactFn);
   const updateState = useServerFn(updatePursuitStateFn);
   const exportArtifact = useServerFn(exportArtifactFn);
+  const markOutreachSent = useServerFn(markOutreachSentFn);
   const fetchCockpit = useServerFn(getCockpitFn);
   const fetchStatus = useServerFn(getPursuitPreparationStatusFn);
 
@@ -272,23 +274,9 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
           <OutreachKit
             artifacts={view.artifacts}
             busy={busy}
-            onSave={(artifactId, content, signals) => handleSave(artifactId, content, signals)}
+            onSave={(artifactId, content, signals, approve) => handleSave(artifactId, content, signals, approve)}
             onExport={handleExport}
-            onLogSent={(artifactType) =>
-              run(() =>
-                updateState({
-                  data: {
-                    ...scope,
-                    jobHash,
-                    status: "OUTREACH_SENT",
-                    logActivity: {
-                      activityType: "OUTREACH_SENT",
-                      summary: `Sent ${artifactType.replace(/_/g, " ").toLowerCase()}.`,
-                    },
-                  },
-                }),
-              )
-            }
+            onLogSent={(artifactId) => run(() => markOutreachSent({ data: { ...scope, jobHash, artifactId } }))}
           />
         )}
 
@@ -296,7 +284,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
           <InterviewBriefPanel
             artifact={interview}
             busy={busy}
-            onSave={(artifactId, content, signals) => handleSave(artifactId, content, signals)}
+            onSave={(artifactId, content, signals, approve) => handleSave(artifactId, content, signals, approve)}
             onExport={handleExport}
           />
         )}

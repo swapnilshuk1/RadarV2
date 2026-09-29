@@ -19,7 +19,7 @@ import { renderInterviewBrief, renderMessage, renderResume } from "./artifacts";
 import { resumeToDocx } from "./export/docx";
 import { interviewBriefToPdf, messageToPdf, resumeToPdf } from "./export/pdf";
 import { isLedgerStale, projectLedger, readLedgerState, resolveCanonicalSources } from "./ledger";
-import { candidateIdentity, ensureArchetypes, loadBrief, resolveLineage } from "./preparation";
+import { candidateIdentity, loadBrief, resolveLineage } from "./preparation";
 import { toRoleBrief } from "./role-brief";
 import * as store from "./store";
 import { ledgerApprovalBlockers } from "./approval";
@@ -111,7 +111,7 @@ export const getPursuitVaultFn = createServerFn({ method: "GET" })
     // an explicit "Initialise evidence" action (refreshLedgerFn).
     const ledger = await readLedgerState(scope);
     const [archetypes, claims, coverage, pursuits, sources, stale] = await Promise.all([
-      ensureArchetypes(scope),
+      store.listArchetypes(scope),
       store.listClaims(scope),
       store.ledgerCoverage(scope),
       store.listPursuits(scope),
@@ -180,15 +180,12 @@ export const openPursuitFn = createServerFn({ method: "POST" })
     const user = await requireAuthUser();
     const scope = await authorize(data, "write:person");
     const brief = await loadBrief(user.id, scope, data.jobHash);
-    const existing = await store.getPursuit(scope, data.jobHash);
-    if (existing) return readCockpit(scope, data.jobHash);
-
     const lineage = await resolveLineage(scope, brief);
     await getDatabaseAdapter().transaction(async (tx) => {
       await writeAuthorizedDecision(tx, scope.personId, scope.tenantId, data.jobHash, "PURSUE");
       await store.openPursuitInTransaction(tx, scope, {
         jobHash: data.jobHash, company: brief.company, roleTitle: brief.roleTitle,
-      }, lineage);
+      }, user.id, lineage);
     });
     return readCockpit(scope, data.jobHash);
   });
@@ -224,7 +221,7 @@ export const pursueOpportunityFn = createServerFn({ method: "POST" })
       await store.openPursuitInTransaction(
         tx, scope,
         { jobHash: data.jobHash, company: brief.company, roleTitle: brief.roleTitle },
-        lineage,
+        user.id, lineage,
       );
       return ack;
     });
@@ -387,6 +384,8 @@ export const updatePursuitStateFn = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }): Promise<CockpitView> => {
+    if (data.status === "OUTREACH_SENT" || data.logActivity?.activityType === "OUTREACH_SENT")
+      throw new Error("APPROVED_OUTREACH_REQUIRED");
     const scope = await authorize(data, "write:person");
     const pursuit = await store.getPursuit(scope, data.jobHash);
     if (!pursuit) throw new Error("PURSUIT_NOT_FOUND");
@@ -410,6 +409,16 @@ export const updatePursuitStateFn = createServerFn({ method: "POST" })
     if (data.logActivity) {
       await store.recordActivity(pursuit.id, data.logActivity);
     }
+    return readCockpit(scope, data.jobHash);
+  });
+
+export const markOutreachSentFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => scopeInput.extend({
+    jobHash: z.string().min(1), artifactId: z.string().min(1),
+  }).parse(data))
+  .handler(async ({ data }): Promise<CockpitView> => {
+    const scope = await authorize(data, "write:person");
+    await store.recordApprovedOutreachSent(scope, data.jobHash, data.artifactId);
     return readCockpit(scope, data.jobHash);
   });
 
@@ -448,8 +457,7 @@ export const exportArtifactFn = createServerFn({ method: "POST" })
     const scope = await authorize(data, "read:person");
     const pursuit = await store.getPursuit(scope, data.jobHash);
     if (!pursuit) throw new Error("PURSUIT_NOT_FOUND");
-    const artifact = await store.getArtifact(pursuit.id, data.artifactId);
-    if (!artifact) throw new Error("ARTIFACT_NOT_FOUND");
+    const artifact = await store.requireApprovedArtifact(pursuit.id, data.artifactId);
 
     const identity = await candidateIdentity(scope);
     const label = artifactLabels[artifact.artifactType];

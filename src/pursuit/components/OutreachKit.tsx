@@ -34,9 +34,10 @@ interface Props {
     artifactId: string,
     content: { kind: "MESSAGE"; message: MessageContent },
     signals: LearningSignal[],
+    approve?: boolean,
   ) => void;
   onExport: (artifactId: string, format: "PDF" | "TXT") => void;
-  onLogSent: (artifactType: string) => void;
+  onLogSent: (artifactId: string) => void;
 }
 
 export function OutreachKit({ artifacts, busy, onSave, onExport, onLogSent }: Props) {
@@ -63,8 +64,8 @@ export function OutreachKit({ artifacts, busy, onSave, onExport, onLogSent }: Pr
         const target = message.message.targetWords ?? 120;
         const overLength = words > target * 1.4;
 
-        const commit = (next: MessageContent, signals: LearningSignal[] = []) =>
-          onSave(artifact.id, { kind: "MESSAGE", message: next }, signals);
+        const commit = (next: MessageContent, signals: LearningSignal[] = [], approve = false) =>
+          onSave(artifact.id, { kind: "MESSAGE", message: next }, signals, approve);
 
         return (
           <div key={artifact.id} className="memo-card">
@@ -77,25 +78,29 @@ export function OutreachKit({ artifacts, busy, onSave, onExport, onLogSent }: Pr
               </div>
               <div className="flex flex-wrap gap-2">
                 <CopyButton
+                  disabled={artifact.status !== "APPROVED"}
                   text={
                     message.message.subject
                       ? `${message.message.subject ?? ""}\n\n${message.message.body}`
                       : message.message.body
                   }
                 />
-                <a
+                {artifact.status === "APPROVED" ? <a
                   className="pursuit-chip"
                   href={`mailto:?subject=${encodeURIComponent(message.message.subject ?? "")}&body=${encodeURIComponent(message.message.body)}`}
                 >
                   Open in email
-                </a>
+                </a> : <button type="button" disabled className="pursuit-chip">Open in email</button>}
                 <button
                   type="button"
-                  disabled={busy}
-                  onClick={() => onLogSent(artifact.artifactType)}
+                  disabled={busy || artifact.status !== "APPROVED"}
+                  onClick={() => onLogSent(artifact.id)}
                   className="pursuit-chip pursuit-chip-primary"
                 >
                   Mark sent
+                </button>
+                <button type="button" disabled={busy} onClick={() => commit(message.message, [], true)} className="pursuit-chip">
+                  Mark approved
                 </button>
               </div>
             </div>
