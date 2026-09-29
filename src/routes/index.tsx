@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { type DecisionVerb, type EvaluatedOpportunity, type ServedOpportunity, isEvaluated, isUnavailable, isUnmaterialized } from "../data/opportunity-fixtures";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
+import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/components/PursuitLauncher";
 import { getOpportunitiesFn, getOpportunityDetailsFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
 import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn, getScrapePlanPreviewFn, getCapturedEnrichmentRunsFn, startCapturedEnrichmentFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
@@ -63,7 +64,7 @@ export const Route = createFileRoute("/")({
       scope: deps,
     };
   },
-  component: Shortlist,
+  component: ShortlistPage,
 });
 
 export function dossierCacheKey(opportunity: EvaluatedOpportunity): string {
@@ -80,9 +81,23 @@ export function isCurrentDossierResponse(
   ));
 }
 
+/**
+ * The launcher wraps the shortlist so a candidate PURSUE decision opens the
+ * Pursuit Cockpit from here exactly as it does from the full dossier.
+ */
+function ShortlistPage() {
+  const { scope } = Route.useLoaderData();
+  return (
+    <PursuitLauncherProvider scope={scope}>
+      <Shortlist />
+    </PursuitLauncherProvider>
+  );
+}
+
 function Shortlist() {
   const { opportunitiesList, metrics, searchPlanPreview, capturedEnrichmentRuns, scope } = Route.useLoaderData();
   const { decide: recordDecision } = useDecisions(scope);
+  const pursuit = usePursuitLauncher();
   const { progress, markArrivalSeen } = useOnboarding();
   const [open, setOpen] = useState<string | null>(null);
   const [openedTimes, setOpenedTimes] = useState<Record<string, number>>({});
@@ -234,7 +249,13 @@ function Shortlist() {
 
     setDecisionStatus(null);
     try {
-      await recordDecision(jobHash, verb, reviewedFingerprint);
+      // PURSUE is a commitment, not just a label: recording the decision and
+      // opening the workspace is a single atomic command.
+      if (verb === "PURSUE") {
+        await pursuit.pursue(jobHash);
+      } else {
+        await recordDecision(jobHash, verb, reviewedFingerprint);
+      }
       await router.invalidate();
       setDecisionStatus(`Your decision is saved as ${verb}.`);
       setOpen((cur) => (cur === jobHash ? null : cur));

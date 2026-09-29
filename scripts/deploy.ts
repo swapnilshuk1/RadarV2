@@ -104,6 +104,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     "radar-dossiers",
     "radar-reviews",
     "radar-corpus",
+    "radar-pursuit",
   ];
   const writers =
     config.deploymentMode === "distributed"

@@ -111,6 +111,13 @@ function processSpecs(databaseTarget: string, fullStack: boolean): ManagedProces
       env: workerEnv,
       restart: true,
     },
+    {
+      name: "pursuit-preparation",
+      command: process.execPath,
+      args: ["--import", "tsx", "scripts/run-pursuit-preparation-worker.ts"],
+      env: workerEnv,
+      restart: true,
+    },
   ];
 }
 async function main() {

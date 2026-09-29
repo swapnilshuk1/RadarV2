@@ -1,0 +1,131 @@
+[
+ {
+  "id": "arch-5d48dfe5-9653-4504-a16e-5fc6f1229a11",
+  "name": "Automotive Focused",
+  "positioningStatement": "An automotive marketing leader who understands dealer networks, launch cycles and the long consideration funnel that defines vehicle purchase.",
+  "emphasize": [
+   "automotive",
+   "dealer",
+   "launch",
+   "OEM",
+   "vehicle",
+   "aftersales",
+   "showroom"
+  ],
+  "deEmphasize": [],
+  "targetRoles": [
+   "Marketing Head",
+   "CMO",
+   "Brand Director",
+   "Marketing Director"
+  ],
+  "tone": "Authoritative, category-fluent",
+  "pinnedClaimIds": [],
+  "anchorDocumentIds": [],
+  "isDefault": true,
+  "updatedAt": "2026-09-29T03:00:48.189Z"
+ },
+ {
+  "id": "arch-6002d9b2-be6b-405d-a45f-445e0b474d04",
+  "name": "Advertising Agency",
+  "positioningStatement": "An agency-side leader who has owned client P&L, pitch conversion and multidisciplinary delivery teams.",
+  "emphasize": [
+   "agency",
+   "client",
+   "pitch",
+   "P&L",
+   "account",
+   "creative",
+   "retention"
+  ],
+  "deEmphasize": [],
+  "targetRoles": [
+   "Business Head",
+   "Managing Partner",
+   "Client Services Director"
+  ],
+  "tone": "Persuasive, commercially sharp",
+  "pinnedClaimIds": [],
+  "anchorDocumentIds": [],
+  "isDefault": false,
+  "updatedAt": "2026-09-29T03:00:48.918Z"
+ },
+ {
+  "id": "arch-bf2b28a8-55dc-4927-b598-64c3fd33a86a",
+  "name": "Digital Marketing",
+  "positioningStatement": "A performance and digital leader accountable for measurable acquisition efficiency across paid, owned and martech.",
+  "emphasize": [
+   "digital",
+   "performance",
+   "paid media",
+   "SEO",
+   "martech",
+   "CRM",
+   "attribution",
+   "ROAS",
+   "funnel"
+  ],
+  "deEmphasize": [],
+  "targetRoles": [
+   "Head of Digital",
+   "Head of Growth",
+   "Performance Marketing Director"
+  ],
+  "tone": "Analytical, precise",
+  "pinnedClaimIds": [],
+  "anchorDocumentIds": [],
+  "isDefault": false,
+  "updatedAt": "2026-09-29T03:00:49.518Z"
+ },
+ {
+  "id": "arch-3176ab5f-0b7b-49f3-a842-b66c5bdaf8bc",
+  "name": "GCC Scope",
+  "positioningStatement": "A global capability centre leader who has built offshore functions, governed global stakeholders and scaled teams from a standing start.",
+  "emphasize": [
+   "GCC",
+   "global",
+   "capability centre",
+   "offshore",
+   "build",
+   "hire",
+   "governance",
+   "stakeholder"
+  ],
+  "deEmphasize": [],
+  "targetRoles": [
+   "VP GCC",
+   "Head of GCC",
+   "Site Leader",
+   "Head of Global Shared Services"
+  ],
+  "tone": "Structured, organisationally fluent",
+  "pinnedClaimIds": [],
+  "anchorDocumentIds": [],
+  "isDefault": false,
+  "updatedAt": "2026-09-29T03:00:49.220Z"
+ },
+ {
+  "id": "arch-e1c3c3fb-f20f-4ce4-b4d2-4956c1bb5c4c",
+  "name": "General Marketing",
+  "positioningStatement": "A broad marketing leader accountable for brand, demand and revenue contribution across categories.",
+  "emphasize": [
+   "brand",
+   "demand generation",
+   "market share",
+   "campaign",
+   "go-to-market",
+   "revenue"
+  ],
+  "deEmphasize": [],
+  "targetRoles": [
+   "VP Marketing",
+   "Head of Marketing",
+   "CMO"
+  ],
+  "tone": "Commercial, outcome-led",
+  "pinnedClaimIds": [],
+  "anchorDocumentIds": [],
+  "isDefault": false,
+  "updatedAt": "2026-09-29T03:00:48.619Z"
+ }
+]

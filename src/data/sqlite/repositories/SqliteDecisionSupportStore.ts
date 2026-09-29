@@ -28,46 +28,9 @@ export class SqliteDecisionSupportStore implements DecisionSupportStore {
     action: "PURSUE" | "CONSIDER" | "PASS",
     reason?: string,
   ): Promise<{ reviewedFingerprint: string | null }> {
-    return this.db.transaction(async (tx) => {
-      const artifact = await tx.one<{ canonical_job_id: string; evaluation_fingerprint: string | null }>(
-      `SELECT spc.canonical_job_id, me.evaluation_fingerprint
-       FROM active_evaluation_contexts aec
-       JOIN search_plan_candidates spc
-         ON spc.tenant_id = aec.tenant_id
-        AND spc.person_id = aec.person_id
-        AND spc.search_plan_id = aec.search_plan_id
-        AND spc.attention_decision = 'CANDIDATE'
-       JOIN canonical_opportunities co ON co.id = spc.canonical_job_id
-       LEFT JOIN materialized_evaluations me
-         ON me.tenant_id = aec.tenant_id
-        AND me.person_id = aec.person_id
-        AND me.canonical_job_id = spc.canonical_job_id
-        AND me.opportunity_version = spc.opportunity_version
-        AND me.evaluation_context_fingerprint = aec.context_fingerprint
-       WHERE aec.tenant_id = ?
-         AND aec.person_id = ?
-         AND (co.source_job_id = ? OR co.id = ?)
-       LIMIT 1`,
-        [tenantId, personId, jobHash, jobHash],
-      );
-      if (!artifact) {
-        throw new Error(`OUT_OF_SCOPE_OPPORTUNITY: ${jobHash} is not in the authenticated canonical population.`);
-      }
-
-      const id = `${tenantId}_${personId}_${artifact.canonical_job_id}`;
-      await tx.execute(
-        `INSERT INTO canonical_decisions
-          (id, tenant_id, person_id, canonical_job_id, action, reason, reviewed_fingerprint, updated_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-         ON CONFLICT(tenant_id, person_id, canonical_job_id) DO UPDATE SET
-           action = EXCLUDED.action,
-           reason = EXCLUDED.reason,
-           reviewed_fingerprint = EXCLUDED.reviewed_fingerprint,
-           updated_at = CURRENT_TIMESTAMP`,
-        [id, tenantId, personId, artifact.canonical_job_id, action, reason || null, artifact.evaluation_fingerprint],
-      );
-      return { reviewedFingerprint: artifact.evaluation_fingerprint };
-    });
+    return this.db.transaction((tx) =>
+      writeAuthorizedDecision(tx, personId, tenantId, jobHash, action, reason),
+    );
   }
 
   async getUserDecisions(personId: string, tenantId?: string): Promise<Record<string, { verb: string; updatedAt?: string; reviewedFingerprint?: string | null }>> {
@@ -123,4 +86,56 @@ export class SqliteDecisionSupportStore implements DecisionSupportStore {
       [tenantId, personId]
     );
   }
+}
+
+/**
+ * The canonical decision write, executed inside a caller-owned transaction so
+ * composite commands (e.g. PURSUE + open pursuit) commit or roll back together.
+ */
+export async function writeAuthorizedDecision(
+  tx: DatabaseAdapter,
+  personId: string,
+  tenantId: string,
+  jobHash: string,
+  action: "PURSUE" | "CONSIDER" | "PASS",
+  reason?: string,
+): Promise<{ reviewedFingerprint: string | null }> {
+      const artifact = await tx.one<{ canonical_job_id: string; evaluation_fingerprint: string | null }>(
+      `SELECT spc.canonical_job_id, me.evaluation_fingerprint
+       FROM active_evaluation_contexts aec
+       JOIN search_plan_candidates spc
+         ON spc.tenant_id = aec.tenant_id
+        AND spc.person_id = aec.person_id
+        AND spc.search_plan_id = aec.search_plan_id
+        AND spc.attention_decision = 'CANDIDATE'
+       JOIN canonical_opportunities co ON co.id = spc.canonical_job_id
+       LEFT JOIN materialized_evaluations me
+         ON me.tenant_id = aec.tenant_id
+        AND me.person_id = aec.person_id
+        AND me.canonical_job_id = spc.canonical_job_id
+        AND me.opportunity_version = spc.opportunity_version
+        AND me.evaluation_context_fingerprint = aec.context_fingerprint
+       WHERE aec.tenant_id = ?
+         AND aec.person_id = ?
+         AND (co.source_job_id = ? OR co.id = ?)
+       LIMIT 1`,
+        [tenantId, personId, jobHash, jobHash],
+      );
+      if (!artifact) {
+        throw new Error(`OUT_OF_SCOPE_OPPORTUNITY: ${jobHash} is not in the authenticated canonical population.`);
+      }
+
+      const id = `${tenantId}_${personId}_${artifact.canonical_job_id}`;
+      await tx.execute(
+        `INSERT INTO canonical_decisions
+          (id, tenant_id, person_id, canonical_job_id, action, reason, reviewed_fingerprint, updated_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+         ON CONFLICT(tenant_id, person_id, canonical_job_id) DO UPDATE SET
+           action = EXCLUDED.action,
+           reason = EXCLUDED.reason,
+           reviewed_fingerprint = EXCLUDED.reviewed_fingerprint,
+           updated_at = CURRENT_TIMESTAMP`,
+        [id, tenantId, personId, artifact.canonical_job_id, action, reason || null, artifact.evaluation_fingerprint],
+      );
+      return { reviewedFingerprint: artifact.evaluation_fingerprint };
 }

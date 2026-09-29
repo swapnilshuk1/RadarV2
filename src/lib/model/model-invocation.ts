@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseAdapter } from "@/data/database";
 
-export type ModelPipeline = "evaluation" | "dossier" | "factual_review";
+export type ModelPipeline = "evaluation" | "dossier" | "factual_review" | "pursuit";
 
 export interface ModelCallMetadata {
   stage?: string;
@@ -19,6 +19,8 @@ export interface ModelInvocationContext {
   evaluationJobId?: string;
   dossierCompositionJobId?: string;
   reviewJobId?: string;
+  pursuitId?: string;
+  pursuitPreparationJobId?: string;
 }
 
 export interface ModelUsage {
@@ -83,13 +85,13 @@ export function createSqliteModelInvocationSink(
 
       await db.execute(
         `INSERT INTO model_invocations(
-          id,evaluation_job_id,dossier_composition_job_id,review_job_id,
+          id,evaluation_job_id,dossier_composition_job_id,review_job_id,pursuit_id,pursuit_preparation_job_id,
           tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,
           pipeline,stage,attempt,provider,model_id,model_version,model_configuration_fingerprint,
           request_fingerprint,max_output_tokens,started_at,completed_at,latency_ms,
           input_tokens,cached_input_tokens,output_tokens,reasoning_tokens,total_tokens,
           finish_reason,status,error_code
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(id) DO UPDATE SET
           completed_at=excluded.completed_at,
           latency_ms=excluded.latency_ms,
@@ -106,6 +108,8 @@ export function createSqliteModelInvocationSink(
           context.evaluationJobId ?? null,
           context.dossierCompositionJobId ?? null,
           context.reviewJobId ?? null,
+          context.pursuitId ?? null,
+          context.pursuitPreparationJobId ?? null,
           context.tenantId,
           context.personId,
           context.canonicalJobId,
