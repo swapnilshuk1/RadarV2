@@ -11,6 +11,7 @@ import { useDecisions } from "../lib/decisions-store";
 import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";
 import { DossierView } from "@/dossier/DossierView";
 import { isExternalPostingUrl } from "@/lib/acquisition/external-posting-url";
+import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/components/PursuitLauncher";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params, location }: { params: { jobHash: string }; location: { search: unknown } }) => {
@@ -47,11 +48,27 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
   component: OpportunityBriefView,
 });
 
+/**
+ * PURSUE from the evaluation engine is a recommendation. PURSUE clicked by the
+ * candidate is a commitment — it opens the Pursuit Cockpit, where positioning and
+ * artifacts are built. The launcher wraps the brief so the decision handlers
+ * below stay unchanged.
+ */
 export function OpportunityBriefView() {
+  const scope = Route.useSearch() as { tenantId?: string; personId?: string };
+  return (
+    <PursuitLauncherProvider scope={scope}>
+      <OpportunityBriefBody />
+    </PursuitLauncherProvider>
+  );
+}
+
+function OpportunityBriefBody() {
   const { opportunity, neighbors, currentIndex, totalCount } = Route.useLoaderData();
   const o = opportunity;
   const scope = Route.useSearch() as { tenantId?: string; personId?: string };
   const { decisions, decide: recordDecision } = useDecisions(scope);
+  const pursuit = usePursuitLauncher();
   const router = useRouter();
   const [decisionStatus, setDecisionStatus] = useState<string | null>(null);
   const [decisionPending, setDecisionPending] = useState(false);
@@ -99,7 +116,14 @@ export function OpportunityBriefView() {
     setDecisionPending(true);
     setDecisionStatus(null);
     try {
-      await recordDecision(o.jobHash, verb, dossierState.evaluationFingerprint);
+      // Choosing to pursue is the moment the work shifts from judging the
+      // opportunity to winning it. Record-and-open is one atomic command, so a
+      // saved PURSUE can never exist without its pursuit workspace.
+      if (verb === "PURSUE" && pursuit.available) {
+        await pursuit.pursue(o.jobHash);
+      } else {
+        await recordDecision(o.jobHash, verb, dossierState.evaluationFingerprint);
+      }
       await router.invalidate();
       setDecisionStatus(`Your decision is saved as ${verb}.`);
     } catch {
@@ -197,6 +221,16 @@ export function OpportunityBriefView() {
                   </button>
                 ))}
               </div>
+              {pursuit.available && (
+                <button
+                  type="button"
+                  className="dossier-apply-action"
+                  disabled={pursuit.pending}
+                  onClick={() => void pursuit.launch(o.jobHash)}
+                >
+                  {pursuit.pending ? "Opening…" : "Pursuit cockpit"}
+                </button>
+              )}
               {isExternalPostingUrl(o.applyUrl) && (
                 <a
                   href={o.applyUrl}

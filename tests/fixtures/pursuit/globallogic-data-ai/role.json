@@ -1,0 +1,109 @@
+{
+ "jobHash": "4443888544",
+ "company": "GlobalLogic",
+ "roleTitle": "Senior Practice Lead/Director [Data and AI Service Line] IRC299362",
+ "location": "Noida, Uttar Pradesh, India (On-site)",
+ "verdict": "CONSIDER",
+ "recommendation": "This practice leadership role offers influence over capability roadmaps at a digital engineering firm scaling India operations by 33% through 2026, but the technical depth expectation for Data Engineering and Generative AI requires calibration against your marketing technology foundation.",
+ "whyNow": null,
+ "mandateArchetype": null,
+ "primaryDriver": null,
+ "primaryRisk": null,
+ "hiringRisk": "What is the actual technical depth expectation for Data Engineering and Generative AI, and how is technical aptitude assessed for practice leadership candidates?",
+ "positioning": [
+  "Your leadership of Ford's Performance Marketing Center of Excellence across 13 APAC and Middle East markets demonstrates large-scale capability building and global stakeholder collaboration.",
+  "Your Salesforce CDP implementation and collaboration with Google engineering teams evidence analytics proficiency, but the supplied sources do not document Data Engineering or Generative AI technical depth, which are core to this service line."
+ ],
+ "requirements": [
+  {
+   "requirement": "Strategic thinking ability",
+   "mandatory": true,
+   "decisionRole": "CORE_CAPABILITY",
+   "status": "DIRECT",
+   "reasoning": "Candidate demonstrates strategic thinking through documented leadership of strategic pitches, P&L management, building and scaling GCCs, redesigning customer journeys producing $14M attributed revenue, and orchestrating digital-first launches including a metaverse vehicle launch."
+  },
+  {
+   "requirement": "Strong technical aptitude in Data Engineering, Analytics, and Generative AI",
+   "mandatory": true,
+   "decisionRole": "CORE_CAPABILITY",
+   "status": "ADJACENT",
+   "reasoning": "Candidate has related technical aptitude in analytics (Digital Analytics Lab, A/B testing), Salesforce CDP implementation, and collaborated with Google engineering teams. However, evidence shows marketing analytics and AI/NLP applications in marketing context (lead generation), not the Data Engineering, data pipeline architecture, or Generative AI technical depth that a Data and AI Service Line would require."
+  },
+  {
+   "requirement": "Exceptional presentation and public speaking abilities",
+   "mandatory": true,
+   "decisionRole": "CORE_CAPABILITY",
+   "status": "NOT_EVIDENCED",
+   "reasoning": "No supplied candidate claims reference presentation delivery, public speaking engagements, conference presentations, or similar communication performance evidence. Strategic pitches mentioned involve commercial accountability but do not establish exceptional presentation abilities."
+  },
+  {
+   "requirement": "Ability to articulate complex value propositions to C-level stakeholders",
+   "mandatory": true,
+   "decisionRole": "CORE_CAPABILITY",
+   "status": "ADJACENT",
+   "reasoning": "Candidate managed large client accounts ($8M fee book, BMW retainer) and global partnerships (WPP/Haleon), and collaborated with Google engineering teams, suggesting stakeholder interaction. However, no direct evidence of articulating complex value propositions specifically to C-level executives is provided."
+  },
+  {
+   "requirement": "Outstanding interpersonal skills",
+   "mandatory": true,
+   "decisionRole": "ENABLER",
+   "status": "TRANSFERABLE",
+   "reasoning": "Candidate's track record of recruiting and managing cross-functional teams, leading integrated mandates across agencies and dealers, and collaborating with Google engineering teams demonstrates underlying interpersonal effectiveness in complex organizational contexts."
+  },
+  {
+   "requirement": "Proven track record of collaborating with diverse global stakeholders",
+   "mandatory": true,
+   "decisionRole": "HARD_SCREEN",
+   "status": "DIRECT",
+   "reasoning": "Candidate has proven collaboration with diverse global stakeholders including managing a Performance Marketing Center of Excellence across 13 APAC and Middle East markets, collaboration with Google engineering teams, and leading strategy through WPP's global Haleon partnership."
+  },
+  {
+   "requirement": "Strong problem-solving skills",
+   "mandatory": true,
+   "decisionRole": "CORE_CAPABILITY",
+   "status": "TRANSFERABLE",
+   "reasoning": "Problem-solving capability evidenced through complex legacy-to-Salesforce CRM migration across 13 markets, building hyperlocal digital marketing generating 400,000+ leads, growing digital revenue contribution from 3% to 32%, and reducing customer-acquisition costs by 70%."
+  },
+  {
+   "requirement": "Strong prioritization skills to manage competing demands across practice building and sales support",
+   "mandatory": true,
+   "decisionRole": "ENABLER",
+   "status": "ADJACENT",
+   "reasoning": "Candidate demonstrates managing competing demands through commercial performance accountability for major accounts while recruiting and managing a 40-member team and orchestrating multiple digital launches. However, the specific domain of 'practice building' versus 'sales support' prioritization in a consulting/services context is not directly evidenced."
+  },
+  {
+   "requirement": "Advanced proficiency in Google Workspace",
+   "mandatory": true,
+   "decisionRole": "ENABLER",
+   "status": "NOT_EVIDENCED",
+   "reasoning": "No supplied candidate claims reference Google Workspace tools proficiency. General digital marketing work does not establish advanced proficiency in Google Workspace (Docs, Sheets, Slides, Drive)."
+  },
+  {
+   "requirement": "Advanced proficiency in Microsoft PowerPoint",
+   "mandatory": true,
+   "decisionRole": "ENABLER",
+   "status": "NOT_EVIDENCED",
+   "reasoning": "No supplied candidate claims reference Microsoft PowerPoint usage or proficiency. Strategic pitch involvement does not establish advanced PowerPoint capability."
+  },
+  {
+   "requirement": "Advanced proficiency in Excel",
+   "mandatory": true,
+   "decisionRole": "ENABLER",
+   "status": "NOT_EVIDENCED",
+   "reasoning": "None of the supplied candidate claims mention Excel skills or any Excel-based work. The candidate's technical evidence focuses on marketing platforms (Salesforce CDP, Adobe Experience Cloud, Google AdWords), CRM systems, and analytics tools, but does not establish any level of proficiency in Excel."
+  }
+ ],
+ "mandatePriorities": [
+  "Define the Data and AI Service Line vision and roadmap while developing differentiated offerings that position the firm as a leader in AI.",
+  "Anchor medium to large presales opportunities by translating AI strategies into proposal narratives and owning pricing models for commercial viability.",
+  "Serve as the liaison between Sales, Engineering, and Delivery teams to ensure sold solutions can be delivered successfully."
+ ],
+ "mandateOutcomes": [
+  "Establish the practice's technical authority, team capability, and commercial contribution within the Data and AI service portfolio."
+ ],
+ "openQuestions": [
+  "What is the actual technical depth expectation for Data Engineering and Generative AI, and how is technical aptitude assessed for practice leadership candidates?"
+ ],
+ "executiveThesis": "This practice leadership role offers influence over capability roadmaps at a digital engineering firm scaling India operations by 33% through 2026, but the technical depth expectation for Data Engineering and Generative AI requires calibration against your marketing technology foundation.",
+ "applyUrl": "https://www.linkedin.com/jobs/view/4443888544"
+}

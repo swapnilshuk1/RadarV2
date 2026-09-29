@@ -529,3 +529,71 @@
   }
 }
 
+
+/* ---------------------------------------------------------------------------
+   Pursuit Cockpit
+   Execution surface for an opportunity the candidate has chosen to pursue.
+   Shares the memo design language; adds only the dense controls the editing
+   surfaces need.
+   --------------------------------------------------------------------------- */
+
+.pursuit-chip {
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+  line-height: 1;
+  padding: 0.5rem 0.7rem;
+  border-radius: 3px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-raised);
+  color: var(--color-muted-foreground);
+  transition: color 120ms ease, border-color 120ms ease;
+  white-space: nowrap;
+}
+.pursuit-chip:hover:not(:disabled) {
+  color: var(--color-foreground);
+  border-color: var(--color-primary);
+}
+.pursuit-chip:disabled {
+  opacity: 0.5;
+}
+.pursuit-chip-primary {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.pursuit-input {
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background-color: transparent;
+  color: var(--color-foreground);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.pursuit-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.pursuit-tab {
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 2px solid transparent;
+  color: var(--color-muted-foreground);
+  white-space: nowrap;
+}
+.pursuit-tab:hover {
+  color: var(--color-foreground);
+}
+.pursuit-tab-active {
+  color: var(--color-foreground);
+  border-bottom-color: var(--color-primary);
+}

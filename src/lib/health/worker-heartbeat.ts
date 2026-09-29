@@ -14,6 +14,7 @@ export const REQUIRED_WORKERS = [
   "dossier-composition",
   "dossier-review",
   "corpus",
+  "pursuit-preparation",
 ] as const;
 export type RequiredWorkerName = (typeof REQUIRED_WORKERS)[number];
 export const WORKER_HEARTBEAT_STALE_MS = 150_000;

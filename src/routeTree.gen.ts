@@ -20,6 +20,7 @@ import { Route as DecisionsRouteImport } from './routes/decisions'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as QaMappingRouteImport } from './routes/qa.mapping'
+import { Route as PursuitJobHashRouteImport } from './routes/pursuit.$jobHash'
 import { Route as OpportunityJobHashRouteImport } from './routes/opportunity.$jobHash'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
@@ -80,6 +81,11 @@ const QaMappingRoute = QaMappingRouteImport.update({
   path: '/qa/mapping',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PursuitJobHashRoute = PursuitJobHashRouteImport.update({
+  id: '/pursuit/$jobHash',
+  path: '/pursuit/$jobHash',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OpportunityJobHashRoute = OpportunityJobHashRouteImport.update({
   id: '/opportunity/$jobHash',
   path: '/opportunity/$jobHash',
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/welcome': typeof WelcomeRoute
   '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
+  '/pursuit/$jobHash': typeof PursuitJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/welcome': typeof WelcomeRoute
   '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
+  '/pursuit/$jobHash': typeof PursuitJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/welcome': typeof WelcomeRoute
   '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
+  '/pursuit/$jobHash': typeof PursuitJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/workbench'
     | '/opportunity/$jobHash'
+    | '/pursuit/$jobHash'
     | '/qa/mapping'
     | '/api/auth/callback'
     | '/api/auth/google'
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/workbench'
     | '/opportunity/$jobHash'
+    | '/pursuit/$jobHash'
     | '/qa/mapping'
     | '/api/auth/callback'
     | '/api/auth/google'
@@ -201,6 +212,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/workbench'
     | '/opportunity/$jobHash'
+    | '/pursuit/$jobHash'
     | '/qa/mapping'
     | '/api/auth/callback'
     | '/api/auth/google'
@@ -219,6 +231,7 @@ export interface RootRouteChildren {
   WelcomeRoute: typeof WelcomeRoute
   WorkbenchRoute: typeof WorkbenchRoute
   OpportunityJobHashRoute: typeof OpportunityJobHashRoute
+  PursuitJobHashRoute: typeof PursuitJobHashRoute
   QaMappingRoute: typeof QaMappingRoute
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
   ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
@@ -304,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QaMappingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pursuit/$jobHash': {
+      id: '/pursuit/$jobHash'
+      path: '/pursuit/$jobHash'
+      fullPath: '/pursuit/$jobHash'
+      preLoaderRoute: typeof PursuitJobHashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/opportunity/$jobHash': {
       id: '/opportunity/$jobHash'
       path: '/opportunity/$jobHash'
@@ -347,6 +367,7 @@ const rootRouteChildren: RootRouteChildren = {
   WelcomeRoute: WelcomeRoute,
   WorkbenchRoute: WorkbenchRoute,
   OpportunityJobHashRoute: OpportunityJobHashRoute,
+  PursuitJobHashRoute: PursuitJobHashRoute,
   QaMappingRoute: QaMappingRoute,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
   ApiAuthGoogleRoute: ApiAuthGoogleRoute,
