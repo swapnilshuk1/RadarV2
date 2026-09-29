@@ -28,7 +28,10 @@ export function normalizeFigure(raw: string): string | null {
   const [, cur, num, unitRaw] = m;
   const n = Number(num);
   if (!Number.isFinite(n)) return null;
-  const unit = unitRaw.replace(/^(mn|million)$/, "m").replace(/^(bn|billion)$/, "b").replace(/^cr$/, "crore");
+  const unit = unitRaw
+    .replace(/^(mn|million)$/, "m")
+    .replace(/^(bn|billion)$/, "b")
+    .replace(/^cr$/, "crore");
   // Four-digit bare numbers between 1950–2100 are almost always years.
   if (!cur && !unit && n >= 1950 && n <= 2100 && Number.isInteger(n)) return null;
   if (!cur && !unit && n < 10) return null;
@@ -45,7 +48,9 @@ export function extractFigures(text: string): string[] {
 }
 
 function claimFigures(claim: CandidateClaim): Set<string> {
-  const text = [claim.statement, claim.metricBaseline, claim.metricResult].filter(Boolean).join(" ");
+  const text = [claim.statement, claim.metricBaseline, claim.metricResult]
+    .filter(Boolean)
+    .join(" ");
   return new Set(extractFigures(text));
 }
 
@@ -60,7 +65,10 @@ export interface LedgerCheckContext {
  * Returns blocking reasons when the artifact asserts figures or claim links
  * the ledger does not support. Empty array → approval permitted.
  */
-export function ledgerApprovalBlockers(content: ArtifactContent, ctx: LedgerCheckContext): string[] {
+export function ledgerApprovalBlockers(
+  content: ArtifactContent,
+  ctx: LedgerCheckContext,
+): string[] {
   const blockers: string[] = [];
   const byId = new Map(ctx.claims.map((c) => [c.id, c]));
   const ledgerFigures = new Set<string>();
@@ -72,14 +80,18 @@ export function ledgerApprovalBlockers(content: ArtifactContent, ctx: LedgerChec
       return !ledgerFigures.has(f) && !(allowContext && contextFigures.has(f));
     });
     if (unsupported.length > 0)
-      blockers.push(`${label} states ${[...new Set(unsupported)].join(", ")}, which your CV evidence does not contain.`);
+      blockers.push(
+        `${label} states ${[...new Set(unsupported)].join(", ")}, which your CV evidence does not contain.`,
+      );
   };
 
   if (content.kind === "RESUME") {
     const r = content.resume;
     const bullets = [
       ...r.impactAnchors.map((b) => ({ b, where: "An impact anchor" })),
-      ...r.roles.flatMap((role) => role.bullets.map((b) => ({ b, where: `A ${role.employer} bullet` }))),
+      ...r.roles.flatMap((role) =>
+        role.bullets.map((b) => ({ b, where: `A ${role.employer} bullet` })),
+      ),
     ];
     for (const { b, where } of bullets) {
       if (b.claimId) {
@@ -89,6 +101,17 @@ export function ledgerApprovalBlockers(content: ArtifactContent, ctx: LedgerChec
           continue;
         }
         const allowed = claimFigures(claim);
+        // Selected-impact lines may include a second claim verbatim. License its
+        // figures only while that full source assertion remains in this line.
+        for (const companion of ctx.claims) {
+          if (
+            companion.id !== claim.id &&
+            companion.statement &&
+            b.text.toLowerCase().includes(companion.statement.toLowerCase())
+          ) {
+            for (const figure of claimFigures(companion)) allowed.add(figure);
+          }
+        }
         const drift = extractFigures(b.text).filter((f) => !allowed.has(f));
         if (drift.length > 0)
           blockers.push(
@@ -114,7 +137,9 @@ export function ledgerApprovalBlockers(content: ArtifactContent, ctx: LedgerChec
       }
       if (assertion.claimIds.length === 0 || assertion.claimIds.some((id) => !byId.has(id)))
         blockers.push("A message assertion cites missing candidate evidence.");
-      const allowed = new Set(assertion.claimIds.flatMap((id) => byId.get(id) ? [...claimFigures(byId.get(id)!)] : []));
+      const allowed = new Set(
+        assertion.claimIds.flatMap((id) => (byId.get(id) ? [...claimFigures(byId.get(id)!)] : [])),
+      );
       if (extractFigures(assertion.text).some((f) => !allowed.has(f)))
         blockers.push("A message assertion changes a figure from its cited evidence.");
     }
@@ -122,18 +147,28 @@ export function ledgerApprovalBlockers(content: ArtifactContent, ctx: LedgerChec
       for (const match of message.body.matchAll(new RegExp(phrase.source, "gi"))) {
         const licensed = assertions.some((assertion) => {
           const start = message.body.indexOf(assertion.text);
-          return start >= 0 && match.index >= start && match.index < start + assertion.text.length &&
-            assertion.claimIds.some((id) => ctx.proofRelationships?.[id] === "DIRECT" && byId.has(id));
+          return (
+            start >= 0 &&
+            match.index >= start &&
+            match.index < start + assertion.text.length &&
+            assertion.claimIds.some(
+              (id) => ctx.proofRelationships?.[id] === "DIRECT" && byId.has(id),
+            )
+          );
         });
-        if (!licensed) blockers.push("Direct experience wording needs a DIRECT claim linked to that assertion.");
+        if (!licensed)
+          blockers.push("Direct experience wording needs a DIRECT claim linked to that assertion.");
       }
     }
   }
   if (content.kind === "INTERVIEW_BRIEF") {
     for (const story of content.brief.proofStories) {
       for (const id of story.claimIds)
-        if (!byId.has(id)) blockers.push(`Proof story "${story.title}" cites evidence no longer in your ledger.`);
-      const allowed = new Set(story.claimIds.flatMap((id) => byId.get(id) ? [...claimFigures(byId.get(id)!)] : []));
+        if (!byId.has(id))
+          blockers.push(`Proof story "${story.title}" cites evidence no longer in your ledger.`);
+      const allowed = new Set(
+        story.claimIds.flatMap((id) => (byId.get(id) ? [...claimFigures(byId.get(id)!)] : [])),
+      );
       if (extractFigures(`${story.scale} ${story.result}`).some((f) => !allowed.has(f)))
         blockers.push(`Proof story "${story.title}" changes a figure from its cited evidence.`);
     }

@@ -57,12 +57,21 @@ interface SemanticContext {
   phraser: Phraser;
 }
 
-const REL_SCORE: Record<EvidenceRelationship, number> = { DIRECT: 3, ANALOGOUS: 2, ADJACENT: 1, UNSUPPORTED: 0 };
+const REL_SCORE: Record<EvidenceRelationship, number> = {
+  DIRECT: 3,
+  ANALOGOUS: 2,
+  ADJACENT: 1,
+  UNSUPPORTED: 0,
+};
 
 const CONTEXTS = new WeakMap<PursuitThesis, Map<string, SemanticContext>>();
 
 /** One context (and one phraser) per thesis package, so no phrase repeats across its artifacts. */
-function semanticContext(thesis: PursuitThesis, claims: readonly CandidateClaim[], slot: string): SemanticContext {
+function semanticContext(
+  thesis: PursuitThesis,
+  claims: readonly CandidateClaim[],
+  slot: string,
+): SemanticContext {
   const perThesis = CONTEXTS.get(thesis) ?? new Map<string, SemanticContext>();
   CONTEXTS.set(thesis, perThesis);
   const key = slot === "outreach" || slot === "resume" ? "package" : slot;
@@ -73,14 +82,20 @@ function semanticContext(thesis: PursuitThesis, claims: readonly CandidateClaim[
   return created;
 }
 
-function buildContext(thesis: PursuitThesis, claims: readonly CandidateClaim[], slot: string): SemanticContext {
+function buildContext(
+  thesis: PursuitThesis,
+  claims: readonly CandidateClaim[],
+  slot: string,
+): SemanticContext {
   const snapshot = thesis.semantic ?? null;
   const classes = new Map<string, ClaimClassification>();
   for (const c of snapshot?.classifications ?? []) classes.set(c.claimId, c);
-  for (const claim of claims) if (!classes.has(claim.id)) classes.set(claim.id, classifyClaim(claim));
+  for (const claim of claims)
+    if (!classes.has(claim.id)) classes.set(claim.id, classifyClaim(claim));
   const relevance = new Map<string, number>();
   for (const m of snapshot?.mappings ?? [])
-    if (m.claimId) relevance.set(m.claimId, (relevance.get(m.claimId) ?? 0) + REL_SCORE[m.relationship]);
+    if (m.claimId)
+      relevance.set(m.claimId, (relevance.get(m.claimId) ?? 0) + REL_SCORE[m.relationship]);
   return {
     snapshot,
     classes,
@@ -92,7 +107,9 @@ function buildContext(thesis: PursuitThesis, claims: readonly CandidateClaim[], 
 
 function relationshipOf(ctx: SemanticContext, claimId: string | null): EvidenceRelationship {
   if (!claimId || !ctx.snapshot) return "ADJACENT";
-  return ctx.snapshot.proofRelationships[claimId] ?? bestRelationship(ctx.snapshot.mappings, claimId);
+  return (
+    ctx.snapshot.proofRelationships[claimId] ?? bestRelationship(ctx.snapshot.mappings, claimId)
+  );
 }
 
 /** Strongest relationship licensed across the proofs a message may cite. */
@@ -129,7 +146,9 @@ function composeImpact(
           bundle.claimIds.includes(claim.id) &&
           claim.id !== anchor.id &&
           !usedIds.has(claim.id) &&
-          ["METRIC", "SCOPE", "ACHIEVEMENT", "OUTCOME"].includes(ctx.classes.get(claim.id)?.semanticType ?? "") &&
+          ["METRIC", "SCOPE", "ACHIEVEMENT", "OUTCOME"].includes(
+            ctx.classes.get(claim.id)?.semanticType ?? "",
+          ) &&
           // Only combine facts that describe the same executive story.
           (ctx.classes.get(claim.id)?.kinds ?? []).some((k) => anchorKinds.has(k)) &&
           (ctx.relevance.get(claim.id) ?? 0) > 0,
@@ -153,11 +172,15 @@ function identityHeadline(ctx: SemanticContext, fallbackCaps: string[]): string 
     if (c.best === "DIRECT" || c.best === "ANALOGOUS") labels.push(KIND_LABELS[d.kind].headline);
   }
   const core = ctx.snapshot?.coverage.find((c) => c.dimensionId === "dim-core");
-  if (core?.best === "DIRECT" && ctx.snapshot) labels.unshift(ctx.snapshot.positioning.label.split(" with ")[0]!);
+  if (core?.best === "DIRECT" && ctx.snapshot)
+    labels.unshift(ctx.snapshot.positioning.label.split(" with ")[0]!);
   const unique: string[] = [];
   const words = new Set<string>();
   for (const label of [...labels, ...fallbackCaps]) {
-    const sig = label.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
+    const sig = label
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((w) => w.length > 3);
     if (sig.some((w) => words.has(w))) continue;
     sig.forEach((w) => words.add(w));
     unique.push(label.replace(/\b\w/g, (m) => m.toUpperCase()));
@@ -212,7 +235,10 @@ function buildRoles(
       period: null,
       // Promote relevant bullets, hide the irrelevant tail (keep at least one).
       bullets: ordered
-        .filter((claim, i) => i === 0 || !ctx || (ctx.relevance.get(claim.id) ?? 0) > 0 || ordered.length <= 3)
+        .filter(
+          (claim, i) =>
+            i === 0 || !ctx || (ctx.relevance.get(claim.id) ?? 0) > 0 || ordered.length <= 3,
+        )
         .slice(0, 6)
         .map(toBullet),
     };
@@ -260,7 +286,11 @@ function transformAnchor(
   for (const claim of claims) {
     if (!pinned.has(claim.id) || !eligible(claim) || skeleton.includes(claim)) continue;
     const key = claim.employer!;
-    const entry = roles.get(key) ?? { order: Number.MAX_SAFE_INTEGER, title: claim.roleTitle ?? "", claims: [] };
+    const entry = roles.get(key) ?? {
+      order: Number.MAX_SAFE_INTEGER,
+      title: claim.roleTitle ?? "",
+      claims: [],
+    };
     entry.claims.push(claim);
     roles.set(key, entry);
   }
@@ -278,7 +308,9 @@ function transformAnchor(
     .filter(([, entry]) => entry.claims.length > 0)
     .map(([employer, entry]) => {
       // Stable promotion: relevant bullets rise, original order breaks ties.
-      const ordered = [...entry.claims].sort((x, y) => relevanceOf(y) - relevanceOf(x) || ord(x) - ord(y));
+      const ordered = [...entry.claims].sort(
+        (x, y) => relevanceOf(y) - relevanceOf(x) || ord(x) - ord(y),
+      );
       const kept = ordered.filter(
         (claim, i) => i < 3 || pinned.has(claim.id) || relevanceOf(claim) > 0,
       );
@@ -286,7 +318,9 @@ function transformAnchor(
         employer,
         roleTitle: entry.title,
         period: null,
-        bullets: kept.slice(0, Math.max(6, kept.filter((c) => pinned.has(c.id)).length)).map(toBullet),
+        bullets: kept
+          .slice(0, Math.max(6, kept.filter((c) => pinned.has(c.id)).length))
+          .map(toBullet),
       };
     });
 }
@@ -335,7 +369,9 @@ export async function generateResume(input: {
     .map((claim) => composeImpact(claim, claims, ctx, usedIds));
 
   const anchorIds = archetype?.anchorDocumentIds ?? [];
-  const anchored = anchorIds.length ? transformAnchor(anchorIds, claims, archetype, usedIds, style, ctx) : null;
+  const anchored = anchorIds.length
+    ? transformAnchor(anchorIds, claims, archetype, usedIds, style, ctx)
+    : null;
   const roles = anchored ?? buildRoles(claims, archetype, usedIds, style, ctx);
   const anchorDocumentId = anchored ? (anchorIds[0] ?? null) : null;
 
@@ -388,7 +424,9 @@ export async function generateResume(input: {
         statement: claim.statement,
         employer: claim.employer,
         metric: claim.metricResult,
-        relationshipToMandate: ctx.snapshot ? bestRelationship(ctx.snapshot.mappings, claim.id) : undefined,
+        relationshipToMandate: ctx.snapshot
+          ? bestRelationship(ctx.snapshot.mappings, claim.id)
+          : undefined,
       })),
       candidateStylePreferences: style.preferredPhrasings,
     },
@@ -409,7 +447,15 @@ export async function generateResume(input: {
   };
   // Validators decide whether the model's language is licensed.
   const issues = validateResume(draft, brief.roleTitle, roleTitleIds);
-  if (issues.some((i) => i.code === "TARGET_TITLE_HEADLINE" || (i.code === "LEAKAGE" && draft.headline !== fallbackHeadline && findLeakage(draft.headline).length)))
+  if (
+    issues.some(
+      (i) =>
+        i.code === "TARGET_TITLE_HEADLINE" ||
+        (i.code === "LEAKAGE" &&
+          draft.headline !== fallbackHeadline &&
+          findLeakage(draft.headline).length),
+    )
+  )
     draft.headline = fallbackHeadline;
   if (findLeakage(draft.executiveSummary).length > 0) draft.executiveSummary = fallbackSummary;
   return draft;
@@ -498,7 +544,6 @@ function normalizeMessageBody(value: string): string {
     .trim();
 }
 
-
 /**
  * Written when no model provider is reachable. Each module still has to do its
  * own job — a single shared template would make six identical messages, which is
@@ -558,11 +603,16 @@ function buildFallbackMessage(
         "{{recipient}} —",
         `For the ${role} search at ${brief.company}, here is how I would frame my candidacy.`,
         `Mandate fit: ${label}.`,
-        [proofLine(0, "rb1"), proofLine(1, "rb2"), proofLine(2, "rb3")].filter(Boolean).join("\n") || null,
+        [proofLine(0, "rb1"), proofLine(1, "rb2"), proofLine(2, "rb3")]
+          .filter(Boolean)
+          .join("\n") || null,
         gap && ctx.snapshot
           ? p.pick("firstPersonGap", "rb-gap", {
               domain: ctx.snapshot.mandate.roleDomainLabel,
-              kinds: ctx.snapshot.positioning.label.replace(/^Transferable /, "").split(", applied")[0] ?? "",
+              kinds:
+                ctx.snapshot.positioning.label
+                  .replace(/^Transferable /, "")
+                  .split(", applied")[0] ?? "",
             })
           : objection
             ? `The likely question will be "${objection.objection.replace(/^They will test "|"\.?$/g, "")}". ${proofLine(1, "rb-obj") ?? ""}`.trim()
@@ -574,11 +624,17 @@ function buildFallbackMessage(
       return lines(
         `Application for ${role}, ${brief.company}.`,
         `${label}.`,
-        [proofLine(0, "app1"), proofLine(1, "app2")].filter(Boolean).map((l) => `• ${l}`).join("\n") || null,
+        [proofLine(0, "app1"), proofLine(1, "app2")]
+          .filter(Boolean)
+          .map((l) => `• ${l}`)
+          .join("\n") || null,
         gap && ctx.snapshot
           ? p.pick("firstPersonGap", "app-gap", {
               domain: ctx.snapshot.mandate.roleDomainLabel,
-              kinds: ctx.snapshot.positioning.label.replace(/^Transferable /, "").split(", applied")[0] ?? "",
+              kinds:
+                ctx.snapshot.positioning.label
+                  .replace(/^Transferable /, "")
+                  .split(", applied")[0] ?? "",
             })
           : null,
       );
@@ -631,9 +687,18 @@ const MESSAGE_PACKAGE_SCHEMA: Record<string, unknown> = {
           type: { type: "string" },
           subject: { type: "string" },
           body: { type: "string" },
-          proofAssertions: { type: "array", items: { type: "object", properties: {
-            text: { type: "string" }, claimIds: { type: "array", items: { type: "string" } },
-          }, required: ["text", "claimIds"], additionalProperties: false } },
+          proofAssertions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                text: { type: "string" },
+                claimIds: { type: "array", items: { type: "string" } },
+              },
+              required: ["text", "claimIds"],
+              additionalProperties: false,
+            },
+          },
         },
         required: ["type", "subject", "body"],
         additionalProperties: false,
@@ -725,12 +790,14 @@ the reader may see more than one, and repetition destroys credibility.`,
 
   const out: Record<string, MessageContent> = {};
   const proofRelationships = ctx.snapshot?.proofRelationships ?? {};
-  const assertionsFor = (body: string) => input.thesis.primaryProof.flatMap((proof) => {
-    if (!proof.claimId) return [];
-    const paragraph = body.split(/\n\s*\n/).find((part) =>
-      part.toLowerCase().includes(proof.headline.toLowerCase()));
-    return paragraph ? [{ text: paragraph, claimIds: [proof.claimId] }] : [];
-  });
+  const assertionsFor = (body: string) =>
+    input.thesis.primaryProof.flatMap((proof) => {
+      if (!proof.claimId) return [];
+      const paragraph = body
+        .split(/\n\s*\n/)
+        .find((part) => part.toLowerCase().includes(proof.headline.toLowerCase()));
+      return paragraph ? [{ text: paragraph, claimIds: [proof.claimId] }] : [];
+    });
   for (const spec of MESSAGE_SPECS) {
     const fallback = normalizeMessageBody(buildFallbackMessage(spec.type, input, ctx));
     const hit = drafted.get(spec.type);
@@ -741,13 +808,22 @@ the reader may see more than one, and repetition destroys credibility.`,
       proofAssertions: hit?.proofAssertions ?? assertionsFor(hit?.body ?? fallback),
     };
     const fallbackContent: MessageContent = {
-      ...candidate, body: fallback, proofAssertions: assertionsFor(fallback),
+      ...candidate,
+      body: fallback,
+      proofAssertions: assertionsFor(fallback),
     };
     out[spec.type] =
       validateMessage(candidate, strongest).length > 0 ||
-      ledgerApprovalBlockers({ kind: "MESSAGE", message: candidate }, {
-        claims: [...input.claims], proofRelationships, contextText: JSON.stringify(input.brief),
-      }).length > 0 ? fallbackContent : candidate;
+      ledgerApprovalBlockers(
+        { kind: "MESSAGE", message: candidate },
+        {
+          claims: [...input.claims],
+          proofRelationships,
+          contextText: JSON.stringify(input.brief),
+        },
+      ).length > 0
+        ? fallbackContent
+        : candidate;
   }
   return out;
 }
@@ -821,15 +897,21 @@ function evidenceStories(thesis: PursuitThesis, claims: readonly CandidateClaim[
     const key = bundle?.id ?? claim.id;
     if (seen.has(key)) continue;
     seen.add(key);
-    const related = claims.filter(
-      (c) =>
-        bundle?.claimIds.includes(c.id) &&
-        c.id !== claim.id &&
-        ctx.classes.get(c.id)?.semanticType !== "ROLE_TITLE" &&
-        (ctx.relevance.get(c.id) ?? 0) > 0,
+    const related = claims
+      .filter(
+        (c) =>
+          bundle?.claimIds.includes(c.id) &&
+          c.id !== claim.id &&
+          ctx.classes.get(c.id)?.semanticType !== "ROLE_TITLE" &&
+          (ctx.relevance.get(c.id) ?? 0) > 0,
+      )
+      .slice(0, 3);
+    const outcome = [claim, ...related].find(
+      (c) => ctx.classes.get(c.id)?.semanticType === "OUTCOME",
     );
-    const outcome = [claim, ...related].find((c) => ctx.classes.get(c.id)?.semanticType === "OUTCOME");
-    const scale = related.filter((c) => ["SCOPE", "METRIC"].includes(ctx.classes.get(c.id)?.semanticType ?? ""));
+    const scale = related.filter((c) =>
+      ["SCOPE", "METRIC"].includes(ctx.classes.get(c.id)?.semanticType ?? ""),
+    );
     stories.push(
       gradeStory({
         title: `${claim.employer ?? "Record"}: ${claim.statement}`.slice(0, 90),
@@ -925,7 +1007,9 @@ export async function generateInterviewBrief(input: {
     mandateSentence: result.value.mandateSentence?.trim() || fallback.mandateSentence,
     proofStories: graded.length > 0 ? graded : fallback.proofStories,
     questionsToAsk:
-      result.value.questionsToAsk?.length > 0 ? result.value.questionsToAsk : fallback.questionsToAsk,
+      result.value.questionsToAsk?.length > 0
+        ? result.value.questionsToAsk
+        : fallback.questionsToAsk,
     firstNinetyDays:
       result.value.firstNinetyDays?.length > 0
         ? result.value.firstNinetyDays

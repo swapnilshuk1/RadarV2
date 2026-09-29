@@ -18,6 +18,7 @@ vi.mock("../../src/pursuit/model", () => ({ generateWithFallback: async () => nu
 
 import { deriveDeterministicThesis } from "../../src/pursuit/thesis";
 import { generateArtifactSet } from "../../src/pursuit/artifacts";
+import { ledgerApprovalBlockers } from "../../src/pursuit/approval";
 import { relate, classifyClaim } from "../../src/pursuit/semantic/engine";
 import { findLeakage } from "../../src/pursuit/semantic/validate";
 import type { RoleBrief } from "../../src/pursuit/role-brief";
@@ -67,10 +68,29 @@ const PERF_BUDGET = claimBy(/performance marketing budget/i);
 beforeAll(async () => {
   for (const key of Object.keys(CASES) as Key[]) {
     const brief = CASES[key];
-    const derived = deriveDeterministicThesis({ brief, claims, archetypes, style, seed: `fixture-${key}` });
-    const thesis: PursuitThesis = { ...derived, id: `t-${key}`, pursuitId: `p-${key}`, version: 1, createdAt: "" };
+    const derived = deriveDeterministicThesis({
+      brief,
+      claims,
+      archetypes,
+      style,
+      seed: `fixture-${key}`,
+    });
+    const thesis: PursuitThesis = {
+      ...derived,
+      id: `t-${key}`,
+      pursuitId: `p-${key}`,
+      version: 1,
+      createdAt: "",
+    };
     const archetype = archetypes.find((a) => a.id === thesis.archetypeId) ?? null;
-    const artifacts = await generateArtifactSet({ identity, thesis, brief, claims, archetype, style });
+    const artifacts = await generateArtifactSet({
+      identity,
+      thesis,
+      brief,
+      claims,
+      archetype,
+      style,
+    });
     const messages: Record<string, MessageContent> = {};
     let resume!: ResumeContent;
     let interview!: InterviewBriefContent;
@@ -94,7 +114,10 @@ const edge = (key: Key, kind: string, claim: CandidateClaim) => {
   if (!d) return null;
   return relate(d, claim, classifyClaim(claim))?.relationship ?? null;
 };
-const allText = (r: Result) => Object.values(r.messages).map((m) => m.body).join("\n");
+const allText = (r: Result) =>
+  Object.values(r.messages)
+    .map((m) => m.body)
+    .join("\n");
 
 describe("GlobalLogic — Data & AI service line", () => {
   it("does not position as Digital Marketing", () => {
@@ -138,7 +161,9 @@ describe("WPP — AVP Client Services", () => {
     expect(results.wpp.thesis.objections.some((o) => /inquisitive/i.test(o.objection))).toBe(false);
   });
   it("uses candidate identity, not the target title, as headline", () => {
-    expect(results.wpp.resume.headline.toLowerCase()).not.toContain("associate vice president, client services");
+    expect(results.wpp.resume.headline.toLowerCase()).not.toContain(
+      "associate vice president, client services",
+    );
   });
 });
 
@@ -154,7 +179,9 @@ describe("Antal — Managing Partner (lateral move)", () => {
     expect(rel === "ANALOGOUS" || rel === "DIRECT").toBe(true);
   });
   it("surfaces the executive-search gap explicitly", () => {
-    expect(results.antal.thesis.semantic!.positioning.gaps.join(" ")).toMatch(/executive-search|executive search/i);
+    expect(results.antal.thesis.semantic!.positioning.gaps.join(" ")).toMatch(
+      /executive-search|executive search/i,
+    );
     expect(results.antal.thesis.objections.some((o) => o.severity === "MATERIAL")).toBe(true);
   });
   it("never says 'I have done this before' on agency evidence", () => {
@@ -180,7 +207,9 @@ describe("Universal contracts", () => {
     for (const m of Object.values(r.messages)) expect(findLeakage(m.body)).toEqual([]);
   });
   it.each(keys)("%s: target title never becomes the headline", (k) => {
-    expect(results[k].resume.headline.toLowerCase()).not.toContain(CASES[k].roleTitle.toLowerCase());
+    expect(results[k].resume.headline.toLowerCase()).not.toContain(
+      CASES[k].roleTitle.toLowerCase(),
+    );
   });
   it.each(keys)("%s: role-title claims never become impact bullets", (k) => {
     for (const a of results[k].resume.impactAnchors) {
@@ -191,7 +220,10 @@ describe("Universal contracts", () => {
   it.each(keys)("%s: DIRECT-only language only with DIRECT evidence", (k) => {
     const r = results[k];
     const direct = Object.values(r.thesis.semantic!.proofRelationships).includes("DIRECT");
-    if (!direct) expect(allText(r)).not.toMatch(/i have done this before|a direct precedent|work i have already owned/i);
+    if (!direct)
+      expect(allText(r)).not.toMatch(
+        /i have done this before|a direct precedent|work i have already owned/i,
+      );
   });
   it.each(keys)("%s: READY stories are complete; others list what is missing", (k) => {
     for (const s of results[k].interview.proofStories) {
@@ -203,6 +235,12 @@ describe("Universal contracts", () => {
         expect(s.missingFields?.length ?? 0).toBeGreaterThan(0);
       }
     }
+    expect(
+      ledgerApprovalBlockers(
+        { kind: "INTERVIEW_BRIEF", brief: results[k].interview },
+        { claims },
+      ).join(" "),
+    ).not.toMatch(/changes a figure/);
   });
   it("opening lines, proof lead-ins and counter-frames vary across mandates", () => {
     const openers = keys.map((k) => results[k].messages.EXEC_NOTE!.body.split("\n\n")[1]);
