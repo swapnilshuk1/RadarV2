@@ -18,6 +18,9 @@ pre-production target does not run scraping, Chromium/Playwright is not a deploy
 prerequisite, the scraper process should not be required for readiness, and scraper
 preflight should not be part of that deployment. Run browser preflight on the
 machine that actually executes scraping.
+Server-side scraping is off by default. Set
+`RADAR_SERVER_SCRAPER_ENABLED=true` only on a host that will run the scraper;
+PM2, deployment process verification and readiness use the same setting.
 
 Likewise, whole-fleet PM2/readiness checks belong only to a target intended to run
 that whole fleet. A web + Pursuit/dossier target should verify those processes and

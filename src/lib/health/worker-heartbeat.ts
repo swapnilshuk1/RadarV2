@@ -52,9 +52,10 @@ export async function isWorkerOnline(
 export function requiredWorkersForEnvironment(
   env: NodeJS.ProcessEnv = process.env,
 ): readonly RequiredWorkerName[] {
-  return describeBlobStoreConfiguration(env).mode === "distributed"
-    ? REQUIRED_WORKERS.filter((name) => name !== "scrape")
-    : REQUIRED_WORKERS;
+  describeBlobStoreConfiguration(env);
+  return env.RADAR_SERVER_SCRAPER_ENABLED === "true"
+    ? REQUIRED_WORKERS
+    : REQUIRED_WORKERS.filter((name) => name !== "scrape");
 }
 
 export async function startWorkerHeartbeat(

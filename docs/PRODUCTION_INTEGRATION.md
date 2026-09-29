@@ -49,6 +49,11 @@ explicit person/profile/context scope rather than relying on selection defaults.
 | `npm run certify` | Full release certification; normally run once on the final release candidate. |
 | `npm run deploy` | Full-topology deployment script; use only when its configured process set matches the actual target. |
 
+The pre-production app host does not run the browser scraper. Leave
+`RADAR_SERVER_SCRAPER_ENABLED` unset (or `false`) there. Set it to `true`
+only on a host deliberately running `npm run worker:scrape`; that host also
+needs Chromium and the scraper preflight.
+
 Inspect the implementation before using additional flags. Workers operate against durable queues. Do not pass a worker's `--watch` option as PM2 filesystem watching.
 
 Verification follows `docs/VERIFICATION_AND_RELEASE.md`: use focused/affected
