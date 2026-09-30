@@ -6,6 +6,8 @@ import { useDecisions } from "../lib/decisions-store";
 import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/components/PursuitLauncher";
 import { DecisionBadge } from "../components/radar/DecisionBadge";
 import { getDecidedOpportunitiesFn } from "../lib/intelligence/opportunity-server";
+import { listPursuitSummariesFn } from "../pursuit/server";
+import { pursuitStatusLabels } from "../pursuit/types";
 
 
 export const Route = createFileRoute("/decisions")({
@@ -21,9 +23,11 @@ export const Route = createFileRoute("/decisions")({
     const raw = location.search as { tenantId?: unknown; personId?: unknown };
     const scope = { tenantId: typeof raw.tenantId === "string" ? raw.tenantId : undefined, personId: typeof raw.personId === "string" ? raw.personId : undefined };
     if (Boolean(scope.tenantId) !== Boolean(scope.personId)) throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
-    return {
-      opportunitiesList: await getDecidedOpportunitiesFn({ data: scope }), scope,
-    };
+    const [opportunitiesList, pursuitSummaries] = await Promise.all([
+      getDecidedOpportunitiesFn({ data: scope }),
+      listPursuitSummariesFn({ data: scope }),
+    ]);
+    return { opportunitiesList, pursuitSummaries, scope };
   },
   component: OpportunitiesPageRoot,
 });
@@ -54,7 +58,11 @@ function OpportunitiesPageRoot() {
 }
 
 function OpportunitiesPage() {
-  const { opportunitiesList: loadedOpportunities, scope } = Route.useLoaderData();
+  const { opportunitiesList: loadedOpportunities, pursuitSummaries, scope } = Route.useLoaderData();
+  const pursuitsByJobHash = useMemo(
+    () => new Map(pursuitSummaries.map((summary) => [summary.jobHash, summary])),
+    [pursuitSummaries],
+  );
   const { decisions, undo, clear, hydrated, error: decisionError } = useDecisions(scope);
   const rawOpportunities = loadedOpportunities as Array<Opportunity | ServedOpportunity>;
   // Phase 4: Non-evaluated variants without decisions must not contribute to counts or enter the ledger.
@@ -252,6 +260,7 @@ function OpportunitiesPage() {
 
             {displayedOpportunities.map((o: any) => {
               const verb = getUserVerb(o);
+              const pursuitSummary = verb === "PURSUE" ? pursuitsByJobHash.get(o.jobHash) : undefined;
               const applicationAction = applicationActionFor(o);
 
               return (
@@ -338,24 +347,40 @@ function OpportunitiesPage() {
                   </div>
 
                   {verb === "PURSUE" && (
-                    <div className="flex items-center gap-3 border-t border-hairline mt-5 pt-3">
-                      <button
-                        type="button"
-                        disabled={pursuit.pending}
-                        onClick={() => void pursuit.launch(o.jobHash)}
-                        className="rounded-sm border border-decision-pursue px-3 py-1 label-mono text-xs text-decision-pursue hover:bg-decision-pursue hover:text-white transition-colors disabled:opacity-50"
-                        data-testid={`pursuit-cockpit-btn-${o.jobHash}`}
-                      >
-                        {pursuit.pending ? "Opening…" : "Pursuit cockpit"}
-                      </button>
-                      <Link
-                        to="/pursuit/$jobHash"
-                        params={{ jobHash: o.jobHash }}
-                        className="label-mono text-xs text-slate-400 hover:text-slate-200 transition-colors"
-                        data-testid={`pursuit-page-link-${o.jobHash}`}
-                      >
-                        Open as page
-                      </Link>
+                    <div className="border-t border-hairline mt-5 pt-3" data-testid={`pursuit-summary-${o.jobHash}`}>
+                      {pursuitSummary ? (
+                        <>
+                          <p className="text-sm text-ink">{pursuitStatusLabels[pursuitSummary.status]}</p>
+                          {pursuitSummary.preparationState !== "READY" && (
+                            <p className="text-xs text-ink-muted">Preparation: {pursuitSummary.preparationState.toLowerCase()}</p>
+                          )}
+                          {pursuitSummary.nextAction && <p className="mt-1 text-sm text-ink-muted">Next: {pursuitSummary.nextAction}</p>}
+                          {pursuitSummary.nextActionDue && <p className="text-xs text-ink-muted">Due: {pursuitSummary.nextActionDue}</p>}
+                          <div className="flex items-center gap-3 mt-3">
+                            <button
+                              type="button"
+                              disabled={pursuit.pending}
+                              onClick={() => void pursuit.launch(o.jobHash)}
+                              className="rounded-sm border border-decision-pursue px-3 py-1 label-mono text-xs text-decision-pursue hover:bg-decision-pursue hover:text-white transition-colors disabled:opacity-50"
+                              data-testid={`pursuit-cockpit-btn-${o.jobHash}`}
+                            >
+                              {pursuit.pending ? "Opening…" : "Open pursuit"}
+                            </button>
+                            <Link
+                              to="/pursuit/$jobHash"
+                              params={{ jobHash: o.jobHash }}
+                              className="label-mono text-xs text-accent-ink hover:underline"
+                              data-testid={`pursuit-page-link-${o.jobHash}`}
+                            >
+                              Open as page
+                            </Link>
+                          </div>
+                        </>
+                      ) : (
+                        <p role="status" className="text-sm text-decision-consider">
+                          Pursuit workspace unavailable. Open the opportunity to review this decision.
+                        </p>
+                      )}
                     </div>
                   )}
 

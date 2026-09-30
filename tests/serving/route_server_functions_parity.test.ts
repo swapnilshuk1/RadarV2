@@ -19,6 +19,15 @@ import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
 
+const { corpusHealth } = vi.hoisted(() => ({ corpusHealth: vi.fn() }));
+vi.mock("@tanstack/react-router", () => ({ createFileRoute: () => (options: unknown) => options }));
+vi.mock("../../src/lib/intelligence/scrape-server", () => ({
+  getCorpusHealthFn: corpusHealth,
+  triggerCorpusRegenerationFn: vi.fn(),
+  getCorpusRegenerationStatusFn: vi.fn(),
+}));
+import { Route as CorpusRoute } from "../../src/routes/corpus";
+
 vi.mock("../../src/lib/security/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/lib/security/auth")>();
   return {
@@ -26,6 +35,29 @@ vi.mock("../../src/lib/security/auth", async (importOriginal) => {
     authenticateTenantMembership: vi.fn(async () => ({ tenantId: "tenant_A" })),
     authorizePersonScope: vi.fn(async () => ({ tenantId: "tenant_A", personId: "person_A" })),
   };
+});
+
+describe("Corpus health presentation", () => {
+  const load = () =>
+    (CorpusRoute as unknown as { loader: () => Promise<{ stats: unknown; error: string | null }> }).loader();
+
+  it("returns real admin telemetry", async () => {
+    const stats = { totalJobs: 7, textCoveragePercent: 51 };
+    corpusHealth.mockResolvedValueOnce(stats);
+    expect(await load()).toEqual({ stats, error: null });
+  });
+  it("reports unauthorized and backend failures without fabricated health", async () => {
+    corpusHealth.mockRejectedValueOnce(new Error("FORBIDDEN: administrator privileges required"));
+    expect(await load()).toEqual({ stats: null, error: "UNAUTHORIZED" });
+    corpusHealth.mockRejectedValueOnce(new Error("database unavailable"));
+    expect(await load()).toEqual({ stats: null, error: "UNAVAILABLE" });
+    expect(fs.readFileSync(path.resolve("src/routes/corpus.tsx"), "utf8")).not.toContain("DEFAULT_STATS");
+  });
+  it("advertises Corpus only for the authenticated admin role", () => {
+    const root = fs.readFileSync(path.resolve("src/routes/__root.tsx"), "utf8");
+    expect(root).toContain('data?.user?.role === "admin"');
+    expect(root).toContain('to="/corpus"');
+  });
 });
 
 describe("Phase 11 & 12: Route Server Function & Client Cache Suite", () => {
@@ -58,6 +90,9 @@ describe("Phase 11 & 12: Route Server Function & Client Cache Suite", () => {
     expect(dossierRoute).not.toContain("getDetails(");
     expect(dossierRoute).toContain("getOpportunityDetailsFn");
     expect(decisionsRoute).toContain("getDecidedOpportunitiesFn");
+    expect(decisionsRoute).toContain("listPursuitSummariesFn({ data: scope })");
+    expect(decisionsRoute).toContain('verb === "PURSUE" ? pursuitsByJobHash.get(o.jobHash)');
+    expect(decisionsRoute).toContain("Pursuit workspace unavailable");
     expect(decisionsRoute).not.toContain("getOpportunitiesFn");
     expect(decisionsRoute).not.toContain("radar.opportunities.tracking.v1");
     expect(decisionsRoute).not.toContain("localStorage");

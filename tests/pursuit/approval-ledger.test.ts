@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ledgerApprovalBlockers } from "../../src/pursuit/approval";
+import { evaluateArtifactApproval, ledgerApprovalBlockers } from "../../src/pursuit/approval";
 import type { ArtifactContent, CandidateClaim } from "../../src/pursuit/types";
 
 const claim: CandidateClaim = {
@@ -37,6 +37,27 @@ const resume = (text: string, claimId: string | null = "c1"): ArtifactContent =>
 });
 
 describe("approval proves figures against the ledger", () => {
+  it("returns actionable structural and ledger blockers through one approval contract", () => {
+    const result = evaluateArtifactApproval(resume("Grew fee book from $80M to $12M", "gone"), {
+      claims: [claim],
+    });
+    expect(result.approvable).toBe(false);
+    expect(result.blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "INCOMPLETE_CONTENT", message: expect.stringMatching(/summary/i) }),
+      expect.objectContaining({ code: "MISSING_CLAIM", location: "Resume · selected impact" }),
+    ]));
+  });
+  it("allows a complete unchanged resume and rejects unsupported edited figures", () => {
+    const complete = resume("Grew fee book from $8M to $12M");
+    if (complete.kind !== "RESUME") throw new Error("test fixture must be a resume");
+    complete.resume.executiveSummary = "Built and led client businesses with sustained growth across multiple markets.";
+    complete.resume.roles = [{ employer: "VML", roleTitle: "SVP", period: "2020–2024", bullets: [] }];
+    expect(evaluateArtifactApproval(complete, { claims: [claim] }).approvable).toBe(true);
+    complete.resume.impactAnchors[0].text = "Grew fee book from $80M to $12M";
+    expect(evaluateArtifactApproval(complete, { claims: [claim] }).blockers).toEqual([
+      expect.objectContaining({ code: "UNSUPPORTED_FIGURE", location: "Resume · selected impact" }),
+    ]);
+  });
   it("accepts unchanged figures", () => {
     expect(ledgerApprovalBlockers(resume("Grew fee book $8M → $12M"), { claims: [claim] })).toEqual(
       [],

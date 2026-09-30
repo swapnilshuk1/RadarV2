@@ -18,7 +18,7 @@ import {
   type PreparationJob,
 } from "../../src/pursuit/store";
 import { projectLedger, resolveCanonicalSources } from "../../src/pursuit/ledger";
-import { openPursuitFn } from "../../src/pursuit/server";
+import { listPursuitSummariesFn, openPursuitFn, preflightArtifactApprovalFn, saveArtifactFn } from "../../src/pursuit/server";
 import { ledgerApprovalBlockers } from "../../src/pursuit/approval";
 import { pursuitProfileVersion } from "../../src/pursuit/lineage";
 import { createSqliteModelInvocationSink } from "../../src/lib/model/model-invocation";
@@ -155,6 +155,27 @@ describe("Pursuit in the RADAR host", () => {
         )
       )?.action,
     ).toBe("CONSIDER");
+  });
+
+  it("lists scoped pursuit execution state in one read without changing decisions", async () => {
+    await db.execute(
+      "UPDATE opportunity_pursuits SET status='INTERVIEWING', next_action='Follow up with search partner', next_action_due='2026-10-03' WHERE job_hash='hash_A'",
+    );
+    const summaries = await listPursuitSummariesFn({ data: scope });
+    expect(summaries).toEqual([
+      expect.objectContaining({
+        jobHash: "hash_A",
+        status: "INTERVIEWING",
+        nextAction: "Follow up with search partner",
+        nextActionDue: "2026-10-03",
+      }),
+    ]);
+    expect(
+      (await db.one<{ action: string }>("SELECT action FROM canonical_decisions WHERE canonical_job_id='job_A'"))?.action,
+    ).toBe("CONSIDER");
+    await expect(
+      listPursuitSummariesFn({ data: { tenantId: "tenant_B", personId: "person_B" } }),
+    ).rejects.toThrow();
   });
 
   it("does not create a pursuit or PURSUE decision when reopening a missing pursuit", async () => {
@@ -442,6 +463,18 @@ describe("Pursuit in the RADAR host", () => {
         )
       )?.n,
     ).toBe(1);
+  });
+
+  it("uses identical approval blockers in preflight and authoritative save", async () => {
+    const invalid = { kind: "MESSAGE" as const, message: { subject: null, body: "Too short", targetWords: null } };
+    const data = { ...scope, jobHash: "hash_A", artifactId: "draft_note", content: invalid };
+    const preflight = await preflightArtifactApprovalFn({ data });
+    expect(preflight.approvable).toBe(false);
+    expect(preflight.blockers[0].message).toMatch(/too short/i);
+    await expect(saveArtifactFn({ data: { ...data, approve: true, signals: [] } })).rejects.toThrow(
+      preflight.blockers[0].message,
+    );
+    expect((await db.one<{ status: string }>("SELECT status FROM pursuit_artifacts WHERE id='draft_note'"))?.status).toBe("DRAFT");
   });
 
   it("keeps claims from an older graph unchanged when a new graph reuses a fact ID", async () => {

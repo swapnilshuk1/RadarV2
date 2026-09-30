@@ -6,11 +6,13 @@
  */
 
 import type { InterviewBriefContent, LearningSignal, PursuitArtifact } from "../types";
+import type { ArtifactApprovalBlocker } from "../approval";
 import { CopyButton, EditableText, SectionLabel } from "./shared";
 
 interface Props {
   artifact: PursuitArtifact | undefined;
   busy: boolean;
+  approvalBlockers: ArtifactApprovalBlocker[];
   onSave: (
     artifactId: string,
     content: { kind: "INTERVIEW_BRIEF"; brief: InterviewBriefContent },
@@ -20,7 +22,7 @@ interface Props {
   onExport: (artifactId: string, format: "PDF" | "TXT") => void;
 }
 
-export function InterviewBriefPanel({ artifact, busy, onSave, onExport }: Props) {
+export function InterviewBriefPanel({ artifact, busy, approvalBlockers, onSave, onExport }: Props) {
   if (!artifact || artifact.content.kind !== "INTERVIEW_BRIEF") {
     return (
       <div className="memo-card">
@@ -90,6 +92,17 @@ export function InterviewBriefPanel({ artifact, busy, onSave, onExport }: Props)
           </button>
         </div>
       </div>
+
+      {approvalBlockers.length > 0 && (
+        <div className="memo-callout border-l-red-500" role="alert">
+          <p className="font-semibold">Correct these before approving:</p>
+          <ul className="mt-1 list-disc pl-5 text-sm">
+            {approvalBlockers.map((blocker, index) => (
+              <li key={`${blocker.code}-${index}`}>{blocker.message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="memo-opinion-box">
         <SectionLabel>The mandate in one sentence</SectionLabel>

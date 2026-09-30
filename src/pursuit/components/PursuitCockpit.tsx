@@ -17,6 +17,7 @@ import {
   derivePursuitFn,
   exportArtifactFn,
   markOutreachSentFn,
+  preflightArtifactApprovalFn,
   getCockpitFn,
   getPursuitPreparationStatusFn,
   saveArtifactFn,
@@ -24,6 +25,7 @@ import {
 } from "../server";
 import type { ArtifactContent, CockpitView, LearningSignal, PursuitStatus } from "../types";
 import { pursuitStatusLabels } from "../types";
+import type { ArtifactApprovalBlocker } from "../approval";
 
 type Surface = "STRATEGY" | "RESUME" | "OUTREACH" | "INTERVIEW";
 
@@ -46,9 +48,11 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
   const [surface, setSurface] = useState<Surface>("STRATEGY");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [approvalBlockersByArtifact, setApprovalBlockersByArtifact] = useState<Record<string, ArtifactApprovalBlocker[]>>({});
 
   const derive = useServerFn(derivePursuitFn);
   const saveArtifact = useServerFn(saveArtifactFn);
+  const preflightApproval = useServerFn(preflightArtifactApprovalFn);
   const updateState = useServerFn(updatePursuitStateFn);
   const exportArtifact = useServerFn(exportArtifactFn);
   const markOutreachSent = useServerFn(markOutreachSentFn);
@@ -129,8 +133,18 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
     content: ArtifactContent,
     signals: LearningSignal[],
     approve = false,
-  ) =>
-    run(() => saveArtifact({ data: { ...scope, jobHash, artifactId, content, signals, approve } }));
+  ) => {
+    setApprovalBlockersByArtifact((current) => ({ ...current, [artifactId]: [] }));
+    if (!approve) return run(() => saveArtifact({ data: { ...scope, jobHash, artifactId, content, signals, approve } }));
+    return run(async () => {
+      const result = await preflightApproval({ data: { ...scope, jobHash, artifactId, content } });
+      if (!result.approvable) {
+        setApprovalBlockersByArtifact((current) => ({ ...current, [artifactId]: result.blockers }));
+        return view;
+      }
+      return saveArtifact({ data: { ...scope, jobHash, artifactId, content, signals, approve } });
+    });
+  };
 
   const handleExport = async (artifactId: string, format: "PDF" | "DOCX" | "TXT") => {
     setBusy(true);
@@ -268,6 +282,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
             artifact={resume}
             claims={view.claims}
             busy={busy}
+            approvalBlockers={resume ? approvalBlockersByArtifact[resume.id] ?? [] : []}
             onSave={(artifactId, content, signals, approve) =>
               handleSave(artifactId, content, signals, approve)
             }
@@ -279,6 +294,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
           <OutreachKit
             artifacts={view.artifacts}
             busy={busy}
+            approvalBlockersByArtifact={approvalBlockersByArtifact}
             onSave={(artifactId, content, signals, approve) =>
               handleSave(artifactId, content, signals, approve)
             }
@@ -293,6 +309,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
           <InterviewBriefPanel
             artifact={interview}
             busy={busy}
+            approvalBlockers={interview ? approvalBlockersByArtifact[interview.id] ?? [] : []}
             onSave={(artifactId, content, signals, approve) =>
               handleSave(artifactId, content, signals, approve)
             }

@@ -272,16 +272,18 @@ function GlobalHeader() {
                 Opportunities
               </Link>
             </li>
-            <li>
-              <Link
-                to="/corpus"
-                className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
-                  isSelected("/corpus") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Corpus
-              </Link>
-            </li>
+            {data?.user?.role === "admin" && (
+              <li>
+                <Link
+                  to="/corpus"
+                  className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
+                    isSelected("/corpus") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Corpus
+                </Link>
+              </li>
+            )}
             {isDev && (
               <>
                 <li>

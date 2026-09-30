@@ -22,10 +22,9 @@ import { isLedgerStale, projectLedger, readLedgerState, resolveCanonicalSources 
 import { candidateIdentity, loadBrief, resolveLineage } from "./preparation";
 import { toRoleBrief } from "./role-brief";
 import * as store from "./store";
-import { ledgerApprovalBlockers } from "./approval";
+import { evaluateArtifactApproval } from "./approval";
 import { pursuitProfileVersion } from "./lineage";
 import {
-  approvalBlockers,
   archetypeInputSchema,
   artifactContentSchema,
   artifactLabels,
@@ -102,6 +101,21 @@ async function readCockpit(scope: store.Scope, jobHash: string): Promise<Cockpit
 // ---------------------------------------------------------------------------
 // Profile vault
 // ---------------------------------------------------------------------------
+
+/** One scoped read for the decisions portfolio; no artifact or ledger loading. */
+export const listPursuitSummariesFn = createServerFn({ method: "GET" })
+  .validator((data: { tenantId?: string; personId?: string }) => scopeInput.parse(data))
+  .handler(async ({ data }) => {
+    const scope = await authorize(data, "read:person");
+    const pursuits = await store.listPursuits(scope);
+    return pursuits.map(({ jobHash, status, preparationState, nextAction, nextActionDue }) => ({
+      jobHash,
+      status,
+      preparationState,
+      nextAction,
+      nextActionDue,
+    }));
+  });
 
 export const getPursuitVaultFn = createServerFn({ method: "GET" })
   .validator((data: { tenantId: string; personId: string }) => scopeInput.parse(data))
@@ -302,6 +316,46 @@ function renderArtifact(content: ArtifactContent): string {
   return renderMessage(content.message);
 }
 
+async function checkArtifactApproval(
+  scope: store.Scope,
+  jobHash: string,
+  pursuit: Awaited<ReturnType<typeof store.getPursuit>> & {},
+  existing: Awaited<ReturnType<typeof store.getArtifact>> & {},
+  content: ArtifactContent,
+  userId: string,
+) {
+  const activeThesis = pursuit.activeThesisId ? await store.getThesis(pursuit.activeThesisId) : null;
+  const profileVersion = pursuitProfileVersion(pursuit, activeThesis);
+  const [claims, brief, artifactThesis] = await Promise.all([
+    store.listClaimsForProfile(scope, profileVersion),
+    loadBrief(userId, scope, jobHash).catch(() => null),
+    existing.thesisId ? store.getThesis(existing.thesisId) : Promise.resolve(null),
+  ]);
+  return evaluateArtifactApproval(content, {
+    claims,
+    contextText: brief ? JSON.stringify(brief) : "",
+    proofRelationships: artifactThesis?.semantic?.proofRelationships ?? {},
+  });
+}
+
+const artifactApprovalInput = scopeInput.extend({
+  jobHash: z.string().min(1),
+  artifactId: z.string().min(1),
+  content: artifactContentSchema,
+});
+
+export const preflightArtifactApprovalFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => artifactApprovalInput.parse(data))
+  .handler(async ({ data }) => {
+    const user = await requireAuthUser();
+    const scope = await authorize(data, "read:person");
+    const pursuit = await store.getPursuit(scope, data.jobHash);
+    if (!pursuit) throw new Error("PURSUIT_NOT_FOUND");
+    const existing = await store.getArtifact(pursuit.id, data.artifactId);
+    if (!existing) throw new Error("ARTIFACT_NOT_FOUND");
+    return checkArtifactApproval(scope, data.jobHash, pursuit, existing, data.content, user.id);
+  });
+
 export const saveArtifactFn = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
     scopeInput
@@ -321,29 +375,11 @@ export const saveArtifactFn = createServerFn({ method: "POST" })
     if (!pursuit) throw new Error("PURSUIT_NOT_FOUND");
     const existing = await store.getArtifact(pursuit.id, data.artifactId);
     if (!existing) throw new Error("ARTIFACT_NOT_FOUND");
-    const activeThesis = pursuit.activeThesisId ? await store.getThesis(pursuit.activeThesisId) : null;
-    const profileVersion = pursuitProfileVersion(pursuit, activeThesis);
-
     const content = data.content as ArtifactContent;
     if (data.approve) {
-      const blockers = approvalBlockers(content);
-      // Prove edited figures and claim links against the candidate's own ledger.
-      const [claims, brief] = await Promise.all([
-        store.listClaimsForProfile(scope, profileVersion),
-        loadBrief(user.id, scope, data.jobHash).catch(() => null),
-      ]);
-      blockers.push(
-        ...ledgerApprovalBlockers(content, {
-          claims,
-          contextText: brief ? JSON.stringify(brief) : "",
-          proofRelationships: existing.thesisId
-            ? ((await store.getThesis(existing.thesisId))?.semantic?.proofRelationships ?? {})
-            : {},
-        }),
-      );
-      // Approval is what leaves the system; refuse to mark an incomplete
-      // artifact as final rather than exporting placeholders.
-      if (blockers.length > 0) throw new Error(`ARTIFACT_NOT_APPROVABLE: ${blockers.join(" ")}`);
+      const approval = await checkArtifactApproval(scope, data.jobHash, pursuit, existing, content, user.id);
+      if (!approval.approvable)
+        throw new Error(`ARTIFACT_NOT_APPROVABLE: ${approval.blockers.map((blocker) => blocker.message).join(" ")}`);
     }
     await store.updateArtifactContent(pursuit.id, data.artifactId, content, {
       status: data.approve ? "APPROVED" : "USER_CUSTOMIZED",

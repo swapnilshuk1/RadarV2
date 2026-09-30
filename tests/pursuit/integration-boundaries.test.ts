@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { applyDossierCeiling, corroboratedByDossier, ownershipGuard } from "../../src/pursuit/semantic/engine";
 import type { MandateDimension } from "../../src/pursuit/semantic/types";
 import type { CandidateClaim } from "../../src/pursuit/types";
+import { resumeToPdf } from "../../src/pursuit/export/pdf";
+import type { ResumeContent } from "../../src/pursuit/types";
 
 const dim = (status: string | null, evidence: string[] = []): MandateDimension => ({
   id: "d",
@@ -13,6 +15,30 @@ const dim = (status: string | null, evidence: string[] = []): MandateDimension =
   sourceText: "x",
   dossierStatus: status,
   dossierEvidence: evidence,
+});
+
+describe("Pursuit PDF export", () => {
+  const pdfText = (text: string) => {
+    const resume: ResumeContent = {
+      fullName: "Asha Rao", contactLine: "Delhi", headline: "Growth leader",
+      executiveSummary: text, impactAnchors: [], roles: [], capabilities: [],
+    };
+    return new TextDecoder().decode(resumeToPdf(resume));
+  };
+
+  it("normalizes currency and punctuation without question-mark substitution", () => {
+    const pdf = pdfText("Won ₹80 crore and €2M — ‘strong’ results • across markets.");
+    expect(pdf).toContain("INR 80 crore and EUR 2M - 'strong' results - across markets");
+    expect(pdf).not.toContain("?80 crore");
+  });
+  it("rejects unsupported Unicode with an alternate-export message", () => {
+    expect(() => pdfText("Led growth in 東京")).toThrow(/PDF_EXPORT_UNSUPPORTED_CHARACTER.*DOCX or TXT/);
+  });
+  it("preserves ASCII export and multipage pagination", () => {
+    const pdf = pdfText("Built durable growth. ".repeat(600));
+    expect(pdf).toContain("%PDF-1.4");
+    expect((pdf.match(/\/Type \/Page \/Parent/g) ?? []).length).toBeGreaterThan(1);
+  });
 });
 
 const claim = (statement: string, over: Partial<CandidateClaim> = {}): CandidateClaim => ({

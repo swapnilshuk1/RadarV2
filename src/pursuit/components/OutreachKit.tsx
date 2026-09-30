@@ -6,6 +6,7 @@
  */
 
 import type { LearningSignal, MessageContent, PursuitArtifact } from "../types";
+import type { ArtifactApprovalBlocker } from "../approval";
 import { artifactLabels } from "../types";
 import { CopyButton, EditableText, SectionLabel } from "./shared";
 
@@ -30,6 +31,7 @@ const MESSAGE_PURPOSE: Record<string, string> = {
 interface Props {
   artifacts: PursuitArtifact[];
   busy: boolean;
+  approvalBlockersByArtifact: Record<string, ArtifactApprovalBlocker[]>;
   onSave: (
     artifactId: string,
     content: { kind: "MESSAGE"; message: MessageContent },
@@ -40,7 +42,7 @@ interface Props {
   onLogSent: (artifactId: string) => void;
 }
 
-export function OutreachKit({ artifacts, busy, onSave, onExport, onLogSent }: Props) {
+export function OutreachKit({ artifacts, busy, approvalBlockersByArtifact, onSave, onExport, onLogSent }: Props) {
   const messages = MESSAGE_ORDER.map((type) =>
     artifacts.find((artifact) => artifact.artifactType === type),
   ).filter((artifact): artifact is PursuitArtifact => Boolean(artifact));
@@ -115,6 +117,17 @@ export function OutreachKit({ artifacts, busy, onSave, onExport, onLogSent }: Pr
                 </button>
               </div>
             </div>
+
+            {(approvalBlockersByArtifact[artifact.id]?.length ?? 0) > 0 && (
+              <div className="memo-callout mt-3 border-l-red-500" role="alert">
+                <p className="font-semibold">Correct these before approving:</p>
+                <ul className="mt-1 list-disc pl-5 text-sm">
+                  {approvalBlockersByArtifact[artifact.id].map((blocker, index) => (
+                    <li key={`${blocker.code}-${index}`}>{blocker.message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="mt-3 space-y-2">
               <EditableText
