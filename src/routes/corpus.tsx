@@ -26,6 +26,7 @@ export const Route = createFileRoute("/corpus")({
 function CorpusHealth() {
   const loaderData = Route.useLoaderData();
   const [stats, setStats] = useState<CorpusHealthStats | null>(loaderData.stats);
+  const hasStats = stats !== null;
   const [availabilityError, setAvailabilityError] = useState(loaderData.error);
   const [refreshing, setRefreshing] = useState(false);
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
@@ -60,7 +61,7 @@ function CorpusHealth() {
 
   // Poll background corpus status
   useEffect(() => {
-    if (!stats) return;
+    if (!hasStats) return;
     let timer: NodeJS.Timeout | null = null;
 
     const pollStatus = async () => {
@@ -95,7 +96,7 @@ function CorpusHealth() {
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [fetchStats, Boolean(stats)]);
+  }, [fetchStats, hasStats]);
 
   const handleRegenerate = async () => {
     setRefreshing(true);
