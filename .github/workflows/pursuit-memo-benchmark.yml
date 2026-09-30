@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: pursuit-memo-benchmark
@@ -155,6 +156,41 @@ jobs:
           path: ${{ runner.temp }}/pursuit-memo-benchmark-results/
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Post benchmark summary
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BENCHMARK_ISSUE: "16"
+        run: |
+          set -euo pipefail
+          report_file="$RUNNER_TEMP/pursuit-memo-benchmark-results/pursuit-memo-benchmark.json"
+          status_file="$RUNNER_TEMP/pursuit-memo-benchmark-results/exit-status.txt"
+          body="$RUNNER_TEMP/pursuit-memo-benchmark-comment.md"
+          {
+            echo "## Pursuit memo benchmark"
+            echo
+            echo "- Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            if [[ -s "$report_file" ]]; then
+              echo "- Deployed release: `$(jq -r '.sourceReleaseSha // "unknown"' "$report_file")`"
+              echo "- Pricing snapshot: $(jq -r '.pricingRegion + " · " + .pricingAsOf' "$report_file")"
+              echo
+              echo "| Model | Avg quality proxy | Total cost (USD) | Avg latency | Answered | Safety failures |"
+              echo "| --- | ---: | ---: | ---: | ---: | ---: |"
+              jq -r '.summary[] | "| \(.model) | \(.avgQualityProxy) | \(.totalCostUsd) | \(.avgLatencyMs) ms | \(.answeredCases)/5 | \(.safetyFailures) |"' "$report_file"
+              echo
+              echo "Artifact: `pursuit-memo-benchmark-$GITHUB_RUN_ID`"
+            else
+              echo "- Report: unavailable"
+            fi
+            if [[ -s "$status_file" ]]; then
+              echo "- Benchmark exit status: `$(tr -d '[:space:]' < "$status_file")`"
+            else
+              echo "- Benchmark exit status: unavailable"
+            fi
+          } > "$body"
+          gh issue comment "$BENCHMARK_ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$body"
 
       - name: Enforce benchmark safety result
         shell: bash
