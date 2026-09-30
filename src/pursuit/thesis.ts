@@ -288,11 +288,14 @@ function enrichmentSchema(objectionIds: readonly string[]): Record<string, unkno
       },
       objections: {
         type: "array",
-        maxItems: 4,
+        maxItems: objectionIds.length > 0 ? 4 : 0,
         items: {
           type: "object",
           properties: {
-            objectionId: { type: "string", enum: [...objectionIds] },
+            objectionId:
+              objectionIds.length > 0
+                ? { type: "string", enum: [...objectionIds] }
+                : { type: "string" },
             objection: { type: "string" },
             counterPosition: { type: "string" },
             severity: { type: "string", enum: ["MATERIAL", "MODERATE", "MINOR"] },
@@ -325,7 +328,10 @@ Absolute rules:
 5. Do not use recruitment cliches ("results-driven", "proven track record", "passionate", "synergy", "dynamic professional").
 6. The supplied objectionCandidates are the only objections you may return. Echo their objectionId exactly. You may reorder them and you may select a BRIEF_RISK candidate the deterministic draft missed, but do not invent a new objection outside that list. Each counter-position must be answerable from the ledger or must honestly name the gap.
 7. Write as a senior adviser briefing a peer. Plain, specific, confident. No headings, no bullet markup inside strings.
-9. Each ledger claim carries relationshipToMandate (DIRECT, ANALOGOUS, ADJACENT). Never describe ANALOGOUS or ADJACENT evidence as having done this role before; call it comparable or related experience. Never write \"I have done this before\" unless the proof is DIRECT.\n10. Use the supplied positioning (primary lens, supporting lenses, named gaps) as the thesis. Do not collapse it to a single generic label such as 'broad marketing leader'.\n11. Never write internal instructions such as 'present through', 'lead with', 'this lens' or 'candidate should' in any string.\n8. Never write a claim identifier inside prose. Claim ids belong only in the claimId and supportingClaimIds fields. Naming the employer or the metric is how you attribute a fact in prose.`;
+8. Never write a claim identifier inside prose. Claim ids belong only in the claimId and supportingClaimIds fields. Naming the employer or the metric is how you attribute a fact in prose.
+9. Each ledger claim carries relationshipToMandate (DIRECT, ANALOGOUS, ADJACENT). Never describe ANALOGOUS or ADJACENT evidence as having done this role before; call it comparable or related experience. Never write \"I have done this before\" unless the proof is DIRECT.
+10. Use the supplied positioning (primary lens, supporting lenses, named gaps) as the thesis. Do not collapse it to a single generic label such as 'broad marketing leader'.
+11. Never write internal instructions such as 'present through', 'lead with', 'this lens' or 'candidate should' in any string.`;
 
 /**
  * Claim ids are provenance metadata, not prose. Models sometimes cite them
