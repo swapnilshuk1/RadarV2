@@ -148,6 +148,40 @@ describe("Pursuit thesis enrichment integrity", () => {
     expect(findSemanticInflation("Direct P&L ownership is not evidenced in the record.", claims)).toEqual([]);
   });
 
+  it("rejects model-derived arithmetic figures that are not present in role or ledger evidence", async () => {
+    const brief = load<RoleBrief>("msm-unify-csto/role.json");
+    const deterministic = deterministicFor(brief);
+    const base = deterministic.objections[0];
+    expect(base).toBeTruthy();
+
+    modelState.handler = async (_stage, _instruction, input) => {
+      const candidate = input.objectionCandidates.find(
+        (item: any) => item.source === "DETERMINISTIC",
+      );
+      return baseOutput(input, [
+        {
+          objectionId: candidate.objectionId,
+          objection: candidate.objection,
+          counterPosition:
+            "Scaled attributed revenue by $35M, from $20M to $55M, demonstrating commercial ownership.",
+          severity: candidate.severity,
+          supportingClaimIds: candidate.supportingClaimIds,
+        },
+      ]);
+    };
+
+    const enriched = await enrichThesis(deterministic, {
+      brief,
+      claims,
+      archetype: archetypes.find((a) => a.id === deterministic.archetypeId) ?? null,
+      style,
+    });
+
+    const matched = enriched.objections.find((objection) => objection.objection === base.objection);
+    expect(matched?.counterPosition).toBe(base.counterPosition);
+    expect(JSON.stringify(enriched)).not.toMatch(/\$35M/i);
+  });
+
   it("falls back from semantically inflated model win-theme language", async () => {
     const brief = load<RoleBrief>("antal-managing-partner/role.json");
     const deterministic = deterministicFor(brief);
