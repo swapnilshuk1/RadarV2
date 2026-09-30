@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import path from "path";
 import os from "node:os";
-import { getDatabaseAdapter, resetDatabaseAdapter, getRadarEnv } from "../../src/data/database/index";
+import {
+  getDatabaseAdapter,
+  resetDatabaseAdapter,
+  getRadarEnv,
+} from "../../src/data/database/index";
 import { loadUnifiedEnvironment } from "../../src/lib/env";
 
 describe("RADAR V4 Phase 2A — Database Safety Lockdown", () => {
@@ -52,7 +56,9 @@ describe("RADAR V4 Phase 2A — Database Safety Lockdown", () => {
 
     expect(() => {
       getDatabaseAdapter();
-    }).toThrow(/Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment/);
+    }).toThrow(
+      /Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment/,
+    );
   });
 
   it("5. Test environment allows explicit :memory: SQLite", async () => {
@@ -65,7 +71,10 @@ describe("RADAR V4 Phase 2A — Database Safety Lockdown", () => {
 
     await adapter.execute("CREATE TABLE _safety_test (id TEXT PRIMARY KEY, val TEXT)");
     await adapter.execute("INSERT INTO _safety_test (id, val) VALUES (?, ?)", ["k1", "v1"]);
-    const row = await adapter.one<{ id: string; val: string }>("SELECT * FROM _safety_test WHERE id = ?", ["k1"]);
+    const row = await adapter.one<{ id: string; val: string }>(
+      "SELECT * FROM _safety_test WHERE id = ?",
+      ["k1"],
+    );
     expect(row).toEqual({ id: "k1", val: "v1" });
   });
 
@@ -81,6 +90,27 @@ describe("RADAR V4 Phase 2A — Database Safety Lockdown", () => {
       expect(process.env.RADAR_EXPECTED_DB_TARGET_FINGERPRINT).toBeUndefined();
     } finally {
       fs.unlinkSync(fixtureFile);
+      fs.rmdirSync(fixtureDir);
+    }
+  });
+
+  it("does not load development credentials when only NODE_ENV identifies a test", () => {
+    const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), "radar-node-test-env-"));
+    fs.writeFileSync(
+      path.join(fixtureDir, ".env"),
+      "TURSO_AUTH_TOKEN=test-secret\nRADAR_ENV=dev\n",
+    );
+    try {
+      delete process.env.RADAR_ENV;
+      delete process.env.VITEST;
+      delete process.env.TURSO_AUTH_TOKEN;
+      process.env.NODE_ENV = "test";
+      loadUnifiedEnvironment({ rootDir: fixtureDir, forceReload: true });
+      expect(process.env.TURSO_AUTH_TOKEN).toBeUndefined();
+      expect(process.env.RADAR_ENV).toBeUndefined();
+      expect(getRadarEnv()).toBe("test");
+    } finally {
+      fs.unlinkSync(path.join(fixtureDir, ".env"));
       fs.rmdirSync(fixtureDir);
     }
   });

@@ -46,7 +46,7 @@ describe("Active Context Resolution", () => {
     await expect(contexts.getActiveContext(scopeA)).resolves.toEqual({ searchPlanId: "plan_A", contextFingerprint: "fingerprint_A_new" });
   });
 
-  it("serves a materialized candidate only through the selected explicit context", async () => {
+  it("withholds legacy dossier prose and preserves candidate scope", async () => {
     await db.execute(`INSERT INTO companies (id, name) VALUES (?, ?)`, ["comp_1", "Company"]);
     await db.execute(`INSERT INTO canonical_opportunities (id, source, source_job_id, canonical_url, company_name) VALUES (?, 'Indeed', ?, ?, ?)`, ["job_1", "source_job_1", "https://in.indeed.com/viewjob?jk=job_1", "Company"]);
     await db.execute(`INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content, acquisition_status, lifecycle_state) VALUES (?, ?, ?, ?, ?, 'ACQUIRED', 'ACTIVE')`, ["v1", "job_1", "hash", "Title", "{}"]);
@@ -63,7 +63,7 @@ describe("Active Context Resolution", () => {
     const feed = await queries.getFeed(scopeA, undefined, undefined, 10);
     expect(feed.items).toHaveLength(1);
     const dossier = await queries.getDossier(scopeA, "source_job_1");
-    expect(dossier?.evaluationState).toBe("EVALUATED");
+    expect(dossier?.evaluationState).toBe("INVALID");
     expect(await queries.getDossier(scopeB, "source_job_1")).toBeNull();
   });
 });

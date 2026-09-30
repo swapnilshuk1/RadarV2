@@ -68,7 +68,12 @@ export function loadUnifiedEnvironment(options?: LoadUnifiedEnvironmentOptions):
   const radarEnv = process.env.RADAR_ENV;
   // Tests use isolated fixtures; never import local Turso credentials or a
   // deployment fingerprint from .env into a test process by default.
-  const isDev = nodeEnv !== "production" && radarEnv !== "production" && radarEnv !== "test";
+  const isDev =
+    nodeEnv !== "production" &&
+    nodeEnv !== "test" &&
+    process.env.VITEST !== "true" &&
+    radarEnv !== "production" &&
+    radarEnv !== "test";
 
   if (!isDev && !options?.envFiles) {
     _hasLoadedUnifiedEnvironment = true;
