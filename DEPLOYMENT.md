@@ -48,6 +48,27 @@ final release candidate, run the authoritative certification once; it already
 contains TypeScript and the production build. CI packages `.output` for its exact
 commit SHA. Pushing `main` runs CI; it does not deploy or activate serving.
 
+## Deploy a selected certified commit to Oracle
+
+In GitHub, open **Actions → Deploy Oracle → Run workflow** on `main` and enter
+the full 40-character commit SHA. The workflow has no push trigger. It accepts
+only a commit on `main` with a successful CI run and an unexpired release
+artifact, then runs the existing deployment script without rebuilding or
+recertifying. The equivalent CLI command is
+`gh workflow run deploy-oracle.yml --ref main -f sha=<40-character-sha>`.
+
+Configure the GitHub `Oracle` environment before the first run. Its variables
+are `RADAR_DEPLOY_SSH_HOST`, `RADAR_DEPLOY_SSH_USER`,
+`RADAR_DEPLOY_APP_DIRECTORY`, `RADAR_DEPLOY_DB_FINGERPRINT`,
+`RADAR_DEPLOY_READINESS_URL`, and `RADAR_DEPLOYMENT_MODE`; set
+`RADAR_SERVER_SCRAPER_ENABLED` only when this host actually runs scraping.
+Its secrets are `TURSO_CONNECTION_URL`, `RADAR_DEPLOY_RECOVERY_COMMAND`,
+`ORACLE_SSH_PRIVATE_KEY`, and `ORACLE_SSH_KNOWN_HOSTS` (the verified SSH host
+key entry). Store the Oracle runtime's Turso credentials on the host, outside
+the release archive. The workflow checks that Oracle runs Linux x64 and Node 22,
+matching the current CI artifact, before downloading or deploying it. Missing
+configuration or a mismatched target fails before any deployment mutation.
+
 Choose an artifact built for the actual target operating system, CPU architecture
 and Node runtime. A Windows build is not a Linux deployment artifact, and a Linux
 x64 artifact is not proof of ARM64 compatibility. Verify the live host rather than
