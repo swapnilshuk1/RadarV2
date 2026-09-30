@@ -19,9 +19,10 @@ that evidence before evaluation. V8 context identity includes the acquisition
 recipe. New context-aware work must not reuse historical v6/v7 identities.
 
 Bedrock evaluation/composition and Gemini factual review use the configured model
-factories. GLM-5 uses Bedrock Mantle, with `BEDROCK_MANTLE_API_KEY` or a key file
-outside the repository referenced by `BEDROCK_MANTLE_KEY_FILE`. The old Converse
-bearer/CSV is not a fallback. Restart workers after key rotation.
+factories. Pursuit uses Bedrock Mantle with DeepSeek V3.2 as its default primary
+and GLM-5 as the same-provider fallback, using `BEDROCK_MANTLE_API_KEY` or a key
+file outside the repository referenced by `BEDROCK_MANTLE_KEY_FILE`. The old
+Converse bearer/CSV is not a fallback. Restart workers after key rotation.
 Google ADC uses standard credential discovery, including service-account
 and workload credentials; the target runtime still needs working credentials,
 permissions and quota. Tavily configuration is required for current rollout.
@@ -72,10 +73,12 @@ same database target and release as the web server. Its heartbeat appears as
 controls parallel jobs (default `2`, allowed `1`–`8`).
 
 Deterministic semantic derivation always produces a complete fallback package.
-Model enrichment is separate: Mantle is primary and Gemini is optional secondary,
-normally making about four provider calls for a package. Configure Mantle with
-`BEDROCK_MANTLE_API_KEY` or `BEDROCK_MANTLE_KEY_FILE`; optional overrides are
-`RADAR_PURSUIT_MANTLE_MODEL` and `AWS_REGION`. Enable Gemini with
+Model enrichment is separate: Mantle is primary, using DeepSeek V3.2 first and
+GLM-5 if that Mantle model fails; Gemini is optional cross-provider secondary.
+Configure Mantle with `BEDROCK_MANTLE_API_KEY` or `BEDROCK_MANTLE_KEY_FILE`.
+`RADAR_PURSUIT_MANTLE_MODEL` explicitly overrides the primary model while
+retaining GLM-5 as fallback unless GLM-5 itself is selected; `AWS_REGION` is
+also optional. Enable Gemini with
 `RADAR_PURSUIT_ENABLE_GEMINI=true`, working Google ADC, and `GCP_PROJECT_ID`;
 `RADAR_PURSUIT_GEMINI_MODEL` optionally selects its model. Missing or failed
 providers leave the deterministic package available.
