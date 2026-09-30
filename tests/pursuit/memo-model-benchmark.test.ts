@@ -131,6 +131,14 @@ function memoText(thesis: DerivedThesis): string {
   ].join("\n");
 }
 
+function candidateAssertionText(thesis: DerivedThesis): string {
+  return [
+    thesis.winTheme,
+    ...thesis.primaryProof.map((p) => p.whyItMatters),
+    ...thesis.objections.map((o) => o.counterPosition),
+  ].join("\n");
+}
+
 function changedFields(before: DerivedThesis, after: DerivedThesis) {
   return {
     targetMandate: before.targetMandate !== after.targetMandate,
@@ -163,6 +171,7 @@ function qualityProxy(
   signalHits: number;
 } {
   const text = memoText(enriched);
+  const assertionText = candidateAssertionText(enriched);
   const allowedFigures = new Set(
     extractFigures(
       [
@@ -177,7 +186,7 @@ function qualityProxy(
     ),
   );
   const unsupportedFigures = [...new Set(extractFigures(text).filter((f) => !allowedFigures.has(f)))];
-  const leakage = findLeakage(text);
+  const leakage = findLeakage(assertionText);
   const strongest =
     deterministic.semantic?.positioning.mode === "DIRECT_DOMAIN" ? "DIRECT" : "ANALOGOUS";
   const overclaim = hasOverclaim(text, strongest);
@@ -208,7 +217,7 @@ function qualityProxy(
 
   const writing =
     (!CLICHES.test(text) ? 5 : 0) +
-    (!INTERNAL_DIRECTIVE.test(text) ? 5 : 0) +
+    (!INTERNAL_DIRECTIVE.test(assertionText) ? 5 : 0) +
     (enriched.winTheme.length >= 60 && enriched.winTheme.length <= 650 ? 5 : 0);
 
   const utility =
@@ -389,8 +398,9 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
       const payload = {
         pricingRegion: "us-east-1",
         pricingAsOf: "2026-10-01",
-        sourceRuntime: "currently-deployed Oracle release",
+        sourceRuntime: "Oracle production dependencies with certified Pursuit source overlay",
         sourceReleaseSha: process.env.RADAR_PURSUIT_BENCHMARK_SOURCE_SHA?.trim() || null,
+        benchmarkCodeSha: process.env.RADAR_PURSUIT_BENCHMARK_CODE_SHA?.trim() || null,
         summary,
         rows: report,
       };

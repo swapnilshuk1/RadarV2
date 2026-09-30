@@ -19,7 +19,8 @@ import type { PursuitModelContext } from "./budget";
 import { interpretPursuit } from "./semantic/interpret";
 import { lowerFirst } from "./semantic/engine";
 import { Phraser } from "./semantic/phrasing";
-import { findLeakage, hasOverclaim } from "./semantic/validate";
+import { findLeakage, findSemanticInflation, hasOverclaim } from "./semantic/validate";
+import type { EvidenceRelationship } from "./semantic/types";
 import type { RoleBrief } from "./role-brief";
 import type {
   ArchetypeScore,
@@ -182,53 +183,140 @@ function deriveRoutes(brief: RoleBrief): OutreachRoute[] {
 // Stage 2: model enrichment
 // ---------------------------------------------------------------------------
 
-const ENRICHMENT_SCHEMA: Record<string, unknown> = {
-  type: "object",
-  properties: {
-    targetMandate: { type: "string" },
-    winTheme: { type: "string" },
-    recommendedPositioning: { type: "string" },
-    narrativesToAvoid: { type: "array", items: { type: "string" }, maxItems: 5 },
-    proof: {
-      type: "array",
-      maxItems: 3,
-      items: {
-        type: "object",
-        properties: {
-          claimId: { type: "string" },
-          headline: { type: "string" },
-          whyItMatters: { type: "string" },
-        },
-        required: ["claimId", "headline", "whyItMatters"],
-        additionalProperties: false,
-      },
-    },
-    objections: {
-      type: "array",
-      maxItems: 4,
-      items: {
-        type: "object",
-        properties: {
-          objection: { type: "string" },
-          counterPosition: { type: "string" },
-          severity: { type: "string", enum: ["MATERIAL", "MODERATE", "MINOR"] },
-          supportingClaimIds: { type: "array", items: { type: "string" } },
-        },
-        required: ["objection", "counterPosition", "severity", "supportingClaimIds"],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: [
-    "targetMandate",
-    "winTheme",
-    "recommendedPositioning",
-    "narrativesToAvoid",
-    "proof",
-    "objections",
-  ],
-  additionalProperties: false,
+interface ObjectionCandidate {
+  id: string;
+  objection: string;
+  severity: Objection["severity"];
+  supportingClaimIds: string[];
+  source: "DETERMINISTIC" | "BRIEF_RISK";
+}
+
+const relationshipRank: Readonly<Record<EvidenceRelationship, number>> = {
+  UNSUPPORTED: 0,
+  ADJACENT: 1,
+  ANALOGOUS: 2,
+  DIRECT: 3,
 };
+
+function strongestRelationship(
+  relationships: readonly EvidenceRelationship[],
+): EvidenceRelationship {
+  return relationships.reduce<EvidenceRelationship>(
+    (best, current) => relationshipRank[current] > relationshipRank[best] ? current : best,
+    "UNSUPPORTED",
+  );
+}
+
+function objectionTokens(value: string): Set<string> {
+  return new Set(
+    value
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((token) => token.length >= 5 && !["there", "their", "would", "could", "should"].includes(token)),
+  );
+}
+
+function objectionSimilarity(a: string, b: string): number {
+  const left = objectionTokens(a);
+  const right = objectionTokens(b);
+  if (left.size === 0 || right.size === 0) return 0;
+  let intersection = 0;
+  for (const token of left) if (right.has(token)) intersection += 1;
+  return intersection / Math.min(left.size, right.size);
+}
+
+function buildObjectionCandidates(
+  deterministic: DerivedThesis,
+  brief: RoleBrief,
+): ObjectionCandidate[] {
+  const base: ObjectionCandidate[] = deterministic.objections.map((objection, index) => ({
+    id: `base:${index}`,
+    objection: objection.objection,
+    severity: objection.severity,
+    supportingClaimIds: objection.supportingClaimIds,
+    source: "DETERMINISTIC",
+  }));
+
+  const riskInputs: Array<{ id: string; text: string | null | undefined; severity: Objection["severity"] }> = [
+    { id: "risk:primary", text: brief.primaryRisk, severity: "MATERIAL" },
+    { id: "risk:hiring", text: brief.hiringRisk, severity: "MODERATE" },
+    ...brief.openQuestions.map((text, index) => ({
+      id: `risk:open:${index}`,
+      text,
+      severity: "MODERATE" as const,
+    })),
+  ];
+
+  const extras: ObjectionCandidate[] = [];
+  for (const risk of riskInputs) {
+    const text = risk.text?.trim();
+    if (!text) continue;
+    if ([...base, ...extras].some((candidate) => objectionSimilarity(candidate.objection, text) >= 0.55))
+      continue;
+    extras.push({
+      id: risk.id,
+      objection: text,
+      severity: risk.severity,
+      supportingClaimIds: [],
+      source: "BRIEF_RISK",
+    });
+  }
+  return [...base, ...extras];
+}
+
+function enrichmentSchema(objectionIds: readonly string[]): Record<string, unknown> {
+  return {
+    type: "object",
+    properties: {
+      targetMandate: { type: "string" },
+      winTheme: { type: "string" },
+      recommendedPositioning: { type: "string" },
+      narrativesToAvoid: { type: "array", items: { type: "string" }, maxItems: 5 },
+      proof: {
+        type: "array",
+        maxItems: 3,
+        items: {
+          type: "object",
+          properties: {
+            claimId: { type: "string" },
+            headline: { type: "string" },
+            whyItMatters: { type: "string" },
+          },
+          required: ["claimId", "headline", "whyItMatters"],
+          additionalProperties: false,
+        },
+      },
+      objections: {
+        type: "array",
+        maxItems: objectionIds.length > 0 ? 4 : 0,
+        items: {
+          type: "object",
+          properties: {
+            objectionId:
+              objectionIds.length > 0
+                ? { type: "string", enum: [...objectionIds] }
+                : { type: "string" },
+            objection: { type: "string" },
+            counterPosition: { type: "string" },
+            severity: { type: "string", enum: ["MATERIAL", "MODERATE", "MINOR"] },
+            supportingClaimIds: { type: "array", items: { type: "string" } },
+          },
+          required: ["objectionId", "objection", "counterPosition", "severity", "supportingClaimIds"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: [
+      "targetMandate",
+      "winTheme",
+      "recommendedPositioning",
+      "narrativesToAvoid",
+      "proof",
+      "objections",
+    ],
+    additionalProperties: false,
+  };
+}
 
 const ENRICHMENT_INSTRUCTION = `You are an executive search adviser sharpening a pursuit strategy for one candidate against one mandate.
 
@@ -238,9 +326,12 @@ Absolute rules:
 3. Copy metrics exactly as written in the claim. Never round, convert or extrapolate a number.
 4. The win theme answers one question: why should this organisation talk to this candidate rather than another credible executive? Be specific and non-generic.
 5. Do not use recruitment cliches ("results-driven", "proven track record", "passionate", "synergy", "dynamic professional").
-6. The objections are what a sceptical hiring principal would actually raise. Each counter-position must be answerable from the ledger or must honestly name the gap.
+6. The supplied objectionCandidates are the only objections you may return. Echo their objectionId exactly. You may reorder them and you may select a BRIEF_RISK candidate the deterministic draft missed, but do not invent a new objection outside that list. Each counter-position must be answerable from the ledger or must honestly name the gap.
 7. Write as a senior adviser briefing a peer. Plain, specific, confident. No headings, no bullet markup inside strings.
-9. Each ledger claim carries relationshipToMandate (DIRECT, ANALOGOUS, ADJACENT). Never describe ANALOGOUS or ADJACENT evidence as having done this role before; call it comparable or related experience. Never write \"I have done this before\" unless the proof is DIRECT.\n10. Use the supplied positioning (primary lens, supporting lenses, named gaps) as the thesis. Do not collapse it to a single generic label such as 'broad marketing leader'.\n11. Never write internal instructions such as 'present through', 'lead with', 'this lens' or 'candidate should' in any string.\n8. Never write a claim identifier inside prose. Claim ids belong only in the claimId and supportingClaimIds fields. Naming the employer or the metric is how you attribute a fact in prose.`;
+8. Never write a claim identifier inside prose. Claim ids belong only in the claimId and supportingClaimIds fields. Naming the employer or the metric is how you attribute a fact in prose.
+9. Each ledger claim carries relationshipToMandate (DIRECT, ANALOGOUS, ADJACENT). Never describe ANALOGOUS or ADJACENT evidence as having done this role before; call it comparable or related experience. Never write \"I have done this before\" unless the proof is DIRECT.
+10. Use the supplied positioning (primary lens, supporting lenses, named gaps) as the thesis. Do not collapse it to a single generic label such as 'broad marketing leader'.
+11. Never write internal instructions such as 'present through', 'lead with', 'this lens' or 'candidate should' in any string.`;
 
 /**
  * Claim ids are provenance metadata, not prose. Models sometimes cite them
@@ -264,6 +355,7 @@ interface EnrichmentOutput {
   narrativesToAvoid: string[];
   proof: Array<{ claimId: string; headline: string; whyItMatters: string }>;
   objections: Array<{
+    objectionId: string;
     objection: string;
     counterPosition: string;
     severity: string;
@@ -286,6 +378,7 @@ export async function enrichThesis(
     model?: PursuitModelContext;
   },
 ): Promise<DerivedThesis> {
+  const objectionCandidates = buildObjectionCandidates(deterministic, input.brief);
   const ledger = input.claims.slice(0, 80).map((claim) => ({
     claimId: claim.id,
     statement: claim.statement,
@@ -294,10 +387,11 @@ export async function enrichThesis(
     metric: claim.metricResult,
     capabilities: claim.capabilities,
     relationshipToMandate: deterministic.semantic
-      ? (deterministic.semantic.mappings
-          .filter((m) => m.claimId === claim.id)
-          .map((m) => m.relationship)
-          .sort()[0] ?? "UNSUPPORTED")
+      ? strongestRelationship(
+          deterministic.semantic.mappings
+            .filter((m) => m.claimId === claim.id)
+            .map((m) => m.relationship),
+        )
       : undefined,
   }));
   const allowed = new Set(ledger.map((claim) => claim.claimId));
@@ -314,6 +408,7 @@ export async function enrichThesis(
         whyNow: input.brief.whyNow,
         hiringDriver: input.brief.primaryDriver,
         knownRisk: input.brief.primaryRisk,
+        hiringRisk: input.brief.hiringRisk,
         priorities: input.brief.mandatePriorities,
         outcomes: input.brief.mandateOutcomes,
         requirements: input.brief.requirements,
@@ -335,13 +430,20 @@ export async function enrichThesis(
       },
       positioning: deterministic.semantic?.positioning ?? null,
       mandateDimensions: deterministic.semantic?.coverage ?? null,
+      objectionCandidates: objectionCandidates.map((candidate) => ({
+        objectionId: candidate.id,
+        objection: candidate.objection,
+        severity: candidate.severity,
+        source: candidate.source,
+        supportingClaimIds: candidate.supportingClaimIds,
+      })),
       deterministicDraft: {
         targetMandate: deterministic.targetMandate,
         winTheme: deterministic.winTheme,
         positioning: deterministic.recommendedPositioning,
       },
     },
-    ENRICHMENT_SCHEMA,
+    enrichmentSchema(objectionCandidates.map((candidate) => candidate.id)),
     (raw) => raw as EnrichmentOutput,
     input.model,
   );
@@ -365,26 +467,83 @@ export async function enrichThesis(
       };
     });
 
-  // Severity is decided by the deterministic materiality rule, never by the model.
+  const candidateById = new Map(objectionCandidates.map((candidate) => [candidate.id, candidate]));
+  const modelObjectionById = new Map(
+    (enriched.objections ?? [])
+      .filter((entry) => candidateById.has(entry.objectionId))
+      .map((entry) => [entry.objectionId, entry]),
+  );
+  const safeCounter = (value: string | undefined): string | null => {
+    const counter = stripClaimRefs(value);
+    if (!counter || findLeakage(counter).length > 0) return null;
+    if (hasOverclaim(counter, "ADJACENT")) return null;
+    if (findSemanticInflation(counter, input.claims).length > 0) return null;
+    return counter;
+  };
+
+  // Base objections retain deterministic identity/severity. Model output can
+  // reorder them freely because the merge is keyed by objectionId, not index.
   const objections: Objection[] = deterministic.objections.map((base, index) => {
-    const entry = enriched.objections?.[index];
-    const counter = stripClaimRefs(entry?.counterPosition);
-    const safe = counter && findLeakage(counter).length === 0 && !hasOverclaim(counter, "ADJACENT");
-    return safe ? { ...base, counterPosition: counter } : base;
+    const entry = modelObjectionById.get(`base:${index}`);
+    const counter = safeCounter(entry?.counterPosition);
+    return counter ? { ...base, counterPosition: counter } : base;
   });
-  const clean = (value: string | undefined, fallback: string) => {
+
+  // A model may surface a role risk missed by deterministic coverage only when
+  // that risk came from the trusted RoleBrief. The model supplies the counter,
+  // never the objection identity or severity.
+  for (const candidate of objectionCandidates.filter((item) => item.source === "BRIEF_RISK")) {
+    const entry = modelObjectionById.get(candidate.id);
+    if (!entry) continue;
+    const counter = safeCounter(entry.counterPosition);
+    if (!counter) continue;
+    const supportingClaimIds = (entry.supportingClaimIds ?? []).filter((id) => allowed.has(id));
+    const namesGapHonestly =
+      /\b(?:gap|not evidenced|not visible|unproven|not in the record|needs? calibration|must be tested|should be tested)\b/i.test(counter);
+    if (supportingClaimIds.length === 0 && !namesGapHonestly) continue;
+    objections.push({
+      objection: candidate.objection,
+      counterPosition: counter,
+      supportingClaimIds,
+      severity: candidate.severity,
+    });
+  }
+  const severityOrder = { MATERIAL: 0, MODERATE: 1, MINOR: 2 } as const;
+  const finalObjections = objections
+    .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity])
+    .slice(0, 4);
+
+  const cleanRoleText = (value: string | undefined, fallback: string) => {
+    const v = stripClaimRefs(value);
+    return !v || findLeakage(v).length > 0 ? fallback : v;
+  };
+  const cleanCandidateText = (value: string | undefined, fallback: string) => {
     const v = stripClaimRefs(value);
     if (!v || findLeakage(v).length > 0) return fallback;
     const strongest = deterministic.semantic?.positioning.mode === "DIRECT_DOMAIN" ? "DIRECT" : "ANALOGOUS";
-    return hasOverclaim(v, strongest) ? fallback : v;
+    if (hasOverclaim(v, strongest)) return fallback;
+    return findSemanticInflation(v, input.claims).length > 0 ? fallback : v;
   };
   const rankedIds = new Set(deterministic.primaryProof.map((p) => p.claimId));
-  const safeProof = proof.filter((p) => p.claimId && rankedIds.has(p.claimId));
+  const relationshipForClaim = (claimId: string): EvidenceRelationship =>
+    deterministic.semantic
+      ? strongestRelationship(
+          deterministic.semantic.mappings
+            .filter((mapping) => mapping.claimId === claimId)
+            .map((mapping) => mapping.relationship),
+        )
+      : "UNSUPPORTED";
+  const safeProof = proof.filter((p) => {
+    if (!p.claimId || !rankedIds.has(p.claimId)) return false;
+    if (findLeakage(p.whyItMatters).length > 0) return false;
+    if (findSemanticInflation(p.whyItMatters, input.claims).length > 0) return false;
+    return !hasOverclaim(p.whyItMatters, relationshipForClaim(p.claimId));
+  });
 
   return {
     ...deterministic,
-    targetMandate: clean(enriched.targetMandate, deterministic.targetMandate),
-    winTheme: clean(enriched.winTheme, deterministic.winTheme),
+    targetMandate: cleanRoleText(enriched.targetMandate, deterministic.targetMandate),
+    winTheme: cleanCandidateText(enriched.winTheme, deterministic.winTheme),
     // Positioning stays the deterministic composite: it is licensed by mappings.
     recommendedPositioning: deterministic.recommendedPositioning,
     narrativesToAvoid:
@@ -395,7 +554,7 @@ export async function enrichThesis(
     primaryProof: deterministic.primaryProof.map(
       (p) => safeProof.find((s) => s.claimId === p.claimId && findLeakage(s.whyItMatters).length === 0) ?? p,
     ),
-    objections,
+    objections: finalObjections,
     derivation: "MODEL",
     modelId: result.modelId,
   };

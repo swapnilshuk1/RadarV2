@@ -63,7 +63,9 @@ jobs:
             tests/fixtures/pursuit/wpp-client-services/role.json \
             tests/fixtures/pursuit/antal-managing-partner/role.json \
             tests/fixtures/pursuit/msm-unify-csto/role.json \
-            tests/fixtures/pursuit/weber-shandwick-vp-digital/role.json
+            tests/fixtures/pursuit/weber-shandwick-vp-digital/role.json \
+            src/pursuit/thesis.ts \
+            src/pursuit/semantic/validate.ts
 
       - name: Stage and run against deployed Pursuit runtime
         shell: bash
@@ -83,7 +85,7 @@ jobs:
 
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$key" \
             "$RADAR_DEPLOY_SSH_USER@$RADAR_DEPLOY_SSH_HOST" \
-            "APP=$q_app BUNDLE=$q_bundle WORK=$q_work bash -s" <<'REMOTE'
+            "APP=$q_app BUNDLE=$q_bundle WORK=$q_work GITHUB_SHA=$GITHUB_SHA bash -s" <<'REMOTE'
           set -euo pipefail
 
           current_sha="$(cat "$APP/CURRENT_SHA")"
@@ -98,8 +100,8 @@ jobs:
 
           rm -rf "$WORK"
           mkdir -p "$WORK"
+          cp -a "$release/src" "$WORK/src"
           tar -xzf "$BUNDLE" -C "$WORK"
-          ln -s "$release/src" "$WORK/src"
           ln -s "$release/node_modules" "$WORK/node_modules"
           cp "$release/package.json" "$WORK/package.json"
 
@@ -125,6 +127,7 @@ jobs:
           RADAR_PURSUIT_ENABLE_GEMINI=false \
           RADAR_PURSUIT_MEMO_BENCHMARK_REPORT="$WORK/pursuit-memo-benchmark.json" \
           RADAR_PURSUIT_BENCHMARK_SOURCE_SHA="$current_sha" \
+          RADAR_PURSUIT_BENCHMARK_CODE_SHA="$GITHUB_SHA" \
           NODE_ENV=test \
             "$release/node_modules/.bin/vitest" run \
               --config "$WORK/vitest.pursuit-memo-benchmark.config.ts"
@@ -173,7 +176,8 @@ jobs:
             echo
             echo "- Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             if [[ -s "$report_file" ]]; then
-              echo "- Deployed release: `$(jq -r '.sourceReleaseSha // "unknown"' "$report_file")`"
+              echo "- Oracle deployed release: `$(jq -r '.sourceReleaseSha // "unknown"' "$report_file")`"
+              echo "- Pursuit source overlay: `$(jq -r '.benchmarkCodeSha // "unknown"' "$report_file")`"
               echo "- Pricing snapshot: $(jq -r '.pricingRegion + " · " + .pricingAsOf' "$report_file")"
               echo
               echo "| Model | Avg quality proxy | Total cost (USD) | Avg latency | Answered | Safety failures |"
