@@ -184,27 +184,32 @@ class Doc {
   }
 
   private metricOps(run: MetricRun, yTop: number): { stream: string; height: number } {
-    const metrics = run.metrics.slice(0, 4);
-    const cols = Math.max(1, metrics.length);
+    const metrics = run.metrics.slice(0, 8);
+    const columns = 4;
     const gap = 8;
-    const width = (CONTENT_WIDTH - gap * (cols - 1)) / cols;
-    const height = run.theme.plain ? 42 : 58;
+    const rowGap = 8;
+    const width = (CONTENT_WIDTH - gap * (columns - 1)) / columns;
+    const rowHeight = run.theme.plain ? 42 : 58;
+    const rows = Math.max(1, Math.ceil(metrics.length / columns));
     let stream = "";
     metrics.forEach((metric, index) => {
-      const x = MARGIN_X + index * (width + gap);
+      const row = Math.floor(index / columns);
+      const column = index % columns;
+      const rowTop = yTop - row * (rowHeight + rowGap);
+      const x = MARGIN_X + column * (width + gap);
       if (!run.theme.plain) {
         stream += "q " + run.theme.panel.map((c) => c.toFixed(3)).join(" ") + " rg " +
-          x.toFixed(2) + " " + (yTop - height).toFixed(2) + " " + width.toFixed(2) + " " + height.toFixed(2) + " re f Q\n";
+          x.toFixed(2) + " " + (rowTop - rowHeight).toFixed(2) + " " + width.toFixed(2) + " " + rowHeight.toFixed(2) + " re f Q\n";
         stream += "q " + run.theme.rule.map((c) => c.toFixed(3)).join(" ") + " RG 0.45 w " +
-          x.toFixed(2) + " " + (yTop - height).toFixed(2) + " " + width.toFixed(2) + " " + height.toFixed(2) + " re S Q\n";
+          x.toFixed(2) + " " + (rowTop - rowHeight).toFixed(2) + " " + width.toFixed(2) + " " + rowHeight.toFixed(2) + " re S Q\n";
       }
-      stream += this.textOp(metric.value, "sansBold", run.theme.plain ? 12 : 16, run.theme.accent, x + 8, yTop - 20);
+      stream += this.textOp(metric.value, "sansBold", run.theme.plain ? 12 : 16, run.theme.accent, x + 8, rowTop - 20);
       const caption = normalizePdfText(metric.caption);
       const max = Math.max(16, Math.floor((width - 16) / (0.48 * 7.4)));
       const shown = caption.length > max ? caption.slice(0, Math.max(0, max - 1)).trimEnd() + "…" : caption;
-      stream += this.textOp(shown, "sans", 7.4, run.theme.muted, x + 8, yTop - 37);
+      stream += this.textOp(shown, "sans", 7.4, run.theme.muted, x + 8, rowTop - 37);
     });
-    return { stream, height };
+    return { stream, height: rows * rowHeight + (rows - 1) * rowGap };
   }
 
   private paginate(): string[] {
@@ -229,7 +234,9 @@ class Doc {
       }
       if (block.kind === "metrics") {
         y -= block.spaceBefore;
-        const height = block.theme.plain ? 42 : 58;
+        const rowHeight = block.theme.plain ? 42 : 58;
+        const rows = Math.max(1, Math.ceil(block.metrics.slice(0, 8).length / 4));
+        const height = rows * rowHeight + (rows - 1) * 8;
         if (y - height < MARGIN_BOTTOM) flush();
         const rendered = this.metricOps(block, y);
         stream += rendered.stream;

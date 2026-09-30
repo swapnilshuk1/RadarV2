@@ -2,9 +2,43 @@
 import { extractFigures } from "./approval";
 import type { CandidateClaim, ResumeBullet } from "./types";
 
+export type SourceTextByDocument = ReadonlyMap<string, string>;
+
 const SOURCE_NOISE = /^%PDF|^[A-Z]{6}\+|^\/?(?:Type|Font|Encoding)\b/i;
 const clean = (text: string) =>
-  text.replace(/^\s*(?:[•·▪◼■]|[-–—]|\d+[.)])\s+/, "").replace(/\s+/g, " ").trim();
+  text
+    .replace(/^\s*(?:[•·▪◼■]|[-–—]|\d+[.)])\s+/, "")
+    .replace(/\*\*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const textKey = (text: string) =>
+  clean(text).toLowerCase().replace(/[^a-z0-9%$₹]+/g, " ").trim();
+
+const sourceBlocks = (raw: string): string[] =>
+  raw
+    .split(/\r?\n/)
+    .filter((line) => /^\s*(?:[-•▪]|\d+[.)])\s+/.test(line))
+    .map(clean)
+    .filter((line) => line.length > 0);
+
+export function sourceBlockForClaim(
+  claim: CandidateClaim,
+  sourceTextByDocument?: SourceTextByDocument,
+): string | null {
+  if (!claim.sourceDocumentId || !sourceTextByDocument) return null;
+  const raw = sourceTextByDocument.get(claim.sourceDocumentId);
+  if (!raw) return null;
+  const needles = [claim.statement, claim.sourceLocator ?? ""]
+    .map(textKey)
+    .filter((key) => key.length >= 12);
+  if (needles.length === 0) return null;
+  const candidates = sourceBlocks(raw).filter((block) => {
+    const key = textKey(block);
+    return needles.some((needle) => key.includes(needle));
+  });
+  return candidates.sort((a, b) => a.length - b.length)[0] ?? null;
+}
 
 const figuresPreserved = (shortText: string, candidate: string) => {
   const available = new Set(extractFigures(candidate));
@@ -12,8 +46,20 @@ const figuresPreserved = (shortText: string, candidate: string) => {
 };
 
 /** Prefer fuller verbatim source wording only when it preserves every extracted figure. */
-export function richestClaimText(claim: CandidateClaim): string {
+export function richestClaimText(
+  claim: CandidateClaim,
+  sourceTextByDocument?: SourceTextByDocument,
+): string {
   const statement = clean(claim.statement);
+  const sourceBlock = sourceBlockForClaim(claim, sourceTextByDocument);
+  if (
+    sourceBlock &&
+    sourceBlock.length <= 1200 &&
+    !SOURCE_NOISE.test(sourceBlock) &&
+    figuresPreserved(statement, sourceBlock)
+  ) {
+    return sourceBlock;
+  }
   const source = clean(claim.sourceLocator ?? "");
   return source.length > statement.length &&
     source.length <= 1200 &&
@@ -33,10 +79,13 @@ const sentence = (text: string) => (/[,;:.!?]$/.test(text) ? text : text + ".");
 export function evidenceBlock(
   anchor: CandidateClaim,
   companions: readonly CandidateClaim[] = [],
+  sourceTextByDocument?: SourceTextByDocument,
 ): { bullet: ResumeBullet; usedClaimIds: string[] } {
-  const key = (text: string) => text.toLowerCase().replace(/[^a-z0-9%$₹]+/g, " ").trim();
+  const key = (text: string) => textKey(text);
   const kept: string[] = [];
-  for (const text of [anchor, ...companions].map(richestClaimText)) {
+  for (const text of [anchor, ...companions].map((claim) =>
+    richestClaimText(claim, sourceTextByDocument),
+  )) {
     if (!text) continue;
     if (kept.some((existing) => key(existing).includes(key(text)))) continue;
     for (let i = kept.length - 1; i >= 0; i--) {
@@ -76,8 +125,13 @@ export function deterministicExecutiveSummary(
   ].filter(Boolean).join(" ");
 }
 
-const spanKey = (claim: CandidateClaim) =>
-  clean(claim.sourceLocator ?? "").toLowerCase().replace(/\s+/g, " ");
+const spanKey = (
+  claim: CandidateClaim,
+  sourceTextByDocument?: SourceTextByDocument,
+) => {
+  const sourceBlock = sourceBlockForClaim(claim, sourceTextByDocument);
+  return sourceBlock ? textKey(sourceBlock) : textKey(claim.sourceLocator ?? "");
+};
 const isFragment = (claim: CandidateClaim) => looksFragment(clean(claim.statement));
 
 /**
@@ -89,12 +143,13 @@ export function composeRoleBullets(
   ordered: readonly CandidateClaim[],
   limit = 6,
   canJoinAdjacent: (anchor: CandidateClaim, candidate: CandidateClaim) => boolean = () => false,
+  sourceTextByDocument?: SourceTextByDocument,
 ): { bullets: ResumeBullet[]; usedClaimIds: string[] } {
   const groups: { anchor: CandidateClaim; companions: CandidateClaim[] }[] = [];
   const bySpan = new Map<string, (typeof groups)[number]>();
 
   for (const claim of ordered) {
-    const key = spanKey(claim);
+    const key = spanKey(claim, sourceTextByDocument);
     const same = key.length > 40 ? bySpan.get(key) : undefined;
     const neighbour = !same && isFragment(claim)
       ? [...groups].reverse().find((group) =>
@@ -113,7 +168,9 @@ export function composeRoleBullets(
     if (key.length > 40) bySpan.set(key, group);
   }
 
-  const blocks = groups.slice(0, limit).map((group) => evidenceBlock(group.anchor, group.companions));
+  const blocks = groups
+    .slice(0, limit)
+    .map((group) => evidenceBlock(group.anchor, group.companions, sourceTextByDocument));
   return {
     bullets: blocks.map((block) => block.bullet),
     usedClaimIds: blocks.flatMap((block) => block.usedClaimIds),

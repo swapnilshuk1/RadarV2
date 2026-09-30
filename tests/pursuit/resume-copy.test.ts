@@ -35,6 +35,22 @@ describe("deterministic résumé copy", () => {
     );
   });
 
+  it("rehydrates an atomic claim from the bound source document bullet", () => {
+    const sourceText = new Map([
+      ["doc-1", [
+        "### Senior Vice President — VML",
+        "- Accountable for commercial performance, including an **$8M fee book** for Ford and a **projected ₹36 Cr retainer** for BMW.",
+      ].join("\n")],
+    ]);
+    const source = claim({
+      statement: "Accountable for commercial performance, including an $8M fee book for Ford",
+      sourceLocator: "Accountable for commercial performance, including an **$8M fee book** for Ford",
+    });
+    expect(richestClaimText(source, sourceText)).toBe(
+      "Accountable for commercial performance, including an $8M fee book for Ford and a projected ₹36 Cr retainer for BMW.",
+    );
+  });
+
   it("never replaces or drops a locked figure when choosing richer source wording", () => {
     const source = claim({
       statement: "Delivered $14M revenue",
@@ -67,6 +83,28 @@ describe("deterministic résumé copy", () => {
     const out = composeRoleBullets([a, b]);
     expect(out.bullets).toHaveLength(1);
     expect(out.bullets[0]!.text).toBe(span + ".");
+  });
+
+  it("collapses atomic claims that came from the same original CV bullet", () => {
+    const sourceText = new Map([
+      ["doc-1", "- Recruited and managed a **40-member CoE**, driving CRM and performance marketing across **13 markets**."],
+    ]);
+    const a = claim({
+      id: "a",
+      statement: "Recruited and managed a 40-member CoE",
+      sourceLocator: "Recruited and managed a **40-member CoE**",
+    });
+    const b = claim({
+      id: "b",
+      statement: "driving CRM and performance marketing across 13 markets",
+      sourceLocator: "driving CRM and performance marketing across **13 markets**",
+      sourceOrdinal: 4,
+    });
+    const out = composeRoleBullets([a, b], 6, () => false, sourceText);
+    expect(out.bullets).toHaveLength(1);
+    expect(out.bullets[0]!.text).toBe(
+      "Recruited and managed a 40-member CoE, driving CRM and performance marketing across 13 markets.",
+    );
   });
 
   it("does not weld nearby fragments unless the semantic caller licenses adjacency", () => {

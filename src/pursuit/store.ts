@@ -227,6 +227,21 @@ export async function markCurrentProjection(
 }
 
 /** Documents in the canonical binding, for anchor-CV selection. */
+export async function loadSourceDocumentTexts(
+  scope: Scope,
+  documentIds: readonly string[],
+): Promise<Map<string, string>> {
+  if (documentIds.length === 0) return new Map();
+  const marks = documentIds.map(() => "?").join(",");
+  const rows = await db().many<{ document_id: string; raw_text: string }>(
+    `SELECT document_id, raw_text FROM document_contents
+     WHERE tenant_id = ? AND person_id = ? AND document_id IN (${marks})`,
+    [scope.tenantId, scope.personId, ...documentIds],
+  );
+  return new Map(rows.map((row) => [row.document_id, row.raw_text]));
+}
+
+/** Documents in the canonical binding, for anchor-CV selection. */
 export async function listSourceDocuments(
   scope: Scope,
   documentIds: readonly string[],

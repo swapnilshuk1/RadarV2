@@ -29,6 +29,10 @@ const resume = (): ResumeContent => ({
     { value: "40", caption: "member transformation centre", claimId: "b" },
     { value: "13", caption: "markets covered", claimId: "b" },
     { value: "32%", caption: "digital contribution to sales", claimId: "c" },
+    { value: "4,000+", caption: "dealerships reached", claimId: "e" },
+    { value: "400,000+", caption: "qualified leads generated", claimId: "f" },
+    { value: "70%", caption: "customer acquisition cost reduction", claimId: "g" },
+    { value: "26%", caption: "conversion increase", claimId: "h" },
   ],
 });
 
@@ -40,6 +44,8 @@ describe("résumé export presentation", () => {
     expect(text).toContain("ABOUT ME");
     expect(text).toContain("BY THE NUMBERS");
     expect(text).toContain("$12M");
+    expect(text).toContain("400,000+");
+    expect(text).toContain("26%");
     expect(text).toContain("PROFESSIONAL EXPERIENCE");
   });
 
@@ -60,12 +66,15 @@ describe("résumé export presentation", () => {
     expect(text).toContain("C2541C");
     expect(text).toContain("By the numbers");
     expect(text).toContain("<w:tbl>");
+    expect((text.match(/<w:tr>/g) ?? []).length).toBe(2);
+    expect(text).toContain("400,000+");
+    expect(text).toContain("26%");
     expect(text).toContain("word/header1.xml");
   });
 
   it("uses persisted highlights before re-extracting metrics", () => {
     expect(resumeMetrics(resume()).map((metric) => metric.value)).toEqual([
-      "$12M", "40", "13", "32%",
+      "$12M", "40", "13", "32%", "4,000+", "400,000+", "70%", "26%",
     ]);
   });
 });

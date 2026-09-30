@@ -112,6 +112,10 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
     store.loadStyleProfile(scope),
     candidateIdentity(scope),
   ]);
+  const sourceDocumentIds = [
+    ...new Set(claims.map((claim) => claim.sourceDocumentId).filter((id): id is string => Boolean(id))),
+  ];
+  const sourceTextByDocument = await store.loadSourceDocumentTexts(scope, sourceDocumentIds);
 
   const deterministic = deriveDeterministicThesis({
     brief,
@@ -164,7 +168,16 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
   type Generated = Awaited<ReturnType<typeof generateArtifactSet>>;
   let generated = (await store.readCheckpoint(job, "artifacts_generated")) as Generated | null;
   if (!generated) {
-    generated = await generateArtifactSet({ identity, thesis, brief, claims, archetype, style, model });
+    generated = await generateArtifactSet({
+      identity,
+      thesis,
+      brief,
+      claims,
+      archetype,
+      style,
+      model,
+      sourceTextByDocument,
+    });
     await store.writeCheckpoint(job, "artifacts_generated", generated);
   }
   const spend = model.ledger?.snapshot();

@@ -19,7 +19,7 @@ const captionFor = (claim: CandidateClaim, value: string): string => {
 
 export function metricsFromClaims(
   claims: readonly CandidateClaim[],
-  limit = 4,
+  limit = 8,
 ): ResumeMetric[] {
   const out: ResumeMetric[] = [];
   const seenFigures = new Set<string>();
@@ -41,7 +41,7 @@ export function metricsFromClaims(
   return out;
 }
 
-export function metricsFromResume(resume: ResumeContent, limit = 4): ResumeMetric[] {
+export function metricsFromResume(resume: ResumeContent, limit = 8): ResumeMetric[] {
   const out: ResumeMetric[] = [];
   const seen = new Set<string>();
   for (const bullet of [...resume.impactAnchors, ...resume.roles.flatMap((role) => role.bullets)]) {
@@ -58,6 +58,6 @@ export function metricsFromResume(resume: ResumeContent, limit = 4): ResumeMetri
   return out;
 }
 
-export function resumeMetrics(resume: ResumeContent, limit = 4): ResumeMetric[] {
+export function resumeMetrics(resume: ResumeContent, limit = 8): ResumeMetric[] {
   return (resume.metricHighlights?.length ? resume.metricHighlights : metricsFromResume(resume, limit)).slice(0, limit);
 }

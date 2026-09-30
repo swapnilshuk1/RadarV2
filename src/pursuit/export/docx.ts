@@ -78,22 +78,29 @@ const metricTable = (resume: ResumeContent, theme: Theme, enabled: boolean): str
     ).join("");
   }
   const widths = [2437, 2437, 2436, 2436];
-  const cells = metrics.slice(0, 4);
-  while (cells.length < 4) cells.push({ value: "", caption: "", claimId: null });
+  const rows: string[] = [];
+  const visible = metrics.slice(0, 8);
+  for (let start = 0; start < visible.length; start += 4) {
+    const cells = visible.slice(start, start + 4);
+    while (cells.length < 4) cells.push({ value: "", caption: "", claimId: null });
+    rows.push(
+      "<w:tr>" +
+      cells.map((metric, index) =>
+        '<w:tc><w:tcPr><w:tcW w:w="' + String(widths[index]) + '" w:type="dxa"/>' +
+        (theme.grid === "BOXED"
+          ? '<w:shd w:val="clear" w:fill="' + theme.panel + '"/><w:tcBorders><w:top w:val="single" w:sz="3" w:color="' + theme.rule + '"/><w:left w:val="single" w:sz="3" w:color="' + theme.rule + '"/><w:bottom w:val="single" w:sz="3" w:color="' + theme.rule + '"/><w:right w:val="single" w:sz="3" w:color="' + theme.rule + '"/></w:tcBorders>'
+          : "") +
+        "</w:tcPr>" +
+        paragraph(run(metric.value, { bold: true, size: 27, color: theme.accent }), { after: 30 }) +
+        paragraph(run(metric.caption, { size: 15, color: theme.muted }), { after: 20 }) +
+        "</w:tc>",
+      ).join("") +
+      "</w:tr>",
+    );
+  }
   return '<w:tbl><w:tblPr><w:tblW w:w="9746" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>' +
     widths.map((width) => '<w:gridCol w:w="' + String(width) + '"/>').join("") +
-    "</w:tblGrid><w:tr>" +
-    cells.map((metric, index) =>
-      '<w:tc><w:tcPr><w:tcW w:w="' + String(widths[index]) + '" w:type="dxa"/>' +
-      (theme.grid === "BOXED"
-        ? '<w:shd w:val="clear" w:fill="' + theme.panel + '"/><w:tcBorders><w:top w:val="single" w:sz="3" w:color="' + theme.rule + '"/><w:left w:val="single" w:sz="3" w:color="' + theme.rule + '"/><w:bottom w:val="single" w:sz="3" w:color="' + theme.rule + '"/><w:right w:val="single" w:sz="3" w:color="' + theme.rule + '"/></w:tcBorders>'
-        : "") +
-      "</w:tcPr>" +
-      paragraph(run(metric.value, { bold: true, size: 27, color: theme.accent }), { after: 30 }) +
-      paragraph(run(metric.caption, { size: 15, color: theme.muted }), { after: 20 }) +
-      "</w:tc>",
-    ).join("") +
-    "</w:tr></w:tbl>";
+    "</w:tblGrid>" + rows.join("") + "</w:tbl>";
 };
 
 export function resumeToDocx(resume: ResumeContent, options: ResumeDocxOptions = {}): Uint8Array {

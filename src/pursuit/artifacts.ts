@@ -19,7 +19,7 @@ import { findLeakage, gradeStory, validateMessage, validateResume } from "./sema
 import type { ClaimClassification, EvidenceRelationship, SemanticSnapshot } from "./semantic/types";
 import type { RoleBrief } from "./role-brief";
 import { metricsFromClaims } from "./resume-metrics";
-import { composeRoleBullets, deterministicExecutiveSummary, evidenceBlock } from "./resume-copy";
+import { composeRoleBullets, deterministicExecutiveSummary, evidenceBlock, type SourceTextByDocument } from "./resume-copy";
 import type {
   ArtifactContent,
   ArtifactType,
@@ -127,6 +127,7 @@ function composeImpact(
   claims: readonly CandidateClaim[],
   ctx: SemanticContext,
   usedIds: Set<string>,
+  sourceTextByDocument?: SourceTextByDocument,
 ): ResumeBullet {
   const c = ctx.classes.get(anchor.id);
   usedIds.add(anchor.id);
@@ -147,7 +148,7 @@ function composeImpact(
       )
     : undefined;
   if (companion) usedIds.add(companion.id);
-  return evidenceBlock(anchor, companion ? [companion] : []).bullet;
+  return evidenceBlock(anchor, companion ? [companion] : [], sourceTextByDocument).bullet;
 }
 
 const lowerStart = (s: string) => (/^[A-Z][a-z]/.test(s) ? s[0]!.toLowerCase() + s.slice(1) : s);
@@ -205,6 +206,7 @@ function buildRoles(
   usedClaimIds: ReadonlySet<string>,
   style: StyleProfile,
   ctx?: SemanticContext,
+  sourceTextByDocument?: SourceTextByDocument,
 ): ResumeRole[] {
   const rejected = new Set(style.rejectedClaimIds);
   const emphasis = (archetype?.emphasize ?? []).map((keyword) => keyword.toLowerCase());
@@ -245,6 +247,7 @@ function buildRoles(
           .slice(0, 12),
         6,
         (left, right) => sameSemanticBundle(ctx, left, right),
+        sourceTextByDocument,
       ).bullets,
     };
   });
@@ -264,6 +267,7 @@ function transformAnchor(
   usedClaimIds: ReadonlySet<string>,
   style: StyleProfile,
   ctx?: SemanticContext,
+  sourceTextByDocument?: SourceTextByDocument,
 ): ResumeRole[] | null {
   const anchors = new Set(anchorIds);
   const skeleton = claims.filter((c) => c.sourceDocumentId && anchors.has(c.sourceDocumentId));
@@ -327,6 +331,7 @@ function transformAnchor(
           kept.slice(0, Math.max(12, kept.filter((c) => pinned.has(c.id)).length)),
           Math.max(6, kept.filter((c) => pinned.has(c.id)).length),
           (left, right) => sameSemanticBundle(ctx, left, right),
+          sourceTextByDocument,
         ).bullets,
       };
     });
@@ -339,10 +344,11 @@ export async function generateResume(input: {
   claims: readonly CandidateClaim[];
   archetype: CandidateArchetype | null;
   style: StyleProfile;
+  sourceTextByDocument?: SourceTextByDocument;
   /** Usage sink and token ceiling for this derivation. */
   model?: PursuitModelContext;
 }): Promise<ResumeContent> {
-  const { identity, thesis, brief, claims, archetype, style } = input;
+  const { identity, thesis, brief, claims, archetype, style, sourceTextByDocument } = input;
   const byId = new Map(claims.map((claim) => [claim.id, claim]));
 
   const ctx = semanticContext(thesis, claims, "resume");
@@ -351,13 +357,14 @@ export async function generateResume(input: {
     .map((proof) => (proof.claimId ? byId.get(proof.claimId) : undefined))
     .filter((claim): claim is CandidateClaim => Boolean(claim))
     .filter((claim) => ctx.classes.get(claim.id)?.semanticType !== "ROLE_TITLE")
-    .map((claim) => composeImpact(claim, claims, ctx, usedIds));
+    .map((claim) => composeImpact(claim, claims, ctx, usedIds, sourceTextByDocument));
 
   const anchorIds = archetype?.anchorDocumentIds ?? [];
   const anchored = anchorIds.length
-    ? transformAnchor(anchorIds, claims, archetype, usedIds, style, ctx)
+    ? transformAnchor(anchorIds, claims, archetype, usedIds, style, ctx, sourceTextByDocument)
     : null;
-  const roles = anchored ?? buildRoles(claims, archetype, usedIds, style, ctx);
+  const roles =
+    anchored ?? buildRoles(claims, archetype, usedIds, style, ctx, sourceTextByDocument);
   const anchorDocumentId = anchored ? (anchorIds[0] ?? null) : null;
 
   const capabilities = [
@@ -390,7 +397,7 @@ export async function generateResume(input: {
         (primaryProofIds.has(right.id) ? 100 : 0) + (ctx.relevance.get(right.id) ?? 0);
       return rightScore - leftScore;
     }),
-    4,
+    8,
   );
 
   const draft: ResumeContent = {
@@ -1040,6 +1047,7 @@ export async function generateArtifactSet(input: {
   claims: readonly CandidateClaim[];
   archetype: CandidateArchetype | null;
   style: StyleProfile;
+  sourceTextByDocument?: SourceTextByDocument;
   /** Usage sink and token ceiling for this derivation. */
   model?: PursuitModelContext;
 }): Promise<GeneratedArtifact[]> {
