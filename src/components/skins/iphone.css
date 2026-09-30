@@ -1,0 +1,194 @@
+/* iPhone skin: system type, grouped surfaces, and comfortable touch targets.
+   All rules stay behind data-skin so RADAR's other presentations are unchanged. */
+html[data-skin="iphone"] {
+  --skin-serif: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+  --skin-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  --skin-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", monospace;
+  --radius: 1rem;
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
+  --card: #ffffff;
+  --card-foreground: #1d1d1f;
+  --muted: #e9e9ed;
+  --muted-foreground: #515159;
+  --surface-raised: #ffffff;
+  --accent: #e8f2ff;
+  --accent-foreground: #0056b3;
+  --primary: #007aff;
+  --primary-foreground: #ffffff;
+  --secondary: #e9e9ed;
+  --secondary-foreground: #1d1d1f;
+  --border: #d9d9df;
+  --border-strong: #a1a1aa;
+  --input: #d9d9df;
+  --ring: #007aff;
+  --parchment: #f5f5f7;
+  --ink: #1d1d1f;
+  --ink-muted: #515159;
+  --hairline: #d9d9df;
+  --brass: #007aff;
+  --signal: #16834a;
+  --signal-foreground: #ffffff;
+  --caution: #a65600;
+  --caution-foreground: #ffffff;
+  --skin-accent: #007aff;
+  --skin-accent-fg: #ffffff;
+  --skin-rule: #d9d9df;
+  --pursue: #16834a;
+  --pursue-soft: #e4f5e9;
+  --consider: #a65600;
+  --consider-soft: #fff0dc;
+  --pass: #686872;
+  --decision-pursue: #16834a;
+  --decision-pursue-fg: #ffffff;
+  --decision-consider: #a65600;
+  --decision-consider-fg: #ffffff;
+  --decision-pass: #686872;
+  --decision-pass-fg: #ffffff;
+  --evidence-matched: #16834a;
+  --evidence-adjacent: #a65600;
+  --evidence-missing: #686872;
+  --evidence-contradicted: #c02b32;
+  --destructive: #c02b32;
+  --destructive-foreground: #ffffff;
+  color-scheme: light;
+}
+
+html.dark[data-skin="iphone"] {
+  --background: #000000;
+  --foreground: #f5f5f7;
+  --card: #1c1c1e;
+  --card-foreground: #f5f5f7;
+  --muted: #2c2c2e;
+  --muted-foreground: #b7b7bf;
+  --surface-raised: #2c2c2e;
+  --accent: #12395d;
+  --accent-foreground: #9dccff;
+  --primary: #0a84ff;
+  --primary-foreground: #ffffff;
+  --secondary: #2c2c2e;
+  --secondary-foreground: #f5f5f7;
+  --border: #3a3a3c;
+  --border-strong: #68686d;
+  --input: #3a3a3c;
+  --ring: #0a84ff;
+  --parchment: #000000;
+  --ink: #f5f5f7;
+  --ink-muted: #b7b7bf;
+  --hairline: #3a3a3c;
+  --brass: #0a84ff;
+  --signal: #30d176;
+  --signal-foreground: #000000;
+  --caution: #ffb340;
+  --caution-foreground: #000000;
+  --skin-accent: #0a84ff;
+  --skin-accent-fg: #ffffff;
+  --skin-rule: #3a3a3c;
+  --pursue: #30d176;
+  --pursue-soft: #153b25;
+  --consider: #ffb340;
+  --consider-soft: #3d2a13;
+  --pass: #b7b7bf;
+  --decision-pursue: #30d176;
+  --decision-pursue-fg: #000000;
+  --decision-consider: #ffb340;
+  --decision-consider-fg: #000000;
+  --decision-pass: #b7b7bf;
+  --decision-pass-fg: #000000;
+  --evidence-matched: #30d176;
+  --evidence-adjacent: #ffb340;
+  --evidence-missing: #b7b7bf;
+  --evidence-contradicted: #ff6b6b;
+  --destructive: #ff6b6b;
+  --destructive-foreground: #000000;
+  color-scheme: dark;
+}
+
+html[data-skin="iphone"] :is(h1, h2, h3, .font-display) {
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+}
+
+html[data-skin="iphone"] :is(.label-mono, .font-mono) {
+  font-family: var(--skin-sans);
+  letter-spacing: 0.075em;
+}
+
+html[data-skin="iphone"] .glass-header {
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  border-color: var(--border);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+html[data-skin="iphone"] :is(button, [role="button"], input, textarea, select) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+html[data-skin="iphone"] :is(button, [role="button"]):not(.rounded-full) {
+  border-radius: 0.85rem;
+}
+
+html[data-skin="iphone"] :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]) {
+  border-radius: 0.75rem;
+}
+
+html[data-skin="iphone"] :is(button, a, input, textarea, select):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+html[data-skin="iphone"] :is(button, [role="button"]):active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 639px) {
+  html[data-skin="iphone"] body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  html[data-skin="iphone"] main > header:has([data-testid="gallery-skin-iphone"]) {
+    position: static;
+  }
+
+  html[data-skin="iphone"] .glass-header > .memo-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: calc(0.5rem + env(safe-area-inset-top));
+    padding-bottom: 0.5rem;
+  }
+
+  html[data-skin="iphone"] .glass-header > .memo-container > nav {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  html[data-skin="iphone"] .glass-header > .memo-container > nav > ul {
+    flex: 1 1 0;
+    scrollbar-width: none;
+  }
+
+  html[data-skin="iphone"] .glass-header > .memo-container > nav > ul::-webkit-scrollbar {
+    display: none;
+  }
+
+  html[data-skin="iphone"] .glass-header nav a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  html[data-skin="iphone"] button:not([role="switch"]),
+  html[data-skin="iphone"] [role="button"] {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="iphone"] :is(button, [role="button"]):active {
+    transform: none;
+  }
+}

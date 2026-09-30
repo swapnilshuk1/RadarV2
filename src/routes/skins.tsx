@@ -21,10 +21,10 @@ export const Route = createFileRoute("/skins")({
       { title: "Interface skins — RADAR" },
       {
         name: "description",
-        content: "Choose how RADAR looks: four interface skins across every page type, in light or dark.",
+        content: "Choose how RADAR looks: five interface skins across every page type, in light or dark.",
       },
       { property: "og:title", content: "Interface skins — RADAR" },
-      { property: "og:description", content: "RADAR, Boardroom, Signal and Atelier — four interface skins for the advisory." },
+      { property: "og:description", content: "RADAR, Boardroom, Signal, Atelier and iPhone — five interface skins for the advisory." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },

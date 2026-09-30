@@ -3,6 +3,7 @@
 @source "../src";
 @import "tw-animate-css";
 @import "./styles/skins.css";
+@import "./components/skins/iphone.css";
 
 @custom-variant dark (&:is(.dark *));
 
