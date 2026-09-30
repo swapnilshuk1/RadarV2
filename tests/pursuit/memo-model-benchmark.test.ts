@@ -31,7 +31,7 @@ import type {
 } from "../../src/pursuit/types";
 
 const RUN_LIVE = process.env.RADAR_RUN_LIVE_PURSUIT_MEMO_BENCHMARK === "true";
-const liveDescribe = RUN_LIVE ? describe : describe.skip;
+const liveIt = RUN_LIVE ? it : it.skip;
 
 const FIXTURES = path.join(__dirname, "../fixtures/pursuit");
 const load = <T>(p: string): T =>
@@ -242,8 +242,26 @@ function estimatedCost(
   );
 }
 
-liveDescribe("Pursuit memo model quality/cost benchmark — Mantle", () => {
-  it(
+describe("Pursuit memo benchmark configuration", () => {
+  it("pins five real roles and three Mantle candidates without touching dossier composition", () => {
+    expect(CASES.map((c) => c.id)).toEqual([
+      "globallogic-data-ai",
+      "wpp-client-services",
+      "antal-managing-partner",
+      "msm-unify-csto",
+      "weber-shandwick-vp-digital",
+    ]);
+    expect(MODELS.map((m) => m.id)).toEqual([
+      "zai.glm-5",
+      "deepseek.v3.2",
+      "moonshotai.kimi-k2.5",
+    ]);
+    expect(CASES).toHaveLength(5);
+  });
+});
+
+describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
+  liveIt(
     "compares GLM-5, DeepSeek V3.2 and Kimi K2.5 across five real captured roles",
     async () => {
       loadMantleCredentials();
