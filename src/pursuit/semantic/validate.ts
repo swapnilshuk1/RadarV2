@@ -50,6 +50,10 @@ const QUANTIFIED_TOKEN =
   /(?:[$€£₹]\s?\d[\d,]*(?:\.\d+)?\s?(?:k|m|mn|bn|b|million|billion|crore|cr|lakh)?)|(?:\d[\d,]*(?:\.\d+)?\s?(?:%|x\b|k\b|m\b|mn\b|bn\b|b\b|million|billion|crore|cr\b|lakh|\+))/gi;
 const PROJECTION_WORD = /\b(?:projected|forecast|forecasted|pipeline|target(?:ed)?|expected|potential)\b/i;
 const COMPLETION_WORD = /\b(?:secured|closed|won|landed|converted|delivered|generated|achieved|booked)\b/i;
+const NEGATED_COMPLETION =
+  /\b(?:not|never|did\s+not|has\s+not|had\s+not|hasn't|hadn't|without)\b[^.\n]{0,24}\b(?:secured|closed|won|landed|converted|delivered|generated|achieved|booked)\b/i;
+const FUTURE_COMPLETION =
+  /\b(?:expected|projected|forecast(?:ed)?|target(?:ed)?|potential)\b[^.\n]{0,48}\bto\s+(?:be\s+)?(?:secured|closed|won|landed|converted|delivered|generated|achieved|booked)\b/i;
 
 function normalizeMetricToken(value: string): string {
   return value.toLowerCase().replace(/[\s,]/g, "");
@@ -103,10 +107,12 @@ export function findSemanticInflation(
   );
   if (projectedMetrics.size > 0) {
     for (const sentence of text.split(/(?<=[.!?])\s+|\n+/)) {
-      if (!COMPLETION_WORD.test(sentence) || PROJECTION_WORD.test(sentence)) continue;
+      if (!COMPLETION_WORD.test(sentence)) continue;
       const tokens = quantifiedTokens(sentence);
       const inflated = tokens.find((token) => projectedMetrics.has(token));
-      if (inflated) issues.push(`Projected metric ${inflated} is stated as an achieved result.`);
+      if (!inflated) continue;
+      if (NEGATED_COMPLETION.test(sentence) || FUTURE_COMPLETION.test(sentence)) continue;
+      issues.push(`Projected metric ${inflated} is stated as an achieved result.`);
     }
   }
 
