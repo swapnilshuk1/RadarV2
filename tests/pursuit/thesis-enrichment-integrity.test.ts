@@ -120,10 +120,18 @@ describe("Pursuit thesis enrichment integrity", () => {
   });
 
   it("rejects projected metrics rewritten as achieved results", () => {
-    expect(findSemanticInflation("Secured a ₹36 Cr three-year service retainer.", claims)).toEqual([
-      expect.stringMatching(/Projected metric/i),
-    ]);
+    for (const prose of [
+      "Secured a ₹36 Cr three-year service retainer.",
+      "Converted a projected ₹36 Cr three-year service retainer.",
+      "The projected ₹36 Cr three-year service retainer was secured.",
+    ]) {
+      expect(findSemanticInflation(prose, claims), prose).toEqual([
+        expect.stringMatching(/Projected metric/i),
+      ]);
+    }
     expect(findSemanticInflation("The record contains a projected ₹36 Cr three-year service retainer.", claims)).toEqual([]);
+    expect(findSemanticInflation("The projected ₹36 Cr retainer is expected to be secured.", claims)).toEqual([]);
+    expect(findSemanticInflation("The projected ₹36 Cr retainer has not been secured.", claims)).toEqual([]);
   });
 
   it("rejects positive P&L claims when the ledger has no P&L source fact", () => {
