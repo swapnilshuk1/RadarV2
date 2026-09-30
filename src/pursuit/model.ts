@@ -9,8 +9,10 @@
  *
  * Mantle is primary because pursuit generation is a strict-JSON structured
  * reasoning task and Mantle is already the staged structured-output route.
- * Gemini is the declared secondary. When neither is configured, callers fall
- * back to deterministic derivation rather than failing the user's journey.
+ * DeepSeek V3.2 is the default primary model and GLM-5 is the same-provider
+ * fallback; Gemini remains the optional cross-provider secondary. When none are
+ * configured, callers fall back to deterministic derivation rather than
+ * failing the user's journey.
  */
 
 import type { ModelCallMetadata, ModelUsage } from "../lib/model/model-invocation";
@@ -52,28 +54,46 @@ function env(name: string): string | undefined {
   ]?.trim();
 }
 
-async function mantleModel(context?: PursuitModelContext): Promise<PursuitModel | null> {
+export const DEFAULT_PURSUIT_MANTLE_PRIMARY_MODEL = "deepseek.v3.2";
+export const DEFAULT_PURSUIT_MANTLE_FALLBACK_MODEL = "zai.glm-5";
+
+/**
+ * The operator override changes the Mantle primary, but GLM-5 remains the
+ * in-provider fallback unless it is already primary. This keeps a single
+ * transport/credential path and avoids falling back to deterministic output
+ * for a transient or model-specific Mantle failure.
+ */
+export function pursuitMantleModelIds(): string[] {
+  const primary = env("RADAR_PURSUIT_MANTLE_MODEL") || DEFAULT_PURSUIT_MANTLE_PRIMARY_MODEL;
+  return primary === DEFAULT_PURSUIT_MANTLE_FALLBACK_MODEL
+    ? [primary]
+    : [primary, DEFAULT_PURSUIT_MANTLE_FALLBACK_MODEL];
+}
+
+async function mantleModels(context?: PursuitModelContext): Promise<PursuitModel[]> {
   const raw = env("BEDROCK_MANTLE_API_KEY");
-  if (!raw) return null;
+  if (!raw) return [];
   const apiKey = normalizeMantleKey(raw);
   const { BedrockMantleJsonModel } = await import("../lib/model/bedrock-mantle-model");
-  const model = new BedrockMantleJsonModel(
-    env("RADAR_PURSUIT_MANTLE_MODEL") || "zai.glm-5",
-    async () => apiKey,
-    fetch,
-    {
-      region: env("AWS_REGION") || "us-east-1",
-      maxOutputTokens: 10_240,
-      timeoutMs: 120_000,
-      ...(context?.invocationSink ? { invocationSink: context.invocationSink } : {}),
-    },
-  );
-  return {
-    id: `bedrock-mantle:${model.version}`,
-    generate: (instruction, input, schema, metadata) =>
-      model.generate(instruction, input, schema, metadata),
-    usage: () => model.lastUsage,
-  };
+  return pursuitMantleModelIds().map((modelId) => {
+    const model = new BedrockMantleJsonModel(
+      modelId,
+      async () => apiKey,
+      fetch,
+      {
+        region: env("AWS_REGION") || "us-east-1",
+        maxOutputTokens: 10_240,
+        timeoutMs: 120_000,
+        ...(context?.invocationSink ? { invocationSink: context.invocationSink } : {}),
+      },
+    );
+    return {
+      id: `bedrock-mantle:${model.version}`,
+      generate: (instruction: string, input: unknown, schema: Record<string, unknown>, metadata?: ModelCallMetadata) =>
+        model.generate(instruction, input, schema, metadata),
+      usage: () => model.lastUsage,
+    };
+  });
 }
 
 /** Vertex reports usage under its own field names; normalise to ModelUsage. */
@@ -133,9 +153,8 @@ async function geminiModel(context?: PursuitModelContext): Promise<PursuitModel 
 
 /** Ordered provider chain. Empty means deterministic derivation only. */
 export async function pursuitModelChain(context?: PursuitModelContext): Promise<PursuitModel[]> {
-  const models = await Promise.all([mantleModel(context), geminiModel(context)]);
-  return models.filter((model): model is PursuitModel => model !== null);
-
+  const [mantle, gemini] = await Promise.all([mantleModels(context), geminiModel(context)]);
+  return [...mantle, ...(gemini ? [gemini] : [])];
 }
 
 /**
