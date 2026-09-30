@@ -203,8 +203,8 @@ function GlobalHeader() {
         </div>
 
         {/* Navigation Bar */}
-        <nav className="flex items-center justify-end gap-1.5 overflow-x-auto">
-          <ul className="flex items-center gap-1 bg-muted/50 p-1 rounded-full border border-border/40">
+        <nav className="flex min-w-0 items-center justify-end gap-1.5 overflow-visible">
+          <ul className="flex min-w-0 items-center gap-1 overflow-x-auto bg-muted/50 p-1 rounded-full border border-border/40">
             <li>
               <Link
                 to="/"
