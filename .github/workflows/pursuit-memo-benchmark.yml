@@ -51,6 +51,8 @@ jobs:
           chmod 600 "$HOME/.ssh/known_hosts"
 
       - name: Package benchmark-only inputs
+        # Keep the live replay on Oracle dependencies while overlaying the exact
+        # certified Pursuit generation/sanitization source under test.
         shell: bash
         run: |
           set -euo pipefail
