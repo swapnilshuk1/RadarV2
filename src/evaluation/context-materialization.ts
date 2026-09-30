@@ -202,7 +202,7 @@ export async function materializeExistingCanonicalPool(
       gate.locationEvidence ?? null,
     ]);
 
-    if (gate.decision !== "CANDIDATE") {
+    if (gate.decision !== "CANDIDATE" || gate.eligibility !== "ELIGIBLE") {
       rejectedWork.push({
         tenantId: scope.tenantId,
         personId: scope.personId,
