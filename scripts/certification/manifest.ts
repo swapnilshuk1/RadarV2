@@ -102,6 +102,17 @@ export const certificationManifest = [
     ],
   },
   {
+    id: "pursuit",
+    name: "Pursuit Profile and Evidence Lineage",
+    description: "Pursuit host integration, semantic acceptance, approval ledger, and boundaries",
+    files: [
+      "tests/pursuit/core-host-integration.test.ts",
+      "tests/pursuit/integration-boundaries.test.ts",
+      "tests/pursuit/semantic-acceptance.test.ts",
+      "tests/pursuit/approval-ledger.test.ts",
+    ],
+  },
+  {
     id: "runtime-release-safety",
     name: "Runtime & Release Safety Regressions",
     description:

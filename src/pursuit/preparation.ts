@@ -22,6 +22,7 @@ import * as store from "./store";
 import { deriveDeterministicThesis, enrichThesis } from "./thesis";
 import { classifyClaim } from "./semantic/engine";
 import type { CandidateArchetype, PursuitLineage } from "./types";
+import { pursuitProfileVersion } from "./lineage";
 
 export async function loadBrief(userId: string, scope: store.Scope, jobHash: string): Promise<RoleBrief> {
   const details = await OpportunityService.getDetailsForUser(
@@ -98,12 +99,15 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
   await store.updatePursuit(scope, pursuit.id, { preparationState: "DERIVING", preparationError: null });
 
   const brief = await loadBrief(job.requestedBy, scope, job.jobHash);
-  const lineage = await resolveLineage(scope, brief);
+  const currentLineage = await resolveLineage(scope, brief);
+  const activeThesis = pursuit.activeThesisId ? await store.getThesis(pursuit.activeThesisId) : null;
+  const profileVersion = pursuitProfileVersion(pursuit, activeThesis);
+  const lineage = { ...currentLineage, ...pursuit.lineage, profileVersion };
   // Ledger is projected from the exact profile version the evaluation used.
-  const ledger = await projectLedger(scope, { profileVersion: lineage.profileVersion });
+  const ledger = await projectLedger(scope, { profileVersion });
   await store.backfillClaimClassifications(scope, classifyClaim).catch(() => 0);
   const [claims, archetypes, style, identity] = await Promise.all([
-    store.listClaims(scope),
+    store.listClaimsForProfile(scope, profileVersion),
     ensureArchetypes(scope),
     store.loadStyleProfile(scope),
     candidateIdentity(scope),

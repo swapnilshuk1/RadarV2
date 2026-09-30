@@ -15,6 +15,7 @@ import crypto from "node:crypto";
 import { getDatabaseAdapter } from "../../data/database";
 import { authenticateTenantMembership, authorizePersonScope } from "../security/auth";
 import { z } from "zod";
+import { getRecommendationFreshness, refreshSavedRecommendations } from "./recommendation-freshness";
 
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 const uploadSchema = z.object({ tenantId: z.string().min(1), personId: z.string().min(1), filename: z.string().min(1).max(255).regex(/^[^\\/\0]+$/), mimeType: z.enum(["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain"]), documentText: z.string().max(MAX_DOCUMENT_BYTES).optional(), base64Buffer: z.string().min(1).optional() }).refine(v => Boolean(v.documentText) !== Boolean(v.base64Buffer), "Supply exactly one document payload").superRefine((v, ctx) => {
@@ -209,6 +210,19 @@ export const getLatestIntentFn = createServerFn({ method: "GET" })
     return intent || null;
   });
 
+/** Explicitly activates the saved intent against the newest immutable CV profile. */
+export const refreshRecommendationsFn = createServerFn({ method: "POST" })
+  .validator((data) => z.object({ tenantId: z.string().min(1), personId: z.string().min(1) }).parse(data))
+  .handler(async ({ data }) => {
+    const user = await requireAuthUser();
+    const scope = await authorizeCandidate(user.id, data.tenantId, data.personId, "write:person");
+    return refreshSavedRecommendations(getDatabaseAdapter(), scope, {
+      getSavedIntent: (authorizedScope) => getRepositories().documents.getLatestCareerIntent(authorizedScope),
+      activate: activateSearchPlanForIntent,
+      notify: (personId) => EvaluationCoordinator.notify({ event: "INTENT_UPDATED", personId }),
+    });
+  });
+
 /** Resume profile presentation from durable, authorized candidate state. */
 export const getProfileOverviewFn = createServerFn({ method: "GET" })
   .validator((data: { tenantId: string; personId: string }) => data)
@@ -217,5 +231,6 @@ export const getProfileOverviewFn = createServerFn({ method: "GET" })
     const scope = await authorizeCandidate(user.id, data.tenantId, data.personId, "read:person");
     const person = await getDatabaseAdapter().one<{ name: string }>("SELECT name FROM people WHERE tenant_id=? AND id=?", [scope.tenantId, scope.personId]);
     const document = await getRepositories().documents.getLatestDocumentForPerson(scope);
-    return { name: person?.name || "Candidate", document: document ? { id: document.id, filename: document.filename, status: document.status, stage: document.stage, errorMessage: document.errorMessage } : null };
+    const recommendationFreshness = await getRecommendationFreshness(getDatabaseAdapter(), scope);
+    return { name: person?.name || "Candidate", recommendationFreshness, document: document ? { id: document.id, filename: document.filename, status: document.status, stage: document.stage, errorMessage: document.errorMessage } : null };
   });

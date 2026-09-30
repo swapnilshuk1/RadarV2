@@ -15,6 +15,9 @@ type CertificationGroupId = (typeof certificationManifest)[number]["id"];
 const allGroupIds = certificationManifest.map((group) => group.id);
 
 function groupsForKnownSource(file: string): CertificationGroupId[] | null {
+  if (file.startsWith("docs/") || file.endsWith(".md")) return [];
+  if (file.startsWith("src/pursuit/") || /^src\/data\/sqlite\/migrations\/0(6[5-9]|70)_/.test(file))
+    return ["pursuit"];
   if (
     file === "package.json" ||
     file === "package-lock.json" ||
@@ -104,6 +107,8 @@ function runAffectedCertification() {
   console.log(`Changed files: ${changedFiles.length || "none detected; using the full manifest"}`);
   console.log(`Logical groups: ${groups.join(", ")}`);
   console.log(`Tests selected: ${files.length}/${certificationTestFiles.length}\n`);
+
+  if (files.length === 0) return;
 
   // Vitest 4 exposes its executable through package metadata rather than an
   // exported subpath. Resolve the installed package, then invoke that CLI

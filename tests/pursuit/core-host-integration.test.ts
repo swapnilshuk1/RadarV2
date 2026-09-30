@@ -12,12 +12,15 @@ import {
   requireApprovedArtifact,
   recordApprovedOutreachSent,
   listArchetypes,
+  listClaimsForProfile,
+  ledgerCoverageForProfile,
   saveArchetype,
   type PreparationJob,
 } from "../../src/pursuit/store";
 import { projectLedger, resolveCanonicalSources } from "../../src/pursuit/ledger";
 import { openPursuitFn } from "../../src/pursuit/server";
 import { ledgerApprovalBlockers } from "../../src/pursuit/approval";
+import { pursuitProfileVersion } from "../../src/pursuit/lineage";
 import { createSqliteModelInvocationSink } from "../../src/lib/model/model-invocation";
 import type { PursuitThesis, CandidateClaim } from "../../src/pursuit/types";
 
@@ -488,6 +491,41 @@ describe("Pursuit in the RADAR host", () => {
       current_projection: 1,
     });
     expect(rows[1].id).not.toBe(old?.id);
+  });
+
+  it("keeps an older Pursuit's cockpit and approval evidence on profile A after profile B is current", async () => {
+    const view = await openPursuitFn({ data: { ...scope, jobHash: "hash_A" } });
+    expect(view.pursuit.lineage?.profileVersion).toBe("v1");
+    expect(view.claims.map((claim) => claim.statement)).toContain("Owned a $8M fee book");
+    expect(view.claims.map((claim) => claim.statement)).not.toContain("Owned a €12M fee book");
+    expect(view.ledgerCoverage.total).toBe(1);
+    const [aClaims, bClaims] = await Promise.all([
+      listClaimsForProfile(scope, "v1"), listClaimsForProfile(scope, "v2"),
+    ]);
+    expect(aClaims).toHaveLength(1);
+    expect(bClaims).toHaveLength(1);
+    expect((await ledgerCoverageForProfile(scope, "v2")).total).toBe(1);
+    const content = {
+      kind: "MESSAGE" as const,
+      message: {
+        subject: null, targetWords: null, body: "Owned a $8M fee book",
+        proofAssertions: [{ text: "Owned a $8M fee book", claimIds: [aClaims[0].id] }],
+      },
+    };
+    expect(ledgerApprovalBlockers(content, { claims: aClaims, proofRelationships: { [aClaims[0].id]: "DIRECT" } })).toEqual([]);
+    expect(ledgerApprovalBlockers(content, { claims: bClaims, proofRelationships: { [aClaims[0].id]: "DIRECT" } })).not.toEqual([]);
+    await projectLedger(scope, { profileVersion: "v1", force: true });
+    const current = await db.many<{ statement: string }>("SELECT statement FROM candidate_claims WHERE current_projection = 1");
+    expect(current.map((claim) => claim.statement)).toEqual(["Owned a €12M fee book"]);
+  });
+
+  it("pins a new Pursuit to profile B and fails closed if an older pursuit has no lineage", async () => {
+    await db.execute("INSERT INTO canonical_opportunities(id,source,source_job_id,canonical_url) VALUES ('job_B','test','hash_B','https://example.test/job-b')");
+    await db.execute("INSERT INTO opportunity_versions(id,canonical_job_id,content_hash,job_title,raw_content) VALUES ('version_B','job_B','hash-b','Director','role')");
+    await db.transaction((tx) => openPursuitInTransaction(tx, scope, { jobHash: "hash_B" }, "user", { ...lineage, canonicalJobId: "job_B", opportunityVersion: "version_B", profileVersion: "v2" }));
+    const view = await openPursuitFn({ data: { ...scope, jobHash: "hash_B" } });
+    expect(view.claims.map((claim) => claim.statement)).toEqual(["Owned a €12M fee book"]);
+    expect(() => pursuitProfileVersion({ ...view.pursuit, lineage: undefined }, null)).toThrow("PURSUIT_PROFILE_LINEAGE_MISSING");
   });
 
   it("resolves only the explicitly requested profile binding", async () => {

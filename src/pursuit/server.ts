@@ -23,6 +23,7 @@ import { candidateIdentity, loadBrief, resolveLineage } from "./preparation";
 import { toRoleBrief } from "./role-brief";
 import * as store from "./store";
 import { ledgerApprovalBlockers } from "./approval";
+import { pursuitProfileVersion } from "./lineage";
 import {
   approvalBlockers,
   archetypeInputSchema,
@@ -72,15 +73,16 @@ async function authorize(
 async function readCockpit(scope: store.Scope, jobHash: string): Promise<CockpitView> {
   const pursuit = await store.getPursuit(scope, jobHash);
   if (!pursuit) throw new Error("PURSUIT_NOT_FOUND");
-  const [thesis, thesisHistory, artifacts, archetypes, claims, activities, coverage, preparation] =
+  const thesis = pursuit.activeThesisId ? await store.getThesis(pursuit.activeThesisId) : null;
+  const profileVersion = pursuitProfileVersion(pursuit, thesis);
+  const [thesisHistory, artifacts, archetypes, claims, activities, coverage, preparation] =
     await Promise.all([
-      pursuit.activeThesisId ? store.getThesis(pursuit.activeThesisId) : Promise.resolve(null),
       store.listThesisHistory(pursuit.id),
       store.listLatestArtifacts(pursuit.id),
       store.listArchetypes(scope),
-      store.listClaims(scope),
+      store.listClaimsForProfile(scope, profileVersion),
       store.listActivities(pursuit.id),
-      store.ledgerCoverage(scope),
+      store.ledgerCoverageForProfile(scope, profileVersion),
       store.livePreparation(scope, pursuit.id),
     ]);
   return {
@@ -197,6 +199,7 @@ export const pursueOpportunityFn = createServerFn({ method: "POST" })
     // the decision write rolls the decision back too.
     const brief = await loadBrief(user.id, scope, data.jobHash);
     const lineage = await resolveLineage(scope, brief);
+    if (!lineage.profileVersion) throw new Error("PURSUIT_PROFILE_LINEAGE_MISSING");
     const acknowledgement = await getDatabaseAdapter().transaction(async (tx) => {
       const ack = await writeAuthorizedDecision(
         tx,
@@ -318,13 +321,15 @@ export const saveArtifactFn = createServerFn({ method: "POST" })
     if (!pursuit) throw new Error("PURSUIT_NOT_FOUND");
     const existing = await store.getArtifact(pursuit.id, data.artifactId);
     if (!existing) throw new Error("ARTIFACT_NOT_FOUND");
+    const activeThesis = pursuit.activeThesisId ? await store.getThesis(pursuit.activeThesisId) : null;
+    const profileVersion = pursuitProfileVersion(pursuit, activeThesis);
 
     const content = data.content as ArtifactContent;
     if (data.approve) {
       const blockers = approvalBlockers(content);
       // Prove edited figures and claim links against the candidate's own ledger.
       const [claims, brief] = await Promise.all([
-        store.listClaims(scope),
+        store.listClaimsForProfile(scope, profileVersion),
         loadBrief(user.id, scope, data.jobHash).catch(() => null),
       ]);
       blockers.push(

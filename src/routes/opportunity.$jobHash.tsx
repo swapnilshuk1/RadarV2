@@ -12,6 +12,7 @@ import { resolveDossierDecisionState } from "../lib/intelligence/decision-state"
 import { DossierView } from "@/dossier/DossierView";
 import { isExternalPostingUrl } from "@/lib/acquisition/external-posting-url";
 import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/components/PursuitLauncher";
+import { canReopenPursuit } from "../lib/intelligence/pursuit-affordance";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params, location }: { params: { jobHash: string }; location: { search: unknown } }) => {
@@ -221,7 +222,7 @@ function OpportunityBriefBody() {
                   </button>
                 ))}
               </div>
-              {pursuit.available && (
+              {pursuit.available && canReopenPursuit(o.userDecision?.userAction) && (
                 <button
                   type="button"
                   className="dossier-apply-action"
