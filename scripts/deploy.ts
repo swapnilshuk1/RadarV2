@@ -127,6 +127,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     ),
   ].join(" ");
   const systemReadinessUrl = `${config.readinessUrl.replace(/\/$/, "")}/health/system`;
+  const loadHostEnvironment = `set -a; . ${shellQuote(`${config.appDirectory}/.env`)}; set +a`;
   const waitForSystemReadiness = [
     "system_ready=0",
     `for attempt in $(seq 1 30); do if curl --fail --silent --show-error ${shellQuote(systemReadinessUrl)} >/dev/null; then system_ready=1; break; fi; sleep 2; done`,
@@ -198,6 +199,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     `tar -xzf ${shellQuote(remoteArtifact)} -C ${shellQuote(stagingDirectory)}`,
     `cd ${shellQuote(stagingDirectory)}`,
     `node_modules/.bin/tsx scripts/release/verify.ts . ${shellQuote(config.sha)}`,
+    loadHostEnvironment,
     `export RADAR_RELEASE_SHA=${shellQuote(config.sha)}`,
     `export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)}`,
     `export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)}`,
@@ -258,6 +260,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
 
     const recovery = [
       "set +e",
+      loadHostEnvironment,
       canRestorePrior
         ? [
             `printf '%s' ${shellQuote(rollbackFailedReceipt)} > ${shellQuote(receipt)}`,

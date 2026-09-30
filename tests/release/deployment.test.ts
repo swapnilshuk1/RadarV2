@@ -166,6 +166,10 @@ describe("deterministic release deployment", () => {
     expect(capturedActivation).not.toContain("--only radar-v2");
     expect(capturedActivation).toContain("PM2_TOPOLOGY_UNHEALTHY");
     expect(capturedActivation).toContain("RADAR_EXPECTED_DB_TARGET_FINGERPRINT");
+    expect(capturedActivation).toContain("set -a; . '/srv/radar/.env'; set +a");
+    expect(capturedActivation.indexOf("set -a; . '/srv/radar/.env'; set +a")).toBeLessThan(
+      capturedActivation.indexOf("npm run db:migrate"),
+    );
     expect(capturedActivation).toContain("/health/system");
     expect(capturedActivation).toContain("system_ready=0");
 

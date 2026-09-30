@@ -10,7 +10,7 @@ module.exports = {
       script: ".output/server/index.mjs",
       cwd: __dirname,
       env: {
-        PORT: 3000,
+        PORT: Number(process.env.RADAR_WEB_PORT || 3000),
         NODE_ENV: "production",
         ...envVars,
       },
