@@ -133,7 +133,7 @@ export function deriveDeterministicThesis(input: {
       .filter(Boolean)
       .join(" "),
     primaryProof,
-    objections: finalObjections,
+    objections,
     narrativesToAvoid: [
       lateral
         ? `Do not imply prior ${snapshot.mandate.roleDomainLabel} experience; call the transfer what it is.`
@@ -552,7 +552,7 @@ export async function enrichThesis(
     primaryProof: deterministic.primaryProof.map(
       (p) => safeProof.find((s) => s.claimId === p.claimId && findLeakage(s.whyItMatters).length === 0) ?? p,
     ),
-    objections,
+    objections: finalObjections,
     derivation: "MODEL",
     modelId: result.modelId,
   };
