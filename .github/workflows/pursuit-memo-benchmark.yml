@@ -65,7 +65,8 @@ jobs:
             tests/fixtures/pursuit/msm-unify-csto/role.json \
             tests/fixtures/pursuit/weber-shandwick-vp-digital/role.json \
             src/pursuit/thesis.ts \
-            src/pursuit/semantic/validate.ts
+            src/pursuit/semantic/validate.ts \
+            src/pursuit/semantic/phrasing.ts
 
       - name: Stage and run against deployed Pursuit runtime
         shell: bash
@@ -176,20 +177,20 @@ jobs:
             echo
             echo "- Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             if [[ -s "$report_file" ]]; then
-              echo "- Oracle deployed release: `$(jq -r '.sourceReleaseSha // "unknown"' "$report_file")`"
-              echo "- Pursuit source overlay: `$(jq -r '.benchmarkCodeSha // "unknown"' "$report_file")`"
-              echo "- Pricing snapshot: $(jq -r '.pricingRegion + " · " + .pricingAsOf' "$report_file")"
+              printf '%s\n' "- Oracle deployed release: $(jq -r '.sourceReleaseSha // "unknown"' "$report_file")"
+              printf '%s\n' "- Pursuit source overlay: $(jq -r '.benchmarkCodeSha // "unknown"' "$report_file")"
+              printf '%s\n' "- Pricing snapshot: $(jq -r '.pricingRegion + " · " + .pricingAsOf' "$report_file")"
               echo
               echo "| Model | Avg quality proxy | Total cost (USD) | Avg latency | Answered | Safety failures |"
               echo "| --- | ---: | ---: | ---: | ---: | ---: |"
               jq -r '.summary[] | "| \(.model) | \(.avgQualityProxy) | \(.totalCostUsd) | \(.avgLatencyMs) ms | \(.answeredCases)/5 | \(.safetyFailures) |"' "$report_file"
               echo
-              echo "Artifact: `pursuit-memo-benchmark-$GITHUB_RUN_ID`"
+              printf '%s\n' "Artifact: pursuit-memo-benchmark-$GITHUB_RUN_ID"
             else
               echo "- Report: unavailable"
             fi
             if [[ -s "$status_file" ]]; then
-              echo "- Benchmark exit status: `$(tr -d '[:space:]' < "$status_file")`"
+              printf '%s\n' "- Benchmark exit status: $(tr -d '[:space:]' < "$status_file")"
             else
               echo "- Benchmark exit status: unavailable"
             fi
