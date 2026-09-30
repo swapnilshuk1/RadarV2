@@ -126,10 +126,17 @@ describe("Pursuit thesis enrichment integrity", () => {
     expect(findSemanticInflation("The record contains a projected ₹36 Cr three-year service retainer.", claims)).toEqual([]);
   });
 
-  it("rejects positive P&L ownership when the ledger has no P&L source fact", () => {
-    expect(findSemanticInflation("Owned the P&L while scaling the account.", claims)).toEqual([
-      expect.stringMatching(/P&L ownership/i),
-    ]);
+  it("rejects positive P&L claims when the ledger has no P&L source fact", () => {
+    for (const prose of [
+      "Owned the P&L while scaling the account.",
+      "The role produced measurable P&L outcomes.",
+      "This is direct practice P&L precedent.",
+      "The team delivered against P&L.",
+    ]) {
+      expect(findSemanticInflation(prose, claims), prose).toEqual([
+        expect.stringMatching(/P&L experience/i),
+      ]);
+    }
     expect(findSemanticInflation("Direct P&L ownership is not evidenced in the record.", claims)).toEqual([]);
   });
 
