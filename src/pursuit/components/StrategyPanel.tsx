@@ -5,7 +5,7 @@
  */
 
 import type { CockpitView, PursuitStatus } from "../types";
-import { pursuitStatusLabels, pursuitStatuses } from "../types";
+import { activePursuitStatuses, isTerminalPursuitStatus, pursuitStatusLabels } from "../types";
 import { SectionLabel } from "./shared";
 
 interface Props {
@@ -50,6 +50,7 @@ export function StrategyPanel({
   onNextAction,
 }: Props) {
   const { thesis, pursuit, archetypes } = view;
+  const resolved = isTerminalPursuitStatus(pursuit.status);
 
   if (!thesis) {
     return (
@@ -244,24 +245,29 @@ export function StrategyPanel({
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <label className="block">
             <span className="label-mono text-muted-foreground">Stage</span>
-            <select
-              value={pursuit.status}
-              disabled={busy}
-              onChange={(event) => onStatusChange(event.target.value as PursuitStatus)}
-              className="pursuit-input mt-1"
-            >
-              {pursuitStatuses.map((status) => (
-                <option key={status} value={status}>
-                  {pursuitStatusLabels[status]}
-                </option>
-              ))}
-            </select>
+            {resolved ? (
+              <div className="pursuit-input mt-1 flex items-center">{pursuitStatusLabels[pursuit.status]}</div>
+            ) : (
+              <select
+                value={pursuit.status}
+                disabled={busy}
+                onChange={(event) => onStatusChange(event.target.value as PursuitStatus)}
+                className="pursuit-input mt-1"
+              >
+                {activePursuitStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {pursuitStatusLabels[status]}
+                  </option>
+                ))}
+              </select>
+            )}
           </label>
           <label className="block">
             <span className="label-mono text-muted-foreground">Next action</span>
             <input
               defaultValue={pursuit.nextAction ?? ""}
               placeholder="Send the executive note"
+              disabled={busy || resolved}
               onBlur={(event) => onNextAction(event.target.value, pursuit.nextActionDue ?? "")}
               className="pursuit-input mt-1"
             />
@@ -271,6 +277,7 @@ export function StrategyPanel({
             <input
               type="date"
               defaultValue={pursuit.nextActionDue?.slice(0, 10) ?? ""}
+              disabled={busy || resolved}
               onBlur={(event) => onNextAction(pursuit.nextAction ?? "", event.target.value)}
               className="pursuit-input mt-1"
             />

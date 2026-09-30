@@ -24,7 +24,7 @@ import {
   updatePursuitStateFn,
 } from "../server";
 import type { ArtifactContent, CockpitView, LearningSignal, PursuitStatus } from "../types";
-import { preparationServiceUnavailable, PURSUIT_WORKER_UNAVAILABLE_MESSAGE, pursuitStatusLabels } from "../types";
+import { isTerminalPursuitStatus, preparationServiceUnavailable, PURSUIT_WORKER_UNAVAILABLE_MESSAGE, pursuitStatusLabels } from "../types";
 import type { ArtifactApprovalBlocker } from "../approval";
 
 type Surface = "STRATEGY" | "RESUME" | "OUTREACH" | "INTERVIEW";
@@ -48,6 +48,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
   const [surface, setSurface] = useState<Surface>("STRATEGY");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resolveOpen, setResolveOpen] = useState(false);
   const [workerAvailable, setWorkerAvailable] = useState<boolean | null>(initialView.workerAvailable ?? null);
   const [approvalBlockersByArtifact, setApprovalBlockersByArtifact] = useState<Record<string, ArtifactApprovalBlocker[]>>({});
 
@@ -66,6 +67,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
   const preparing =
     view.pursuit.preparationState === "QUEUED" || view.pursuit.preparationState === "DERIVING";
   const workerUnavailable = preparationServiceUnavailable(view.pursuit.preparationState, workerAvailable);
+  const resolved = isTerminalPursuitStatus(view.pursuit.status);
   useEffect(() => {
     if (!preparing) return;
     let cancelled = false;
@@ -192,10 +194,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
               {view.pursuit.company ? ` · ${view.pursuit.company}` : ""}
             </p>
             <p className="label-mono mt-1 text-muted-foreground">
-              Pursuit stage:{" "}
-              {view.pursuit.status === "READY"
-                ? "Preparing"
-                : pursuitStatusLabels[view.pursuit.status]}{" "}
+              Pursuit stage: {pursuitStatusLabels[view.pursuit.status]}{" "}
               · Package readiness {readiness.done}/{readiness.total} ·{" "}
               {view.ledgerCoverage.sourceBacked} verified claims from{" "}
               {view.ledgerCoverage.documents} document
@@ -203,24 +202,46 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={busy || preparing}
-              onClick={() => handleDerive(view.pursuit.activeArchetypeId)}
-              className="pursuit-chip pursuit-chip-primary"
-            >
-              {busy
-                ? "Working…"
-                : preparing
-                  ? workerUnavailable
-                    ? "Service unavailable"
-                    : view.pursuit.preparationState === "DERIVING"
-                    ? "Preparing package…"
-                    : "Queued…"
-                  : hasStrategy
-                    ? "Regenerate strategy"
-                    : "Derive strategy"}
-            </button>
+            {!resolved && (
+              <button
+                type="button"
+                disabled={busy || preparing}
+                onClick={() => handleDerive(view.pursuit.activeArchetypeId)}
+                className="pursuit-chip pursuit-chip-primary"
+              >
+                {busy
+                  ? "Working…"
+                  : preparing
+                    ? workerUnavailable
+                      ? "Service unavailable"
+                      : view.pursuit.preparationState === "DERIVING"
+                      ? "Preparing package…"
+                      : "Queued…"
+                    : hasStrategy
+                      ? "Regenerate strategy"
+                      : "Derive strategy"}
+              </button>
+            )}
+            {resolved ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void run(() => updateState({ data: { ...scope, jobHash, status: "READY" } }))}
+                className="pursuit-chip pursuit-chip-primary"
+              >
+                Reopen pursuit
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={busy || preparing}
+                onClick={() => setResolveOpen((open) => !open)}
+                className="pursuit-chip"
+                title={preparing ? "Finish preparation before resolving this pursuit." : undefined}
+              >
+                Resolve pursuit
+              </button>
+            )}
             <button type="button" onClick={onClose} className="pursuit-chip">
               Close
             </button>
@@ -241,6 +262,49 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
       </div>
 
       <div className="memo-container py-6">
+        {resolved && (
+          <div className="memo-callout mb-5" role="status">
+            <p className="text-sm font-medium">{pursuitStatusLabels[view.pursuit.status]}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              This pursuit is resolved. Its strategy, artifacts and activity history remain available.
+            </p>
+          </div>
+        )}
+        {resolveOpen && !resolved && (
+          <div className="memo-card mb-5">
+            <p className="label-mono text-muted-foreground">Resolve pursuit</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Move this pursuit out of the active working set. Nothing is deleted.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {([
+                ["CLOSED_WON", "Won"],
+                ["CLOSED_LOST", "Lost"],
+                ["WITHDRAWN", "Withdrawn"],
+              ] as const).map(([status, label]) => (
+                <button
+                  key={status}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setResolveOpen(false);
+                    void run(() =>
+                      updateState({
+                        data: { ...scope, jobHash, status, nextAction: null, nextActionDue: null },
+                      }),
+                    );
+                  }}
+                  className="pursuit-chip"
+                >
+                  {label}
+                </button>
+              ))}
+              <button type="button" onClick={() => setResolveOpen(false)} className="pursuit-chip">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
         {view.ledgerCoverage.total === 0 && (
           <div className="memo-callout mb-5">
             <p className="text-sm">

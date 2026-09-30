@@ -8,7 +8,7 @@ import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/component
 import { DecisionBadge } from "../components/radar/DecisionBadge";
 import { getDecidedOpportunitiesFn } from "@/opportunity/server";
 import { listPursuitSummariesFn } from "../pursuit/server";
-import { pursuitStatusLabels } from "../pursuit/types";
+import { isTerminalPursuitStatus, pursuitStatusLabels } from "../pursuit/types";
 
 
 export const Route = createFileRoute("/decisions")({
@@ -47,6 +47,7 @@ export function resolveDecisionsCardScore(
 }
 
 export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS";
+type PursuitBucket = "ACTIVE" | "WON" | "CLOSED";
 
 /** Any mandate already marked PURSUE must be able to reopen its cockpit. */
 function OpportunitiesPageRoot() {
@@ -78,6 +79,7 @@ function OpportunitiesPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterKey, setFilterKey] = useState<FilterKey>("ALL");
+  const [pursuitBucket, setPursuitBucket] = useState<PursuitBucket>("ACTIVE");
   const [writeError, setWriteError] = useState<string | null>(null);
 
   // Helper to get effective user decision verb for an opportunity
@@ -109,6 +111,18 @@ function OpportunitiesPage() {
     };
   }, [opportunitiesList, getUserVerb]);
 
+  const pursuitBucketCounts = useMemo(() => {
+    let active = 0;
+    let won = 0;
+    let closed = 0;
+    for (const summary of pursuitSummaries) {
+      if (summary.status === "CLOSED_WON") won++;
+      else if (isTerminalPursuitStatus(summary.status)) closed++;
+      else active++;
+    }
+    return { active, won, closed };
+  }, [pursuitSummaries]);
+
   // Combined Search + Decision Filter Composition
   const displayedOpportunities = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -125,6 +139,18 @@ function OpportunitiesPage() {
 
       if (!matchesFilter) return false;
 
+      if (filterKey === "PURSUE") {
+        const summary = pursuitsByJobHash.get(o.jobHash);
+        const bucket: PursuitBucket = !summary
+          ? "ACTIVE"
+          : summary.status === "CLOSED_WON"
+            ? "WON"
+            : isTerminalPursuitStatus(summary.status)
+              ? "CLOSED"
+              : "ACTIVE";
+        if (bucket !== pursuitBucket) return false;
+      }
+
       // 2. Search Query Match
       if (!q) return true;
       const company = (o.company || "").toLowerCase();
@@ -133,7 +159,7 @@ function OpportunitiesPage() {
 
       return company.includes(q) || role.includes(q) || location.includes(q);
     });
-  }, [opportunitiesList, filterKey, searchQuery, getUserVerb]);
+  }, [opportunitiesList, filterKey, pursuitBucket, pursuitsByJobHash, searchQuery, getUserVerb]);
 
   return (
     <div className="min-h-screen bg-background text-ink font-sans pb-24">
@@ -205,7 +231,10 @@ function OpportunitiesPage() {
               label="PURSUED"
               count={counts.pursue}
               active={filterKey === "PURSUE"}
-              onClick={() => setFilterKey("PURSUE")}
+              onClick={() => {
+                setFilterKey("PURSUE");
+                setPursuitBucket("ACTIVE");
+              }}
               tint="pursue"
             />
             <FilterPill
@@ -223,6 +252,28 @@ function OpportunitiesPage() {
               tint="pass"
             />
           </div>
+          {filterKey === "PURSUE" && (
+            <div className="flex flex-wrap items-center gap-2 pt-1" data-testid="pursuit-lifecycle-filter-bar">
+              <FilterPill
+                label="ACTIVE"
+                count={pursuitBucketCounts.active}
+                active={pursuitBucket === "ACTIVE"}
+                onClick={() => setPursuitBucket("ACTIVE")}
+              />
+              <FilterPill
+                label="WON"
+                count={pursuitBucketCounts.won}
+                active={pursuitBucket === "WON"}
+                onClick={() => setPursuitBucket("WON")}
+              />
+              <FilterPill
+                label="CLOSED"
+                count={pursuitBucketCounts.closed}
+                active={pursuitBucket === "CLOSED"}
+                onClick={() => setPursuitBucket("CLOSED")}
+              />
+            </div>
+          )}
         </div>
       </section>
 
@@ -245,6 +296,7 @@ function OpportunitiesPage() {
                 onClick={() => {
                   setSearchQuery("");
                   setFilterKey("ALL");
+                  setPursuitBucket("ACTIVE");
                 }}
                 className="mt-3 text-xs font-mono uppercase tracking-wider text-accent-ink hover:underline"
               >

@@ -115,6 +115,25 @@ export const pursuitStatuses = [
 ] as const;
 export type PursuitStatus = (typeof pursuitStatuses)[number];
 
+export const activePursuitStatuses = [
+  "PREPARING",
+  "READY",
+  "OUTREACH_SENT",
+  "FIRST_CONVERSATION",
+  "INTERVIEWING",
+  "OFFER",
+] as const satisfies readonly PursuitStatus[];
+
+export const terminalPursuitStatuses = [
+  "CLOSED_WON",
+  "CLOSED_LOST",
+  "WITHDRAWN",
+] as const satisfies readonly PursuitStatus[];
+
+export function isTerminalPursuitStatus(status: PursuitStatus): boolean {
+  return terminalPursuitStatuses.includes(status as (typeof terminalPursuitStatuses)[number]);
+}
+
 export const pursuitStatusLabels: Record<PursuitStatus, string> = {
   PREPARING: "Preparing",
   READY: "Ready to send",
