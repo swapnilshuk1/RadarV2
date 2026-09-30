@@ -10,6 +10,7 @@ import type {
   ProofStory,
   ResumeContent,
 } from "../types";
+import { extractFigures } from "../approval";
 import { DIRECT_ONLY_PHRASES } from "./phrasing";
 import type { EvidenceRelationship } from "./types";
 
@@ -49,7 +50,8 @@ export function hasOverclaim(text: string, strongest: EvidenceRelationship): boo
 const QUANTIFIED_TOKEN =
   /(?:[$€£₹]\s?\d[\d,]*(?:\.\d+)?\s?(?:k|m|mn|bn|b|million|billion|crore|cr|lakh)?)|(?:\d[\d,]*(?:\.\d+)?\s?(?:%|x\b|k\b|m\b|mn\b|bn\b|b\b|million|billion|crore|cr\b|lakh|\+))/gi;
 const PROJECTION_WORD = /\b(?:projected|forecast|forecasted|pipeline|target(?:ed)?|expected|potential)\b/i;
-const COMPLETION_WORD = /\b(?:secured|closed|won|landed|converted|delivered|generated|achieved|booked)\b/i;
+const COMPLETION_WORD =
+  /\b(?:secured|closed|won|landed|converted|delivered|generated|achieved|booked|anchored)\b/i;
 
 function normalizeMetricToken(value: string): string {
   return value.toLowerCase().replace(/[\s,]/g, "");
@@ -103,14 +105,48 @@ export function findSemanticInflation(
   );
   if (projectedMetrics.size > 0) {
     for (const sentence of text.split(/(?<=[.!?])\s+|\n+/)) {
-      if (!COMPLETION_WORD.test(sentence) || PROJECTION_WORD.test(sentence)) continue;
+      if (!COMPLETION_WORD.test(sentence)) continue;
       const tokens = quantifiedTokens(sentence);
       const inflated = tokens.find((token) => projectedMetrics.has(token));
-      if (inflated) issues.push(`Projected metric ${inflated} is stated as an achieved result.`);
+      if (inflated) issues.push(`Projected metric ${inflated} is stated with achieved-result language.`);
     }
   }
 
   return [...new Set(issues)];
+}
+
+const supportFigureKey = (figure: string): string =>
+  figure.endsWith("+") ? figure.slice(0, -1) : figure;
+
+/**
+ * Returns generated figures that cannot be traced to candidate evidence or
+ * trusted role context. A source lower-bound such as 400,000+ licenses
+ * 400,000/400,000+ wording, but arithmetic derivations such as $20M→$55M
+ * becoming "$35M incremental" remain unsupported.
+ */
+export function findUnsupportedFigures(
+  text: string,
+  claims: readonly CandidateClaim[],
+  contextText = "",
+): string[] {
+  const sourceText = [
+    contextText,
+    ...claims.flatMap((claim) => [
+      claim.statement,
+      claim.sourceLocator ?? "",
+      claim.metricBaseline ?? "",
+      claim.metricResult ?? "",
+    ]),
+  ].join("\n");
+  const allowed = new Set(extractFigures(sourceText));
+  const allowedKeys = new Set([...allowed].map(supportFigureKey));
+  return [
+    ...new Set(
+      extractFigures(text).filter(
+        (figure) => !allowed.has(figure) && !allowedKeys.has(supportFigureKey(figure)),
+      ),
+    ),
+  ];
 }
 
 export function validateResume(
