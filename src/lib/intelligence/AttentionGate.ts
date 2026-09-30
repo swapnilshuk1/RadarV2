@@ -154,13 +154,22 @@ const SENIORITY_RANK: Readonly<Record<SeniorityBand, number>> = {
 };
 
 function targetSeniorityFloor(seniorityRange: readonly string[]): SeniorityBand | null {
-  const resolved = seniorityRange
-    .map((value) => SeniorityResolver.resolve(value))
-    .filter((item) => item.seniorityBand !== "UNKNOWN");
-  if (resolved.length === 0) return null;
-  return resolved.reduce((floor, item) =>
-    SENIORITY_RANK[item.seniorityBand] < SENIORITY_RANK[floor.seniorityBand] ? item : floor
-  ).seniorityBand;
+  const bands = seniorityRange
+    .map((value): SeniorityBand => {
+      const normalized = normalize(value);
+      if (/\bchief\b|\bc suite\b/.test(normalized)) return "C_SUITE";
+      if (/\bevp\b|\bsvp\b|\bvp\b|vice president/.test(normalized)) return "VP";
+      if (/\bhead\b/.test(normalized)) return "HEAD";
+      if (/\bdirector\b/.test(normalized)) return "DIRECTOR";
+      if (/\blead\b/.test(normalized)) return "LEAD";
+      if (/\bmanager\b/.test(normalized)) return "MANAGER";
+      return SeniorityResolver.resolve(value).seniorityBand;
+    })
+    .filter((band) => band !== "UNKNOWN");
+  if (bands.length === 0) return null;
+  return bands.reduce((floor, band) =>
+    SENIORITY_RANK[band] < SENIORITY_RANK[floor] ? band : floor
+  );
 }
 
 function titleSeniorityAssessment(
