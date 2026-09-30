@@ -298,6 +298,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/pursuit/approval-ledger.test.ts` | Pursuit evidence approval | **KEEP** | Full Suite | 8 | 11 |
 | `tests/pursuit/core-host-integration.test.ts` | Pursuit host integration | **KEEP** | Full Suite | 18 | 77 |
 | `tests/pursuit/integration-boundaries.test.ts` | Pursuit integration boundaries | **KEEP** | Full Suite | 12 | 25 |
+| `tests/pursuit/memo-model-benchmark.test.ts` | Pursuit live memo model quality/cost benchmark | **KEEP** | Operator only (`RADAR_RUN_LIVE_PURSUIT_MEMO_BENCHMARK=true`) | 1 | 6 |
 | `tests/pursuit/resume-copy.test.ts` | Pursuit Execution | **KEEP** | Full Suite | 7 | 11 |
 | `tests/pursuit/resume-export-presentation.test.ts` | Pursuit Execution | **KEEP** | Full Suite | 4 | 18 |
 | `tests/pursuit/semantic-acceptance.test.ts` | Pursuit semantic acceptance | **KEEP** | Full Suite | 19 | 41 |
