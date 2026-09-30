@@ -6,11 +6,11 @@ export default defineConfig({
     alias: { "@": path.resolve(process.cwd(), "src") },
   },
   test: {
-    include: ["tests/pursuit/memo-model-benchmark.test.ts"],
+    include: ["tests/intelligence/memo-composition-model-benchmark.test.ts"],
     environment: "node",
     pool: "threads",
-    maxWorkers: 5,
-    testTimeout: 30 * 60_000,
-    hookTimeout: 30 * 60_000,
+    maxWorkers: 1,
+    testTimeout: 60 * 60_000,
+    hookTimeout: 60 * 60_000,
   },
 });

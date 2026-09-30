@@ -87,6 +87,7 @@ export const certificationManifest = [
       "tests/intelligence/gemini-context-cache.test.ts",
       "tests/intelligence/editorial-boundary.test.ts",
       "tests/intelligence/memo-contract.test.ts",
+      "tests/intelligence/memo-composition-model-benchmark.test.ts",
       "tests/serving/staged-rich-serving.test.ts",
       "tests/intelligence/bedrock-converse-model.test.ts",
     ],
@@ -109,7 +110,6 @@ export const certificationManifest = [
     files: [
       "tests/pursuit/core-host-integration.test.ts",
       "tests/pursuit/integration-boundaries.test.ts",
-      "tests/pursuit/memo-model-benchmark.test.ts",
       "tests/pursuit/semantic-acceptance.test.ts",
       "tests/pursuit/approval-ledger.test.ts",
     ],
