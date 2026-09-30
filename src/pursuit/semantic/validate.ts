@@ -81,7 +81,8 @@ export function findSemanticInflation(
     /\b(?:owned|owning|managed|managing|held|carried)\b[^.\n]{0,40}\bp\s*&\s*l\b/i.test(text) ||
     /\bp\s*&\s*l\b[^.\n]{0,40}\b(?:ownership|accountability|responsibility)\b/i.test(text);
   const negatedPnl =
-    /\b(?:no|not|without|lacks?|lacking|gap\s+in|unproven)\b[^.\n]{0,50}\bp\s*&\s*l\b/i.test(text);
+    /\b(?:no|not|without|lacks?|lacking|gap\s+in|unproven)\b[^.\n]{0,50}\bp\s*&\s*l\b/i.test(text) ||
+    /\bp\s*&\s*l\b[^.\n]{0,50}\b(?:is\s+not|isn't|not\s+evidenced|not\s+source-backed|unproven|remains?\s+a\s+gap)\b/i.test(text);
   if (positivePnl && !negatedPnl && !hasSourcePnl) issues.push("P&L ownership is not source-backed.");
 
   const projectedMetrics = new Set(
