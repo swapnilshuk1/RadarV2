@@ -18,7 +18,8 @@ import { authenticateTenantMembership, authorizePersonScope } from "../lib/secur
 import { resolveServingScope } from "../lib/security/scope-resolver";
 import { renderInterviewBrief, renderMessage, renderResume } from "./artifacts";
 import { resumeToDocx } from "./export/docx";
-import { interviewBriefToPdf, messageToPdf, resumeToPdf } from "./export/pdf";
+import { interviewBriefToPdf, messageToPdf } from "./export/pdf";
+import { resumeToPdf } from "./export/resume-layout";
 import { isLedgerStale, projectLedger, readLedgerState, resolveCanonicalSources } from "./ledger";
 import { candidateIdentity, loadBrief, resolveLineage } from "./preparation";
 import { toRoleBrief } from "./role-brief";
@@ -30,6 +31,7 @@ import {
   artifactContentSchema,
   artifactLabels,
   pursuitStatuses,
+  resumeTemplateIds,
   type ArtifactContent,
   type CandidateArchetype,
   type CockpitView,
@@ -503,6 +505,8 @@ export const exportArtifactFn = createServerFn({ method: "POST" })
         jobHash: z.string().min(1),
         artifactId: z.string().min(1),
         format: z.enum(["PDF", "DOCX", "TXT"]),
+        resumeTemplate: z.enum(resumeTemplateIds).optional(),
+        metricGrid: z.boolean().optional(),
       })
       .parse(data),
   )
@@ -530,14 +534,20 @@ export const exportArtifactFn = createServerFn({ method: "POST" })
       return {
         filename: `${base}.docx`,
         mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        base64: toBase64(resumeToDocx(content.resume)),
+        base64: toBase64(resumeToDocx(content.resume, {
+          template: data.resumeTemplate,
+          metricGrid: data.metricGrid,
+        })),
       };
     }
 
     const title = `${identity.fullName} — ${label}`;
     const bytes =
       content.kind === "RESUME"
-        ? resumeToPdf(content.resume)
+        ? resumeToPdf(content.resume, {
+            template: data.resumeTemplate,
+            metricGrid: data.metricGrid,
+          })
         : content.kind === "INTERVIEW_BRIEF"
           ? interviewBriefToPdf(content.brief, title)
           : messageToPdf(content.message, title);

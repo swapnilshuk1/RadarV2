@@ -23,7 +23,7 @@ import {
   saveArtifactFn,
   updatePursuitStateFn,
 } from "../server";
-import type { ArtifactContent, CockpitView, LearningSignal, PursuitStatus } from "../types";
+import type { ArtifactContent, CockpitView, LearningSignal, PursuitStatus, ResumeExportOptions } from "../types";
 import { isTerminalPursuitStatus, preparationServiceUnavailable, PURSUIT_WORKER_UNAVAILABLE_MESSAGE, pursuitStatusLabels } from "../types";
 import type { ArtifactApprovalBlocker } from "../approval";
 
@@ -174,11 +174,11 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
     });
   };
 
-  const handleExport = async (artifactId: string, format: "PDF" | "DOCX" | "TXT") => {
+  const handleExport = async (artifactId: string, format: "PDF" | "DOCX" | "TXT", options: ResumeExportOptions = {}) => {
     setBusy(true);
     setError(null);
     try {
-      const file = await exportArtifact({ data: { ...scope, jobHash, artifactId, format } });
+      const file = await exportArtifact({ data: { ...scope, jobHash, artifactId, format, ...options } });
       downloadBase64(file.filename, file.mimeType, file.base64);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Export failed.");

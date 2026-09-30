@@ -48,7 +48,7 @@ export function extractFigures(text: string): string[] {
 }
 
 function claimFigures(claim: CandidateClaim): Set<string> {
-  const text = [claim.statement, claim.metricBaseline, claim.metricResult]
+  const text = [claim.statement, claim.sourceLocator, claim.metricBaseline, claim.metricResult]
     .filter(Boolean)
     .join(" ");
   return new Set(extractFigures(text));
@@ -142,8 +142,9 @@ export function ledgerApprovalBlockers(
         for (const companion of ctx.claims) {
           if (
             companion.id !== claim.id &&
-            companion.statement &&
-            b.text.toLowerCase().includes(companion.statement.toLowerCase())
+            [companion.statement, companion.sourceLocator]
+              .filter((value): value is string => Boolean(value))
+              .some((value) => b.text.toLowerCase().includes(value.toLowerCase()))
           ) {
             for (const figure of claimFigures(companion)) allowed.add(figure);
           }

@@ -27,7 +27,7 @@ export const LEAKAGE_PATTERNS: RegExp[] = [
 const PLACEHOLDER = /(reconstruct the situation|state the scope you owned|\[[^\]]+\]|\bTBD\b|\bunknown\b|to be confirmed|lorem)/i;
 
 export interface ValidationIssue {
-  code: "LEAKAGE" | "OVERCLAIM" | "PLACEHOLDER" | "ACTION_EQUALS_RESULT" | "TARGET_TITLE_HEADLINE" | "ROLE_TITLE_BULLET";
+  code: "LEAKAGE" | "OVERCLAIM" | "PLACEHOLDER" | "ACTION_EQUALS_RESULT" | "TARGET_TITLE_HEADLINE" | "ROLE_TITLE_BULLET" | "SKELETAL_COPY";
   detail: string;
 }
 
@@ -55,6 +55,10 @@ export function validateResume(
   for (const anchor of resume.impactAnchors)
     if (anchor.claimId && roleTitleClaimIds.has(anchor.claimId))
       issues.push({ code: "ROLE_TITLE_BULLET", detail: anchor.text });
+  const bullets = [...resume.impactAnchors, ...resume.roles.flatMap((role) => role.bullets)];
+  const skeletal = bullets.filter((bullet) => bullet.text.trim().split(/\s+/).length < 7);
+  if (bullets.length >= 3 && skeletal.length > bullets.length / 2)
+    issues.push({ code: "SKELETAL_COPY", detail: "Most résumé bullets are fragments." });
   return issues;
 }
 
