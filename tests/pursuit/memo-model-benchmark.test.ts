@@ -25,6 +25,7 @@ import type { RoleBrief } from "../../src/pursuit/role-brief";
 import {
   findLeakage,
   findSemanticInflation,
+  findUnsupportedFigures,
   hasOverclaim,
 } from "../../src/pursuit/semantic/validate";
 import { deriveDeterministicThesis, enrichThesis, type DerivedThesis } from "../../src/pursuit/thesis";
@@ -177,20 +178,20 @@ function qualityProxy(
 } {
   const text = memoText(enriched);
   const assertionText = candidateAssertionText(enriched);
-  const allowedFigures = new Set(
-    extractFigures(
-      [
-        JSON.stringify(spec.brief),
-        ...claims.flatMap((c) => [
-          c.statement,
-          c.sourceLocator ?? "",
-          c.metricBaseline ?? "",
-          c.metricResult ?? "",
-        ]),
-      ].join("\n"),
-    ),
-  );
-  const unsupportedFigures = [...new Set(extractFigures(text).filter((f) => !allowedFigures.has(f)))];
+  const roleFigureContext = [
+    spec.brief.company,
+    spec.brief.roleTitle,
+    spec.brief.location ?? "",
+    spec.brief.whyNow ?? "",
+    spec.brief.primaryDriver ?? "",
+    spec.brief.primaryRisk ?? "",
+    spec.brief.hiringRisk ?? "",
+    ...spec.brief.mandatePriorities,
+    ...spec.brief.mandateOutcomes,
+    ...spec.brief.requirements.map((requirement) => requirement.requirement),
+    ...spec.brief.openQuestions,
+  ].join("\n");
+  const unsupportedFigures = findUnsupportedFigures(text, claims, roleFigureContext);
   const leakage = findLeakage(assertionText);
   const strongest =
     deterministic.semantic?.positioning.mode === "DIRECT_DOMAIN" ? "DIRECT" : "ANALOGOUS";

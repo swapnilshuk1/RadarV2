@@ -19,7 +19,12 @@ import type { PursuitModelContext } from "./budget";
 import { interpretPursuit } from "./semantic/interpret";
 import { lowerFirst } from "./semantic/engine";
 import { Phraser } from "./semantic/phrasing";
-import { findLeakage, findSemanticInflation, hasOverclaim } from "./semantic/validate";
+import {
+  findLeakage,
+  findSemanticInflation,
+  findUnsupportedFigures,
+  hasOverclaim,
+} from "./semantic/validate";
 import type { EvidenceRelationship } from "./semantic/types";
 import type { RoleBrief } from "./role-brief";
 import type {
@@ -395,6 +400,19 @@ export async function enrichThesis(
       : undefined,
   }));
   const allowed = new Set(ledger.map((claim) => claim.claimId));
+  const roleFigureContext = [
+    input.brief.company,
+    input.brief.roleTitle,
+    input.brief.location ?? "",
+    input.brief.whyNow ?? "",
+    input.brief.primaryDriver ?? "",
+    input.brief.primaryRisk ?? "",
+    input.brief.hiringRisk ?? "",
+    ...input.brief.mandatePriorities,
+    ...input.brief.mandateOutcomes,
+    ...input.brief.requirements.map((requirement) => requirement.requirement),
+    ...input.brief.openQuestions,
+  ].join("\n");
 
   const result = await generateWithFallback<EnrichmentOutput>(
     "pursuit-thesis",
@@ -478,6 +496,7 @@ export async function enrichThesis(
     if (!counter || findLeakage(counter).length > 0) return null;
     if (hasOverclaim(counter, "ADJACENT")) return null;
     if (findSemanticInflation(counter, input.claims).length > 0) return null;
+    if (findUnsupportedFigures(counter, input.claims, roleFigureContext).length > 0) return null;
     return counter;
   };
 
@@ -515,14 +534,16 @@ export async function enrichThesis(
 
   const cleanRoleText = (value: string | undefined, fallback: string) => {
     const v = stripClaimRefs(value);
-    return !v || findLeakage(v).length > 0 ? fallback : v;
+    if (!v || findLeakage(v).length > 0) return fallback;
+    return findUnsupportedFigures(v, [], roleFigureContext).length > 0 ? fallback : v;
   };
   const cleanCandidateText = (value: string | undefined, fallback: string) => {
     const v = stripClaimRefs(value);
     if (!v || findLeakage(v).length > 0) return fallback;
     const strongest = deterministic.semantic?.positioning.mode === "DIRECT_DOMAIN" ? "DIRECT" : "ANALOGOUS";
     if (hasOverclaim(v, strongest)) return fallback;
-    return findSemanticInflation(v, input.claims).length > 0 ? fallback : v;
+    if (findSemanticInflation(v, input.claims).length > 0) return fallback;
+    return findUnsupportedFigures(v, input.claims, roleFigureContext).length > 0 ? fallback : v;
   };
   const rankedIds = new Set(deterministic.primaryProof.map((p) => p.claimId));
   const relationshipForClaim = (claimId: string): EvidenceRelationship =>
@@ -537,6 +558,7 @@ export async function enrichThesis(
     if (!p.claimId || !rankedIds.has(p.claimId)) return false;
     if (findLeakage(p.whyItMatters).length > 0) return false;
     if (findSemanticInflation(p.whyItMatters, input.claims).length > 0) return false;
+    if (findUnsupportedFigures(p.whyItMatters, input.claims, roleFigureContext).length > 0) return false;
     return !hasOverclaim(p.whyItMatters, relationshipForClaim(p.claimId));
   });
 
@@ -548,7 +570,15 @@ export async function enrichThesis(
     recommendedPositioning: deterministic.recommendedPositioning,
     narrativesToAvoid:
       enriched.narrativesToAvoid?.length > 0
-        ? enriched.narrativesToAvoid.slice(0, 5).map(stripClaimRefs)
+        ? enriched.narrativesToAvoid
+            .slice(0, 5)
+            .map(stripClaimRefs)
+            .filter(
+              (narrative) =>
+                narrative.length > 0 &&
+                findSemanticInflation(narrative, input.claims).length === 0 &&
+                findUnsupportedFigures(narrative, input.claims, roleFigureContext).length === 0,
+            )
         : deterministic.narrativesToAvoid,
     // Proof selection is deterministic; the model may only reframe why it matters.
     primaryProof: deterministic.primaryProof.map(
