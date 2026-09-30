@@ -304,18 +304,9 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
               const quality = qualityProxy(spec, deterministic, enriched);
               const changes = changedFields(deterministic, enriched);
 
-              // A comparison row is only valid if this model actually answered.
-              expect(
-                enriched.derivation,
-                `${model.id} fell back to deterministic output for ${spec.id}`,
-              ).toBe("MODEL");
-              expect(enriched.modelId).toBe(`bedrock-mantle:${model.id}`);
-
-              // Safety/integrity failures are hard benchmark failures. The softer
-              // quality proxy is reported for comparison rather than gate-kept.
-              expect(quality.unsupportedFigures, `${model.id}/${spec.id}: unsupported figure`).toEqual([]);
-              expect(quality.leakage, `${model.id}/${spec.id}: internal strategy leakage`).toEqual([]);
-              expect(quality.overclaim, `${model.id}/${spec.id}: direct-experience overclaim`).toBe(false);
+              const modelAnswered =
+                enriched.derivation === "MODEL" &&
+                enriched.modelId === `bedrock-mantle:${model.id}`;
 
               return {
                 case: spec.id,
@@ -324,6 +315,7 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
                 model: model.id,
                 label: model.label,
                 deployed: model.id === "zai.glm-5",
+                modelAnswered,
                 qualityProxy: quality.score,
                 qualityBreakdown: {
                   grounding: quality.grounding,
@@ -340,6 +332,11 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
                 estimatedCostUsd: Number(
                   estimatedCost(spend.inputTokens, spend.outputTokens, model).toFixed(6),
                 ),
+                safety: {
+                  unsupportedFigures: quality.unsupportedFigures,
+                  leakage: quality.leakage,
+                  overclaim: quality.overclaim,
+                },
                 thesis: {
                   targetMandate: enriched.targetMandate,
                   winTheme: enriched.winTheme,
@@ -377,25 +374,50 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
           ),
           inputTokens: rows.reduce((sum, row) => sum + Number(row.inputTokens), 0),
           outputTokens: rows.reduce((sum, row) => sum + Number(row.outputTokens), 0),
+          answeredCases: rows.filter((row) => row.modelAnswered === true).length,
+          safetyFailures: rows.filter((row) => {
+            const safety = row.safety as {
+              unsupportedFigures: string[];
+              leakage: string[];
+              overclaim: boolean;
+            };
+            return safety.unsupportedFigures.length > 0 || safety.leakage.length > 0 || safety.overclaim;
+          }).length,
         };
       });
 
+      const payload = {
+        pricingRegion: "us-east-1",
+        pricingAsOf: "2026-10-01",
+        sourceRuntime: "currently-deployed Oracle release",
+        summary,
+        rows: report,
+      };
+
       console.table(summary);
       console.log("\nPURSUIT_MEMO_BENCHMARK_REPORT");
-      console.log(JSON.stringify({ pricingRegion: "us-east-1", pricingAsOf: "2026-10-01", summary, rows: report }, null, 2));
+      console.log(JSON.stringify(payload, null, 2));
 
       const outputPath = process.env.RADAR_PURSUIT_MEMO_BENCHMARK_REPORT?.trim();
-      if (outputPath) {
-        writeFileSync(
-          outputPath,
-          JSON.stringify(
-            { pricingRegion: "us-east-1", pricingAsOf: "2026-10-01", summary, rows: report },
-            null,
-            2,
-          ),
-          "utf-8",
-        );
-      }
+      if (outputPath) writeFileSync(outputPath, JSON.stringify(payload, null, 2), "utf-8");
+
+      const unanswered = report.filter((row) => row.modelAnswered !== true);
+      const unsafe = report.filter((row) => {
+        const safety = row.safety as {
+          unsupportedFigures: string[];
+          leakage: string[];
+          overclaim: boolean;
+        };
+        return safety.unsupportedFigures.length > 0 || safety.leakage.length > 0 || safety.overclaim;
+      });
+      expect(
+        unanswered.map((row) => `${row.model}/${row.case}`),
+        "Every model/case must complete through Mantle; deterministic fallbacks are not benchmark results.",
+      ).toEqual([]);
+      expect(
+        unsafe.map((row) => ({ model: row.model, case: row.case, safety: row.safety })),
+        "No benchmarked memo may hallucinate figures, leak internal instructions, or overclaim direct experience.",
+      ).toEqual([]);
     },
     30 * 60_000,
   );
