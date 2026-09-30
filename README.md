@@ -12,11 +12,9 @@ Start with the [documentation index](docs/README.md),
 
 ## Workspace
 
-The primary checkout is `C:\Users\swapn\Downloads\Radar V2` on `main`.
-Temporary worktrees are for isolated tasks, not alternate product versions.
-An active backfill must finish on its pinned checkout before that worktree is
-retired. Never move its databases, credentials, checkpoints or source files while
-it is running.
+Use `main` as the integration baseline. Create short-lived branches or worktrees for
+isolated changes and remove them after merge. Local databases, credentials,
+checkpoints and generated artifacts are machine state and must remain outside Git.
 
 ## Current application
 
@@ -41,12 +39,10 @@ model-backed run. See [production integration](docs/PRODUCTION_INTEGRATION.md)
 for configuration and readiness details.
 
 GLM-5 evaluation and memo writing use **Bedrock Mantle Chat Completions** in
-`us-east-1`. Keep the local key in `mantle.key` in the repository root (a raw key or
-the console's labelled download). Alternatively set `BEDROCK_MANTLE_API_KEY`, or
-set `BEDROCK_MANTLE_KEY_FILE` to another key file. The environment key takes
-precedence. The old Converse CSV and `AWS_BEARER_TOKEN_BEDROCK` do not override
-Mantle credentials. Restart running workers after rotating the key; key files
-remain untracked. Gemini factual review retains its separate ADC configuration.
+`us-east-1`. Supply credentials through `BEDROCK_MANTLE_API_KEY` or point
+`BEDROCK_MANTLE_KEY_FILE` at a key file stored outside the repository. The
+environment key takes precedence. Restart running workers after rotating credentials.
+Gemini factual review retains its separate ADC configuration.
 
 PURSUE/CONSIDER drafts carry **AI draft · factual review pending**. Run
 `npm run worker:reviews` as a separate supervised process after migration 052.

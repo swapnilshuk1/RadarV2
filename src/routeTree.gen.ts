@@ -13,12 +13,9 @@ import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ScrapedRouteImport } from './routes/scraped'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as FontSandboxRouteImport } from './routes/font-sandbox'
-import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as DecisionsRouteImport } from './routes/decisions'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as QaMappingRouteImport } from './routes/qa.mapping'
 import { Route as PursuitJobHashRouteImport } from './routes/pursuit.$jobHash'
 import { Route as OpportunityJobHashRouteImport } from './routes/opportunity.$jobHash'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
@@ -45,16 +42,6 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FontSandboxRoute = FontSandboxRouteImport.update({
-  id: '/font-sandbox',
-  path: '/font-sandbox',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DesignSystemRoute = DesignSystemRouteImport.update({
-  id: '/design-system',
-  path: '/design-system',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DecisionsRoute = DecisionsRouteImport.update({
   id: '/decisions',
   path: '/decisions',
@@ -68,11 +55,6 @@ const CorpusRoute = CorpusRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const QaMappingRoute = QaMappingRouteImport.update({
-  id: '/qa/mapping',
-  path: '/qa/mapping',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PursuitJobHashRoute = PursuitJobHashRouteImport.update({
@@ -105,15 +87,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
-  '/design-system': typeof DesignSystemRoute
-  '/font-sandbox': typeof FontSandboxRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
   '/welcome': typeof WelcomeRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/pursuit/$jobHash': typeof PursuitJobHashRoute
-  '/qa/mapping': typeof QaMappingRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -122,15 +101,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
-  '/design-system': typeof DesignSystemRoute
-  '/font-sandbox': typeof FontSandboxRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
   '/welcome': typeof WelcomeRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/pursuit/$jobHash': typeof PursuitJobHashRoute
-  '/qa/mapping': typeof QaMappingRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -140,15 +116,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
-  '/design-system': typeof DesignSystemRoute
-  '/font-sandbox': typeof FontSandboxRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
   '/welcome': typeof WelcomeRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/pursuit/$jobHash': typeof PursuitJobHashRoute
-  '/qa/mapping': typeof QaMappingRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -159,15 +132,12 @@ export interface FileRouteTypes {
     | '/'
     | '/corpus'
     | '/decisions'
-    | '/design-system'
-    | '/font-sandbox'
     | '/login'
     | '/profile'
     | '/scraped'
     | '/welcome'
     | '/opportunity/$jobHash'
     | '/pursuit/$jobHash'
-    | '/qa/mapping'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
@@ -176,15 +146,12 @@ export interface FileRouteTypes {
     | '/'
     | '/corpus'
     | '/decisions'
-    | '/design-system'
-    | '/font-sandbox'
     | '/login'
     | '/profile'
     | '/scraped'
     | '/welcome'
     | '/opportunity/$jobHash'
     | '/pursuit/$jobHash'
-    | '/qa/mapping'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
@@ -193,15 +160,12 @@ export interface FileRouteTypes {
     | '/'
     | '/corpus'
     | '/decisions'
-    | '/design-system'
-    | '/font-sandbox'
     | '/login'
     | '/profile'
     | '/scraped'
     | '/welcome'
     | '/opportunity/$jobHash'
     | '/pursuit/$jobHash'
-    | '/qa/mapping'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
@@ -211,15 +175,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CorpusRoute: typeof CorpusRoute
   DecisionsRoute: typeof DecisionsRoute
-  DesignSystemRoute: typeof DesignSystemRoute
-  FontSandboxRoute: typeof FontSandboxRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   ScrapedRoute: typeof ScrapedRoute
   WelcomeRoute: typeof WelcomeRoute
   OpportunityJobHashRoute: typeof OpportunityJobHashRoute
   PursuitJobHashRoute: typeof PursuitJobHashRoute
-  QaMappingRoute: typeof QaMappingRoute
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
   ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
@@ -255,20 +216,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/font-sandbox': {
-      id: '/font-sandbox'
-      path: '/font-sandbox'
-      fullPath: '/font-sandbox'
-      preLoaderRoute: typeof FontSandboxRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/design-system': {
-      id: '/design-system'
-      path: '/design-system'
-      fullPath: '/design-system'
-      preLoaderRoute: typeof DesignSystemRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/decisions': {
       id: '/decisions'
       path: '/decisions'
@@ -288,13 +235,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/qa/mapping': {
-      id: '/qa/mapping'
-      path: '/qa/mapping'
-      fullPath: '/qa/mapping'
-      preLoaderRoute: typeof QaMappingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pursuit/$jobHash': {
@@ -339,15 +279,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CorpusRoute: CorpusRoute,
   DecisionsRoute: DecisionsRoute,
-  DesignSystemRoute: DesignSystemRoute,
-  FontSandboxRoute: FontSandboxRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   ScrapedRoute: ScrapedRoute,
   WelcomeRoute: WelcomeRoute,
   OpportunityJobHashRoute: OpportunityJobHashRoute,
   PursuitJobHashRoute: PursuitJobHashRoute,
-  QaMappingRoute: QaMappingRoute,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
   ApiAuthGoogleRoute: ApiAuthGoogleRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,

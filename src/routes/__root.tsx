@@ -143,7 +143,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;1,400&family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" },
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.gif", type: "image/gif" },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
     ],
   }),
   shellComponent: RootShell,
@@ -172,7 +172,6 @@ function GlobalHeader() {
   const location = useLocation();
   const navigate = useNavigate();
   const { resetOnboarding } = useOnboarding();
-  const [isDev, setIsDev] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
   const totalActiveCount = data?.metrics?.totalScreened;
@@ -184,7 +183,6 @@ function GlobalHeader() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setIsDev(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
       setIsDark(document.documentElement.classList.contains("dark"));
 
     }
@@ -283,30 +281,6 @@ function GlobalHeader() {
                   Corpus
                 </Link>
               </li>
-            )}
-            {isDev && (
-              <>
-                <li>
-                  <Link
-                    to="/design-system"
-                    className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
-                      isSelected("/design-system") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Design System
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/font-sandbox"
-                    className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
-                      isSelected("/font-sandbox") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Font Lab
-                  </Link>
-                </li>
-              </>
             )}
           </ul>
 
