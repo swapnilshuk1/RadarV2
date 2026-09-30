@@ -185,6 +185,7 @@ jobs:
             if [[ -s "$report_file" ]]; then
               printf '%s\n' "- Oracle deployed release: $(jq -r '.sourceReleaseSha // "unknown"' "$report_file")"
               printf '%s\n' "- Pursuit source overlay: $(jq -r '.benchmarkCodeSha // "unknown"' "$report_file")"
+              printf '%s\n' "- Host Mantle override: $(jq -r '.configuredMantleOverride // "none (code default)"' "$report_file")"
               printf '%s\n' "- Pricing snapshot: $(jq -r '.pricingRegion + " · " + .pricingAsOf' "$report_file")"
               echo
               echo "| Model | Avg quality proxy | Total cost (USD) | Avg latency | Answered | Safety failures |"
