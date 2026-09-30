@@ -40,6 +40,8 @@ describe("Phase C runtime separation", () => {
     expect(devSupervisor).toContain('args: ["--import", "tsx", "scripts/enrich.ts"]');
     expect(devSupervisor).toContain('args: ["--import", "tsx", "scripts/process-document-jobs.ts"]');
     expect(devSupervisor).toContain('args: ["--import", "tsx", "scripts/run-corpus-regeneration-worker.ts"]');
+    expect(devSupervisor).toContain("RADAR_EXPECTED_DB_TARGET_FINGERPRINT");
+    expect(devSupervisor).toContain("DATABASE_TARGET_MISMATCH");
   });
 
   it("classifies operational and invalid-output model failures differently", () => {
