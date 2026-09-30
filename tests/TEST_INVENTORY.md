@@ -173,7 +173,6 @@ RADAR v2 Test Architecture
 
 | Authoritative Suite | Primary Invariant Protected | Certification Stage |
 | :--- | :--- | :---: |
-| `tests/editorial/memo-cockpit-skins.test.ts` | Editorial | **KEEP** | Stage 3 | 5 | 10 |
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Shortlist badge state resolution (`pursue`, `consider`, `needs more signal`). | **Stage 6** |
 
 ---
@@ -216,6 +215,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/certification/journey_c_decision_persistence_to_dto.test.ts` | Certification Integrity | **KEEP** | Full Suite | 1 | 9 |
 | `tests/certification/journey_d_loader_to_ui_rendering.test.ts` | Certification Integrity | **KEEP** | Full Suite | 4 | 16 |
 | `tests/certification/test-inventory-audit.test.ts` | Certification Integrity | **KEEP** | Full Suite | 12 | 27 |
+| `tests/editorial/memo-cockpit-skins.test.ts` | Editorial | **KEEP** | Stage 3 | 5 | 10 |
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 7 | 25 |
 | `tests/intelligence/active-context-resolution.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 12 |
 | `tests/intelligence/attention-gate.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 1 | 1 |
