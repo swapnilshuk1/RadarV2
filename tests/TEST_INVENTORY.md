@@ -258,6 +258,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/profile-journey-controls.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 3 | 12 |
 | `tests/intelligence/profile-projection-version-compat.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 6 | 13 |
 | `tests/intelligence/recommendation-freshness.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 3 | 9 |
+| `tests/intelligence/seniority-integrity.test.ts` | Evaluation & Policy | **KEEP** | Stage 3 | 12 | 14 |
 | `tests/intelligence/schema-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 1 | 1 |
 | `tests/intelligence/serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 13 |
 | `tests/intelligence/staged-composition.test.ts` | Editorial / Verdict | **KEEP** | Stage 3 | 45 | 145 |
