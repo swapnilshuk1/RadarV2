@@ -1,12 +1,13 @@
 name: Deploy Oracle
-run-name: Deploy Oracle · ${{ inputs.sha }}
+run-name: Deploy Oracle · ${{ inputs.sha || 'latest green main' }}
 
 on:
   workflow_dispatch:
     inputs:
       sha:
-        description: Certified 40-character commit SHA from main
-        required: true
+        description: Optional certified 40-character SHA; blank uses the latest green main CI
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -40,11 +41,14 @@ jobs:
             echo "::error::Run this workflow from main."
             exit 1
           fi
-          if [[ ! "$REQUESTED_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
-            echo "::error::Enter a full 40-character commit SHA."
+          sha="${REQUESTED_SHA,,}"
+          if [[ -z "$sha" ]]; then
+            sha="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --event push --status success --limit 1 --json headSha --jq '.[0].headSha // empty')"
+          fi
+          if [[ ! "$sha" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "::error::No green main CI commit was found. Select a full SHA explicitly."
             exit 1
           fi
-          sha="${REQUESTED_SHA,,}"
           git fetch --quiet origin main
           git cat-file -e "${sha}^{commit}"
           if ! git merge-base --is-ancestor "$sha" origin/main; then
@@ -64,6 +68,7 @@ jobs:
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "Selected certified main commit: $sha (CI run $run_id)"
 
   deploy:
     needs: resolve-release
@@ -137,3 +142,10 @@ jobs:
           cd "$RUNNER_TEMP/radar-runtime"
           node_modules/.bin/tsx scripts/deploy.ts "$RELEASE_SHA"
           echo "Oracle is serving certified release $RELEASE_SHA."
+          {
+            echo "### Oracle deployment"
+            echo "- Commit: `$RELEASE_SHA`"
+            echo "- Target: `$RADAR_DEPLOY_SSH_HOST`"
+            echo "- Database fingerprint: `$RADAR_DEPLOY_DB_FINGERPRINT`"
+            echo "- Readiness: $RADAR_DEPLOY_READINESS_URL/health/system"
+          } >> "$GITHUB_STEP_SUMMARY"

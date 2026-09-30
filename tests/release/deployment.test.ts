@@ -121,6 +121,37 @@ describe("deterministic release deployment", () => {
     );
   });
 
+  it("reuses a release archive already present on the target host", () => {
+    const config = makeConfig();
+    const commands: string[] = [];
+    const mockRunner: CommandRunner = (command, args) => {
+      commands.push(`${command} ${args.join(" ")}`);
+      if (command === "ssh") {
+        const cmdStr = args[args.length - 1];
+        if (cmdStr.includes("echo rec-12345")) return "rec-12345";
+        if (cmdStr.includes("CURRENT_SHA") && cmdStr.startsWith("if [ -f ")) return "";
+        if (cmdStr.includes("printf READY")) return "READY";
+      }
+      if (command === "curl") {
+        const url = args[args.length - 1];
+        return JSON.stringify(
+          url.endsWith("/health/system")
+            ? {
+                status: "ready",
+                releaseSha: testSha,
+                workers: { required: 7, healthy: 7, missing: [] },
+              }
+            : { status: "ready", releaseSha: testSha },
+        );
+      }
+      return "";
+    };
+
+    deploy(config, mockRunner);
+
+    expect(commands.some((command) => command.startsWith("scp "))).toBe(false);
+  });
+
   it("recreates managed PM2 processes from the new release directory", () => {
     const config = makeConfig();
     let capturedActivation = "";

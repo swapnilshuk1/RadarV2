@@ -170,14 +170,23 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     "ssh",
     sshArgs(config, `set -eu; mkdir -p ${shellQuote(`${config.appDirectory}/releases`)}`),
   );
-  runner("scp", [
-    "-o",
-    "StrictHostKeyChecking=yes",
-    "-i",
-    config.keyPath,
-    config.artifact,
-    `${config.user}@${config.host}:${remoteArtifact}`,
-  ]);
+  const artifactStatus = runner(
+    "ssh",
+    sshArgs(
+      config,
+      `if [ -s ${shellQuote(remoteArtifact)} ]; then printf READY; else printf MISSING; fi`,
+    ),
+  );
+  if (artifactStatus !== "READY") {
+    runner("scp", [
+      "-o",
+      "StrictHostKeyChecking=yes",
+      "-i",
+      config.keyPath,
+      config.artifact,
+      `${config.user}@${config.host}:${remoteArtifact}`,
+    ]);
+  }
 
   const activate = [
     "set -eu",
