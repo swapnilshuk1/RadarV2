@@ -57,11 +57,10 @@ function CorpusHealth() {
   refreshingRef.current = refreshing;
   const currentStageRef = useRef(currentStage);
   currentStageRef.current = currentStage;
-  const hasStats = Boolean(stats);
 
   // Poll background corpus status
   useEffect(() => {
-    if (!hasStats) return;
+    if (!stats) return;
     let timer: NodeJS.Timeout | null = null;
 
     const pollStatus = async () => {
@@ -96,7 +95,7 @@ function CorpusHealth() {
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [fetchStats, hasStats]);
+  }, [fetchStats, Boolean(stats)]);
 
   const handleRegenerate = async () => {
     setRefreshing(true);
