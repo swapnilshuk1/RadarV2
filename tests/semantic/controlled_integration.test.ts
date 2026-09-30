@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CandidateProjectionBuilderImpl } from "../../src/lib/intelligence/builders/CandidateProjectionBuilder";
+import { CandidateProjectionBuilderImpl } from "@/candidate/projection-builder";
 import { JobProjectionBuilder } from "../../src/lib/intelligence/builders/JobProjectionBuilder";
 import { CapabilityAssessmentEngine } from "../../src/lib/intelligence/engines/CapabilityAssessmentEngine";
 import { CareerAssessmentEngine } from "../../src/lib/intelligence/engines/CareerAssessmentEngine";
@@ -10,7 +10,7 @@ import { RequirementEvidenceAdapter } from "../../src/lib/intelligence/semantic/
 import { SemanticResolutionEngine } from "../../src/lib/intelligence/semantic/SemanticResolutionEngine";
 import { syntheticCandidateProfile as candidateProfile } from "../fixtures/synthetic-candidate-profile";
 import type { Opportunity } from "../../src/domain/entities";
-import type { CandidateProjection } from "../../src/lib/domain/candidate_projection";
+import type { CandidateProjection } from "@/candidate/projection";
 
 describe("Phase 5C.2: Controlled Semantic Integration Suite", () => {
   const candidateBuilder = new CandidateProjectionBuilderImpl();

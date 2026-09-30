@@ -12,12 +12,14 @@
 import { generateWithFallback } from "./model";
 import { ledgerApprovalBlockers } from "./approval";
 import type { PursuitModelContext } from "./budget";
-import { classifyClaim, bestRelationship, cap } from "./semantic/engine";
+import { classifyClaim, bestRelationship } from "./semantic/engine";
 import { KIND_LABELS } from "./semantic/taxonomy";
 import { Phraser, type CareerMove } from "./semantic/phrasing";
 import { findLeakage, gradeStory, validateMessage, validateResume } from "./semantic/validate";
 import type { ClaimClassification, EvidenceRelationship, SemanticSnapshot } from "./semantic/types";
 import type { RoleBrief } from "./role-brief";
+import { metricsFromClaims } from "./resume-metrics";
+import { composeRoleBullets, deterministicExecutiveSummary, evidenceBlock, type SourceTextByDocument } from "./resume-copy";
 import type {
   ArtifactContent,
   ArtifactType,
@@ -37,13 +39,6 @@ export interface CandidateIdentity {
   fullName: string;
   contactLine: string;
 }
-
-const toBullet = (claim: CandidateClaim): ResumeBullet => ({
-  claimId: claim.id,
-  text: claim.statement,
-  edited: false,
-  provenance: claim.provenance,
-});
 
 // ---------------------------------------------------------------------------
 // Semantic context shared by every artifact
@@ -132,14 +127,12 @@ function composeImpact(
   claims: readonly CandidateClaim[],
   ctx: SemanticContext,
   usedIds: Set<string>,
+  sourceTextByDocument?: SourceTextByDocument,
 ): ResumeBullet {
   const c = ctx.classes.get(anchor.id);
   usedIds.add(anchor.id);
-  if (c?.renderState === "RESUME_READY") return toBullet(anchor);
   const bundle = ctx.snapshot?.bundles.find((b) => b.claimIds.includes(anchor.id));
-  const kind = c?.kinds[0];
   const anchorKinds = new Set(c?.kinds ?? []);
-  const lead = kind ? `${cap(KIND_LABELS[kind].noun)}: ` : "";
   const companion = bundle
     ? claims.find(
         (claim) =>
@@ -155,9 +148,7 @@ function composeImpact(
       )
     : undefined;
   if (companion) usedIds.add(companion.id);
-  const where = anchor.employer ? ` (${anchor.employer})` : "";
-  const text = `${lead}${anchor.statement}${companion ? `, alongside ${lowerStart(companion.statement)}` : ""}${where}`;
-  return { claimId: anchor.id, text, edited: false, provenance: anchor.provenance };
+  return evidenceBlock(anchor, companion ? [companion] : [], sourceTextByDocument).bullet;
 }
 
 const lowerStart = (s: string) => (/^[A-Z][a-z]/.test(s) ? s[0]!.toLowerCase() + s.slice(1) : s);
@@ -193,6 +184,18 @@ function identityHeadline(ctx: SemanticContext, fallbackCaps: string[]): string 
 // Resume
 // ---------------------------------------------------------------------------
 
+function sameSemanticBundle(
+  ctx: SemanticContext | undefined,
+  left: CandidateClaim,
+  right: CandidateClaim,
+): boolean {
+  return Boolean(
+    ctx?.snapshot?.bundles.some(
+      (bundle) => bundle.claimIds.includes(left.id) && bundle.claimIds.includes(right.id),
+    ),
+  );
+}
+
 /**
  * Groups ledger claims into roles. Claims with no employer attribution are not
  * discarded — they become capability evidence rather than being silently lost.
@@ -203,6 +206,7 @@ function buildRoles(
   usedClaimIds: ReadonlySet<string>,
   style: StyleProfile,
   ctx?: SemanticContext,
+  sourceTextByDocument?: SourceTextByDocument,
 ): ResumeRole[] {
   const rejected = new Set(style.rejectedClaimIds);
   const emphasis = (archetype?.emphasize ?? []).map((keyword) => keyword.toLowerCase());
@@ -234,13 +238,17 @@ function buildRoles(
       roleTitle: ordered.find((claim) => claim.roleTitle)?.roleTitle ?? "",
       period: null,
       // Promote relevant bullets, hide the irrelevant tail (keep at least one).
-      bullets: ordered
-        .filter(
-          (claim, i) =>
-            i === 0 || !ctx || (ctx.relevance.get(claim.id) ?? 0) > 0 || ordered.length <= 3,
-        )
-        .slice(0, 6)
-        .map(toBullet),
+      bullets: composeRoleBullets(
+        ordered
+          .filter(
+            (claim, i) =>
+              i === 0 || !ctx || (ctx.relevance.get(claim.id) ?? 0) > 0 || ordered.length <= 3,
+          )
+          .slice(0, 12),
+        6,
+        (left, right) => sameSemanticBundle(ctx, left, right),
+        sourceTextByDocument,
+      ).bullets,
     };
   });
 }
@@ -259,6 +267,7 @@ function transformAnchor(
   usedClaimIds: ReadonlySet<string>,
   style: StyleProfile,
   ctx?: SemanticContext,
+  sourceTextByDocument?: SourceTextByDocument,
 ): ResumeRole[] | null {
   const anchors = new Set(anchorIds);
   const skeleton = claims.filter((c) => c.sourceDocumentId && anchors.has(c.sourceDocumentId));
@@ -318,34 +327,15 @@ function transformAnchor(
         employer,
         roleTitle: entry.title,
         period: null,
-        bullets: kept
-          .slice(0, Math.max(6, kept.filter((c) => pinned.has(c.id)).length))
-          .map(toBullet),
+        bullets: composeRoleBullets(
+          kept.slice(0, Math.max(12, kept.filter((c) => pinned.has(c.id)).length)),
+          Math.max(6, kept.filter((c) => pinned.has(c.id)).length),
+          (left, right) => sameSemanticBundle(ctx, left, right),
+          sourceTextByDocument,
+        ).bullets,
       };
     });
 }
-
-const RESUME_NARRATIVE_SCHEMA: Record<string, unknown> = {
-  type: "object",
-  properties: {
-    headline: { type: "string" },
-    executiveSummary: { type: "string" },
-  },
-  required: ["headline", "executiveSummary"],
-  additionalProperties: false,
-};
-
-const RESUME_NARRATIVE_INSTRUCTION = `Write the headline and executive summary for one tailored executive resume.
-
-Absolute rules:
-1. Use only the supplied verified claims and mandate context. Never invent an employer, title, date, metric, certification or achievement.
-2. Copy any number exactly as it appears in a claim. If a number is not in the claims, do not write a number.
-3. The headline states the candidate's professional identity (e.g. "Client Leadership | Commercial Growth | Integrated Marketing"). Never use the target job title as the headline.
-4. The executive summary is 3 to 4 sentences, first-person-implied (no "I"), arguing why this candidate fits THIS mandate. It must reflect the supplied win theme.
-5. Ban these words and their variants: results-driven, proven track record, passionate, dynamic, synergy, go-getter, thought leader, seasoned professional, hard-working.
-6. Plain prose only. No bullet markers, no headings, no markdown.
-7. The supplied positioning is private strategy. Never write instructions such as "present through", "lead with", "this lens", "most relevant precedent" or "candidate should".
-8. Where evidence is marked ANALOGOUS, describe it as transferable experience, not as direct experience in the target domain.`;
 
 export async function generateResume(input: {
   identity: CandidateIdentity;
@@ -354,10 +344,11 @@ export async function generateResume(input: {
   claims: readonly CandidateClaim[];
   archetype: CandidateArchetype | null;
   style: StyleProfile;
+  sourceTextByDocument?: SourceTextByDocument;
   /** Usage sink and token ceiling for this derivation. */
   model?: PursuitModelContext;
 }): Promise<ResumeContent> {
-  const { identity, thesis, brief, claims, archetype, style } = input;
+  const { identity, thesis, brief, claims, archetype, style, sourceTextByDocument } = input;
   const byId = new Map(claims.map((claim) => [claim.id, claim]));
 
   const ctx = semanticContext(thesis, claims, "resume");
@@ -366,86 +357,61 @@ export async function generateResume(input: {
     .map((proof) => (proof.claimId ? byId.get(proof.claimId) : undefined))
     .filter((claim): claim is CandidateClaim => Boolean(claim))
     .filter((claim) => ctx.classes.get(claim.id)?.semanticType !== "ROLE_TITLE")
-    .map((claim) => composeImpact(claim, claims, ctx, usedIds));
+    .map((claim) => composeImpact(claim, claims, ctx, usedIds, sourceTextByDocument));
 
   const anchorIds = archetype?.anchorDocumentIds ?? [];
   const anchored = anchorIds.length
-    ? transformAnchor(anchorIds, claims, archetype, usedIds, style, ctx)
+    ? transformAnchor(anchorIds, claims, archetype, usedIds, style, ctx, sourceTextByDocument)
     : null;
-  const roles = anchored ?? buildRoles(claims, archetype, usedIds, style, ctx);
+  const roles =
+    anchored ?? buildRoles(claims, archetype, usedIds, style, ctx, sourceTextByDocument);
   const anchorDocumentId = anchored ? (anchorIds[0] ?? null) : null;
 
   const capabilities = [
     ...new Set(
       claims
+        .filter((claim) => claim.provenance !== "TARGET_CONTEXT")
         .flatMap((claim) => claim.capabilities)
         .filter((capability) => !(archetype?.deEmphasize ?? []).includes(capability)),
     ),
   ].slice(0, 12);
 
   const fallbackHeadline = identityHeadline(ctx, capabilities.slice(0, 2));
-  const positioning = ctx.snapshot?.positioning;
-  const fallbackSummary = [
-    positioning
-      ? ctx.phraser.pickByMove("summaryOpen", ctx.move, "open", {
-          label: positioning.label,
-          kinds: positioning.label.replace(/^Transferable /, "").split(", applied")[0] ?? "",
-        })
-      : thesis.winTheme,
-    impactAnchors.length
-      ? `Record includes ${impactAnchors
-          .slice(0, 2)
-          .map((a) => lowerStart(a.text))
-          .join("; ")}.`
-      : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const fallbackSummary = deterministicExecutiveSummary(
+    fallbackHeadline,
+    impactAnchors,
+    capabilities,
+  );
   const roleTitleIds = new Set(
     [...ctx.classes.values()].filter((c) => c.semanticType === "ROLE_TITLE").map((c) => c.claimId),
   );
 
-  const narrative = await generateWithFallback<{ headline: string; executiveSummary: string }>(
-    "pursuit-resume-narrative",
-    RESUME_NARRATIVE_INSTRUCTION,
-    {
-      mandate: {
-        company: brief.company,
-        roleTitle: brief.roleTitle,
-        priorities: brief.mandatePriorities,
-        outcomes: brief.mandateOutcomes,
-      },
-      winTheme: thesis.winTheme,
-      privatePositioning: positioning ?? thesis.recommendedPositioning,
-      lens: archetype
-        ? { name: archetype.name, emphasize: archetype.emphasize, tone: archetype.tone }
-        : null,
-      verifiedClaims: claims.slice(0, 40).map((claim) => ({
-        statement: claim.statement,
-        employer: claim.employer,
-        metric: claim.metricResult,
-        relationshipToMandate: ctx.snapshot
-          ? bestRelationship(ctx.snapshot.mappings, claim.id)
-          : undefined,
-      })),
-      candidateStylePreferences: style.preferredPhrasings,
-    },
-    RESUME_NARRATIVE_SCHEMA,
-    (raw) => raw as { headline: string; executiveSummary: string },
-    input.model,
+  const primaryProofIds = new Set(
+    thesis.primaryProof.map((proof) => proof.claimId).filter((id): id is string => Boolean(id)),
+  );
+  const metricHighlights = metricsFromClaims(
+    [...claims].sort((left, right) => {
+      const leftScore =
+        (primaryProofIds.has(left.id) ? 100 : 0) + (ctx.relevance.get(left.id) ?? 0);
+      const rightScore =
+        (primaryProofIds.has(right.id) ? 100 : 0) + (ctx.relevance.get(right.id) ?? 0);
+      return rightScore - leftScore;
+    }),
+    8,
   );
 
   const draft: ResumeContent = {
     fullName: identity.fullName,
     contactLine: identity.contactLine,
-    headline: narrative?.value.headline?.trim() || fallbackHeadline,
-    executiveSummary: narrative?.value.executiveSummary?.trim() || fallbackSummary,
+    headline: fallbackHeadline,
+    executiveSummary: fallbackSummary,
     impactAnchors,
     roles,
     capabilities,
+    metricHighlights,
     anchorDocumentId,
   };
-  // Validators decide whether the model's language is licensed.
+  // Validators remain the final guard even though résumé prose is deterministic.
   const issues = validateResume(draft, brief.roleTitle, roleTitleIds);
   if (
     issues.some(
@@ -1081,6 +1047,7 @@ export async function generateArtifactSet(input: {
   claims: readonly CandidateClaim[];
   archetype: CandidateArchetype | null;
   style: StyleProfile;
+  sourceTextByDocument?: SourceTextByDocument;
   /** Usage sink and token ceiling for this derivation. */
   model?: PursuitModelContext;
 }): Promise<GeneratedArtifact[]> {

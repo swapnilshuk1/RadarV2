@@ -4,7 +4,7 @@ import { KnowledgeGraphBuilder } from "../../../src/lib/intelligence/KnowledgeGr
 import { KnowledgeGraphIngestService } from "../../../src/lib/intelligence/KnowledgeGraphIngestService";
 import type { KnowledgeGraphBuildReport } from "../../../src/lib/intelligence/KnowledgeGraphBuilder";
 
-import type { StorageProvider } from "../../../src/domain/repositories";
+import type { StorageProvider } from "../../../src/data/storage-provider";
 import { getDatabaseAdapter, type DatabaseAdapter } from "../../../src/data/database";
 
 export async function ingestIntoSqlite(

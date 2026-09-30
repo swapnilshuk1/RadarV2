@@ -5,13 +5,14 @@ import {
   isEvaluated,
   isUnmaterialized,
   isUnavailable,
-} from "../data/opportunity-fixtures";
-import { getOpportunityDetailsFn, requestDetailedDossierFn, requestFactualVerificationFn } from "../lib/intelligence/opportunity-server";
+} from "@/opportunity/contracts";
+import { getOpportunityDetailsFn, requestDetailedDossierFn, requestFactualVerificationFn } from "@/opportunity/server";
 import { useDecisions } from "../lib/decisions-store";
 import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";
 import { DossierView } from "@/dossier/DossierView";
-import { isExternalPostingUrl } from "@/lib/acquisition/external-posting-url";
+import { isExternalPostingUrl } from "@/acquisition/external-posting-url";
 import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/components/PursuitLauncher";
+import { canReopenPursuit } from "@/opportunity/pursuit-affordance";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params, location }: { params: { jobHash: string }; location: { search: unknown } }) => {
@@ -221,7 +222,7 @@ function OpportunityBriefBody() {
                   </button>
                 ))}
               </div>
-              {pursuit.available && (
+              {pursuit.available && canReopenPursuit(o.userDecision?.userAction) && (
                 <button
                   type="button"
                   className="dossier-apply-action"

@@ -1,0 +1,215 @@
+/**
+ * src/acquisition/canonical-identity.ts
+ * 
+ * Canonical Job Identity Resolution Subsystem.
+ * Strips transient tracking parameters and resolves job cards to deterministic,
+ * stable canonical IDs using a 3-tier hierarchy:
+ * 1. STABLE_JOB_ID (HIGH confidence)
+ * 2. URL_FINGERPRINT (MEDIUM confidence)
+ * 3. CONTENT_HASH (LOW confidence)
+ */
+
+import crypto from "crypto";
+import { parseVerifiedIndeedListingUrl } from "@/acquisition/indeed-listing-identity";
+
+export type IdentityMethod = "STABLE_JOB_ID" | "URL_FINGERPRINT" | "CONTENT_HASH";
+export type IdentityConfidence = "HIGH" | "MEDIUM" | "LOW";
+
+export interface CanonicalIdentity {
+  canonicalJobId: string;      // e.g. "linkedin:4450224496", "naukri:300826001234", "indeed:jk_829c871d"
+  sourcePortal: string;        // "LinkedIn" | "Naukri" | "Indeed"
+  sourceJobId: string;         // e.g. "4450224496"
+  canonicalUrl: string;        // Parameter-stripped clean URL
+  identityMethod: IdentityMethod;
+  identityConfidence: IdentityConfidence;
+}
+
+export { parseVerifiedIndeedListingUrl as resolveVerifiedIndeedListingIdentity } from "@/acquisition/indeed-listing-identity";
+
+/**
+ * Resolves the single authoritative unique source identity for a discovered card.
+ * Preserves native sourceJobId, Indeed ?jk= parameter, and cardHash.
+ */
+export function sourceIdentityForCard(card: {
+  portal?: string;
+  sourceJobId?: string | number;
+  cardHash?: string;
+  detailUrl?: string;
+  url?: string;
+}): string {
+  if (card.sourceJobId) {
+    const portalPrefix = card.portal ? `${card.portal.toLowerCase()}:` : "";
+    return `${portalPrefix}${String(card.sourceJobId).trim()}`;
+  }
+  const targetUrl = card.detailUrl || card.url;
+  if (targetUrl) {
+    const indeedMatch = targetUrl.match(/[?&]jk=([a-zA-Z0-9]+)/i);
+    if (indeedMatch && indeedMatch[1]) {
+      return `indeed:${indeedMatch[1]}`;
+    }
+    const clean = stripTrackingParams(targetUrl).toLowerCase().trim();
+    if (clean) return clean;
+  }
+  if (card.cardHash) {
+    return String(card.cardHash).trim();
+  }
+  return "";
+}
+
+/**
+ * Builds a deterministic, surface-identifying key for acquisition execution and low-yield tracking.
+ * Includes portal, query, location, freshness, industry, department, and other distinguishing attributes.
+ */
+export function acquisitionSurfaceKey(
+  variant: any,
+  fallbackPortal?: string,
+  fallbackQuery?: string
+): string {
+  const portal = (variant?.portal || fallbackPortal || "global").toLowerCase().trim();
+  const query = (variant?.query || fallbackQuery || "").toLowerCase().trim();
+  const location = (variant?.location || "any").toLowerCase().trim();
+  const postedWithinDays = variant?.postedWithinDays !== undefined ? `d${variant.postedWithinDays}` : "all";
+  const industry = (variant?.industry || "any").toLowerCase().trim();
+  const department = (variant?.department || "any").toLowerCase().trim();
+  const radius = variant?.radiusKm !== undefined ? `r${variant.radiusKm}` : "";
+
+  return [portal, query, location, postedWithinDays, industry, department, radius]
+    .filter(Boolean)
+    .join(":");
+}
+
+
+/**
+ * Strips tracking parameters from job posting URLs.
+ */
+export function stripTrackingParams(rawUrl: string): string {
+  if (!rawUrl) return "";
+  try {
+    const urlObj = new URL(rawUrl);
+    const paramsToKeep = new Set(["jk", "jobId", "data-jk", "k"]); // Keep structural query params if needed
+    
+    const keys = Array.from(urlObj.searchParams.keys());
+    for (const key of keys) {
+      if (
+        key.startsWith("utm_") ||
+        key.startsWith("ref") ||
+        key.startsWith("tracking") ||
+        key === "src" ||
+        key === "sid" ||
+        key === "sp" ||
+        key === "eBP" ||
+        key === "trk" ||
+        key === "l" ||
+        key === "start" ||
+        key === "position" ||
+        key === "pageNum"
+      ) {
+        urlObj.searchParams.delete(key);
+      }
+    }
+    return urlObj.toString().replace(/\/$/, "");
+  } catch {
+    return rawUrl.split("?")[0].replace(/\/$/, "");
+  }
+}
+
+/**
+ * Resolves a raw job card or URL into a canonical identity.
+ */
+export function resolveCanonicalIdentity(input: {
+  portal: string;
+  url: string;
+  title: string;
+  companyName: string;
+  rawJobId?: string;
+}): CanonicalIdentity {
+  const portal = input.portal.trim();
+  const cleanUrl = stripTrackingParams(input.url || "");
+
+  if (portal.toLowerCase() === "indeed") {
+    const verified = parseVerifiedIndeedListingUrl(input.url);
+    if (verified) {
+      return {
+        canonicalJobId: verified.canonicalJobId,
+        sourcePortal: "Indeed",
+        sourceJobId: verified.sourceJobId,
+        canonicalUrl: verified.canonicalUrl,
+        identityMethod: "STABLE_JOB_ID",
+        identityConfidence: "HIGH",
+      };
+    }
+  }
+
+  // 1. Check for explicit rawJobId from portal card dataset
+  if (portal.toLowerCase() !== "indeed" && input.rawJobId && input.rawJobId.trim().length > 3) {
+    const cleanId = input.rawJobId.trim().replace(/^jk_/, "");
+    return {
+      canonicalJobId: `${portal.toLowerCase()}:${cleanId}`,
+      sourcePortal: portal,
+      sourceJobId: cleanId,
+      canonicalUrl: cleanUrl,
+      identityMethod: "STABLE_JOB_ID",
+      identityConfidence: "HIGH"
+    };
+  }
+
+  // 2. Portal-Specific URL Regex Extraction (Tier 1: STABLE_JOB_ID)
+  if (portal.toLowerCase() === "linkedin") {
+    // Matches /jobs/view/4450224496 or currentJobId=4450224496
+    const viewMatch = cleanUrl.match(/\/jobs\/view\/(\d+)/i) || cleanUrl.match(/currentJobId=(\d+)/i);
+    if (viewMatch && viewMatch[1]) {
+      const jobId = viewMatch[1];
+      return {
+        canonicalJobId: `linkedin:${jobId}`,
+        sourcePortal: "LinkedIn",
+        sourceJobId: jobId,
+        canonicalUrl: `https://www.linkedin.com/jobs/view/${jobId}`,
+        identityMethod: "STABLE_JOB_ID",
+        identityConfidence: "HIGH"
+      };
+    }
+  }
+
+  if (portal.toLowerCase() === "naukri") {
+    // Matches naukri.com/...-jobs-12345678 or job-tuples data-job-id="12345678"
+    const naukriMatch = cleanUrl.match(/-(\d{10,14})(?:\?|$)/) || cleanUrl.match(/job-id-(\d{10,14})/);
+    if (naukriMatch && naukriMatch[1]) {
+      const jobId = naukriMatch[1];
+      return {
+        canonicalJobId: `naukri:${jobId}`,
+        sourcePortal: "Naukri",
+        sourceJobId: jobId,
+        canonicalUrl: cleanUrl,
+        identityMethod: "STABLE_JOB_ID",
+        identityConfidence: "HIGH"
+      };
+    }
+  }
+
+  // 3. URL Fingerprint (Tier 2: URL_FINGERPRINT)
+  if (cleanUrl && cleanUrl.length > 10) {
+    const urlHash = crypto.createHash("sha256").update(cleanUrl.toLowerCase()).digest("hex").slice(0, 16);
+    return {
+      canonicalJobId: `${portal.toLowerCase()}:url_${urlHash}`,
+      sourcePortal: portal,
+      sourceJobId: urlHash,
+      canonicalUrl: cleanUrl,
+      identityMethod: "URL_FINGERPRINT",
+      identityConfidence: "MEDIUM"
+    };
+  }
+
+  // 4. Content Hash Fallback (Tier 3: CONTENT_HASH)
+  const normTitle = input.title.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const normCompany = input.companyName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const contentHash = crypto.createHash("sha256").update(`${normTitle}|${normCompany}`).digest("hex").slice(0, 16);
+
+  return {
+    canonicalJobId: `${portal.toLowerCase()}:content_${contentHash}`,
+    sourcePortal: portal,
+    sourceJobId: contentHash,
+    canonicalUrl: cleanUrl || `https://${portal.toLowerCase()}.com/job/${contentHash}`,
+    identityMethod: "CONTENT_HASH",
+    identityConfidence: "LOW"
+  };
+}

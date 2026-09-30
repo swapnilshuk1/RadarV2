@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import type { DecisionVerb, EvaluatedOpportunity } from "../../data/opportunity-fixtures";
-import { applicationActionFor } from "../../data/opportunity-fixtures";
+import type { DecisionVerb, EvaluatedOpportunity } from "@/opportunity/contracts";
+import { applicationActionFor } from "@/opportunity/application-action";
 /** Renders staged-v8 feed truth plus the optional reviewed rich dossier. */
 export function InlineBrief({ opportunity: o, dossier, decisionCondition, onDecide }: {
   opportunity: EvaluatedOpportunity;

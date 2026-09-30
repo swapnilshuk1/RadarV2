@@ -4,7 +4,7 @@ import { RunController } from "../../scripts/scraper/run/manager";
 import { CareerIntentModel } from "../../scripts/scraper/run/career-intent";
 import { SearchPlanner } from "../../scripts/scraper/run/search-planner";
 import { HealthManager } from "../../scripts/scraper/run/health-manager";
-import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
+import { OpportunityService } from "@/opportunity/service";
 
 describe("M5.6 Operational Consolidation & Accounting Invariant Suite", () => {
   it("Test 1: RunController.recordActivity is defensive and does not throw before init()", () => {
@@ -130,7 +130,7 @@ describe("M5.6 Operational Consolidation & Accounting Invariant Suite", () => {
   it("Test 5: Mechanical M5 serving invariant — OpportunityService must NOT import or call bulk runEngine or OpportunityProvider", () => {
     const fs = require("fs");
     const oppServiceSrc = fs.readFileSync(
-      path.join(process.cwd(), "src/lib/intelligence/opportunity-service.ts"),
+      path.join(process.cwd(), "src/opportunity/service.ts"),
       "utf-8"
     );
 

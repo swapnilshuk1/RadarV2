@@ -1,5 +1,5 @@
 import type { PortalName, AcquisitionVariant } from "../types";
-import type { ResolvedScraperPlan } from "../../../src/lib/intelligence/ScraperPlanResolver";
+import type { ResolvedScraperPlan } from "@/acquisition/plan-resolver";
 
 /**
  * Compiles the resolved, tenant-scoped search plan into executable portal

@@ -11,7 +11,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import Database from "better-sqlite3";
 import { DatabaseAdapter, QueryParams } from "@/data/database/adapter";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
-import type { AuthorizedPersonScope } from "../../src/lib/intelligence/opportunity-service";
+import type { AuthorizedPersonScope } from "@/opportunity/service";
+import { STAGED_POLICY_VERSION } from "@/evaluation/policy";
 
 class StrictTestSqliteAdapter implements DatabaseAdapter {
   constructor(public db: Database.Database) {}
@@ -114,7 +115,7 @@ describe("Metrics Portal Breakdown & Aggregation Invariants", () => {
     await adapter.execute(`INSERT INTO memberships VALUES ('mem_test', 'tenant_test', 'person_test', 'member', 'active', NULL)`);
     await adapter.execute(`INSERT INTO search_plans VALUES ('sp_test', 'tenant_test', 'person_test', 'active')`);
     await adapter.execute(`INSERT INTO search_plan_snapshots VALUES ('sps_test', 'sp_test', 'tenant_test', 'person_test', 'hash', '{}')`);
-    await adapter.execute(`INSERT INTO evaluation_contexts VALUES ('ec_test', 'tenant_test', 'person_test', 'sps_test', '3.0.0', 'ont_hash', 'v4.1', 'p_v1', '2026-08-31T00:00:00.000Z')`);
+    await adapter.execute(`INSERT INTO evaluation_contexts VALUES ('ec_test', 'tenant_test', 'person_test', 'sps_test', '3.0.0', 'ont_hash', ?, 'p_v1', '2026-08-31T00:00:00.000Z')`, [STAGED_POLICY_VERSION]);
     await adapter.execute(`INSERT INTO active_evaluation_contexts VALUES ('person_test', 'tenant_test', 'ec_test', 'sp_test', '2026-08-31T00:00:00.000Z')`);
 
     // Populate multi-portal test data
@@ -136,14 +137,14 @@ describe("Metrics Portal Breakdown & Aggregation Invariants", () => {
       
       // 2 Pursue, 3 Consider, 5 Pass
       const decision = i < 2 ? "PURSUE" : i < 5 ? "CONSIDER" : "PASS";
-      const evalState = i === 9 ? "SPARSE_SPEC" : "COMPLETE";
+      const evalState = i === 9 ? "SPARSE_SPEC" : "STAGED_EVALUATED";
       await adapter.execute(
         `INSERT INTO materialized_evaluations (
           id, tenant_id, person_id, canonical_job_id, opportunity_version,
           evaluation_context_fingerprint, evaluation_state, decision,
           quality_score, evaluation_fingerprint, vetoed
         ) VALUES (?, 'tenant_test', 'person_test', ?, ?, 'ec_test', ?, ?, ?, ?, 0)`,
-        [`me_${i}`, jobId, versionId, evalState, decision, 80, `eval_${i}`],
+        [`me_${i}`, jobId, versionId, evalState, decision, evalState === "STAGED_EVALUATED" ? null : 80, `eval_${i}`],
       );
     }
   });

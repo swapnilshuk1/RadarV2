@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { ResponseValidator } from "../../src/lib/acquisition/validator";
+import { ResponseValidator } from "@/acquisition/validator";
 
 describe("LinkedIn Rich Discovery Fallback Invariant", () => {
   it("does not classify an incomplete discovery card snippet as a COMPLETE job document", () => {

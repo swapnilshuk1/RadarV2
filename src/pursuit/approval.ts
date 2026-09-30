@@ -10,7 +10,7 @@
  * Pure and portable: no RADAR or database imports.
  */
 
-import type { ArtifactContent, CandidateClaim } from "./types";
+import { approvalBlockers, type ArtifactContent, type CandidateClaim } from "./types";
 import { DIRECT_ONLY_PHRASES } from "./semantic/phrasing";
 import type { EvidenceRelationship } from "./semantic/types";
 
@@ -48,7 +48,7 @@ export function extractFigures(text: string): string[] {
 }
 
 function claimFigures(claim: CandidateClaim): Set<string> {
-  const text = [claim.statement, claim.metricBaseline, claim.metricResult]
+  const text = [claim.statement, claim.sourceLocator, claim.metricBaseline, claim.metricResult]
     .filter(Boolean)
     .join(" ");
   return new Set(extractFigures(text));
@@ -59,6 +59,42 @@ export interface LedgerCheckContext {
   /** Figures the role/company context legitimately supplies (e.g. team size in the JD). */
   contextText?: string;
   proofRelationships?: Record<string, EvidenceRelationship>;
+}
+
+export interface ArtifactApprovalBlocker {
+  code: string;
+  message: string;
+  location?: string;
+}
+
+/** The same structural and evidence rules serve preflight and final approval. */
+export function evaluateArtifactApproval(content: ArtifactContent, ctx: LedgerCheckContext): {
+  approvable: boolean;
+  blockers: ArtifactApprovalBlocker[];
+} {
+  const reasons = [...approvalBlockers(content), ...ledgerApprovalBlockers(content, ctx)];
+  const blockers = reasons.map((message): ArtifactApprovalBlocker => {
+    const code = /figure|\b\d+[kmb%]|\$|€|£|₹|number/i.test(message)
+      ? "UNSUPPORTED_FIGURE"
+      : /no longer in your ledger|missing candidate evidence|not linked|cites evidence/i.test(message)
+        ? "MISSING_CLAIM"
+        : /placeholder/i.test(message)
+          ? "UNRESOLVED_PLACEHOLDER"
+          : /direct experience wording/i.test(message)
+            ? "DIRECT_EVIDENCE_REQUIRED"
+            : "INCOMPLETE_CONTENT";
+    const location = message.startsWith("The executive summary")
+      ? "Resume · executive summary"
+      : message.startsWith("The headline")
+        ? "Resume · headline"
+        : message.startsWith("An impact anchor")
+          ? "Resume · selected impact"
+          : message.startsWith("A ") && message.includes(" bullet")
+            ? `Resume · ${message.slice(2, message.indexOf(" bullet"))} bullet`
+            : undefined;
+    return { code, message, ...(location ? { location } : {}) };
+  });
+  return { approvable: blockers.length === 0, blockers };
 }
 
 /**
@@ -106,8 +142,9 @@ export function ledgerApprovalBlockers(
         for (const companion of ctx.claims) {
           if (
             companion.id !== claim.id &&
-            companion.statement &&
-            b.text.toLowerCase().includes(companion.statement.toLowerCase())
+            [companion.statement, companion.sourceLocator]
+              .filter((value): value is string => Boolean(value))
+              .some((value) => b.text.toLowerCase().includes(value.toLowerCase()))
           ) {
             for (const figure of claimFigures(companion)) allowed.add(figure);
           }

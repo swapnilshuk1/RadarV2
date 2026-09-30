@@ -21,7 +21,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { resolveScraperAuthContext } from "../../src/lib/security/scope-resolver";
-import { ScraperPlanResolver, resolveActiveScraperPlan } from "../../src/lib/intelligence/ScraperPlanResolver";
+import { ScraperPlanResolver, resolveActiveScraperPlan } from "@/acquisition/plan-resolver";
 import { passesHardFilter } from "../../scripts/scraper/utils/hard-filter";
 import { startRun } from "../../scripts/scrape";
 import { linkedinHandler } from "../../scripts/scraper/portals/linkedin";

@@ -3,14 +3,14 @@ import {createHash} from 'node:crypto';
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 import {SqliteAdapter} from '../../src/data/database/sqlite';
 import {setupLineageTestFixture} from '../persistence/lineage_fixture';
-import {normalizeCanonicalJobText,ProductionStagedInputAdapter} from '../../src/lib/intelligence/staged/ProductionStagedInputAdapter';
-import {ProductionContextProvider} from '../../src/lib/intelligence/staged/ProductionContextProvider';
+import {normalizeCanonicalJobText,ProductionStagedInputAdapter} from '@/evaluation/staged-input';
+import {ProductionContextProvider} from '@/evaluation/context-provider';
 import {SqliteStagedEvaluationStore} from '../../src/data/sqlite/repositories/SqliteStagedEvaluationStore';
 import {computeContentHash} from '../../src/lib/domain/canonical_identity';
 import {contextFields,type ContextProvider,type EvidenceSource} from '../../src/dossier/contracts';
 import * as pipeline from '../../src/dossier/evidence';
-import {computeEvaluationContextFingerprint} from '../../src/lib/domain/evaluation_fingerprint';
-import {CONTEXT_ACQUISITION_POLICY} from '../../src/lib/intelligence/staged/contextAcquisitionPolicy';
+import {computeEvaluationContextFingerprint} from '@/evaluation/fingerprint';
+import {CONTEXT_ACQUISITION_POLICY} from '@/evaluation/context-acquisition-policy';
 import {canonicalNormalize,computeDeterministicHash} from '../../src/lib/ontology/compiler/OntologyCompiler';
 
 describe('context-aware immutable production input',()=>{

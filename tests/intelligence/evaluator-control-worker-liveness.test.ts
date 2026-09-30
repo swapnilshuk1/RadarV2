@@ -7,7 +7,7 @@ const source = (file: string) => readFileSync(resolve(process.cwd(), file), "utf
 describe("evaluator control worker liveness", () => {
   it("uses supervised worker heartbeat state instead of serving-process daemon state", () => {
     const panel = source("src/components/radar/EvaluatorControlPanel.tsx");
-    const server = source("src/lib/intelligence/evaluation-server.ts");
+    const server = source("src/evaluation/server.ts");
 
     expect(server).toContain('isWorkerOnline("evaluation", { db })');
     expect(panel).toContain("snapshot.control.workerOnline");

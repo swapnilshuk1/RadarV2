@@ -7,20 +7,22 @@
  */
 
 import { useMemo, useState } from "react";
-import type { CandidateClaim, LearningSignal, PursuitArtifact, ResumeContent } from "../types";
+import { resumeTemplates, type CandidateClaim, type LearningSignal, type PursuitArtifact, type ResumeContent, type ResumeExportOptions, type ResumeTemplateId } from "../types";
+import type { ArtifactApprovalBlocker } from "../approval";
 import { CopyButton, EditableText, ProvenanceBadge, SectionLabel } from "./shared";
 
 interface Props {
   artifact: PursuitArtifact | undefined;
   claims: CandidateClaim[];
   busy: boolean;
+  approvalBlockers: ArtifactApprovalBlocker[];
   onSave: (
     artifactId: string,
     content: { kind: "RESUME"; resume: ResumeContent },
     signals: LearningSignal[],
     approve?: boolean,
   ) => void;
-  onExport: (artifactId: string, format: "PDF" | "DOCX" | "TXT") => void;
+  onExport: (artifactId: string, format: "PDF" | "DOCX" | "TXT", options?: ResumeExportOptions) => void;
 }
 
 /** Numbers and percentages the candidate must not quietly change. */
@@ -35,7 +37,9 @@ const metricsDiverged = (original: string, edited: string): boolean => {
   return before.some((metric) => !after.has(metric));
 };
 
-export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props) {
+export function ResumeStudio({ artifact, claims, busy, approvalBlockers, onSave, onExport }: Props) {
+  const [template, setTemplate] = useState<ResumeTemplateId>("EXECUTIVE_BRIEF");
+  const [metricGrid, setMetricGrid] = useState(true);
   const [swapTarget, setSwapTarget] = useState<number | null>(null);
   const [selected, setSelected] = useState<{ role: number | "anchors"; index: number } | null>(
     null,
@@ -182,11 +186,29 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
             {artifact.status.replace(/_/g, " ").toLowerCase()}
           </span>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={template}
+            onChange={(event) => setTemplate(event.target.value as ResumeTemplateId)}
+            className="pursuit-chip bg-background"
+            aria-label="Resume export template"
+          >
+            {resumeTemplates.map((option) => (
+              <option key={option.id} value={option.id}>{option.label}</option>
+            ))}
+          </select>
+          <label className="pursuit-chip flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={metricGrid}
+              onChange={(event) => setMetricGrid(event.target.checked)}
+            />
+            Metrics
+          </label>
           <button
             type="button"
             disabled={busy || !approved}
-            onClick={() => onExport(artifact.id, "PDF")}
+            onClick={() => onExport(artifact.id, "PDF", { resumeTemplate: template, metricGrid })}
             className="pursuit-chip"
           >
             Export PDF
@@ -194,7 +216,7 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
           <button
             type="button"
             disabled={busy || !approved}
-            onClick={() => onExport(artifact.id, "DOCX")}
+            onClick={() => onExport(artifact.id, "DOCX", { resumeTemplate: template, metricGrid })}
             className="pursuit-chip"
           >
             Export Word
@@ -210,6 +232,19 @@ export function ResumeStudio({ artifact, claims, busy, onSave, onExport }: Props
           </button>
         </div>
       </div>
+
+      {approvalBlockers.length > 0 && (
+        <div className="memo-callout border-l-red-500" role="alert" data-testid="resume-approval-blockers">
+          <p className="font-semibold">Correct these before approving:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+            {approvalBlockers.map((blocker, index) => (
+              <li key={`${blocker.code}-${index}`}>
+                {blocker.location && <strong>{blocker.location}: </strong>}{blocker.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* Left: the document itself, in resume typography. Click any text to edit. */}

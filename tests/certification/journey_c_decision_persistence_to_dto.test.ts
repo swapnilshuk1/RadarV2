@@ -15,7 +15,7 @@ import Database from "better-sqlite3";
 import { DatabaseAdapter, QueryParams } from "@/data/database/adapter";
 import { SqliteDecisionSupportStore } from "@/data/sqlite/repositories/SqliteDecisionSupportStore";
 import { SqliteOpportunityQueries } from "@/data/sqlite/repositories/SqliteOpportunityQueries";
-import type { AuthorizedPersonScope } from "@/lib/intelligence/opportunity-service";
+import type { AuthorizedPersonScope } from "@/opportunity/service";
 
 class TestAdapter implements DatabaseAdapter {
   constructor(public db: Database.Database) {}

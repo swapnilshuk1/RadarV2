@@ -325,9 +325,12 @@ export async function projectLedger(
     }
   }
 
-  const written = await upsertClaims(scope, upserts);
-  await markCurrentProjection(scope, sources.graphIds);
-  await db.execute(
+  const current = await resolveCanonicalSources(scope);
+  const isCurrent = sources.profileVersion === current.profileVersion;
+  const written = await upsertClaims(scope, upserts, isCurrent);
+  if (isCurrent) {
+    await markCurrentProjection(scope, sources.graphIds);
+    await db.execute(
     `INSERT INTO pursuit_ledger_projection_state
        (tenant_id, person_id, profile_version, binding_fingerprint, claim_count, document_count, projected_at)
      VALUES (?,?,?,?,?,?,?)
@@ -344,7 +347,8 @@ export async function projectLedger(
       documents.size,
       new Date().toISOString(),
     ],
-  );
+    );
+  }
   return {
     claims: written,
     documents: documents.size,

@@ -48,6 +48,63 @@ final release candidate, run the authoritative certification once; it already
 contains TypeScript and the production build. CI packages `.output` for its exact
 commit SHA. Pushing `main` runs CI; it does not deploy or activate serving.
 
+## Deploy a selected certified commit to Oracle
+
+In GitHub, open **Actions → Deploy Oracle → Run workflow** on `main` and click
+**Run workflow**. Leave SHA blank to deploy the latest green `main` CI run, or
+enter a full 40-character SHA when selecting an older certified release. This is
+the normal deployment procedure: no local SSH, terminal preflight, rebuild or
+recertification is needed. The workflow has no push trigger. It accepts only a
+commit on `main` with a successful CI run and an unexpired release artifact. The
+equivalent CLI commands are:
+
+```text
+gh workflow run deploy-oracle.yml --ref main
+gh workflow run deploy-oracle.yml --ref main -f sha=<40-character-sha>
+```
+
+The action first resolves the exact CI artifact, then performs the Turso target
+check, SSH host check, migration, PM2 replacement and readiness/smoke checks. A
+retry of the same SHA reuses the archive already present on Oracle, so the normal
+retry path does not upload the 151 MB release again. It is safe to retry a failed
+workflow while the deployment concurrency lock is active; the selected SHA and
+live readiness result are recorded in the workflow summary.
+
+The GitHub `Oracle` environment was configured on 30 September 2026. Its
+non-secret settings are:
+
+| Setting                          | Verified value                                                                |
+| -------------------------------- | ----------------------------------------------------------------------------- |
+| SSH host / user                  | `161.118.175.246` / `ubuntu`                                                  |
+| App directory                    | `/home/ubuntu/radar-sqlite-candidate`                                         |
+| Public readiness URL             | `https://161.118.175.246.sslip.io`                                            |
+| Web port behind Caddy            | `3001` (`RADAR_WEB_PORT` in the host environment)                             |
+| Database                         | Turso `radar-db-preprod-clean-20260924`, fingerprint `turso:8917b590608c33c2` |
+| Deployment mode / server scraper | `single_host` / disabled                                                      |
+
+The app directory's historical name does **not** describe the active database.
+The running app and workers use Turso. The host's `/home/ubuntu/radar-sqlite-candidate/.env`
+holds the runtime credentials; the release archive contains none. The workflow
+has `TURSO_CONNECTION_URL`, `RADAR_DEPLOY_RECOVERY_COMMAND`,
+`ORACLE_SSH_PRIVATE_KEY`, and `ORACLE_SSH_KNOWN_HOSTS` as `Oracle` environment
+secrets. The local Windows `.ssh` folder is not used by GitHub Actions after
+setup. Rotate the corresponding GitHub secret if the Oracle key changes. The
+recovery command creates a timestamped Turso branch before a release switch.
+
+The workflow checks the certified artifact, database fingerprint, SSH host key,
+Linux x64 / Node 22 runtime and exact release readiness. It recreates only
+RADAR-managed PM2 processes so their working directory changes to the new
+release; Caddy and the separate proof processes are not touched. Failed
+activation attempts to restore the previously healthy release. Missing configuration or a
+mismatched target fails before deployment mutation.
+
+The current Oracle VM has about 1 GB of RAM and the certified archive is about
+151 MB. Starting the web process and seven workers can take longer than one
+minute while the host swaps. The workflow waits up to three minutes for system
+readiness before attempting rollback. One click is configured; a deployment
+finishing within three minutes is not yet proven on this VM. The CI run and
+deployment run show the actual duration.
+
 Choose an artifact built for the actual target operating system, CPU architecture
 and Node runtime. A Windows build is not a Linux deployment artifact, and a Linux
 x64 artifact is not proof of ARM64 compatibility. Verify the live host rather than

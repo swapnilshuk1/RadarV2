@@ -11,7 +11,7 @@
  */
 
 import { getDatabaseAdapter } from "../data/database";
-import { OpportunityService } from "../lib/intelligence/opportunity-service";
+import { OpportunityService } from "@/opportunity/service";
 import { createSqliteModelInvocationSink } from "../lib/model/model-invocation";
 import { generateArtifactSet } from "./artifacts";
 import { PursuitTokenLedger, type PursuitModelContext } from "./budget";
@@ -22,6 +22,7 @@ import * as store from "./store";
 import { deriveDeterministicThesis, enrichThesis } from "./thesis";
 import { classifyClaim } from "./semantic/engine";
 import type { CandidateArchetype, PursuitLineage } from "./types";
+import { pursuitProfileVersion } from "./lineage";
 
 export async function loadBrief(userId: string, scope: store.Scope, jobHash: string): Promise<RoleBrief> {
   const details = await OpportunityService.getDetailsForUser(
@@ -98,16 +99,23 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
   await store.updatePursuit(scope, pursuit.id, { preparationState: "DERIVING", preparationError: null });
 
   const brief = await loadBrief(job.requestedBy, scope, job.jobHash);
-  const lineage = await resolveLineage(scope, brief);
+  const currentLineage = await resolveLineage(scope, brief);
+  const activeThesis = pursuit.activeThesisId ? await store.getThesis(pursuit.activeThesisId) : null;
+  const profileVersion = pursuitProfileVersion(pursuit, activeThesis);
+  const lineage = { ...currentLineage, ...pursuit.lineage, profileVersion };
   // Ledger is projected from the exact profile version the evaluation used.
-  const ledger = await projectLedger(scope, { profileVersion: lineage.profileVersion });
+  const ledger = await projectLedger(scope, { profileVersion });
   await store.backfillClaimClassifications(scope, classifyClaim).catch(() => 0);
   const [claims, archetypes, style, identity] = await Promise.all([
-    store.listClaims(scope),
+    store.listClaimsForProfile(scope, profileVersion),
     ensureArchetypes(scope),
     store.loadStyleProfile(scope),
     candidateIdentity(scope),
   ]);
+  const sourceDocumentIds = [
+    ...new Set(claims.map((claim) => claim.sourceDocumentId).filter((id): id is string => Boolean(id))),
+  ];
+  const sourceTextByDocument = await store.loadSourceDocumentTexts(scope, sourceDocumentIds);
 
   const deterministic = deriveDeterministicThesis({
     brief,
@@ -160,7 +168,16 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
   type Generated = Awaited<ReturnType<typeof generateArtifactSet>>;
   let generated = (await store.readCheckpoint(job, "artifacts_generated")) as Generated | null;
   if (!generated) {
-    generated = await generateArtifactSet({ identity, thesis, brief, claims, archetype, style, model });
+    generated = await generateArtifactSet({
+      identity,
+      thesis,
+      brief,
+      claims,
+      archetype,
+      style,
+      model,
+      sourceTextByDocument,
+    });
     await store.writeCheckpoint(job, "artifacts_generated", generated);
   }
   const spend = model.ledger?.snapshot();

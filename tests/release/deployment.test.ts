@@ -121,7 +121,38 @@ describe("deterministic release deployment", () => {
     );
   });
 
-  it("tolerates absent or stopped PM2 worker processes but fails closed on real errors", () => {
+  it("reuses a release archive already present on the target host", () => {
+    const config = makeConfig();
+    const commands: string[] = [];
+    const mockRunner: CommandRunner = (command, args) => {
+      commands.push(`${command} ${args.join(" ")}`);
+      if (command === "ssh") {
+        const cmdStr = args[args.length - 1];
+        if (cmdStr.includes("echo rec-12345")) return "rec-12345";
+        if (cmdStr.includes("CURRENT_SHA") && cmdStr.startsWith("if [ -f ")) return "";
+        if (cmdStr.includes("printf READY")) return "READY";
+      }
+      if (command === "curl") {
+        const url = args[args.length - 1];
+        return JSON.stringify(
+          url.endsWith("/health/system")
+            ? {
+                status: "ready",
+                releaseSha: testSha,
+                workers: { required: 7, healthy: 7, missing: [] },
+              }
+            : { status: "ready", releaseSha: testSha },
+        );
+      }
+      return "";
+    };
+
+    deploy(config, mockRunner);
+
+    expect(commands.some((command) => command.startsWith("scp "))).toBe(false);
+  });
+
+  it("recreates managed PM2 processes from the new release directory", () => {
     const config = makeConfig();
     let capturedActivation = "";
     const mockRunner: CommandRunner = (command, args) => {
@@ -153,28 +184,24 @@ describe("deterministic release deployment", () => {
 
     deploy(config, mockRunner);
 
-    expect(capturedActivation).toContain("stop_pm2_process()");
-    expect(capturedActivation).toContain("stop_pm2_process 'radar-scrape'");
-    expect(capturedActivation).toContain("stop_pm2_process 'radar-enrich'");
-    expect(capturedActivation).toContain("stop_pm2_process 'radar-documents'");
-    expect(capturedActivation).toContain("stop_pm2_process 'radar-evaluate'");
-    expect(capturedActivation).toContain("stop_pm2_process 'radar-dossiers'");
-    expect(capturedActivation).toContain("stop_pm2_process 'radar-reviews'");
-    expect(capturedActivation).toContain("stop_pm2_process 'radar-corpus'");
-    expect(capturedActivation).toContain("stop_pm2_process radar-v2");
-    expect(capturedActivation).toContain("pm2 startOrRestart ecosystem.config.cjs --update-env");
+    expect(capturedActivation).toContain("pm2 delete 'radar-v2' 'radar-scrape' 'radar-enrich'");
+    expect(capturedActivation).toContain("pm2 start ecosystem.config.cjs --update-env");
+    expect(capturedActivation.indexOf("pm2 delete")).toBeLessThan(
+      capturedActivation.indexOf("npm run db:migrate"),
+    );
     expect(capturedActivation).not.toContain("--only radar-v2");
     expect(capturedActivation).toContain("PM2_TOPOLOGY_UNHEALTHY");
     expect(capturedActivation).toContain("RADAR_EXPECTED_DB_TARGET_FINGERPRINT");
+    expect(capturedActivation).toContain("set -a; . '/srv/radar/.env'; set +a");
+    expect(capturedActivation.indexOf("set -a; . '/srv/radar/.env'; set +a")).toBeLessThan(
+      capturedActivation.indexOf("npm run db:migrate"),
+    );
     expect(capturedActivation).toContain("/health/system");
     expect(capturedActivation).toContain("system_ready=0");
-
-    expect(capturedActivation).toMatch(
-      /grep -qiE "\(process\|namespace\)\.\*not found\|already stopped"/,
+    expect(capturedActivation).toContain("readiness_deadline=$((SECONDS + 180))");
+    expect(capturedActivation.indexOf("system_ready=0")).toBeLessThan(
+      capturedActivation.indexOf("RADAR_PM2_REQUIRED="),
     );
-    expect(capturedActivation).toMatch(/! echo "\$pm2_out" \| grep -qi "command not found"/);
-    expect(capturedActivation).toContain('echo "$pm2_out" >&2');
-    expect(capturedActivation).toContain("return 1");
   });
 
   it("explicitly passes RADAR_DEPLOY_READINESS_URL and RADAR_RELEASE_SHA to remote smoke", () => {
@@ -240,10 +267,11 @@ describe("deterministic release deployment", () => {
     const rollbackCmd = rollbackCommands[0];
 
     expect(rollbackCmd).toContain(`cd '/srv/radar/releases/${priorSha}'`);
-    expect(rollbackCmd).toContain("pm2 startOrRestart ecosystem.config.cjs --update-env");
+    expect(rollbackCmd).toContain("pm2 delete 'radar-v2'");
+    expect(rollbackCmd).toContain("pm2 start ecosystem.config.cjs --update-env");
     expect(rollbackCmd).not.toContain(`cd '/srv/radar/releases/${testSha}'`);
     expect(rollbackCmd).toContain(`printf '%s' '${priorSha}' > '/srv/radar/CURRENT_SHA'`);
-    expect(rollbackCmd).not.toContain("radar-scrape");
+    expect(rollbackCmd).toContain("RADAR_SERVER_SCRAPER_ENABLED='false'");
     expect(rollbackCmd).toContain("radar-enrich");
     expect(rollbackCmd).toContain('"databaseRestored":false');
     expect(rollbackCmd).toContain('"rollback":"previous-release-restored"');
@@ -276,51 +304,33 @@ describe("deterministic release deployment", () => {
     const rollbackCmd = rollbackCommands[0];
 
     expect(rollbackCmd).toContain("pm2 stop 'radar-v2'");
-    expect(rollbackCmd).not.toContain("pm2 startOrRestart");
+    expect(rollbackCmd).not.toContain("pm2 start ecosystem.config.cjs");
     expect(rollbackCmd).not.toContain("pm2 restart");
     expect(rollbackCmd).not.toContain("CURRENT_SHA");
     expect(rollbackCmd).toContain('"rollback":"no-previous-release-web-stopped"');
     expect(rollbackCmd).toContain('"databaseRestored":false');
   });
 
-  it("does not use a previous release for rollback if its verifier fails", () => {
+  it("does not begin activation if the previous release is not ready", () => {
     const config = makeConfig();
     const priorSha = "b".repeat(40);
-    const rollbackCommands: string[] = [];
+    const commands: string[] = [];
     const mockRunner: CommandRunner = (command, args) => {
       if (command === "ssh") {
         const cmdStr = args[args.length - 1];
-        if (cmdStr.includes('status":"failed"')) {
-          rollbackCommands.push(cmdStr);
-          return "";
-        }
+        commands.push(cmdStr);
         if (cmdStr.includes("echo rec-12345")) return "rec-12345";
         if (cmdStr.includes("CURRENT_SHA") && cmdStr.startsWith("if [ -f ")) return priorSha;
-        // Prior release verification fails (e.g. exit non-zero from scripts/release/verify.ts)
+        // The prior release is not healthy at the exact recorded SHA.
         if (cmdStr.startsWith("if [ -d ") && cmdStr.includes(`releases/${priorSha}`))
           return "FAILED";
-        if (cmdStr.includes("node_modules/.bin/tsx scripts/smoke_production.ts")) {
-          throw new Error("ACTIVATION_FAILED");
-        }
         return "";
       }
       return "";
     };
 
-    expect(() => deploy(config, mockRunner)).toThrow("ACTIVATION_FAILED");
-
-    expect(rollbackCommands.length).toBeGreaterThan(0);
-    const rollbackCmd = rollbackCommands[0];
-
-    // Rollback is treated as unavailable: web stopped, no activation of prior release
-    expect(rollbackCmd).toContain("pm2 stop 'radar-v2'");
-    expect(rollbackCmd).not.toContain(`cd '/srv/radar/releases/${priorSha}'`);
-    expect(rollbackCmd).not.toContain("pm2 startOrRestart");
-    expect(rollbackCmd).not.toContain("CURRENT_SHA");
-    expect(rollbackCmd).not.toContain('"rollback":"previous-release-restored"');
-    expect(rollbackCmd).toContain('"rollback":"previous-release-unverified-web-stopped"');
-    expect(rollbackCmd).toContain('"databaseRestored":false');
-    expect(rollbackCmd).toContain('"workersStarted":false');
+    expect(() => deploy(config, mockRunner)).toThrow("DEPLOY_PREVIOUS_RELEASE_NOT_READY");
+    expect(commands.some((command) => command.includes("rm -rf"))).toBe(false);
   });
 
   it("ensures a failed PM2 previous-release activation cannot produce a previous-release-restored receipt", () => {
@@ -350,9 +360,7 @@ describe("deterministic release deployment", () => {
 
     const rollbackCmd = rollbackCommands[0];
     const initialReceiptIndex = rollbackCmd.indexOf('"rollback":"rollback_failed"');
-    const activationIndex = rollbackCmd.indexOf(
-      "pm2 startOrRestart ecosystem.config.cjs --update-env",
-    );
+    const activationIndex = rollbackCmd.indexOf("pm2 start ecosystem.config.cjs --update-env");
     const restoredReceiptIndex = rollbackCmd.indexOf('"rollback":"previous-release-restored"');
 
     // The initial receipt written before activation attempt must record rollback_failed
@@ -394,11 +402,11 @@ describe("deterministic release deployment", () => {
 
     // Sequence verification:
     // 1. cd prior release
-    // 2. pm2 startOrRestart
+    // 2. recreate PM2 processes from the prior release
     // 3. CURRENT_SHA update
     // 4. previous-release-restored receipt written
     const cdIndex = rollbackCmd.indexOf(`cd '/srv/radar/releases/${priorSha}'`);
-    const pm2Index = rollbackCmd.indexOf("pm2 startOrRestart ecosystem.config.cjs --update-env");
+    const pm2Index = rollbackCmd.indexOf("pm2 start ecosystem.config.cjs --update-env");
     const shaUpdateIndex = rollbackCmd.indexOf(
       `printf '%s' '${priorSha}' > '/srv/radar/CURRENT_SHA'`,
     );
@@ -411,7 +419,7 @@ describe("deterministic release deployment", () => {
 
     // Atomic subshell verifies all preconditions before success receipt is written
     expect(rollbackCmd).toContain(
-      `if (cd '/srv/radar/releases/${priorSha}' && export RADAR_RELEASE_SHA='${priorSha}' && export RADAR_EXPECTED_DB_TARGET_FINGERPRINT='${config.expectedDatabaseFingerprint}' && export RADAR_DEPLOYMENT_MODE='${config.deploymentMode}' && pm2 startOrRestart ecosystem.config.cjs --update-env`,
+      `if (cd '/srv/radar/releases/${priorSha}' && export RADAR_RELEASE_SHA='${priorSha}' && export RADAR_EXPECTED_DB_TARGET_FINGERPRINT='${config.expectedDatabaseFingerprint}' && export RADAR_DEPLOYMENT_MODE='${config.deploymentMode}' && export RADAR_SERVER_SCRAPER_ENABLED='false' && (pm2 delete`,
     );
   });
 
@@ -440,7 +448,7 @@ describe("deterministic release deployment", () => {
       return "";
     };
     deploy(config, mockRunner);
-    expect(activation).toContain("stop_pm2_process 'radar-scrape'");
+    expect(activation).toContain("pm2 delete 'radar-v2' 'radar-scrape'");
     expect(activation).toContain("RADAR_DEPLOYMENT_MODE='single_host'");
     expect(activation).toContain("RADAR_SERVER_SCRAPER_ENABLED='false'");
     expect(activation).not.toContain('RADAR_PM2_REQUIRED=\'["radar-v2","radar-scrape"');

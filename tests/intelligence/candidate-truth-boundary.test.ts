@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseDocumentText } from "../../src/lib/intelligence/extraction/text-parser";
-import { reuseEvidenceGraphForOwner } from "../../src/lib/intelligence/pipeline/ProjectionPipeline";
+import { reuseEvidenceGraphForOwner } from "@/candidate/pipeline";
 import type { EvidenceGraph } from "../../src/domain/evidence";
 
 describe("canonical candidate-truth boundaries", () => {

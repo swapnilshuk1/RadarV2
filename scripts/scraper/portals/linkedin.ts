@@ -1,5 +1,5 @@
 import type { FeedCard, DetailedCard, PortalContext, PortalHandler } from "../types";
-import type { FailureClass } from "../../../src/lib/acquisition/failure-taxonomy";
+import type { FailureClass } from "@/acquisition/failure-taxonomy";
 import { SNAPSHOT_SCHEMA_VERSION, SCRAPER_VERSION } from "../versions";
 import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";

@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type DecisionVerb, type EvaluatedOpportunity, type ServedOpportunity, isEvaluated, isUnavailable, isUnmaterialized } from "../data/opportunity-fixtures";
+import { type DecisionVerb, type EvaluatedOpportunity, type ServedOpportunity, isEvaluated, isUnavailable, isUnmaterialized } from "@/opportunity/contracts";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
 import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/components/PursuitLauncher";
-import { getOpportunitiesFn, getOpportunityDetailsFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
-import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn, getScrapePlanPreviewFn, getCapturedEnrichmentRunsFn, startCapturedEnrichmentFn } from "../lib/intelligence/scrape-server";
+import { getOpportunitiesFn, getOpportunityDetailsFn, getShortlistMetricsFn } from "@/opportunity/server";
+import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn, getScrapePlanPreviewFn, getCapturedEnrichmentRunsFn, startCapturedEnrichmentFn } from "@/acquisition/server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
 import { EvaluatorControlPanel } from "../components/radar/EvaluatorControlPanel";
 import { logTelemetry } from "../lib/telemetry";

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ResponseValidator } from "../../src/lib/acquisition/validator";
+import { ResponseValidator } from "@/acquisition/validator";
 
 describe("ResponseValidator HTTP 404 Handling", () => {
   it("rejects HTTP 404 and does not create an evaluation job", () => {

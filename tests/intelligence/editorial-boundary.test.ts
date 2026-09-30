@@ -16,8 +16,8 @@ describe("editorial composition boundary", () => {
 
   it("keeps the retired deterministic dossier path out of runtime serving", () => {
     for (const path of [
-      "src/lib/intelligence/EvaluationWorker.ts",
-      "src/lib/intelligence/context-materialization.ts",
+      "src/evaluation/worker.ts",
+      "src/evaluation/context-materialization.ts",
       "src/routes/opportunity.$jobHash.tsx",
     ]) {
       expect(source(path)).not.toMatch(/dossier-v2|DossierPresentationV2|CanonicalDossierV2/);

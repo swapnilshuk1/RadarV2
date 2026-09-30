@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { DecisionVerb } from "@/data/opportunity-fixtures";
+import type { DecisionVerb } from "@/opportunity/contracts";
 
 export interface ExecutiveActionButtonProps extends Omit<ButtonProps, "variant"> {
   verdict: DecisionVerb;

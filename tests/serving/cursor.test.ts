@@ -17,7 +17,7 @@ import {
   decodeCursor,
   CursorValidationError,
   type KeysetPosition,
-} from "../../src/lib/intelligence/cursor";
+} from "@/opportunity/cursor";
 
 describe("Phase 3: Opaque Keyset Cursor Engine", () => {
   describe("1. Encoding & Opaque Wire Format", () => {

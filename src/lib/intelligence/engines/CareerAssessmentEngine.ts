@@ -1,9 +1,9 @@
-import { CandidateProjection } from "../../domain/candidate_projection";
+import { CandidateProjection } from "@/candidate/projection";
 import { EvaluationJobProjection } from "../../domain/job_projection";
 import { CareerAssessment, OperatingLevel } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
 import { CareerValueEngine } from "./CareerValueEngine";
-import type { CandidateEvaluationContext } from "../context";
+import type { CandidateEvaluationContext } from "@/evaluation/context";
 import brandTiers from "@/data/ontology/brand_tiers.json";
 
 const LEVEL_HIERARCHY: Record<Exclude<OperatingLevel, "UNKNOWN">, number> = {

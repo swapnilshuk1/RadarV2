@@ -4,7 +4,7 @@ import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { runMigrations } from "../../src/data/sqlite/migrations/runner";
 import { provisionOAuthScope } from "../../src/lib/auth/oauth-scope-provisioning";
 import { resolveServingScope, resolveScraperAuthContext } from "../../src/lib/security/scope-resolver";
-import { EvaluationRuntimeControl } from "../../src/lib/intelligence/EvaluationRuntimeControl";
+import { EvaluationRuntimeControl } from "@/evaluation/runtime-control";
 
 describe("OAuth scope provisioning", () => {
   let raw: Database.Database;

@@ -1,6 +1,6 @@
 // src/lib/intelligence/engines/LifestyleAssessmentEngine.ts
 
-import { CandidateProjection } from "../../domain/candidate_projection";
+import { CandidateProjection } from "@/candidate/projection";
 import { EvaluationJobProjection } from "../../domain/job_projection";
 import { LifestyleAssessment } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";

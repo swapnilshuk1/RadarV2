@@ -3,7 +3,7 @@ vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => ({ validator: () => ({ handler: (fn: unknown) => fn }) }),
 }));
 vi.mock("../../src/lib/auth/guard", () => ({ requireAuthUser: async () => ({ id: "person_A" }) }));
-import { getDatabaseAdapter, resetDatabaseAdapter } from "../../src/data/database";
+import { getDatabaseAdapter, getDatabaseTargetIdentity, resetDatabaseAdapter } from "../../src/data/database";
 import { writeAuthorizedDecision } from "../../src/data/sqlite/repositories/SqliteDecisionSupportStore";
 import {
   openPursuitInTransaction,
@@ -12,14 +12,17 @@ import {
   requireApprovedArtifact,
   recordApprovedOutreachSent,
   listArchetypes,
+  listClaimsForProfile,
+  ledgerCoverageForProfile,
   saveArchetype,
   type PreparationJob,
 } from "../../src/pursuit/store";
 import { projectLedger, resolveCanonicalSources } from "../../src/pursuit/ledger";
-import { openPursuitFn } from "../../src/pursuit/server";
+import { getPursuitPreparationStatusFn, listPursuitSummariesFn, openPursuitFn, preflightArtifactApprovalFn, saveArtifactFn } from "../../src/pursuit/server";
 import { ledgerApprovalBlockers } from "../../src/pursuit/approval";
+import { pursuitProfileVersion } from "../../src/pursuit/lineage";
 import { createSqliteModelInvocationSink } from "../../src/lib/model/model-invocation";
-import type { PursuitThesis, CandidateClaim } from "../../src/pursuit/types";
+import { preparationServiceUnavailable, PURSUIT_WORKER_UNAVAILABLE_MESSAGE, type PursuitThesis, type CandidateClaim } from "../../src/pursuit/types";
 
 describe("Pursuit in the RADAR host", () => {
   const prior = process.env.RADAR_ENV;
@@ -141,6 +144,34 @@ describe("Pursuit in the RADAR host", () => {
     ).rejects.toThrow("OUT_OF_SCOPE_OPPORTUNITY");
   });
 
+  it("reports an offline queued worker without changing the preparation job", async () => {
+    const before = await db.one<{ status: string }>(
+      "SELECT status FROM pursuit_preparation_jobs WHERE job_hash='hash_A'",
+    );
+    const offline = await getPursuitPreparationStatusFn({ data: { ...scope, jobHash: "hash_A" } });
+    expect(offline?.preparationState).toBe("QUEUED");
+    expect(offline?.workerAvailable).toBe(false);
+    expect(preparationServiceUnavailable(offline!.preparationState, offline!.workerAvailable)).toBe(true);
+    expect(PURSUIT_WORKER_UNAVAILABLE_MESSAGE).toMatch(/pursuit is saved and will continue/i);
+    await db.execute(
+      `INSERT INTO worker_heartbeats(worker_name,instance_id,release_sha,database_fingerprint,last_seen_at)
+       VALUES (?,?,?,?,?)`,
+      ["pursuit-preparation", "pursuit-test", process.env.RADAR_RELEASE_SHA ?? "development", getDatabaseTargetIdentity().fingerprint, new Date().toISOString()],
+    );
+    const online = await getPursuitPreparationStatusFn({ data: { ...scope, jobHash: "hash_A" } });
+    expect(online?.workerAvailable).toBe(true);
+    expect(preparationServiceUnavailable(online!.preparationState, online!.workerAvailable)).toBe(false);
+    await db.execute(
+      "UPDATE worker_heartbeats SET last_seen_at=? WHERE instance_id='pursuit-test'",
+      [new Date(Date.now() - 151_000).toISOString()],
+    );
+    const stale = await getPursuitPreparationStatusFn({ data: { ...scope, jobHash: "hash_A" } });
+    expect(stale?.workerAvailable).toBe(false);
+    expect(preparationServiceUnavailable("FAILED", false)).toBe(false);
+    expect(preparationServiceUnavailable("READY", false)).toBe(false);
+    expect(await db.one("SELECT status FROM pursuit_preparation_jobs WHERE job_hash='hash_A'")).toEqual(before);
+  });
+
   it("reopens an existing pursuit without changing a later CONSIDER decision", async () => {
     await writeAuthorizedDecision(db, scope.personId, scope.tenantId, "hash_A", "CONSIDER");
     const view = await openPursuitFn({ data: { ...scope, jobHash: "hash_A" } });
@@ -152,6 +183,27 @@ describe("Pursuit in the RADAR host", () => {
         )
       )?.action,
     ).toBe("CONSIDER");
+  });
+
+  it("lists scoped pursuit execution state in one read without changing decisions", async () => {
+    await db.execute(
+      "UPDATE opportunity_pursuits SET status='INTERVIEWING', next_action='Follow up with search partner', next_action_due='2026-10-03' WHERE job_hash='hash_A'",
+    );
+    const summaries = await listPursuitSummariesFn({ data: scope });
+    expect(summaries).toEqual([
+      expect.objectContaining({
+        jobHash: "hash_A",
+        status: "INTERVIEWING",
+        nextAction: "Follow up with search partner",
+        nextActionDue: "2026-10-03",
+      }),
+    ]);
+    expect(
+      (await db.one<{ action: string }>("SELECT action FROM canonical_decisions WHERE canonical_job_id='job_A'"))?.action,
+    ).toBe("CONSIDER");
+    await expect(
+      listPursuitSummariesFn({ data: { tenantId: "tenant_B", personId: "person_B" } }),
+    ).rejects.toThrow();
   });
 
   it("does not create a pursuit or PURSUE decision when reopening a missing pursuit", async () => {
@@ -441,6 +493,18 @@ describe("Pursuit in the RADAR host", () => {
     ).toBe(1);
   });
 
+  it("uses identical approval blockers in preflight and authoritative save", async () => {
+    const invalid = { kind: "MESSAGE" as const, message: { subject: null, body: "Too short", targetWords: null } };
+    const data = { ...scope, jobHash: "hash_A", artifactId: "draft_note", content: invalid };
+    const preflight = await preflightArtifactApprovalFn({ data });
+    expect(preflight.approvable).toBe(false);
+    expect(preflight.blockers[0].message).toMatch(/too short/i);
+    await expect(saveArtifactFn({ data: { ...data, approve: true, signals: [] } })).rejects.toThrow(
+      preflight.blockers[0].message,
+    );
+    expect((await db.one<{ status: string }>("SELECT status FROM pursuit_artifacts WHERE id='draft_note'"))?.status).toBe("DRAFT");
+  });
+
   it("keeps claims from an older graph unchanged when a new graph reuses a fact ID", async () => {
     await db.execute(
       "INSERT INTO candidate_documents(id,person_id,tenant_id,filename,storage_uri,mime_type,document_hash) VALUES ('doc_A','person_A','tenant_A','cv.txt','memory://cv','text/plain','doc-hash')",
@@ -488,6 +552,41 @@ describe("Pursuit in the RADAR host", () => {
       current_projection: 1,
     });
     expect(rows[1].id).not.toBe(old?.id);
+  });
+
+  it("keeps an older Pursuit's cockpit and approval evidence on profile A after profile B is current", async () => {
+    const view = await openPursuitFn({ data: { ...scope, jobHash: "hash_A" } });
+    expect(view.pursuit.lineage?.profileVersion).toBe("v1");
+    expect(view.claims.map((claim) => claim.statement)).toContain("Owned a $8M fee book");
+    expect(view.claims.map((claim) => claim.statement)).not.toContain("Owned a €12M fee book");
+    expect(view.ledgerCoverage.total).toBe(1);
+    const [aClaims, bClaims] = await Promise.all([
+      listClaimsForProfile(scope, "v1"), listClaimsForProfile(scope, "v2"),
+    ]);
+    expect(aClaims).toHaveLength(1);
+    expect(bClaims).toHaveLength(1);
+    expect((await ledgerCoverageForProfile(scope, "v2")).total).toBe(1);
+    const content = {
+      kind: "MESSAGE" as const,
+      message: {
+        subject: null, targetWords: null, body: "Owned a $8M fee book",
+        proofAssertions: [{ text: "Owned a $8M fee book", claimIds: [aClaims[0].id] }],
+      },
+    };
+    expect(ledgerApprovalBlockers(content, { claims: aClaims, proofRelationships: { [aClaims[0].id]: "DIRECT" } })).toEqual([]);
+    expect(ledgerApprovalBlockers(content, { claims: bClaims, proofRelationships: { [aClaims[0].id]: "DIRECT" } })).not.toEqual([]);
+    await projectLedger(scope, { profileVersion: "v1", force: true });
+    const current = await db.many<{ statement: string }>("SELECT statement FROM candidate_claims WHERE current_projection = 1");
+    expect(current.map((claim) => claim.statement)).toEqual(["Owned a €12M fee book"]);
+  });
+
+  it("pins a new Pursuit to profile B and fails closed if an older pursuit has no lineage", async () => {
+    await db.execute("INSERT INTO canonical_opportunities(id,source,source_job_id,canonical_url) VALUES ('job_B','test','hash_B','https://example.test/job-b')");
+    await db.execute("INSERT INTO opportunity_versions(id,canonical_job_id,content_hash,job_title,raw_content) VALUES ('version_B','job_B','hash-b','Director','role')");
+    await db.transaction((tx) => openPursuitInTransaction(tx, scope, { jobHash: "hash_B" }, "user", { ...lineage, canonicalJobId: "job_B", opportunityVersion: "version_B", profileVersion: "v2" }));
+    const view = await openPursuitFn({ data: { ...scope, jobHash: "hash_B" } });
+    expect(view.claims.map((claim) => claim.statement)).toEqual(["Owned a €12M fee book"]);
+    expect(() => pursuitProfileVersion({ ...view.pursuit, lineage: undefined }, null)).toThrow("PURSUIT_PROFILE_LINEAGE_MISSING");
   });
 
   it("resolves only the explicitly requested profile binding", async () => {

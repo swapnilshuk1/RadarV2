@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { validateCandidateProjection, type CandidateProjection } from "../../src/lib/domain/candidate_projection";
-import { CandidateProjectionBuilderImpl } from "../../src/lib/intelligence/builders/CandidateProjectionBuilder";
+import { validateCandidateProjection, type CandidateProjection } from "@/candidate/projection";
+import { CandidateProjectionBuilderImpl } from "@/candidate/projection-builder";
 import { syntheticCandidateProfile as candidateProfile } from "../fixtures/synthetic-candidate-profile";
 import { CareerAssessmentEngine } from "../../src/lib/intelligence/engines/CareerAssessmentEngine";
 import { JobProjectionBuilder } from "../../src/lib/intelligence/builders/JobProjectionBuilder";

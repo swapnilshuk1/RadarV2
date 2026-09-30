@@ -1,9 +1,9 @@
-import { CandidateProjection } from "../../domain/candidate_projection";
+import { CandidateProjection } from "@/candidate/projection";
 import type { CanonicalSemanticEvidence } from "../semantic/types";
 import { EvaluationJobProjection, CapabilityTaxonomyTier } from "../../domain/job_projection";
 import { CapabilityAssessment, EvidenceMatch } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
-import type { CandidateEvaluationContext } from "../context";
+import type { CandidateEvaluationContext } from "@/evaluation/context";
 import executiveOntology from "@/data/ontology/executive_ontology.json";
 import { RequirementEvidenceAdapter } from "../semantic/RequirementEvidenceAdapter";
 

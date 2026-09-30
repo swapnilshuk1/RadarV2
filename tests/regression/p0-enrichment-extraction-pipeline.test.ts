@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { extract } from "../../scripts/scraper/extract/extractor";
 import { JobProjectionBuilder } from "../../src/lib/intelligence/builders/JobProjectionBuilder";
 import { CapabilityAssessmentEngine } from "../../src/lib/intelligence/engines/CapabilityAssessmentEngine";
-import { CandidateProjectionBuilderImpl } from "../../src/lib/intelligence/builders/CandidateProjectionBuilder";
+import { CandidateProjectionBuilderImpl } from "@/candidate/projection-builder";
 import { DecisionPolicyEngine } from "../../src/lib/intelligence/policy/DecisionPolicyEngine";
 import type { DetailedCard } from "../../scripts/scraper/types";
 

@@ -1,4 +1,4 @@
-import type { StorageProvider } from "../../domain/repositories";
+import type { StorageProvider } from "@/data/storage-provider";
 import type { KnowledgeGraph, KnowledgeGraphBuildReport } from "./KnowledgeGraphBuilder";
 
 export class KnowledgeGraphIngestService {

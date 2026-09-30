@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { resolveShortlistCardBadgeState } from "../../src/routes/index";
-import type { Opportunity } from "../../src/data/opportunity-fixtures";
+import type { Opportunity } from "@/opportunity/contracts";
 
 describe("Shortlist Card Badge Resolution Regression Tests", () => {
   const baseOpportunity: Opportunity = {

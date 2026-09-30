@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { reuseEvidenceGraphForOwner } from "../../src/lib/intelligence/pipeline/ProjectionPipeline";
+import { reuseEvidenceGraphForOwner } from "@/candidate/pipeline";
 import type { EvidenceGraph } from "../../src/domain/evidence";
 
 describe("candidate evidence deduplication ownership", () => {

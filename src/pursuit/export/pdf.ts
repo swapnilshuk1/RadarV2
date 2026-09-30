@@ -62,7 +62,7 @@ class Doc {
 
   add(text: string, options: Partial<Omit<TextRun, "text">> = {}): void {
     this.runs.push({
-      text,
+      text: normalizePdfText(text),
       font: options.font ?? "body",
       size: options.size ?? 10.5,
       spaceBefore: options.spaceBefore ?? 0,
@@ -206,14 +206,31 @@ class Doc {
 
 const byteLength = (value: string): number => new TextEncoder().encode(value).length;
 
-/** WinAnsi-safe escaping; unsupported glyphs degrade to sensible ASCII. */
-function escapePdfText(value: string): string {
+/** Preserve factual text through explicit substitutions, then reject unknown glyphs. */
+function normalizePdfText(value: string): string {
   const normalised = value
+    .replace(/₹/g, "INR ")
+    .replace(/€/g, "EUR ")
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
-    .replace(/\u2022/g, "\u2022")
-    .replace(/[\u2013]/g, "-")
-    .replace(/\u00A0/g, " ");
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[\u00A0\u202F]/g, " ")
+    .replace(/[\u2022\u25CF]/g, "-")
+    .replace(/\u2026/g, "...");
+  for (const char of normalised) {
+    const code = char.codePointAt(0) ?? 0;
+    if (code !== 9 && code !== 10 && code !== 13 && (code < 32 || (code > 126 && code < 160) || code > 255)) {
+      throw new Error(
+        `PDF_EXPORT_UNSUPPORTED_CHARACTER: ${char} (U+${code.toString(16).toUpperCase()}). Use DOCX or TXT export for this text.`,
+      );
+    }
+  }
+  return normalised;
+}
+
+/** Escape the already validated WinAnsi text for PDF string literals. */
+function escapePdfText(value: string): string {
+  const normalised = normalizePdfText(value);
   let out = "";
   for (const char of normalised) {
     const code = char.codePointAt(0) ?? 32;
@@ -221,10 +238,7 @@ function escapePdfText(value: string): string {
     else if (code < 32) out += " ";
     else if (code < 128) out += char;
     else if (code < 256) out += `\\${code.toString(8).padStart(3, "0")}`;
-    else if (char === "\u2014") out += "\\227";
-    else if (char === "\u2022") out += "\\267";
-    else if (char === "\u00B7") out += "\\267";
-    else out += "?";
+    else out += `\\${code.toString(8).padStart(3, "0")}`;
   }
   return out;
 }

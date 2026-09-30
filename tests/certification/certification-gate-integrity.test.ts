@@ -61,6 +61,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       "serving-pagination",
       "staged-dossier-merge-gate",
       "gate-0-safety",
+      "pursuit",
       "runtime-release-safety",
     ]);
     expect(uniqueCertificationTestFiles).toHaveLength(certificationTestFiles.length);
@@ -100,6 +101,8 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
     expect(filesForAffectedGroups(["tenant-security"])).toEqual(
       certificationManifest.find((group) => group.id === "tenant-security")!.files,
     );
+    expect(selectAffectedGroupIds(["src/pursuit/store.ts"])).toEqual(["pursuit"]);
+    expect(selectAffectedGroupIds(["docs/ARCHITECTURE.md"])).toEqual([]);
   });
 
   it(

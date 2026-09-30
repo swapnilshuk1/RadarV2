@@ -64,20 +64,22 @@ unless composition/publication is explicitly requested.
 
 | Responsibility                                                | Implementation                                                                                                                                             |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Acquisition and enrichment                                    | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts`                                                                                               |
-| Dependency scheduling                                         | `src/lib/intelligence/EvaluationWorkScheduler.ts`, `scripts/scraper/persist/queue.ts`                                                                      |
-| Durable claims and worker lifecycle                           | `src/lib/intelligence/EvaluationWorker.ts`                                                                                                                 |
-| Immutable production input                                    | `src/lib/intelligence/staged/ProductionStagedInputAdapter.ts`                                                                                              |
-| Company retrieval and acquisition recipe                      | `src/lib/intelligence/staged/ProductionContextProvider.ts`, `contextAcquisitionPolicy.ts`                                                                  |
+| Acquisition contracts, planning and web boundary             | `src/acquisition/`                                                                                                                                          |
+| Acquisition execution and enrichment workers                  | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts`                                                                                               |
+| Opportunity serving, pagination and application actions       | `src/opportunity/`                                                                                                                                          |
+| Dependency scheduling                                         | `src/evaluation/work-scheduler.ts`, `scripts/scraper/persist/queue.ts`                                                                      |
+| Durable claims and worker lifecycle                           | `src/evaluation/worker.ts`                                                                                                                 |
+| Immutable production input                                    | `src/evaluation/staged-input.ts`                                                                                              |
+| Company retrieval and acquisition recipe                      | `src/evaluation/context-provider.ts`, `src/evaluation/context-acquisition-policy.ts`                                                |
 | Claim extraction, source fingerprints and candidate conflicts | `src/dossier/evidence.ts`                                                                                                                                  |
 | Role/mapping contracts and application-assigned IDs           | `src/dossier/staged-role.ts`                                                                                                                               |
 | Screening quote IDs and derived gates                         | `src/dossier/staged-screening.ts`                                                                                                                          |
 | Decision orchestration, contracts and validation              | `src/dossier/staged-decision.ts`, `staged-decision-contract.ts`, `staged-decision-integrity.ts`                                                            |
 | Composition and factual review                                | `src/dossier/composition.ts`, `staged-composition.ts`, `factual-review-integrity.ts`                                                                       |
-| Durable composition requests                                  | `src/lib/intelligence/staged/DurableDossierModel.ts`                                                                                                       |
+| Durable composition requests                                  | `src/dossier/runtime/durable-model.ts`                                                                                                       |
 | Persistence and activation pointers                           | `src/data/sqlite/repositories/SqliteStagedInputStore.ts`, `SqliteStagedEvaluationStore.ts`, `SqliteRichDossierStore.ts`, `SqliteEvaluationContextStore.ts` |
-| Publication and readiness                                     | `src/lib/intelligence/staged/StagedServingPublisher.ts`, `stagedDossierHealth.ts`, `StagedRolloutReadiness.ts`                                             |
-| Both presentation templates                                   | `src/dossier/DossierView.tsx`, using the shared `contracts.ts` model                                                                                       |
+| Publication and readiness                                     | `src/dossier/runtime/serving-publisher.ts`                                                                                         |
+| Canonical dossier presentation                                | `src/dossier/DossierView.tsx`, using the shared `contracts.ts` model                                                                                       |
 
 ## Identity and provenance
 
@@ -91,7 +93,7 @@ unless composition/publication is explicitly requested.
 | Full evaluation fingerprint               | `createStagedEvaluationFingerprint` binds context, input and canonical evaluation content; dossier lookup and publication use this identity |
 
 `computeEvaluationContextFingerprint` lives in
-`src/lib/domain/evaluation_fingerprint.ts`. Staged persistence is scoped by tenant,
+`src/evaluation/fingerprint.ts`. Staged persistence is scoped by tenant,
 person, job, opportunity version and context. Changing semantics must not silently
 reuse an existing policy/context. Canonical staged JSON is validated on persistence
 and rehydration; dossier storage also validates factual-review provenance and the

@@ -7,7 +7,7 @@
  * Expected: Non-commercial detection → PASS (not SPARSE_SPEC)
  */
 
-import type { OpportunitySource } from "@/data/opportunity-fixtures";
+import type { OpportunitySource } from "@/opportunity/contracts";
 
 export const SPARSE_NONCOMMERCIAL = {
   source: {

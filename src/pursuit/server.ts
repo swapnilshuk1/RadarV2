@@ -13,22 +13,25 @@ import { z } from "zod";
 import { getDatabaseAdapter } from "../data/database";
 import { writeAuthorizedDecision } from "../data/sqlite/repositories/SqliteDecisionSupportStore";
 import { requireAuthUser } from "../lib/auth/guard";
+import { isWorkerOnline } from "../lib/health/worker-heartbeat";
 import { authenticateTenantMembership, authorizePersonScope } from "../lib/security/auth";
 import { resolveServingScope } from "../lib/security/scope-resolver";
 import { renderInterviewBrief, renderMessage, renderResume } from "./artifacts";
 import { resumeToDocx } from "./export/docx";
-import { interviewBriefToPdf, messageToPdf, resumeToPdf } from "./export/pdf";
+import { interviewBriefToPdf, messageToPdf } from "./export/pdf";
+import { resumeToPdf } from "./export/resume-layout";
 import { isLedgerStale, projectLedger, readLedgerState, resolveCanonicalSources } from "./ledger";
 import { candidateIdentity, loadBrief, resolveLineage } from "./preparation";
 import { toRoleBrief } from "./role-brief";
 import * as store from "./store";
-import { ledgerApprovalBlockers } from "./approval";
+import { evaluateArtifactApproval } from "./approval";
+import { pursuitProfileVersion } from "./lineage";
 import {
-  approvalBlockers,
   archetypeInputSchema,
   artifactContentSchema,
   artifactLabels,
   pursuitStatuses,
+  resumeTemplateIds,
   type ArtifactContent,
   type CandidateArchetype,
   type CockpitView,
@@ -72,19 +75,24 @@ async function authorize(
 async function readCockpit(scope: store.Scope, jobHash: string): Promise<CockpitView> {
   const pursuit = await store.getPursuit(scope, jobHash);
   if (!pursuit) throw new Error("PURSUIT_NOT_FOUND");
-  const [thesis, thesisHistory, artifacts, archetypes, claims, activities, coverage, preparation] =
+  const thesis = pursuit.activeThesisId ? await store.getThesis(pursuit.activeThesisId) : null;
+  const profileVersion = pursuitProfileVersion(pursuit, thesis);
+  const [thesisHistory, artifacts, archetypes, claims, activities, coverage, preparation, workerAvailable] =
     await Promise.all([
-      pursuit.activeThesisId ? store.getThesis(pursuit.activeThesisId) : Promise.resolve(null),
       store.listThesisHistory(pursuit.id),
       store.listLatestArtifacts(pursuit.id),
       store.listArchetypes(scope),
-      store.listClaims(scope),
+      store.listClaimsForProfile(scope, profileVersion),
       store.listActivities(pursuit.id),
-      store.ledgerCoverage(scope),
+      store.ledgerCoverageForProfile(scope, profileVersion),
       store.livePreparation(scope, pursuit.id),
+      pursuit.preparationState === "QUEUED"
+        ? isWorkerOnline("pursuit-preparation")
+        : Promise.resolve(null),
     ]);
   return {
     preparation,
+    workerAvailable,
     scope: { tenantId: scope.tenantId, personId: scope.personId },
     pursuit,
     thesis,
@@ -100,6 +108,21 @@ async function readCockpit(scope: store.Scope, jobHash: string): Promise<Cockpit
 // ---------------------------------------------------------------------------
 // Profile vault
 // ---------------------------------------------------------------------------
+
+/** One scoped read for the decisions portfolio; no artifact or ledger loading. */
+export const listPursuitSummariesFn = createServerFn({ method: "GET" })
+  .validator((data: { tenantId?: string; personId?: string }) => scopeInput.parse(data))
+  .handler(async ({ data }) => {
+    const scope = await authorize(data, "read:person");
+    const pursuits = await store.listPursuits(scope);
+    return pursuits.map(({ jobHash, status, preparationState, nextAction, nextActionDue }) => ({
+      jobHash,
+      status,
+      preparationState,
+      nextAction,
+      nextActionDue,
+    }));
+  });
 
 export const getPursuitVaultFn = createServerFn({ method: "GET" })
   .validator((data: { tenantId: string; personId: string }) => scopeInput.parse(data))
@@ -197,6 +220,7 @@ export const pursueOpportunityFn = createServerFn({ method: "POST" })
     // the decision write rolls the decision back too.
     const brief = await loadBrief(user.id, scope, data.jobHash);
     const lineage = await resolveLineage(scope, brief);
+    if (!lineage.profileVersion) throw new Error("PURSUIT_PROFILE_LINEAGE_MISSING");
     const acknowledgement = await getDatabaseAdapter().transaction(async (tx) => {
       const ack = await writeAuthorizedDecision(
         tx,
@@ -237,7 +261,16 @@ export const getPursuitPreparationStatusFn = createServerFn({ method: "GET" })
   .validator((data: unknown) => scopeInput.extend({ jobHash: z.string().min(1) }).parse(data))
   .handler(async ({ data }) => {
     const scope = await authorize(data, "read:person");
-    return store.preparationStatus(scope, data.jobHash);
+    const status = await store.preparationStatus(scope, data.jobHash);
+    return status
+      ? {
+          ...status,
+          workerAvailable:
+            status.preparationState === "QUEUED"
+              ? await isWorkerOnline("pursuit-preparation")
+              : null,
+        }
+      : null;
   });
 
 /**
@@ -299,6 +332,46 @@ function renderArtifact(content: ArtifactContent): string {
   return renderMessage(content.message);
 }
 
+async function checkArtifactApproval(
+  scope: store.Scope,
+  jobHash: string,
+  pursuit: Awaited<ReturnType<typeof store.getPursuit>> & {},
+  existing: Awaited<ReturnType<typeof store.getArtifact>> & {},
+  content: ArtifactContent,
+  userId: string,
+) {
+  const activeThesis = pursuit.activeThesisId ? await store.getThesis(pursuit.activeThesisId) : null;
+  const profileVersion = pursuitProfileVersion(pursuit, activeThesis);
+  const [claims, brief, artifactThesis] = await Promise.all([
+    store.listClaimsForProfile(scope, profileVersion),
+    loadBrief(userId, scope, jobHash).catch(() => null),
+    existing.thesisId ? store.getThesis(existing.thesisId) : Promise.resolve(null),
+  ]);
+  return evaluateArtifactApproval(content, {
+    claims,
+    contextText: brief ? JSON.stringify(brief) : "",
+    proofRelationships: artifactThesis?.semantic?.proofRelationships ?? {},
+  });
+}
+
+const artifactApprovalInput = scopeInput.extend({
+  jobHash: z.string().min(1),
+  artifactId: z.string().min(1),
+  content: artifactContentSchema,
+});
+
+export const preflightArtifactApprovalFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => artifactApprovalInput.parse(data))
+  .handler(async ({ data }) => {
+    const user = await requireAuthUser();
+    const scope = await authorize(data, "read:person");
+    const pursuit = await store.getPursuit(scope, data.jobHash);
+    if (!pursuit) throw new Error("PURSUIT_NOT_FOUND");
+    const existing = await store.getArtifact(pursuit.id, data.artifactId);
+    if (!existing) throw new Error("ARTIFACT_NOT_FOUND");
+    return checkArtifactApproval(scope, data.jobHash, pursuit, existing, data.content, user.id);
+  });
+
 export const saveArtifactFn = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
     scopeInput
@@ -318,27 +391,11 @@ export const saveArtifactFn = createServerFn({ method: "POST" })
     if (!pursuit) throw new Error("PURSUIT_NOT_FOUND");
     const existing = await store.getArtifact(pursuit.id, data.artifactId);
     if (!existing) throw new Error("ARTIFACT_NOT_FOUND");
-
     const content = data.content as ArtifactContent;
     if (data.approve) {
-      const blockers = approvalBlockers(content);
-      // Prove edited figures and claim links against the candidate's own ledger.
-      const [claims, brief] = await Promise.all([
-        store.listClaims(scope),
-        loadBrief(user.id, scope, data.jobHash).catch(() => null),
-      ]);
-      blockers.push(
-        ...ledgerApprovalBlockers(content, {
-          claims,
-          contextText: brief ? JSON.stringify(brief) : "",
-          proofRelationships: existing.thesisId
-            ? ((await store.getThesis(existing.thesisId))?.semantic?.proofRelationships ?? {})
-            : {},
-        }),
-      );
-      // Approval is what leaves the system; refuse to mark an incomplete
-      // artifact as final rather than exporting placeholders.
-      if (blockers.length > 0) throw new Error(`ARTIFACT_NOT_APPROVABLE: ${blockers.join(" ")}`);
+      const approval = await checkArtifactApproval(scope, data.jobHash, pursuit, existing, content, user.id);
+      if (!approval.approvable)
+        throw new Error(`ARTIFACT_NOT_APPROVABLE: ${approval.blockers.map((blocker) => blocker.message).join(" ")}`);
     }
     await store.updateArtifactContent(pursuit.id, data.artifactId, content, {
       status: data.approve ? "APPROVED" : "USER_CUSTOMIZED",
@@ -448,6 +505,8 @@ export const exportArtifactFn = createServerFn({ method: "POST" })
         jobHash: z.string().min(1),
         artifactId: z.string().min(1),
         format: z.enum(["PDF", "DOCX", "TXT"]),
+        resumeTemplate: z.enum(resumeTemplateIds).optional(),
+        metricGrid: z.boolean().optional(),
       })
       .parse(data),
   )
@@ -475,14 +534,20 @@ export const exportArtifactFn = createServerFn({ method: "POST" })
       return {
         filename: `${base}.docx`,
         mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        base64: toBase64(resumeToDocx(content.resume)),
+        base64: toBase64(resumeToDocx(content.resume, {
+          template: data.resumeTemplate,
+          metricGrid: data.metricGrid,
+        })),
       };
     }
 
     const title = `${identity.fullName} — ${label}`;
     const bytes =
       content.kind === "RESUME"
-        ? resumeToPdf(content.resume)
+        ? resumeToPdf(content.resume, {
+            template: data.resumeTemplate,
+            metricGrid: data.metricGrid,
+          })
         : content.kind === "INTERVIEW_BRIEF"
           ? interviewBriefToPdf(content.brief, title)
           : messageToPdf(content.message, title);

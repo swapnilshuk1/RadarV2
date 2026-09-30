@@ -4,14 +4,14 @@ import path from "node:path";
 import { loadEnvFile } from "node:process";
 import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
-import { ProductionStagedDossierService } from "../../src/lib/intelligence/staged/ProductionStagedDossierService";
-import { StagedServingPublisher } from "../../src/lib/intelligence/staged/StagedServingPublisher";
+import { ProductionStagedDossierService } from "../../src/dossier/runtime/service";
+import { StagedServingPublisher } from "../../src/dossier/runtime/serving-publisher";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import { createBedrockGlmResearchModel } from "../../src/lib/model/bedrock-glm-research-model";
 import { createGeminiFactualReviewModel } from "../../src/lib/model/gemini-factual-review-model";
 import { DOSSIER_COMPOSITION_RECIPE } from "../../src/dossier/factual-review-integrity";
-import { checkpointHash } from "../../src/lib/intelligence/staged/DurableDossierModel";
+import { checkpointHash } from "../../src/dossier/runtime/durable-model";
 import type { ReasoningModel } from "../../src/dossier/contracts";
 import { ModelProviderUnavailableError } from "../../src/lib/model/provider-unavailable";
 

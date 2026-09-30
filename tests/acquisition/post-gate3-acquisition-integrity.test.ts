@@ -6,9 +6,9 @@ import {
   computeContentHash,
   computeCanonicalJobId,
   computeOpportunityVersionId,
-} from "../../src/lib/acquisition/CanonicalIngestionService";
+} from "@/acquisition/ingestion-service";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
-import { sourceIdentityForCard, acquisitionSurfaceKey } from "../../src/lib/acquisition/canonical-identity";
+import { sourceIdentityForCard, acquisitionSurfaceKey } from "@/acquisition/canonical-identity";
 import {
   RunController,
   acquireOwnerLock,
@@ -36,7 +36,7 @@ import {
   FailurePolicyEngine,
   normalizeFailureClass,
   classifyCardFailure,
-} from "../../src/lib/acquisition/failure-taxonomy";
+} from "@/acquisition/failure-taxonomy";
 import { HealthManager } from "../../scripts/scraper/run/health-manager";
 import os from "os";
 import { assertCanonicalPayloadIdentity } from "../../scripts/enrich";

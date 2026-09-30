@@ -12,11 +12,9 @@ Start with the [documentation index](docs/README.md),
 
 ## Workspace
 
-The primary checkout is `C:\Users\swapn\Downloads\Radar V2` on `main`.
-Temporary worktrees are for isolated tasks, not alternate product versions.
-An active backfill must finish on its pinned checkout before that worktree is
-retired. Never move its databases, credentials, checkpoints or source files while
-it is running.
+Use `main` as the integration baseline. Create short-lived branches or worktrees for
+isolated changes and remove them after merge. Local databases, credentials,
+checkpoints and generated artifacts are machine state and must remain outside Git.
 
 ## Current application
 
@@ -41,12 +39,10 @@ model-backed run. See [production integration](docs/PRODUCTION_INTEGRATION.md)
 for configuration and readiness details.
 
 GLM-5 evaluation and memo writing use **Bedrock Mantle Chat Completions** in
-`us-east-1`. Keep the local key in `mantle.key` in the repository root (a raw key or
-the console's labelled download). Alternatively set `BEDROCK_MANTLE_API_KEY`, or
-set `BEDROCK_MANTLE_KEY_FILE` to another key file. The environment key takes
-precedence. The old Converse CSV and `AWS_BEARER_TOKEN_BEDROCK` do not override
-Mantle credentials. Restart running workers after rotating the key; key files
-remain untracked. Gemini factual review retains its separate ADC configuration.
+`us-east-1`. Supply credentials through `BEDROCK_MANTLE_API_KEY` or point
+`BEDROCK_MANTLE_KEY_FILE` at a key file stored outside the repository. The
+environment key takes precedence. Restart running workers after rotating credentials.
+Gemini factual review retains its separate ADC configuration.
 
 PURSUE/CONSIDER drafts carry **AI draft · factual review pending**. Run
 `npm run worker:reviews` as a separate supervised process after migration 052.
@@ -64,14 +60,18 @@ new evaluation policy or used as substitute candidate evidence.
 
 | Responsibility                                                 | Location                                                                                                               |
 | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Portal acquisition, payload preservation, enrichment queue     | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts`                                                           |
-| Durable scheduling and evaluation worker                       | `src/lib/intelligence/EvaluationWorkScheduler.ts`, `EvaluationWorker.ts`                                               |
-| Production input, context acquisition, checkpoints and rollout | `src/lib/intelligence/staged/`                                                                                         |
+| Acquisition contracts, validation, planning and web boundary  | `src/acquisition/`                                                                                                      |
+| Acquisition workers, portal execution and enrichment queue     | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts`                                                           |
+| Candidate profile, projection, pipeline and profile transport   | `src/candidate/`                                                                                                        |
+| Opportunity contracts, serving, pagination and actions         | `src/opportunity/`                                                                                                      |
+| Durable scheduling and evaluation worker                       | `src/evaluation/work-scheduler.ts`, `src/evaluation/worker.ts`                                                        |
+| Evaluation input, context acquisition, checkpoints and policy  | `src/evaluation/staged-input.ts`, `context-provider.ts`, `durable-model.ts`, `policy.ts`                          |
 | Evidence extraction, conflicts and source fingerprints         | `src/dossier/evidence.ts`                                                                                              |
 | Role requirements and mapping contracts                        | `src/dossier/staged-role.ts`                                                                                           |
 | Screening, decision policy and provenance validation           | `src/dossier/staged-screening.ts`, `staged-decision.ts`, `staged-decision-contract.ts`, `staged-decision-integrity.ts` |
 | Whole-memo composition and compact factual review              | `src/dossier/composition.ts`, `staged-composition.ts`, `memo-review.ts`, `factual-review-integrity.ts`                 |
 | Canonical executive memo and Template B                        | `src/dossier/contracts.ts`, `DossierView.tsx`                                                                          |
+| Dossier composition/review workers and publication             | `src/dossier/runtime/`                                                                                                  |
 | Persistence, migrations and serving queries                    | `src/data/`                                                                                                            |
 | Application routes and shared interface                        | `src/routes/`, `src/components/`                                                                                       |
 
@@ -91,7 +91,7 @@ enrichment, dossier, document or corpus workers. Apply migrations explicitly wit
 
 ```powershell
 $env:RADAR_ENV = 'dev'
-$env:TURSO_CONNECTION_URL = 'file:C:/Users/swapn/Downloads/Radar V2/.radar/local-review/app.sqlite'
+$env:TURSO_CONNECTION_URL = 'file:./.radar/local-review/app.sqlite'
 $env:TURSO_DATABASE_URL = $env:TURSO_CONNECTION_URL
 $env:TURSO_AUTH_TOKEN = 'local-only'
 npm run dev

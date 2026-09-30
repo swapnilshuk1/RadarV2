@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CandidateProjection } from "../../src/lib/domain/candidate_projection";
+import type { CandidateProjection } from "@/candidate/projection";
 import {
   deriveCandidateProjectionVersion,
   resolveExactCandidateProjection,

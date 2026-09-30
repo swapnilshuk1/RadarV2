@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { Opportunity } from "../../src/data/opportunity-fixtures";
+import type { Opportunity } from "@/opportunity/contracts";
 import type { DecisionRecord } from "../../src/lib/decisions-store";
 
 /**

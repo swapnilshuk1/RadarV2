@@ -7,7 +7,7 @@
  */
 
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { InterviewBriefPanel } from "./InterviewBriefPanel";
 import { OutreachKit } from "./OutreachKit";
 import { ResumeStudio } from "./ResumeStudio";
@@ -17,13 +17,15 @@ import {
   derivePursuitFn,
   exportArtifactFn,
   markOutreachSentFn,
+  preflightArtifactApprovalFn,
   getCockpitFn,
   getPursuitPreparationStatusFn,
   saveArtifactFn,
   updatePursuitStateFn,
 } from "../server";
-import type { ArtifactContent, CockpitView, LearningSignal, PursuitStatus } from "../types";
-import { pursuitStatusLabels } from "../types";
+import type { ArtifactContent, CockpitView, LearningSignal, PursuitStatus, ResumeExportOptions } from "../types";
+import { isTerminalPursuitStatus, preparationServiceUnavailable, PURSUIT_WORKER_UNAVAILABLE_MESSAGE, pursuitStatusLabels } from "../types";
+import type { ArtifactApprovalBlocker } from "../approval";
 
 type Surface = "STRATEGY" | "RESUME" | "OUTREACH" | "INTERVIEW";
 
@@ -46,9 +48,14 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
   const [surface, setSurface] = useState<Surface>("STRATEGY");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resolveOpen, setResolveOpen] = useState(false);
+  const resolveMenuRef = useRef<HTMLDivElement | null>(null);
+  const [workerAvailable, setWorkerAvailable] = useState<boolean | null>(initialView.workerAvailable ?? null);
+  const [approvalBlockersByArtifact, setApprovalBlockersByArtifact] = useState<Record<string, ArtifactApprovalBlocker[]>>({});
 
   const derive = useServerFn(derivePursuitFn);
   const saveArtifact = useServerFn(saveArtifactFn);
+  const preflightApproval = useServerFn(preflightArtifactApprovalFn);
   const updateState = useServerFn(updatePursuitStateFn);
   const exportArtifact = useServerFn(exportArtifactFn);
   const markOutreachSent = useServerFn(markOutreachSentFn);
@@ -60,6 +67,25 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
   // off as the wait grows — a long derivation must not cost a linear read bill.
   const preparing =
     view.pursuit.preparationState === "QUEUED" || view.pursuit.preparationState === "DERIVING";
+  const workerUnavailable = preparationServiceUnavailable(view.pursuit.preparationState, workerAvailable);
+  const resolved = isTerminalPursuitStatus(view.pursuit.status);
+
+  useEffect(() => {
+    if (!resolveOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!resolveMenuRef.current?.contains(event.target as Node)) setResolveOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setResolveOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [resolveOpen]);
+
   useEffect(() => {
     if (!preparing) return;
     let cancelled = false;
@@ -78,12 +104,16 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
       try {
         const status = await fetchStatus({ data: { ...scope, jobHash } });
         if (cancelled) return;
+        if (status) setWorkerAvailable(status.workerAvailable);
         const settled =
           status && status.preparationState !== "QUEUED" && status.preparationState !== "DERIVING";
         if (settled) {
           // One full read, only once preparation has actually settled.
           const full = await fetchCockpit({ data: { ...scope, jobHash } });
-          if (!cancelled) setView(full);
+          if (!cancelled) {
+            setView(full);
+            setWorkerAvailable(full.workerAvailable ?? null);
+          }
           return;
         }
       } catch {
@@ -111,7 +141,9 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
     setBusy(true);
     setError(null);
     try {
-      setView(await action());
+      const next = await action();
+      setView(next);
+      setWorkerAvailable(next.workerAvailable ?? null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Something went wrong.");
     } finally {
@@ -129,14 +161,24 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
     content: ArtifactContent,
     signals: LearningSignal[],
     approve = false,
-  ) =>
-    run(() => saveArtifact({ data: { ...scope, jobHash, artifactId, content, signals, approve } }));
+  ) => {
+    setApprovalBlockersByArtifact((current) => ({ ...current, [artifactId]: [] }));
+    if (!approve) return run(() => saveArtifact({ data: { ...scope, jobHash, artifactId, content, signals, approve } }));
+    return run(async () => {
+      const result = await preflightApproval({ data: { ...scope, jobHash, artifactId, content } });
+      if (!result.approvable) {
+        setApprovalBlockersByArtifact((current) => ({ ...current, [artifactId]: result.blockers }));
+        return view;
+      }
+      return saveArtifact({ data: { ...scope, jobHash, artifactId, content, signals, approve } });
+    });
+  };
 
-  const handleExport = async (artifactId: string, format: "PDF" | "DOCX" | "TXT") => {
+  const handleExport = async (artifactId: string, format: "PDF" | "DOCX" | "TXT", options: ResumeExportOptions = {}) => {
     setBusy(true);
     setError(null);
     try {
-      const file = await exportArtifact({ data: { ...scope, jobHash, artifactId, format } });
+      const file = await exportArtifact({ data: { ...scope, jobHash, artifactId, format, ...options } });
       downloadBase64(file.filename, file.mimeType, file.base64);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Export failed.");
@@ -170,10 +212,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
               {view.pursuit.company ? ` · ${view.pursuit.company}` : ""}
             </p>
             <p className="label-mono mt-1 text-muted-foreground">
-              Pursuit stage:{" "}
-              {view.pursuit.status === "READY"
-                ? "Preparing"
-                : pursuitStatusLabels[view.pursuit.status]}{" "}
+              Pursuit stage: {pursuitStatusLabels[view.pursuit.status]}{" "}
               · Package readiness {readiness.done}/{readiness.total} ·{" "}
               {view.ledgerCoverage.sourceBacked} verified claims from{" "}
               {view.ledgerCoverage.documents} document
@@ -181,22 +220,95 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={busy || preparing}
-              onClick={() => handleDerive(view.pursuit.activeArchetypeId)}
-              className="pursuit-chip pursuit-chip-primary"
-            >
-              {busy
-                ? "Working…"
-                : preparing
-                  ? view.pursuit.preparationState === "DERIVING"
-                    ? "Preparing package…"
-                    : "Queued…"
-                  : hasStrategy
-                    ? "Regenerate strategy"
-                    : "Derive strategy"}
-            </button>
+            {!resolved && (
+              <button
+                type="button"
+                disabled={busy || preparing}
+                onClick={() => handleDerive(view.pursuit.activeArchetypeId)}
+                className="pursuit-chip pursuit-chip-primary"
+              >
+                {busy
+                  ? "Working…"
+                  : preparing
+                    ? workerUnavailable
+                      ? "Service unavailable"
+                      : view.pursuit.preparationState === "DERIVING"
+                      ? "Preparing package…"
+                      : "Queued…"
+                    : hasStrategy
+                      ? "Regenerate strategy"
+                      : "Derive strategy"}
+              </button>
+            )}
+            {resolved ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void run(() => updateState({ data: { ...scope, jobHash, status: "READY" } }))}
+                className="pursuit-chip pursuit-chip-primary"
+              >
+                Reopen pursuit
+              </button>
+            ) : (
+              <div ref={resolveMenuRef} className="relative">
+                <button
+                  type="button"
+                  disabled={busy || preparing}
+                  aria-expanded={resolveOpen}
+                  aria-haspopup="menu"
+                  onClick={() => setResolveOpen((open) => !open)}
+                  className="pursuit-chip"
+                  title={preparing ? "Finish preparation before resolving this pursuit." : undefined}
+                >
+                  Resolve pursuit <span aria-hidden="true">{resolveOpen ? "▴" : "▾"}</span>
+                </button>
+                {resolveOpen && (
+                  <div
+                    role="menu"
+                    aria-label="Resolve pursuit"
+                    className="absolute right-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-xl border border-border bg-background p-2 shadow-2xl"
+                  >
+                    <div className="px-2.5 pb-2 pt-1">
+                      <p className="text-sm font-medium text-ink">Resolve pursuit</p>
+                      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                        Choose an outcome. The pursuit stays in your history.
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      {([
+                        ["CLOSED_WON", "Mark as won", "Accepted or completed this opportunity."],
+                        ["CLOSED_LOST", "Mark as lost", "The opportunity ended without an accepted outcome."],
+                        ["WITHDRAWN", "Withdraw pursuit", "You chose to stop pursuing this opportunity."],
+                      ] as const).map(([status, label, description]) => (
+                        <button
+                          key={status}
+                          type="button"
+                          role="menuitem"
+                          disabled={busy}
+                          onClick={() => {
+                            setResolveOpen(false);
+                            void run(() =>
+                              updateState({
+                                data: { ...scope, jobHash, status, nextAction: null, nextActionDue: null },
+                              }),
+                            );
+                          }}
+                          className="group flex w-full items-center justify-between gap-4 rounded-lg border border-border bg-surface-raised/35 px-3 py-2.5 text-left transition-colors hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-accent-ink/30 disabled:opacity-50"
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium text-ink group-hover:text-accent-ink">{label}</span>
+                            <span className="mt-0.5 block text-xs leading-relaxed text-ink-muted">{description}</span>
+                          </span>
+                          <span aria-hidden="true" className="shrink-0 text-base text-ink-muted transition-transform group-hover:translate-x-0.5 group-hover:text-ink">
+                            →
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <button type="button" onClick={onClose} className="pursuit-chip">
               Close
             </button>
@@ -217,6 +329,14 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
       </div>
 
       <div className="memo-container py-6">
+        {resolved && (
+          <div className="memo-callout mb-5" role="status">
+            <p className="text-sm font-medium">{pursuitStatusLabels[view.pursuit.status]}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              This pursuit is resolved. Its strategy, artifacts and activity history remain available.
+            </p>
+          </div>
+        )}
         {view.ledgerCoverage.total === 0 && (
           <div className="memo-callout mb-5">
             <p className="text-sm">
@@ -225,7 +345,14 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
             </p>
           </div>
         )}
-        {preparing && (
+        {workerUnavailable && (
+          <div className="memo-callout mb-5 border-l-amber-500" role="status" data-testid="pursuit-worker-unavailable">
+            <p className="text-sm">
+              {PURSUIT_WORKER_UNAVAILABLE_MESSAGE}
+            </p>
+          </div>
+        )}
+        {preparing && !workerUnavailable && (
           <div className="memo-callout mb-5">
             <p className="text-sm">
               {view.pursuit.preparationState === "DERIVING"
@@ -268,6 +395,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
             artifact={resume}
             claims={view.claims}
             busy={busy}
+            approvalBlockers={resume ? approvalBlockersByArtifact[resume.id] ?? [] : []}
             onSave={(artifactId, content, signals, approve) =>
               handleSave(artifactId, content, signals, approve)
             }
@@ -279,6 +407,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
           <OutreachKit
             artifacts={view.artifacts}
             busy={busy}
+            approvalBlockersByArtifact={approvalBlockersByArtifact}
             onSave={(artifactId, content, signals, approve) =>
               handleSave(artifactId, content, signals, approve)
             }
@@ -293,6 +422,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
           <InterviewBriefPanel
             artifact={interview}
             busy={busy}
+            approvalBlockers={interview ? approvalBlockersByArtifact[interview.id] ?? [] : []}
             onSave={(artifactId, content, signals, approve) =>
               handleSave(artifactId, content, signals, approve)
             }

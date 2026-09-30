@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { CandidateProjectionBuilderImpl } from "@/lib/intelligence/builders/CandidateProjectionBuilder";
+import { CandidateProjectionBuilderImpl } from "@/candidate/projection-builder";
 describe("P0-E: Candidate Level Invariant", () => {
 
   const createDirectorProfile = () => ({

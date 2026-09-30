@@ -5,7 +5,7 @@ import {
   getActiveScrapeState,
   getRunProgressState,
   abortScrapeState,
-} from "../../src/lib/intelligence/scrape-server";
+} from "@/acquisition/local-artifacts.server";
 
 const ARTIFACTS_DIR = path.join(process.cwd(), ".scraper-artifacts");
 const RUNS_DIR = path.join(ARTIFACTS_DIR, "runs");

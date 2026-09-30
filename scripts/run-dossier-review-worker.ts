@@ -2,7 +2,7 @@ import { getDatabaseAdapter } from "../src/data/database";
 import { loadMantleCredentials } from "../src/lib/model/bedrock-credentials";
 import { createDossierWriterModel } from "../src/lib/model/dossier-writer-model";
 import { createFactualReviewModel } from "../src/lib/model/factual-review-model";
-import { DossierReviewWorker } from "../src/lib/intelligence/staged/DossierReviewWorker";
+import { DossierReviewWorker } from "../src/dossier/runtime/review-worker";
 import { createSqliteModelInvocationSink } from "../src/lib/model/model-invocation";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";

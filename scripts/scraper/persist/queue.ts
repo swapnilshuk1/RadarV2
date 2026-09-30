@@ -1,7 +1,7 @@
 import type { DatabaseAdapter } from "../../../src/data/database/adapter";
 import { getDatabaseAdapter } from "../../../src/data/database";
 import crypto from "crypto";
-import { failEvaluationDependency } from '../../../src/lib/intelligence/evaluationDependency';
+import { failEvaluationDependency } from '../../../src/evaluation/dependency';
 
 export type JobStatus = "PENDING" | "LEASED" | "RUNNING" | "FAILED" | "RETRY" | "COMPLETE";
 export type FailureType = "RATE_LIMIT" | "NETWORK" | "LLM_TIMEOUT" | "PROMPT_TOO_LONG" | "PARSE_FAILURE" | "UNKNOWN" | null;

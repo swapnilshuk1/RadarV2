@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sanitizeAttentionWindow } from "../../src/lib/intelligence/preferences-server";
+import { sanitizeAttentionWindow } from "@/candidate/preferences-server";
 import { getTimeAwareGreeting } from "../../src/routes/index";
 
 // Mock Opportunity generator for deterministic testing

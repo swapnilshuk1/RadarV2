@@ -7,7 +7,7 @@
  * and ExecutionEvidenceGate pipeline.
  */
 
-import { CandidateProjection } from "../../domain/candidate_projection";
+import { CandidateProjection } from "@/candidate/projection";
 import { JobProjection } from "../../domain/job_projection";
 import { CandidateEvidenceGraph } from "../execution/CandidateEvidenceGraph";
 import { TruthPreservingRewriteEngine } from "../execution/TruthPreservingRewriteEngine";

@@ -10,8 +10,8 @@ import {
   computeSearchPlanSnapshotHash,
   computeEvaluationContextFingerprint,
   computeEvaluationIdentity,
-} from "@/lib/domain/evaluation_fingerprint";
-import { isEvaluationFresh } from "@/lib/domain/evaluation_freshness";
+} from "@/evaluation/fingerprint";
+import { isEvaluationFresh } from "@/evaluation/freshness";
 import fs from "fs";
 import path from "path";
 

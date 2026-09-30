@@ -8,13 +8,13 @@ import {
   Scripts,
   redirect,
   isRedirect,
-  useLocation,
-  useNavigate
+  useLocation
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { getSessionUserFn } from "../lib/auth/server";
-import { candidateSignature } from "../lib/personalization";
-import { OnboardingProvider, useOnboarding } from "../components/onboarding/OnboardingProvider";
+import { OnboardingProvider } from "../components/onboarding/OnboardingProvider";
+import { restorePersistedSkin, SKIN_BOOTSTRAP_SCRIPT } from "../components/skins/skin";
+import { SkinSwitcher } from "../components/skins/SkinSwitcher";
 
 import appCss from "../styles.css?url";
 
@@ -94,12 +94,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-import { getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
+import { getShortlistMetricsFn } from "@/opportunity/server";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: async ({ location }) => {
     const isPublicRoute =
       location.pathname === "/login" ||
+      location.pathname === "/skins" ||
       location.pathname === "/health/ready" ||
       location.pathname.startsWith("/api/auth") ||
       location.pathname.startsWith("/assets") ||
@@ -141,9 +142,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;1,400&family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&family=Work+Sans:wght@400;500;600&display=swap" },
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.gif", type: "image/gif" },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
     ],
   }),
   shellComponent: RootShell,
@@ -154,9 +155,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <script dangerouslySetInnerHTML={{ __html: SKIN_BOOTSTRAP_SCRIPT }} />
         <HeadContent />
       </head>
       <body className="max-w-full">
@@ -170,10 +172,6 @@ function RootShell({ children }: { children: ReactNode }) {
 function GlobalHeader() {
   const data = Route.useLoaderData();
   const location = useLocation();
-  const navigate = useNavigate();
-  const { resetOnboarding } = useOnboarding();
-  const [isDev, setIsDev] = useState(false);
-  const [isDark, setIsDark] = useState(false);
 
   const totalActiveCount = data?.metrics?.totalScreened;
   const rawSearch = location.search as { tenantId?: unknown; personId?: unknown };
@@ -181,27 +179,6 @@ function GlobalHeader() {
     typeof rawSearch.tenantId === "string" && typeof rawSearch.personId === "string"
       ? { tenantId: rawSearch.tenantId, personId: rawSearch.personId }
       : {};
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsDev(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-      setIsDark(document.documentElement.classList.contains("dark"));
-
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    if (typeof window !== "undefined") {
-      const root = document.documentElement;
-      if (root.classList.contains("dark")) {
-        root.classList.remove("dark");
-        setIsDark(false);
-      } else {
-        root.classList.add("dark");
-        setIsDark(true);
-      }
-    }
-  };
 
   const name = data?.user?.name || "Executive";
   const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "SS";
@@ -226,8 +203,8 @@ function GlobalHeader() {
         </div>
 
         {/* Navigation Bar */}
-        <nav className="flex items-center justify-end gap-1.5 overflow-x-auto">
-          <ul className="flex items-center gap-1 bg-muted/50 p-1 rounded-full border border-border/40">
+        <nav className="flex min-w-0 items-center justify-end gap-1.5 overflow-visible">
+          <ul className="flex min-w-0 items-center gap-1 overflow-x-auto bg-muted/50 p-1 rounded-full border border-border/40">
             <li>
               <Link
                 to="/"
@@ -272,50 +249,22 @@ function GlobalHeader() {
                 Opportunities
               </Link>
             </li>
-            <li>
-              <Link
-                to="/corpus"
-                className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
-                  isSelected("/corpus") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Corpus
-              </Link>
-            </li>
-            {isDev && (
-              <>
-                <li>
-                  <Link
-                    to="/design-system"
-                    className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
-                      isSelected("/design-system") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Design System
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/font-sandbox"
-                    className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
-                      isSelected("/font-sandbox") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Font Lab
-                  </Link>
-                </li>
-              </>
+            {data?.user?.role === "admin" && (
+              <li>
+                <Link
+                  to="/corpus"
+                  className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
+                    isSelected("/corpus") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Corpus
+                </Link>
+              </li>
             )}
           </ul>
 
-          {/* Theme Switcher Toggle */}
-          <button
-            onClick={toggleTheme}
-            title="Toggle theme"
-            className="ml-1 p-1.5 rounded-full border border-border/60 bg-background text-foreground hover:bg-muted transition-colors text-xs"
-          >
-            {isDark ? "☀️" : "🌙"}
-          </button>
+          {/* Appearance + interface skin */}
+          <SkinSwitcher className="ml-1 shrink-0" />
 
           <span className="ml-1 hidden shrink-0 items-center gap-2 border-l border-border/60 pl-3 sm:flex">
             <span className="grid h-6 w-6 place-items-center rounded-full bg-primary font-mono text-[0.55rem] text-primary-foreground font-bold shadow-xs">
@@ -343,8 +292,10 @@ import { ScrapeProgressPanel } from "../components/radar/ScrapeProgressPanel";
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
+  useEffect(() => restorePersistedSkin(), []);
 
   const showHeader = !location.pathname.startsWith("/login") &&
+    !location.pathname.startsWith("/skins") &&
     !location.pathname.startsWith("/api/auth") &&
     !location.pathname.startsWith("/welcome");
 

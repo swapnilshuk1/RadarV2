@@ -1,4 +1,4 @@
-import type { CandidateProfile } from "../../src/domain/candidate";
+import type { CandidateProfile } from "@/candidate/profile";
 
 /** Deliberately synthetic profile for deterministic engine/certification tests. */
 export const syntheticCandidateProfile: CandidateProfile = {

@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
-import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
+import { CanonicalIngestionService } from "@/acquisition/ingestion-service";
+import { STAGED_POLICY_VERSION } from "@/evaluation/policy";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { MemoryBlobStore } from "../../src/lib/storage/blob-store";
 import {
@@ -34,7 +35,7 @@ describe("authenticated canonical ingestion scope", () => {
       CREATE TABLE evaluation_jobs (
         id TEXT PRIMARY KEY, tenant_id TEXT, person_id TEXT, search_plan_id TEXT, canonical_job_id TEXT,
         opportunity_version TEXT, evaluation_context_fingerprint TEXT, status TEXT, attempts INTEGER, max_attempts INTEGER,
-        next_attempt_at TEXT, created_at TEXT, updated_at TEXT,
+        next_attempt_at TEXT, last_error TEXT, created_at TEXT, updated_at TEXT,
         UNIQUE(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
       );
       CREATE TABLE evaluation_requirements (
@@ -76,7 +77,7 @@ describe("authenticated canonical ingestion scope", () => {
         PRIMARY KEY(run_id, enrichment_job_id)
       );
       CREATE TABLE active_evaluation_contexts (tenant_id TEXT, person_id TEXT, search_plan_id TEXT, context_fingerprint TEXT);
-      CREATE TABLE evaluation_contexts (context_fingerprint TEXT, tenant_id TEXT, person_id TEXT);
+      CREATE TABLE evaluation_contexts (context_fingerprint TEXT, tenant_id TEXT, person_id TEXT, policy_version TEXT NOT NULL);
       CREATE TABLE recovery_queue (id TEXT PRIMARY KEY, tenant_id TEXT, canonical_job_id TEXT, opportunity_version_id TEXT, source TEXT, canonical_url TEXT, reason TEXT, failure_class TEXT, attempt_count INTEGER, status TEXT, next_attempt_at TEXT, created_at TEXT);
 
       INSERT INTO tenants VALUES ('tenant_A'), ('tenant_B');
@@ -85,7 +86,7 @@ describe("authenticated canonical ingestion scope", () => {
         ('plan_A', 'tenant_A', 'person_A', 'active', '{"targetSeniority":["VP"],"targetRoles":["VP Growth"],"targetLocations":["Gurugram"]}'),
         ('plan_B', 'tenant_B', 'person_B', 'active', '{"targetSeniority":["VP"],"targetRoles":["VP Growth"],"targetLocations":["Gurugram"]}');
       INSERT INTO active_evaluation_contexts VALUES ('tenant_A', 'person_A', 'plan_A', 'ctx_A'), ('tenant_B', 'person_B', 'plan_B', 'ctx_B');
-      INSERT INTO evaluation_contexts VALUES ('ctx_A', 'tenant_A', 'person_A'), ('ctx_B', 'tenant_B', 'person_B');
+      INSERT INTO evaluation_contexts VALUES ('ctx_A', 'tenant_A', 'person_A', '${STAGED_POLICY_VERSION}'), ('ctx_B', 'tenant_B', 'person_B', '${STAGED_POLICY_VERSION}');
       INSERT INTO scrape_runs VALUES (
         'run_A',
         'tenant_A',

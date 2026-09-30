@@ -159,7 +159,7 @@ describe("Milestone M8 — Multi-Tenant Isolation & Adversarial Security", () =>
   });
 
   it("should fail resolveScope when user has no active tenant memberships", async () => {
-    const { resolveScope } = await import("../../src/lib/intelligence/opportunity-service");
+    const { resolveScope } = await import("@/opportunity/service");
     // Synthetic orphan user with no memberships
     sqliteDb.exec(`INSERT INTO users (id, email) VALUES ('orphan_user', 'orphan@test.com')`);
 

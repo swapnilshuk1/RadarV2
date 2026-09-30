@@ -21,7 +21,7 @@ import {
   RICH_DOSSIER_VERSION,
   SqliteRichDossierStore,
 } from "../src/data/sqlite/repositories/SqliteRichDossierStore";
-import { StagedServingPublisher } from "../src/lib/intelligence/staged/StagedServingPublisher";
+import { StagedServingPublisher } from "../src/dossier/runtime/serving-publisher";
 import { createStagedEvaluationFingerprint } from "../src/dossier/staged-decision-integrity";
 
 type Row = Record<string, unknown>;

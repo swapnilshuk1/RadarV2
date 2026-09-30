@@ -6,7 +6,7 @@ import { setBlobStore, MemoryBlobStore, supportsCrossHostEnrichment } from "../.
 import { EnrichmentQueue } from "../../scripts/scraper/persist/queue";
 import { EXTRACTOR_VERSION } from "../../scripts/scraper/versions";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
-import type { StorageProvider } from "../../src/domain/repositories";
+import type { StorageProvider } from "../../src/data/storage-provider";
 
 // Mock the LLM extraction step so we don't hit OpenAI, but still produce a valid dimension set.
 vi.mock("../../scripts/scraper/extract/extractor", () => ({

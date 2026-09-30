@@ -1,7 +1,7 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { PersonStore } from "../../../domain/repositories";
 import type { Person, ResumeVersion } from "../../../domain/entities";
-import { type CandidateProjection, validateCandidateProjection } from "../../../lib/domain/candidate_projection";
+import { type CandidateProjection, validateCandidateProjection } from "@/candidate/projection";
 import type { AuthorizedPersonScope } from "../../../lib/security/auth";
 import { TenantIsolationError } from "../../../lib/security/auth";
 import { versionCandidateProjection } from "./profile-projection-version";

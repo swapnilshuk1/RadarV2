@@ -107,6 +107,23 @@ export async function listClaims(scope: Scope): Promise<CandidateClaim[]> {
   return rows.map(toClaim);
 }
 
+/** Pursuit reads remain pinned even after the Profile vault moves to a newer CV. */
+export async function listClaimsForProfile(scope: Scope, profileVersion: string): Promise<CandidateClaim[]> {
+  if (!profileVersion) throw new Error("PURSUIT_PROFILE_LINEAGE_MISSING");
+  const rows = await db().many<ClaimRow>(
+    `SELECT c.${CLAIM_COLUMNS.replace(/,\s*/g, ", c.")} FROM candidate_claims c
+     WHERE c.tenant_id = ? AND c.person_id = ? AND EXISTS (
+       SELECT 1 FROM profile_projection_source_bindings b
+       WHERE b.tenant_id = c.tenant_id AND b.person_id = c.person_id
+         AND b.profile_version = ? AND b.evidence_graph_id = c.source_evidence_graph_id
+     )
+     ORDER BY CASE c.claim_type WHEN 'ACHIEVEMENT' THEN 0 WHEN 'LEADERSHIP' THEN 1
+       WHEN 'EMPLOYMENT' THEN 2 ELSE 3 END, c.created_at ASC`,
+    [scope.tenantId, scope.personId, profileVersion],
+  );
+  return rows.map(toClaim);
+}
+
 export interface ClaimUpsert {
   statement: string;
   claimType: ClaimType;
@@ -130,7 +147,7 @@ export interface ClaimUpsert {
  * Reprojection of one graph is idempotent; a later immutable graph creates a
  * distinct claim even when its extractor reuses the same fact ID.
  */
-export async function upsertClaims(scope: Scope, claims: readonly ClaimUpsert[]): Promise<number> {
+export async function upsertClaims(scope: Scope, claims: readonly ClaimUpsert[], currentProjection = true): Promise<number> {
   if (claims.length === 0) return 0;
   const timestamp = now();
   let written = 0;
@@ -142,7 +159,7 @@ export async function upsertClaims(scope: Scope, claims: readonly ClaimUpsert[])
          source_evidence_graph_id, source_fact_id, source_locator, provenance,
          verification_state, confidence, metric_locked, created_at, updated_at,
          source_ordinal, profile_version, current_projection)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT (tenant_id, person_id, source_evidence_graph_id, source_fact_id) DO UPDATE SET
          statement = excluded.statement,
          claim_type = excluded.claim_type,
@@ -155,7 +172,7 @@ export async function upsertClaims(scope: Scope, claims: readonly ClaimUpsert[])
          confidence = excluded.confidence,
          source_ordinal = excluded.source_ordinal,
          profile_version = excluded.profile_version,
-         current_projection = 1,
+         current_projection = CASE WHEN excluded.current_projection = 1 THEN 1 ELSE candidate_claims.current_projection END,
          updated_at = excluded.updated_at`,
       [
         `claim-${randomUUID()}`,
@@ -180,6 +197,7 @@ export async function upsertClaims(scope: Scope, claims: readonly ClaimUpsert[])
         timestamp,
         claim.sourceOrdinal ?? null,
         claim.profileVersion ?? null,
+        currentProjection ? 1 : 0,
       ],
     );
     written += 1;
@@ -206,6 +224,21 @@ export async function markCurrentProjection(
      WHERE tenant_id = ? AND person_id = ? AND provenance = 'SOURCE_BACKED'`,
     [...graphIds, scope.tenantId, scope.personId],
   );
+}
+
+/** Documents in the canonical binding, for anchor-CV selection. */
+export async function loadSourceDocumentTexts(
+  scope: Scope,
+  documentIds: readonly string[],
+): Promise<Map<string, string>> {
+  if (documentIds.length === 0) return new Map();
+  const marks = documentIds.map(() => "?").join(",");
+  const rows = await db().many<{ document_id: string; raw_text: string }>(
+    `SELECT document_id, raw_text FROM document_contents
+     WHERE tenant_id = ? AND person_id = ? AND document_id IN (${marks})`,
+    [scope.tenantId, scope.personId, ...documentIds],
+  );
+  return new Map(rows.map((row) => [row.document_id, row.raw_text]));
 }
 
 /** Documents in the canonical binding, for anchor-CV selection. */
@@ -253,6 +286,25 @@ export async function ledgerCoverage(
     sourceBacked: row?.source_backed ?? 0,
     documents: row?.documents ?? 0,
   };
+}
+
+export async function ledgerCoverageForProfile(
+  scope: Scope,
+  profileVersion: string,
+): Promise<{ total: number; sourceBacked: number; documents: number }> {
+  if (!profileVersion) throw new Error("PURSUIT_PROFILE_LINEAGE_MISSING");
+  const row = await db().one<{ total: number; source_backed: number; documents: number }>(
+    `SELECT COUNT(*) AS total,
+            SUM(CASE WHEN c.provenance = 'SOURCE_BACKED' THEN 1 ELSE 0 END) AS source_backed,
+            COUNT(DISTINCT c.source_document_id) AS documents
+     FROM candidate_claims c WHERE c.tenant_id = ? AND c.person_id = ? AND EXISTS (
+       SELECT 1 FROM profile_projection_source_bindings b
+       WHERE b.tenant_id = c.tenant_id AND b.person_id = c.person_id
+         AND b.profile_version = ? AND b.evidence_graph_id = c.source_evidence_graph_id
+     )`,
+    [scope.tenantId, scope.personId, profileVersion],
+  );
+  return { total: row?.total ?? 0, sourceBacked: row?.source_backed ?? 0, documents: row?.documents ?? 0 };
 }
 
 // ---------------------------------------------------------------------------

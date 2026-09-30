@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { materializeExistingCanonicalPool } from "@/lib/intelligence/context-materialization";
+import { materializeExistingCanonicalPool } from "@/evaluation/context-materialization";
 
 const scope = { tenantId: "tenant", personId: "person", roles: [] };
 const prepared = {

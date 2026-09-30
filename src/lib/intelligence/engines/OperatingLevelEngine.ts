@@ -5,7 +5,7 @@
  * from assembled projections or evidence. Keeps builders purely as data assemblers.
  */
 
-import type { CandidateProjection } from "../../domain/candidate_projection";
+import type { CandidateProjection } from "@/candidate/projection";
 import { OperatingLevelClassifier } from "../classifiers/OperatingLevelClassifier";
 import { WorkNatureClassifier } from "../classifiers/WorkNatureClassifier";
 import { DecisionAuthorityClassifier } from "../classifiers/DecisionAuthorityClassifier";

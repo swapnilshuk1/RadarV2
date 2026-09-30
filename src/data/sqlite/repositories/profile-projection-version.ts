@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { DatabaseAdapter } from "../../database/adapter";
-import { validateCandidateProjection, type CandidateProjection } from "../../../lib/domain/candidate_projection";
+import { validateCandidateProjection, type CandidateProjection } from "@/candidate/projection";
 
 export interface ExactCandidateProjectionScope {
   tenantId: string;

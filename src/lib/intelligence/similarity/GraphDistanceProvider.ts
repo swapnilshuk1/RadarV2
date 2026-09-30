@@ -1,7 +1,7 @@
 // src/lib/intelligence/similarity/GraphDistanceProvider.ts
 
 import type { SimilarityFeatureProvider, SimilarityContribution } from "./SimilarityTypes";
-import type { Opportunity } from "../../../data/opportunity-fixtures";
+import type { Opportunity } from "@/opportunity/contracts";
 
 export class GraphDistanceProvider implements SimilarityFeatureProvider {
   public name = "GraphDistanceProvider";

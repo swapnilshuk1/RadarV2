@@ -8,7 +8,7 @@
  * Verdict: PURSUE (high fit)
  */
 
-import type { OpportunitySource } from "@/data/opportunity-fixtures";
+import type { OpportunitySource } from "@/opportunity/contracts";
 
 const RAW_TEXT = `
 Chief Marketing Officer - BMW India

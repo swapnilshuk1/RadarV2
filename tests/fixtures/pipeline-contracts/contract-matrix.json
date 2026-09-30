@@ -2,7 +2,7 @@
   "schemaVersion": "phase0-contract-matrix/v1",
   "criteriaSource": "src/data/search-plan.json#candidateIntent",
   "generatedFromExistingAuthorities": [
-    "src/lib/acquisition/validator.ts#ResponseValidator",
+    "src/acquisition/validator.ts#ResponseValidator",
     "src/lib/intelligence/builders/JobProjectionBuilder.ts",
     "src/lib/intelligence/AttentionGate.ts",
     "src/lib/intelligence/engine.ts#runEngineSingleIntrinsic"

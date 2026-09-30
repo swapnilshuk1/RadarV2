@@ -6,13 +6,20 @@ import {
   saveIntentFn,
   getLatestIntentFn,
   getProfileOverviewFn,
-  getDefaultProfileScopeFn
-} from "../lib/intelligence/document-server";
+  getDefaultProfileScopeFn,
+  refreshRecommendationsFn,
+} from "@/candidate/server";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 import { useAttentionPreference } from "../lib/attention-store";
-import { getUserPreferencesFn } from "../lib/intelligence/preferences-server";
-import { PROFILE_PIPELINE_STAGES, isIntentRequiredProfileState, resolveProfilePipelineStepState } from "../lib/intelligence/profile-pipeline-presentation";
-import { resolveIntentActivationPresentation } from "../lib/intelligence/profile-intent-presentation";
+import { getUserPreferencesFn } from "@/candidate/preferences-server";
+import {
+  PROFILE_PIPELINE_STAGES,
+  isIntentRequiredProfileState,
+  resolveProfilePipelineStepState,
+  resolveIntentActivationPresentation,
+  profilePollDelay,
+  shouldPollProfile,
+} from "@/candidate/presentation";
 import { getPursuitVaultFn } from "../pursuit/server";
 import { ArchetypeVault } from "../pursuit/components/ArchetypeVault";
 
@@ -89,6 +96,8 @@ function ProfilePage() {
   const [isSavingIntent, setIsSavingIntent] = useState(false);
   const [intentSavedMsg, setIntentSavedMsg] = useState("");
   const [intentActivationPending, setIntentActivationPending] = useState(false);
+  const [refreshingRecommendations, setRefreshingRecommendations] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   // Upload & Pipeline state
   const [pasteText, setPasteText] = useState("");
@@ -98,15 +107,33 @@ function ProfilePage() {
   const [pipelineStatus, setPipelineStatus] = useState<string | null>(overview.document?.status || null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const displayedPipelineStage = intent ? "COMPLETED" : pipelineStage;
+  const recommendationFreshness = refreshingRecommendations ? "REFRESHING" : overview.recommendationFreshness.state;
+
+  const handleRefreshRecommendations = async () => {
+    setRefreshingRecommendations(true);
+    setRefreshError(null);
+    try {
+      await refreshRecommendationsFn({ data: requireScope() });
+      await router.invalidate();
+    } catch (error) {
+      setRefreshError(error instanceof Error ? error.message : "Recommendation refresh failed.");
+    } finally {
+      setRefreshingRecommendations(false);
+    }
+  };
 
   // Poll pipeline stage status when a document upload is in progress
   useEffect(() => {
     if (!activeDocId || pipelineStatus === "COMPLETED" || pipelineStatus === "FAILED") return;
-
-    const interval = setInterval(async () => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let ticks = 0;
+    const check = async () => {
+      if (cancelled || !shouldPollProfile(pipelineStatus, document.visibilityState === "visible")) return;
+      ticks += 1;
       try {
         const res = await getPipelineStatusFn({ data: { ...requireScope(), documentId: activeDocId } });
+        if (cancelled) return;
         if (res.success && res.stage) {
           setPipelineStage(res.stage);
           setPipelineStatus(res.status || "PROCESSING");
@@ -115,17 +142,33 @@ function ProfilePage() {
             markEvidenceProvided();
             setIsUploading(false);
             await router.invalidate();
+            return;
           } else if (res.status === "FAILED") {
             setUploadError(res.errorMessage || "Pipeline processing failed.");
             setIsUploading(false);
+            return;
           }
         }
       } catch (err: any) {
         console.error("Status check error:", err);
       }
-    }, 1200);
-
-    return () => clearInterval(interval);
+      if (!cancelled && document.visibilityState === "visible") timer = setTimeout(check, profilePollDelay(ticks));
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && !cancelled) {
+        clearTimeout(timer);
+        timer = setTimeout(check, 0);
+      } else {
+        clearTimeout(timer);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    if (document.visibilityState === "visible") timer = setTimeout(check, profilePollDelay(0));
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [activeDocId, pipelineStatus, router, markEvidenceProvided, requireScope]);
 
   const fileToBase64 = (fileToConvert: File): Promise<string> => {
@@ -264,9 +307,7 @@ function ProfilePage() {
     { id: "ONTOLOGY_RESOLVED", label: "Hierarchical Concept Resolution (v14.2.1)" },
     { id: "PROJECTION_BUILT", label: "Candidate Projection Assembled" },
     { id: "INFERENCE_COMPLETE", label: "Executive Level & Scope Inferred" },
-    { id: "PROFILE_READY", label: "Profile Ready — Career Intent Required" },
-    { id: "EVALUATED", label: "Executive Briefs & Similarity Scores Refreshed" },
-    { id: "COMPLETED", label: "Complete" }
+    { id: "PROFILE_READY", label: intent ? "Profile Ready" : "Profile Ready — Career Intent Required" },
   ];
 
   let headerEyebrow = "◆ EXECUTIVE ADVISORY PROFILE";
@@ -297,6 +338,22 @@ function ProfilePage() {
           {overview.name} · {headerSubtitle}
         </p>
       </div>
+
+      {recommendationFreshness === "PROFILE_UPDATED" && (
+        <div role="status" className="rounded border border-amber-600/40 bg-amber-50 p-4 text-sm">
+          <strong>Profile updated</strong>
+          <p>Your current recommendations were evaluated against an earlier profile.</p>
+          {intent && <button type="button" onClick={handleRefreshRecommendations} className="mt-3 rounded bg-foreground px-4 py-2 text-background">Refresh recommendations</button>}
+        </div>
+      )}
+      {recommendationFreshness === "NO_ACTIVE_CONTEXT" && intent && overview.recommendationFreshness.latestProfileVersion && (
+        <div role="status" className="rounded border p-4 text-sm">
+          <p>Your profile is ready for recommendation evaluation.</p>
+          <button type="button" onClick={handleRefreshRecommendations} className="mt-3 rounded bg-foreground px-4 py-2 text-background">Refresh recommendations</button>
+        </div>
+      )}
+      {recommendationFreshness === "REFRESHING" && <p role="status">Refreshing recommendations…</p>}
+      {refreshError && <p role="alert">{refreshError}</p>}
 
       {/* Grid Layout — Continuous Composition */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
@@ -425,7 +482,7 @@ function ProfilePage() {
               </span>
               <div className="space-y-2">
                 {stages.map((st) => {
-                  const stepState = resolveProfilePipelineStepState(displayedPipelineStage, st.id);
+                  const stepState = resolveProfilePipelineStepState(pipelineStage, st.id);
                   const isDone = stepState === "complete";
                   const isCurrent = stepState === "current";
                   return (
@@ -445,7 +502,7 @@ function ProfilePage() {
                   );
                 })}
               </div>
-              {isIntentRequiredProfileState(displayedPipelineStage) && (
+              {isIntentRequiredProfileState(pipelineStage) && !intent && (
                 <p className="mt-3 text-sm text-caution">Profile evidence is ready. Save explicit career intent before recommendation evaluation can begin.</p>
               )}
             </div>

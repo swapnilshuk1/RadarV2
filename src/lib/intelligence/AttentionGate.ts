@@ -4,7 +4,7 @@ import type {
   EligibilitySpec,
   LocationEligibilityPolicy,
   SearchCriteriaPayload,
-} from "@/lib/domain/evaluation_context";
+} from "@/evaluation/context-contracts";
 import type { JobProjection } from "@/lib/domain/job_projection";
 import { GeographyResolver } from "@/lib/intelligence/semantic/resolvers/GeographyResolver";
 

@@ -1,4 +1,4 @@
-import { CandidateProjection } from "../../domain/candidate_projection";
+import { CandidateProjection } from "@/candidate/projection";
 import { EvaluationJobProjection } from "../../domain/job_projection";
 import { CareerValueBreakdown, DimensionHeuristic } from "../../domain/semantic";
 

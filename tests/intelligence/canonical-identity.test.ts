@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { getRepositories } from "../../src/data/sqlite/provider";
 import { runMigrations } from "../../src/data/sqlite/migrations/runner";
-import { validateCandidateProjection } from "../../src/lib/domain/candidate_projection";
-import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
+import { validateCandidateProjection } from "@/candidate/projection";
+import { OpportunityService } from "@/opportunity/service";
 
 const runLiveIdentityAudit = process.env.RADAR_RUN_LIVE_IDENTITY_TESTS === "true";
 

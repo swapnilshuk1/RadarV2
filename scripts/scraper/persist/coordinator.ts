@@ -1,4 +1,4 @@
-import { AcquisitionIntegrityError } from "../../../src/lib/acquisition/CanonicalIngestionService";
+import { AcquisitionIntegrityError } from "@/acquisition/ingestion-service";
 
 const TRANSIENT_SQLITE_CODES = new Set([
   "SQLITE_BUSY",

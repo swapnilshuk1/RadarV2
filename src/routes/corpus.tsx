@@ -1,26 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getCorpusHealthFn, triggerCorpusRegenerationFn, getCorpusRegenerationStatusFn } from "../lib/intelligence/scrape-server";
+import { getCorpusHealthFn, triggerCorpusRegenerationFn, getCorpusRegenerationStatusFn } from "@/acquisition/server";
 import type { CorpusHealthStats } from "../../scripts/corpus/health";
-
-const DEFAULT_STATS: CorpusHealthStats = {
-  totalJobs: 0,
-  textCoveragePercent: 100.0,
-  avgDescLength: 4200,
-  capabilityCoveragePercent: 95.0,
-  avgDimensionConfidencePercent: 85,
-  avgEvidenceQuotesPerJob: 3,
-  extractionVersion: "4.5.0",
-  editorialCoveragePercent: 100,
-};
 
 export const Route = createFileRoute("/corpus")({
   loader: async () => {
     try {
       const stats = await getCorpusHealthFn();
-      return { stats: stats || DEFAULT_STATS };
-    } catch {
-      return { stats: DEFAULT_STATS };
+      return stats ? { stats, error: null } : { stats: null, error: "UNAVAILABLE" as const };
+    } catch (cause) {
+      const forbidden = /FORBIDDEN|403|administrator/i.test(cause instanceof Error ? cause.message : String(cause));
+      return { stats: null, error: forbidden ? "UNAUTHORIZED" as const : "UNAVAILABLE" as const };
     }
   },
   head: () => ({
@@ -35,19 +25,32 @@ export const Route = createFileRoute("/corpus")({
 
 function CorpusHealth() {
   const loaderData = Route.useLoaderData();
-  const [stats, setStats] = useState<CorpusHealthStats>(loaderData?.stats || DEFAULT_STATS);
+  const [stats, setStats] = useState<CorpusHealthStats | null>(loaderData.stats);
+  const hasStats = stats !== null;
+  const [availabilityError, setAvailabilityError] = useState(loaderData.error);
   const [refreshing, setRefreshing] = useState(false);
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
   const [currentStage, setCurrentStage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setStats(loaderData.stats);
+    setAvailabilityError(loaderData.error);
+  }, [loaderData.stats, loaderData.error]);
 
   const fetchStats = useCallback(async () => {
     try {
       const res = await getCorpusHealthFn();
       if (res) {
         setStats(res);
+        setAvailabilityError(null);
+      } else {
+        setStats(null);
+        setAvailabilityError("UNAVAILABLE");
       }
     } catch (err) {
       console.error("Failed to fetch corpus stats:", err);
+      setStats(null);
+      setAvailabilityError("UNAVAILABLE");
     }
   }, []);
 
@@ -58,6 +61,7 @@ function CorpusHealth() {
 
   // Poll background corpus status
   useEffect(() => {
+    if (!hasStats) return;
     let timer: NodeJS.Timeout | null = null;
 
     const pollStatus = async () => {
@@ -92,7 +96,7 @@ function CorpusHealth() {
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [fetchStats]);
+  }, [fetchStats, hasStats]);
 
   const handleRegenerate = async () => {
     setRefreshing(true);
@@ -136,6 +140,19 @@ function CorpusHealth() {
       setRefreshing(false);
     }
   };
+
+  if (!stats) {
+    return (
+      <main className="memo-container py-16" role="alert">
+        <h1 className="font-serif text-3xl">Corpus health unavailable</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          {availabilityError === "UNAUTHORIZED"
+            ? "Corpus health is available to tenant administrators only."
+            : "Corpus health could not be loaded. Try again later."}
+        </p>
+      </main>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground antialiased font-sans pb-24">

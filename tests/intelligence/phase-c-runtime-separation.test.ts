@@ -12,8 +12,8 @@ const source = (relative: string) => fs.readFileSync(path.join(root, relative), 
 
 describe("Phase C runtime separation", () => {
   it("keeps worker loops out of web server actions", () => {
-    const scrapeServer = source("src/lib/intelligence/scrape-server.ts");
-    const evaluationServer = source("src/lib/intelligence/evaluation-server.ts");
+    const scrapeServer = source("src/acquisition/server.ts");
+    const evaluationServer = source("src/evaluation/server.ts");
     expect(scrapeServer).not.toContain('import("../../../scripts/scrape")');
     expect(scrapeServer).not.toContain("runCorpusPipeline");
     expect(evaluationServer).not.toContain("startGlobalDaemon");
@@ -40,6 +40,8 @@ describe("Phase C runtime separation", () => {
     expect(devSupervisor).toContain('args: ["--import", "tsx", "scripts/enrich.ts"]');
     expect(devSupervisor).toContain('args: ["--import", "tsx", "scripts/process-document-jobs.ts"]');
     expect(devSupervisor).toContain('args: ["--import", "tsx", "scripts/run-corpus-regeneration-worker.ts"]');
+    expect(devSupervisor).toContain("RADAR_EXPECTED_DB_TARGET_FINGERPRINT");
+    expect(devSupervisor).toContain("DATABASE_TARGET_MISMATCH");
   });
 
   it("classifies operational and invalid-output model failures differently", () => {
@@ -52,6 +54,6 @@ describe("Phase C runtime separation", () => {
 
   it("does not serve an unreviewed dossier draft as canonical prose", () => {
     expect(source("src/data/sqlite/repositories/SqliteOpportunityQueries.ts")).toContain("const dossier = reviewed;");
-    expect(source("src/lib/intelligence/staged/StagedServingPublisher.ts")).toContain("const dossier = reviewed;");
+    expect(source("src/dossier/runtime/serving-publisher.ts")).toContain("const dossier = reviewed;");
   });
 });

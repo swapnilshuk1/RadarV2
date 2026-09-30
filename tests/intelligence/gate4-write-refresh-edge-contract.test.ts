@@ -5,9 +5,11 @@ import { runMigrations } from "../../src/data/sqlite/migrations/runner";
 import { SqliteDocumentStore } from "../../src/data/sqlite/repositories/SqliteDocumentStore";
 import { SqliteEvaluationContextStore } from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
 import { requireDecisionAcknowledgement } from "../../src/lib/intelligence/decision-acknowledgement";
-import { resolveProjectionCompletionStage } from "../../src/lib/intelligence/pipeline/projection-completion-state";
-import { resolveProfilePipelineStepState } from "../../src/lib/intelligence/profile-pipeline-presentation";
-import { resolveIntentActivationPresentation } from "../../src/lib/intelligence/profile-intent-presentation";
+import { resolveProjectionCompletionStage } from "@/candidate/pipeline-state";
+import {
+  resolveProfilePipelineStepState,
+  resolveIntentActivationPresentation,
+} from "@/candidate/presentation";
 
 async function createDocumentFixture() {
   const db = new SqliteAdapter(new Database(":memory:"));

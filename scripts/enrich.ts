@@ -7,7 +7,7 @@ import { ingestIntoSqlite } from "./scraper/persist/ingest";
 import { writeExtraction, readExtractionIfFresh, writeLiveScraped, collectRecords } from "./scraper/persist/writer";
 import { EXTRACTOR_VERSION } from "./scraper/versions";
 import type { DetailedCard } from "./scraper/types";
-import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
+import { resolveCanonicalIdentity } from "@/acquisition/canonical-identity";
 import { makeLogger } from "./scraper/utils/logger";
 import { CONFIG } from "./scraper/config";
 import { getDatabaseAdapter, type DatabaseAdapter } from "../src/data/database";
@@ -69,7 +69,7 @@ export function assertCanonicalPayloadIdentity(
 export async function processJob(
   queue: EnrichmentQueue, 
   job: import("./scraper/persist/queue").EnrichmentJob,
-  deps?: { repos?: import("../src/domain/repositories").StorageProvider }
+  deps?: { repos?: import("../src/data/storage-provider").StorageProvider }
 ): Promise<{llmMs: number; busyMs: number; dimensions?: any}> {
   const leaseOwner = job.lease_owner;
   if (!leaseOwner) throw new Error("ENRICHMENT_LEASE_OWNER_MISSING");
@@ -556,7 +556,7 @@ export async function enrichJobsForRun(
   runId: string,
   deps?: {
     queue?: EnrichmentQueue;
-    repos?: import("../src/domain/repositories").StorageProvider;
+    repos?: import("../src/data/storage-provider").StorageProvider;
     pipelineVersion?: string;
     /** Explicit operator action may enrich captures from a stopped scrape. */
     allowTerminalRun?: boolean;

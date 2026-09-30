@@ -90,7 +90,7 @@ describe("Checkpoint B: Canonical Scraper Identity and Tenant Isolation Contract
   });
 
   it("Invariant 6: Zero 'default_tenant' or fabricated permissions in scraper server or runner code", () => {
-    const scrapeServerPath = path.resolve(process.cwd(), "src/lib/intelligence/scrape-server.ts");
+    const scrapeServerPath = path.resolve(process.cwd(), "src/acquisition/server.ts");
     const scrapeServerCode = fs.readFileSync(scrapeServerPath, "utf-8");
 
     // Must not contain default_tenant fallback

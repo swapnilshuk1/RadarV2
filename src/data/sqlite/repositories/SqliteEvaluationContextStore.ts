@@ -16,11 +16,11 @@ import type {
   SearchPlanSnapshot,
   SearchCriteriaPayload,
   EvaluationContext,
-} from "@/lib/domain/evaluation_context";
+} from "@/evaluation/context-contracts";
 import {
   computeSearchPlanSnapshotHash,
   computeEvaluationContextFingerprint,
-} from "@/lib/domain/evaluation_fingerprint";
+} from "@/evaluation/fingerprint";
 import crypto from "node:crypto";
 
 export interface SearchPlanActivationInput {

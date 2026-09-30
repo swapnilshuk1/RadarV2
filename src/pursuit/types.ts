@@ -115,6 +115,25 @@ export const pursuitStatuses = [
 ] as const;
 export type PursuitStatus = (typeof pursuitStatuses)[number];
 
+export const activePursuitStatuses = [
+  "PREPARING",
+  "READY",
+  "OUTREACH_SENT",
+  "FIRST_CONVERSATION",
+  "INTERVIEWING",
+  "OFFER",
+] as const satisfies readonly PursuitStatus[];
+
+export const terminalPursuitStatuses = [
+  "CLOSED_WON",
+  "CLOSED_LOST",
+  "WITHDRAWN",
+] as const satisfies readonly PursuitStatus[];
+
+export function isTerminalPursuitStatus(status: PursuitStatus): boolean {
+  return terminalPursuitStatuses.includes(status as (typeof terminalPursuitStatuses)[number]);
+}
+
 export const pursuitStatusLabels: Record<PursuitStatus, string> = {
   PREPARING: "Preparing",
   READY: "Ready to send",
@@ -128,6 +147,16 @@ export const pursuitStatusLabels: Record<PursuitStatus, string> = {
 };
 
 export type PreparationState = "QUEUED" | "DERIVING" | "READY" | "FAILED";
+
+export const PURSUIT_WORKER_UNAVAILABLE_MESSAGE =
+  "Preparation service is currently unavailable. Your pursuit is saved and will continue when the worker is available.";
+
+export function preparationServiceUnavailable(
+  state: PreparationState,
+  workerAvailable: boolean | null | undefined,
+): boolean {
+  return state === "QUEUED" && workerAvailable === false;
+}
 
 /** Canonical opportunity/evaluation lineage a pursuit or strategy version was derived from. */
 export interface PursuitLineage {
@@ -248,6 +277,26 @@ export const artifactLabels: Record<ArtifactType, string> = {
 
 export type ArtifactStatus = "DRAFT" | "USER_CUSTOMIZED" | "APPROVED";
 
+export const resumeTemplateIds = ["EXECUTIVE_BRIEF", "EDITORIAL", "ATS_PLAIN"] as const;
+export type ResumeTemplateId = (typeof resumeTemplateIds)[number];
+
+export const resumeTemplates: Array<{ id: ResumeTemplateId; label: string; description: string }> = [
+  { id: "EXECUTIVE_BRIEF", label: "Executive Brief", description: "Structured executive presentation with strong metric emphasis." },
+  { id: "EDITORIAL", label: "Editorial", description: "Quieter, narrative-led presentation for senior leadership roles." },
+  { id: "ATS_PLAIN", label: "ATS Plain", description: "Minimal formatting for application portals and parsing." },
+];
+
+export interface ResumeMetric {
+  value: string;
+  caption: string;
+  claimId: string | null;
+}
+
+export interface ResumeExportOptions {
+  resumeTemplate?: ResumeTemplateId;
+  metricGrid?: boolean;
+}
+
 export interface ResumeBullet {
   claimId: string | null;
   text: string;
@@ -274,6 +323,8 @@ export interface ResumeContent {
   impactAnchors: ResumeBullet[];
   roles: ResumeRole[];
   capabilities: string[];
+  /** Source-backed figures selected for template presentation. */
+  metricHighlights?: ResumeMetric[];
   /** Source CV whose structure this resume was transformed from; null = assembled from the ledger. */
   anchorDocumentId?: string | null;
 }
@@ -349,6 +400,11 @@ const resumeSchema = z.object({
     )
     .max(20),
   capabilities: z.array(z.string().max(160)).max(40),
+  metricHighlights: z.array(z.object({
+    value: z.string().min(1).max(80),
+    caption: z.string().min(1).max(180),
+    claimId: z.string().min(1).nullable(),
+  })).max(8).optional(),
   anchorDocumentId: z.string().min(1).nullable().optional(),
 });
 
@@ -407,6 +463,9 @@ export function approvalBlockers(content: ArtifactContent): string[] {
       blockers.push("Some bullets still contain unresolved placeholders.");
     if (r.impactAnchors.some((b) => b.provenance === "TARGET_CONTEXT"))
       blockers.push("An impact anchor rests on target-role context rather than your own evidence.");
+    const skeletal = all.filter((b) => b.text.trim().split(/\s+/).length < 7);
+    if (all.length >= 3 && skeletal.length > all.length / 2)
+      blockers.push("Most résumé bullets are too brief to present as complete achievements.");
   }
   if (content.kind === "MESSAGE") {
     const body = content.message.body.trim();
@@ -498,4 +557,6 @@ export interface CockpitView {
   ledgerCoverage: { total: number; sourceBacked: number; documents: number };
   /** Latest durable preparation job for this pursuit, if any. */
   preparation?: { status: string; attempts: number; lastError: string | null; createdAt: string } | null;
+  /** Release- and database-matched Pursuit worker liveness when preparation is queued. */
+  workerAvailable?: boolean | null;
 }

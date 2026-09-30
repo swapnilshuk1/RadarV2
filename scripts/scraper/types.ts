@@ -5,7 +5,7 @@
 //   Persistence  -> live-scraped.json    (approved system-of-record view)
 
 import type { PortalAuthSession } from "../../src/lib/security/PortalAuthSession";
-import type { FailureClass } from "../../src/lib/acquisition/failure-taxonomy";
+import type { FailureClass } from "@/acquisition/failure-taxonomy";
 
 export type PortalName = "LinkedIn" | "Indeed" | "Naukri";
 

@@ -4,7 +4,7 @@ import { SimilarityFeatureProvider, SimilarityContribution, SimilarityResult } f
 import { GraphDistanceProvider } from "./GraphDistanceProvider";
 import { CareerTrajectoryProvider } from "./CareerTrajectoryProvider";
 import { IndustryAdjacencyProvider } from "./IndustryAdjacencyProvider";
-import type { Opportunity } from "../../../data/opportunity-fixtures";
+import type { Opportunity } from "@/opportunity/contracts";
 
 export interface FeatureRegistryItem {
   provider: SimilarityFeatureProvider;

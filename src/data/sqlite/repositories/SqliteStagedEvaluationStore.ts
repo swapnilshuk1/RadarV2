@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseAdapter } from '@/data/database';
 import {parseCanonicalStagedDecisionResult} from '@/dossier/staged-decision-integrity';
-import {stagedContractForPolicy} from '@/lib/intelligence/staged/stagedPolicy';
+import {stagedContractForPolicy} from '@/evaluation/policy';
 import type { AuthorizedPersonScope } from '@/lib/security/auth';
-export {STAGED_POLICY_VERSION,STAGED_CONTRACT_VERSION} from '@/lib/intelligence/staged/stagedPolicy';
+export {STAGED_POLICY_VERSION,STAGED_CONTRACT_VERSION} from '@/evaluation/policy';
 export const STAGED_EXTRACTION_CONTRACT_VERSION = 'staged-source-claims-v1';
 export interface StagedEvaluationIdentity { tenantId:string; personId:string; canonicalJobId:string; opportunityVersion:string; evaluationContextFingerprint:string; profileVersion:string; policyVersion:string; ontologyVersion:string; ontologyFingerprint:string; }
 export interface StagedEvaluationRecord extends StagedEvaluationIdentity { jobHash:string; inputFingerprint:string; sourceFingerprints:string[]; modelId:string; modelVersion:string; modelConfigurationFingerprint?:string; contractVersion:string; evaluationState:'COMPLETED'|'INPUT_UNAVAILABLE'; decision?:'PURSUE'|'CONSIDER'|'PASS'; screeningViability?:'STRONG'|'PLAUSIBLE'|'FRAGILE'|'BLOCKED'; blockedReason?:string; evaluation:unknown; evaluatedAt:string; }

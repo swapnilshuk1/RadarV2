@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getUserPreferencesFn, saveUserPreferencesFn, sanitizeAttentionWindow } from "./intelligence/preferences-server";
+import { getUserPreferencesFn, saveUserPreferencesFn, sanitizeAttentionWindow } from "@/candidate/preferences-server";
 
 const LOCAL_STORAGE_KEY = "radar_attention_window";
 

@@ -7,7 +7,7 @@
  * remain stable so existing decisions and navigation references are preserved.
  */
 import { getDatabaseAdapter } from "../src/data/database";
-import { extractExternalPostingUrl } from "../src/lib/acquisition/external-posting-url";
+import { extractExternalPostingUrl } from "@/acquisition/external-posting-url";
 
 interface PlaceholderRow {
   id: string;

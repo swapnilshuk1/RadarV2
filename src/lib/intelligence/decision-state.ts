@@ -1,4 +1,4 @@
-import type { DecisionVerb } from "../../data/opportunity-fixtures";
+import type { DecisionVerb } from "@/opportunity/contracts";
 
 export type UserDecisionState =
   | "NONE"

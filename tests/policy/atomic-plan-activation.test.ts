@@ -4,8 +4,9 @@ import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { SqliteEvaluationContextStore } from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import { setupLineageTestFixture, activateLineageTestContext } from "../persistence/lineage_fixture";
-import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
-import { materializeExistingCanonicalPool } from "../../src/lib/intelligence/context-materialization";
+import { CanonicalIngestionService } from "@/acquisition/ingestion-service";
+import { materializeExistingCanonicalPool } from "@/evaluation/context-materialization";
+import { STAGED_POLICY_VERSION } from "@/evaluation/policy";
 
 const scope = { tenantId: "tenant_A", personId: "person_A", roles: [] };
 const criteria = {
@@ -20,7 +21,7 @@ function activationInput(profileVersion: string) {
     criteria,
     ontologyVersion: "1.1.0",
     ontologyFingerprint: "ontology-hash-1.1.0",
-    policyVersion: "1.1.0",
+    policyVersion: STAGED_POLICY_VERSION,
     profileVersion,
     activatedBy: "intent-update",
   };
@@ -56,6 +57,10 @@ describe("Atomic career-intent plan activation", () => {
   beforeEach(async () => {
     db = new SqliteAdapter(new Database(":memory:"));
     await setupLineageTestFixture(db);
+    await db.execute(
+      `UPDATE evaluation_contexts SET policy_version = ? WHERE context_fingerprint = ?`,
+      [STAGED_POLICY_VERSION, "fingerprint_A"],
+    );
     await db.execute(
       `INSERT INTO users (id, email) VALUES (?, ?)`,
       ["person_A", "person-a@example.test"]
@@ -250,24 +255,30 @@ describe("Atomic career-intent plan activation", () => {
        WHERE search_plan_id = ? AND canonical_job_id = ?`,
       [prepared.plan.id, first.canonicalJobId]
     );
+    const requirementCount = await db.one<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM evaluation_requirements
+       WHERE evaluation_context_fingerprint = ? AND canonical_job_id = ?`,
+      [prepared.context.contextFingerprint, first.canonicalJobId],
+    );
+    const jobCount = await db.one<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM evaluation_jobs
+       WHERE evaluation_context_fingerprint = ? AND canonical_job_id = ?`,
+      [prepared.context.contextFingerprint, first.canonicalJobId],
+    );
     const evaluationCount = await db.one<{ count: number }>(
-      `SELECT COUNT(*) AS count FROM materialized_evaluations WHERE evaluation_context_fingerprint = ? AND canonical_job_id = ?`,
-      [prepared.context.contextFingerprint, first.canonicalJobId]
+      `SELECT COUNT(*) AS count FROM materialized_evaluations
+       WHERE evaluation_context_fingerprint = ? AND canonical_job_id = ?`,
+      [prepared.context.contextFingerprint, first.canonicalJobId],
     );
     expect(candidateCount?.count).toBe(1);
     expect(candidateAudit).toEqual({
       eligibility: "ELIGIBLE",
       reason_codes: JSON.stringify(["ROLE_FAMILY_MATCH"]),
     });
-    expect(evaluationCount?.count).toBe(1);
-    const evaluationPayload = await db.one<{ evaluation_json: string }>(
-      `SELECT evaluation_json FROM materialized_evaluations
-       WHERE evaluation_context_fingerprint = ? AND canonical_job_id = ?`,
-      [prepared.context.contextFingerprint, first.canonicalJobId],
-    );
-    const parsedPayload = JSON.parse(evaluationPayload!.evaluation_json) as { evaluationInputHash?: string };
-    expect((parsedPayload as { evaluationState?: string }).evaluationState).toBe("EVALUATED");
-    expect(parsedPayload.evaluationInputHash).toBeTruthy();
+    // Context materialization owns durable scheduling, not synchronous evaluation.
+    expect(requirementCount?.count).toBe(1);
+    expect(jobCount?.count).toBe(1);
+    expect(evaluationCount?.count).toBe(0);
     const secondPoolCount = await db.one<{ count: number }>(
       `SELECT COUNT(*) AS count FROM canonical_opportunities WHERE id = ?`,
       [second.canonicalJobId]

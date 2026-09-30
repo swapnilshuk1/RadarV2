@@ -122,6 +122,12 @@ function processSpecs(databaseTarget: string, fullStack: boolean): ManagedProces
 }
 async function main() {
   const identity = getDatabaseTargetIdentity();
+  const expectedDatabaseTarget = process.env.RADAR_EXPECTED_DB_TARGET_FINGERPRINT;
+  if (expectedDatabaseTarget && expectedDatabaseTarget !== identity.fingerprint) {
+    throw new Error(
+      `[dev-supervisor] DATABASE_TARGET_MISMATCH: configured ${expectedDatabaseTarget}, resolved ${identity.fingerprint}. Refusing to start.`,
+    );
+  }
   const databaseTarget =
     process.env.TURSO_CONNECTION_URL || process.env.TURSO_DATABASE_URL || "";
   const fullStack = process.argv.includes("--full");

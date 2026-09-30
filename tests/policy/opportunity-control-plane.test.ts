@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { Opportunity, DecisionVerb } from "../../src/data/opportunity-fixtures";
+import type { Opportunity, DecisionVerb } from "@/opportunity/contracts";
 import type { UserDecisionStateV4 } from "../../src/domain/decision_v4";
 
 // Synthetic test fixture generator for W3 Opportunity Control Plane

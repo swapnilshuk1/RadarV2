@@ -11,10 +11,10 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import Database from "better-sqlite3";
 import { DatabaseAdapter, QueryParams } from "@/data/database/adapter";
-import { ResponseValidator } from "@/lib/acquisition/validator";
-import { validateJobDocument } from "@/lib/acquisition/validator";
+import { ResponseValidator } from "@/acquisition/validator";
+import { validateJobDocument } from "@/acquisition/validator";
 import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
-import { CanonicalIngestionService } from "@/lib/acquisition/CanonicalIngestionService";
+import { CanonicalIngestionService } from "@/acquisition/ingestion-service";
 import { extract } from "../../scripts/scraper/extract/extractor";
 import type { DetailedCard } from "../../scripts/scraper/types";
 

@@ -8,7 +8,7 @@ import { getDatabaseAdapter, resetDatabaseAdapter } from "../../src/data/databas
 import { runMigrations, splitSqlStatements } from "../../src/data/sqlite/migrations/runner";
 import { setStorageProvider, createRepositories } from "../../src/data/sqlite/provider";
 import { SqliteScrapeRunStore } from "../../src/data/sqlite/repositories/SqliteScrapeRunStore";
-import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
+import { CanonicalIngestionService } from "@/acquisition/ingestion-service";
 import { MemoryBlobStore } from "../../src/lib/storage/blob-store";
 import { resolveScraperRuntimeOptions } from "../../scripts/scraper/options";
 import { loadUnifiedEnvironment } from "../../src/lib/env";
@@ -1582,6 +1582,8 @@ describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AP)
       setExtraHTTPHeaders: vi.fn().mockResolvedValue(undefined),
       goto: vi.fn().mockResolvedValue(undefined),
       waitForSelector: vi.fn().mockResolvedValue(undefined),
+      waitForFunction: vi.fn().mockResolvedValue(undefined),
+      title: vi.fn().mockResolvedValue("Chief Marketing Officer"),
       evaluate: vi.fn().mockResolvedValue(null),
       content: vi.fn().mockResolvedValue(html),
       locator: vi.fn((selector: string) =>
