@@ -22,7 +22,11 @@ import { loadMantleCredentials } from "../../src/lib/model/bedrock-credentials";
 import { extractFigures } from "../../src/pursuit/approval";
 import { PursuitTokenLedger } from "../../src/pursuit/budget";
 import type { RoleBrief } from "../../src/pursuit/role-brief";
-import { findLeakage, hasOverclaim } from "../../src/pursuit/semantic/validate";
+import {
+  findLeakage,
+  findSemanticInflation,
+  hasOverclaim,
+} from "../../src/pursuit/semantic/validate";
 import { deriveDeterministicThesis, enrichThesis, type DerivedThesis } from "../../src/pursuit/thesis";
 import type {
   CandidateArchetype,
@@ -168,6 +172,7 @@ function qualityProxy(
   unsupportedFigures: string[];
   leakage: string[];
   overclaim: boolean;
+  semanticInflation: string[];
   signalHits: number;
 } {
   const text = memoText(enriched);
@@ -189,7 +194,8 @@ function qualityProxy(
   const leakage = findLeakage(assertionText);
   const strongest =
     deterministic.semantic?.positioning.mode === "DIRECT_DOMAIN" ? "DIRECT" : "ANALOGOUS";
-  const overclaim = hasOverclaim(text, strongest);
+  const overclaim = hasOverclaim(assertionText, strongest);
+  const semanticInflation = findSemanticInflation(assertionText, claims);
   const allowedProofIds = new Set(deterministic.primaryProof.map((p) => p.claimId).filter(Boolean));
   const proofIntegrity = enriched.primaryProof.every(
     (p) => !p.claimId || allowedProofIds.has(p.claimId),
@@ -199,6 +205,7 @@ function qualityProxy(
   if (unsupportedFigures.length) grounding -= 10;
   if (leakage.length) grounding -= 8;
   if (overclaim) grounding -= 8;
+  if (semanticInflation.length) grounding -= 10;
   if (!proofIntegrity) grounding -= 10;
   grounding = Math.max(0, grounding);
 
@@ -236,6 +243,7 @@ function qualityProxy(
     unsupportedFigures,
     leakage,
     overclaim,
+    semanticInflation,
     signalHits,
   };
 }
@@ -345,6 +353,7 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
                   unsupportedFigures: quality.unsupportedFigures,
                   leakage: quality.leakage,
                   overclaim: quality.overclaim,
+                  semanticInflation: quality.semanticInflation,
                 },
                 thesis: {
                   targetMandate: enriched.targetMandate,
@@ -389,8 +398,14 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
               unsupportedFigures: string[];
               leakage: string[];
               overclaim: boolean;
+              semanticInflation: string[];
             };
-            return safety.unsupportedFigures.length > 0 || safety.leakage.length > 0 || safety.overclaim;
+            return (
+              safety.unsupportedFigures.length > 0 ||
+              safety.leakage.length > 0 ||
+              safety.overclaim ||
+              safety.semanticInflation.length > 0
+            );
           }).length,
         };
       });
@@ -418,8 +433,14 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
           unsupportedFigures: string[];
           leakage: string[];
           overclaim: boolean;
+          semanticInflation: string[];
         };
-        return safety.unsupportedFigures.length > 0 || safety.leakage.length > 0 || safety.overclaim;
+        return (
+          safety.unsupportedFigures.length > 0 ||
+          safety.leakage.length > 0 ||
+          safety.overclaim ||
+          safety.semanticInflation.length > 0
+        );
       });
       expect(
         unanswered.map((row) => `${row.model}/${row.case}`),
