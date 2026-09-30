@@ -341,6 +341,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       whereConditions.push(`quality_score IS NULL`);
       whereConditions.push(`evaluation_fingerprint IS NOT NULL`);
       whereConditions.push(`user_action = 'NONE'`);
+      whereConditions.push(`eligibility = 'ELIGIBLE'`);
     }
     if (filters?.categoryId === "needs_more_signal") {
       whereConditions.push(`evaluation_state = 'SPARSE_SPEC'`);
@@ -404,6 +405,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
            d.updated_at AS user_decision_updated_at,
            me.materialized_at AS materialized_at,
            ov.category_ids AS category_ids,
+           spc.eligibility AS eligibility,
 
            -- Ordering only, never a verdict mapper: 0=engine/user PURSUE,
            -- 1=explicit promotion/consider override, 2=vetoed promotion,
@@ -654,8 +656,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     }>(
       `SELECT 
          COUNT(*) AS total_screened,
-         COUNT(CASE WHEN me.evaluation_state = 'STAGED_EVALUATED' AND me.decision = 'PURSUE' AND me.quality_score IS NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_pursue,
-         COUNT(CASE WHEN me.evaluation_state = 'STAGED_EVALUATED' AND me.decision = 'CONSIDER' AND me.quality_score IS NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_consider,
+         COUNT(CASE WHEN spc.eligibility = 'ELIGIBLE' AND me.evaluation_state = 'STAGED_EVALUATED' AND me.decision = 'PURSUE' AND me.quality_score IS NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_pursue,
+         COUNT(CASE WHEN spc.eligibility = 'ELIGIBLE' AND me.evaluation_state = 'STAGED_EVALUATED' AND me.decision = 'CONSIDER' AND me.quality_score IS NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_consider,
          COUNT(CASE WHEN me.evaluation_state = 'SPARSE_SPEC' THEN 1 END) AS engine_sparse,
          COUNT(CASE WHEN me.evaluation_state = 'STAGED_EVALUATED' AND me.decision = 'PASS' AND me.quality_score IS NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_pass,
          COUNT(CASE WHEN me.evaluation_state = 'STAGED_EVALUATED' AND me.decision IN ('PURSUE', 'CONSIDER', 'PASS') AND me.quality_score IS NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS evaluated,
@@ -679,7 +681,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          COUNT(CASE WHEN (me.id IS NULL OR me.evaluation_state = 'SPARSE_SPEC') AND d.action = 'CONSIDER' THEN 1 END) AS sparse_decisions_consider,
          COUNT(CASE WHEN (me.id IS NULL OR me.evaluation_state = 'SPARSE_SPEC') AND d.action = 'PASS' THEN 1 END) AS sparse_decisions_pass,
          COUNT(CASE
-           WHEN (d.action IS NULL OR d.action = 'NONE')
+           WHEN spc.eligibility = 'ELIGIBLE'
+            AND (d.action IS NULL OR d.action = 'NONE')
             AND me.evaluation_state = 'STAGED_EVALUATED'
             AND me.decision IN ('PURSUE', 'CONSIDER')
             AND me.quality_score IS NULL
@@ -1521,6 +1524,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       whereConditions.push(`quality_score IS NULL`);
       whereConditions.push(`evaluation_fingerprint IS NOT NULL`);
       whereConditions.push(`user_action = 'NONE'`);
+      whereConditions.push(`eligibility = 'ELIGIBLE'`);
     }
     if (filters?.categoryId === "needs_more_signal") {
       whereConditions.push(`evaluation_state = 'SPARSE_SPEC'`);
@@ -1553,6 +1557,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
            me.evaluation_fingerprint AS evaluation_fingerprint,
            COALESCE(d.action, 'NONE') AS user_action,
            ov.category_ids AS category_ids,
+           spc.eligibility AS eligibility,
 
          -- Ordering only, never a verdict mapper: 0=engine/user PURSUE,
          -- 1=explicit promotion/consider override, 2=vetoed promotion,
