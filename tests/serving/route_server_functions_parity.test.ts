@@ -91,8 +91,10 @@ describe("Phase 11 & 12: Route Server Function & Client Cache Suite", () => {
     expect(dossierRoute).toContain("getOpportunityDetailsFn");
     expect(decisionsRoute).toContain("getDecidedOpportunitiesFn");
     expect(decisionsRoute).toContain("listPursuitSummariesFn({ data: scope })");
-    expect(decisionsRoute).toContain('verb === "PURSUE" ? pursuitsByJobHash.get(o.jobHash)');
-    expect(decisionsRoute).toContain("Pursuit workspace unavailable");
+    expect(decisionsRoute).toContain("pursuitSummary: pursuitsByJobHash.get(o.jobHash)");
+    expect(decisionsRoute).toContain("DECISIONS_LAYOUTS");
+    const layouts = fs.readFileSync(path.resolve("src/components/skins/layouts/decisions-layouts.tsx"), "utf8");
+    expect(layouts).toContain("Pursuit workspace unavailable");
     expect(decisionsRoute).not.toContain("getOpportunitiesFn");
     expect(decisionsRoute).not.toContain("radar.opportunities.tracking.v1");
     expect(decisionsRoute).not.toContain("localStorage");

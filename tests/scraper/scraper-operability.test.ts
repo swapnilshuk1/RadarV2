@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { chromium } from "playwright-extra";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -63,6 +64,7 @@ describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AP)
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     } catch {}
@@ -771,6 +773,10 @@ describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AP)
   // Scenario AB: Preflight Verification
   // --------------------------------------------------------------------------
   it("Scenario AB: runScraperPreflight inspects environment, storage, and locks deterministically", async () => {
+    vi.spyOn(chromium, "launchPersistentContext").mockResolvedValue({
+      newPage: async () => ({ goto: async () => {} }),
+      close: async () => {},
+    } as any);
     const { runScraperPreflight } = await import("../../scripts/scraper/preflight");
     const report = await runScraperPreflight(["--portals", "LinkedIn"]);
     expect(report).toBeDefined();
@@ -1161,6 +1167,10 @@ describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AP)
   // Scenario AL: Preflight Classifies Fresh Corrupt Locks as DEGRADED, Snapshot Writer Degrades Gracefully
   // --------------------------------------------------------------------------
   it("Scenario AL: Preflight classifies fresh corrupt locks as DEGRADED and writeSnapshot degrades gracefully", async () => {
+    vi.spyOn(chromium, "launchPersistentContext").mockResolvedValue({
+      newPage: async () => ({ goto: async () => {} }),
+      close: async () => {},
+    } as any);
     // 1. Preflight corrupt lock detection
     const lockPath = profileLockPath("LinkedIn");
     fs.mkdirSync(path.dirname(lockPath), { recursive: true });

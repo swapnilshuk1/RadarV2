@@ -1,29 +1,42 @@
-import { type ServedOpportunity, isEvaluated, isUnavailable, type EvaluatedOpportunity } from "@/opportunity/contracts";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import {
+  type ServedOpportunity,
+  isEvaluated,
+  isUnavailable,
+  type EvaluatedOpportunity,
+} from "@/opportunity/contracts";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState, useMemo, useCallback } from "react";
 import type { DecisionVerb, Opportunity } from "@/opportunity/contracts";
 import { applicationActionFor } from "@/opportunity/application-action";
 import { useDecisions } from "../lib/decisions-store";
 import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/components/PursuitLauncher";
-import { DecisionBadge } from "../components/radar/DecisionBadge";
+import { useSkin } from "@/components/skins/useSkin";
+import { DECISIONS_LAYOUTS, type DecisionsRow } from "@/components/skins/layouts/decisions-layouts";
 import { getDecidedOpportunitiesFn } from "@/opportunity/server";
 import { listPursuitSummariesFn } from "../pursuit/server";
 import { isTerminalPursuitStatus, pursuitStatusLabels } from "../pursuit/types";
-
 
 export const Route = createFileRoute("/decisions")({
   head: () => ({
     meta: [
       { title: "Your opportunities — RADAR" },
-      { name: "description", content: "Your active executive pipeline: search, filter, revisit and control opportunities across your pipeline." },
+      {
+        name: "description",
+        content:
+          "Your active executive pipeline: search, filter, revisit and control opportunities across your pipeline.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
   staleTime: 0,
   loader: async ({ location }) => {
     const raw = location.search as { tenantId?: unknown; personId?: unknown };
-    const scope = { tenantId: typeof raw.tenantId === "string" ? raw.tenantId : undefined, personId: typeof raw.personId === "string" ? raw.personId : undefined };
-    if (Boolean(scope.tenantId) !== Boolean(scope.personId)) throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
+    const scope = {
+      tenantId: typeof raw.tenantId === "string" ? raw.tenantId : undefined,
+      personId: typeof raw.personId === "string" ? raw.personId : undefined,
+    };
+    if (Boolean(scope.tenantId) !== Boolean(scope.personId))
+      throw new Error("CANDIDATE_SCOPE_INCOMPLETE");
     const [opportunitiesList, pursuitSummaries] = await Promise.all([
       getDecidedOpportunitiesFn({ data: scope }),
       listPursuitSummariesFn({ data: scope }),
@@ -33,9 +46,7 @@ export const Route = createFileRoute("/decisions")({
   component: OpportunitiesPageRoot,
 });
 
-export function resolveDecisionsCardScore(
-  o: Opportunity,
-): string {
+export function resolveDecisionsCardScore(o: Opportunity): string {
   const score = o.engineRecommendation?.qualityScore;
   if (score !== null && score !== undefined) {
     return `Fit Index ${score}%`;
@@ -70,12 +81,18 @@ function OpportunitiesPage() {
   // Phase 4: Non-evaluated variants without decisions must not contribute to counts or enter the ledger.
   // Explicit user decisions (including those on sparse specifications) remain preserved and represented.
   const opportunitiesList = useMemo(
-    () => rawOpportunities.filter((o) => isEvaluated(o) || Boolean(decisions[o.jobHash]?.verb || (o as any).userDecision?.userAction)),
-    [rawOpportunities, decisions]
+    () =>
+      rawOpportunities.filter(
+        (o) =>
+          isEvaluated(o) ||
+          Boolean(decisions[o.jobHash]?.verb || (o as any).userDecision?.userAction),
+      ),
+    [rawOpportunities, decisions],
   );
-  
+
   const pursuit = usePursuitLauncher();
   const router = useRouter();
+  const skin = useSkin();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterKey, setFilterKey] = useState<FilterKey>("ALL");
@@ -83,12 +100,16 @@ function OpportunitiesPage() {
   const [writeError, setWriteError] = useState<string | null>(null);
 
   // Helper to get effective user decision verb for an opportunity
-  const getUserVerb = useCallback((o: Opportunity | ServedOpportunity): DecisionVerb | null => {
-    const recorded = decisions[o.jobHash];
-    if (recorded?.verb) return recorded.verb;
-    if ((o as any).userDecision?.userAction) return (o as any).userDecision.userAction as DecisionVerb;
-    return null;
-  }, [decisions]);
+  const getUserVerb = useCallback(
+    (o: Opportunity | ServedOpportunity): DecisionVerb | null => {
+      const recorded = decisions[o.jobHash];
+      if (recorded?.verb) return recorded.verb;
+      if ((o as any).userDecision?.userAction)
+        return (o as any).userDecision.userAction as DecisionVerb;
+      return null;
+    },
+    [decisions],
+  );
 
   // Calculate filter counts across the complete accessible pipeline
   const counts = useMemo(() => {
@@ -161,6 +182,35 @@ function OpportunitiesPage() {
     });
   }, [opportunitiesList, filterKey, pursuitBucket, pursuitsByJobHash, searchQuery, getUserVerb]);
 
+  const rows: DecisionsRow[] = displayedOpportunities.map((o) => ({
+    jobHash: o.jobHash,
+    role: o.role || "Executive Role",
+    company: o.company,
+    location: o.location,
+    scrapedFrom: o.scrapedFrom,
+    score: resolveDecisionsCardScore(o as Opportunity),
+    thesis: (o as Opportunity).recommendation || (o as Opportunity).primaryProof?.headline || "",
+    fit:
+      typeof (o as Opportunity).engineRecommendation?.qualityScore === "number"
+        ? (o as Opportunity).engineRecommendation!.qualityScore!
+        : null,
+    verb: getUserVerb(o),
+    applicationAction: applicationActionFor(o as Opportunity) ?? null,
+    pursuitSummary: pursuitsByJobHash.get(o.jobHash),
+  }));
+  const handleUndo = async (jobHash: string) => {
+    try {
+      await undo(jobHash);
+      await router.invalidate();
+    } catch (error: any) {
+      setWriteError(error?.message || "Could not remove this decision.");
+    }
+  };
+  const Layout =
+    skin === "iphone"
+      ? DECISIONS_LAYOUTS.radar
+      : (DECISIONS_LAYOUTS[skin] ?? DECISIONS_LAYOUTS.radar);
+
   return (
     <div className="min-h-screen bg-background text-ink font-sans pb-24">
       {/* Page Header — Executive Control Panel */}
@@ -172,7 +222,8 @@ function OpportunitiesPage() {
               Your opportunities.
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-muted font-normal">
-              Search, filter and revisit mandates across your pipeline. Control your evaluation history and active pursuits.
+              Search, filter and revisit mandates across your pipeline. Control your evaluation
+              history and active pursuits.
             </p>
           </div>
           {Object.keys(decisions).length > 0 && (
@@ -193,7 +244,11 @@ function OpportunitiesPage() {
               Clear decisions
             </button>
           )}
-          {(writeError || decisionError) && <p role="alert" className="mt-2 text-sm text-decision-pass">{writeError || decisionError}</p>}
+          {(writeError || decisionError) && (
+            <p role="alert" className="mt-2 text-sm text-decision-pass">
+              {writeError || decisionError}
+            </p>
+          )}
         </div>
 
         {/* Search & Filter Control Surface */}
@@ -253,7 +308,10 @@ function OpportunitiesPage() {
             />
           </div>
           {filterKey === "PURSUE" && (
-            <div className="flex flex-wrap items-center gap-2 pt-1" data-testid="pursuit-lifecycle-filter-bar">
+            <div
+              className="flex flex-wrap items-center gap-2 pt-1"
+              data-testid="pursuit-lifecycle-filter-bar"
+            >
               <FilterPill
                 label="ACTIVE"
                 count={pursuitBucketCounts.active}
@@ -280,7 +338,9 @@ function OpportunitiesPage() {
       {/* Main Opportunities List Surface */}
       <main className="mx-auto max-w-[1180px] px-5 sm:px-8 pt-8">
         {!hydrated ? (
-          <p className="text-sm text-ink-muted font-mono uppercase tracking-wider py-8">Loading pipeline opportunities…</p>
+          <p className="text-sm text-ink-muted font-mono uppercase tracking-wider py-8">
+            Loading pipeline opportunities…
+          </p>
         ) : displayedOpportunities.length === 0 ? (
           <div className="py-16 text-center border border-dashed border-border rounded-md bg-surface-raised/30">
             <p className="text-sm text-ink-muted font-normal">
@@ -305,154 +365,15 @@ function OpportunitiesPage() {
             )}
           </div>
         ) : (
-          <div className="space-y-5" data-testid="opportunities-list">
-            <div className="flex items-center justify-between text-xs text-ink-muted font-mono uppercase tracking-wider pb-2 border-b border-hairline">
-              <span>Displaying {displayedOpportunities.length} of {opportunitiesList.length} mandates</span>
-              <span>Sorted by Pipeline Recency</span>
-            </div>
-
-            {displayedOpportunities.map((o: any) => {
-              const verb = getUserVerb(o);
-              const pursuitSummary = verb === "PURSUE" ? pursuitsByJobHash.get(o.jobHash) : undefined;
-              const applicationAction = applicationActionFor(o);
-
-              return (
-                <div
-                  key={o.jobHash}
-                  className="memo-card border border-border bg-surface-raised p-6 rounded-md transition-all hover:border-border-strong"
-                  data-testid={`opportunity-card-${o.jobHash}`}
-                >
-                  {/* Top Row: Primary Designation Identity + Decision Controls */}
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      {/* PRIMARY IDENTITY HEADER: Designation / Role Title */}
-                      <h3 className="font-serif text-[1.65rem] leading-[1.1] text-ink tracking-tight font-normal">
-                        <Link
-                          to="/opportunity/$jobHash"
-                          params={{ jobHash: o.jobHash }}
-                          search={scope}
-                          className="hover:underline hover:text-accent-ink transition-colors"
-                          data-testid={`opportunity-role-link-${o.jobHash}`}
-                        >
-                          {o.role || "Executive Role"}
-                        </Link>
-                      </h3>
-
-                      {/* SECONDARY IDENTITY: Organisation + Location + Source */}
-                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
-                        <span className="font-semibold text-ink">{o.company}</span>
-                        <span className="text-hairline-strong">·</span>
-                        <span>{o.location}</span>
-                        {o.scrapedFrom && (
-                          <>
-                            <span className="text-hairline-strong">·</span>
-                            <span className="text-ink-muted/80">{o.scrapedFrom}</span>
-                          </>
-                        )}
-                        <span className="text-hairline-strong">·</span>
-                        <span className="font-mono uppercase tracking-[0.14em] text-[0.62rem] text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm">
-                          {resolveDecisionsCardScore(o as any)}
-                        </span>
-                      </div>
-
-                    </div>
-
-                    {/* Right-aligned Decision Badge & Controls */}
-                    <div className="flex items-center gap-3 shrink-0">
-                      {verb ? (
-                        <DecisionBadge verb={verb} size="sm" />
-                      ) : (
-                        <span className="text-[0.62rem] font-mono uppercase tracking-[0.14em] text-ink-muted bg-surface/80 border border-hairline px-2.5 py-1 rounded-sm">
-                          UNREVIEWED
-                        </span>
-                      )}
-
-                      {/* OPEN OPPORTUNITY Button */}
-                      <Link
-                        to="/opportunity/$jobHash"
-                        params={{ jobHash: o.jobHash }}
-                          search={scope}
-                        className="rounded-sm border border-border px-3 py-1 label-mono text-xs text-ink hover:bg-background hover:text-accent-ink transition-colors"
-                        data-testid={`open-opportunity-btn-${o.jobHash}`}
-                      >
-                        Open
-                      </Link>
-
-                      {/* UNDO Button */}
-                      {verb && (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              await undo(o.jobHash);
-                              await router.invalidate();
-                            } catch (error: any) {
-                              setWriteError(error?.message || "Could not remove this decision.");
-                            }
-                          }}
-                          className="rounded-sm border border-hairline px-3 py-1 label-mono text-xs text-ink-muted hover:bg-background hover:text-ink transition-colors"
-                          data-testid={`undo-btn-${o.jobHash}`}
-                        >
-                          Undo
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {verb === "PURSUE" && (
-                    <div className="border-t border-hairline mt-5 pt-3" data-testid={`pursuit-summary-${o.jobHash}`}>
-                      {pursuitSummary ? (
-                        <>
-                          <p className="text-sm text-ink">{pursuitStatusLabels[pursuitSummary.status]}</p>
-                          {pursuitSummary.preparationState !== "READY" && (
-                            <p className="text-xs text-ink-muted">Preparation: {pursuitSummary.preparationState.toLowerCase()}</p>
-                          )}
-                          {pursuitSummary.nextAction && <p className="mt-1 text-sm text-ink-muted">Next: {pursuitSummary.nextAction}</p>}
-                          {pursuitSummary.nextActionDue && <p className="text-xs text-ink-muted">Due: {pursuitSummary.nextActionDue}</p>}
-                          <div className="flex items-center gap-3 mt-3">
-                            <button
-                              type="button"
-                              disabled={pursuit.pending}
-                              onClick={() => void pursuit.launch(o.jobHash)}
-                              className="rounded-sm border border-decision-pursue px-3 py-1 label-mono text-xs text-decision-pursue hover:bg-decision-pursue hover:text-white transition-colors disabled:opacity-50"
-                              data-testid={`pursuit-cockpit-btn-${o.jobHash}`}
-                            >
-                              {pursuit.pending ? "Opening…" : "Open pursuit"}
-                            </button>
-                            <Link
-                              to="/pursuit/$jobHash"
-                              params={{ jobHash: o.jobHash }}
-                              className="label-mono text-xs text-accent-ink hover:underline"
-                              data-testid={`pursuit-page-link-${o.jobHash}`}
-                            >
-                              Open as page
-                            </Link>
-                          </div>
-                        </>
-                      ) : (
-                        <p role="status" className="text-sm text-decision-consider">
-                          Pursuit workspace unavailable. Open the opportunity to review this decision.
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {verb === "PURSUE" && applicationAction && (
-                    <div className="flex items-center gap-4 border-t border-hairline mt-5 pt-3">
-                      <a
-                        href={applicationAction.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-auto text-xs uppercase tracking-[0.14em] font-mono text-decision-pursue hover:underline"
-                      >
-                        {applicationAction.label} ↗
-                      </a>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <Layout
+            rows={rows}
+            scope={scope}
+            displayedCount={displayedOpportunities.length}
+            totalCount={opportunitiesList.length}
+            pursuitPending={pursuit.pending}
+            onUndo={handleUndo}
+            onLaunchPursuit={(jobHash) => void pursuit.launch(jobHash)}
+          />
         )}
       </main>
     </div>
@@ -473,7 +394,8 @@ function FilterPill({
   tint?: "pursue" | "consider" | "pass";
 }) {
   let activeStyles = "bg-ink text-background font-semibold border-ink";
-  let inactiveStyles = "bg-surface-raised/80 text-ink-muted hover:text-ink hover:border-border-strong border-border";
+  let inactiveStyles =
+    "bg-surface-raised/80 text-ink-muted hover:text-ink hover:border-border-strong border-border";
 
   if (active && tint === "pursue") {
     activeStyles = "bg-decision-pursue text-white font-semibold border-decision-pursue";
@@ -493,7 +415,9 @@ function FilterPill({
       data-testid={`filter-pill-${label.toLowerCase()}`}
     >
       <span>{label}</span>
-      <span className={`text-[0.65rem] px-1.5 py-0.2 rounded-full ${active ? "bg-white/20 text-white" : "bg-hairline text-ink-muted"}`}>
+      <span
+        className={`text-[0.65rem] px-1.5 py-0.2 rounded-full ${active ? "bg-white/20 text-white" : "bg-hairline text-ink-muted"}`}
+      >
         {count}
       </span>
     </button>

@@ -176,7 +176,9 @@ describe("Slice B: Acquisition Efficiency & Failure Truth Contracts", () => {
         setExtraHTTPHeaders: vi.fn(async () => {}),
         goto: vi.fn(async () => {}),
         waitForSelector: vi.fn(async () => {}),
-        evaluate: vi.fn(async () => null),
+        waitForFunction: vi.fn(async () => {}),
+        evaluate: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(`<p>${sparseText}</p>`),
+        title: vi.fn(async () => "Chief Marketing Officer"),
         content: vi.fn(async () => `<div class="styles_job-desc-container"><p>${sparseText}</p></div>`),
         locator: vi.fn((sel: string) => ({
           first: () => ({
