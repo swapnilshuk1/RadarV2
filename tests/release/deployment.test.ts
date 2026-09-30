@@ -167,6 +167,9 @@ describe("deterministic release deployment", () => {
     );
     expect(capturedActivation).toContain("/health/system");
     expect(capturedActivation).toContain("system_ready=0");
+    expect(capturedActivation.indexOf("system_ready=0")).toBeLessThan(
+      capturedActivation.indexOf("RADAR_PM2_REQUIRED="),
+    );
   });
 
   it("explicitly passes RADAR_DEPLOY_READINESS_URL and RADAR_RELEASE_SHA to remote smoke", () => {
