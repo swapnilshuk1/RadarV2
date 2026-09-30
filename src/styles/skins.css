@@ -1,0 +1,351 @@
+/* ==========================================================================
+   RADAR interface skins — permanent personalization layer.
+
+   Contract
+   --------
+   - A skin is a semantic token override set, nothing else. No component in
+     Opportunity, Candidate, Dossier or Pursuit is forked by skin.
+   - The active skin is applied with `data-skin` on <html>.
+   - Appearance (light / dark / system) stays an independent dimension: the
+     dark variant of every skin is keyed on RADAR's existing `.dark` class,
+     never on a skin-private mode attribute.
+   - Selectors are qualified with `html` so this file can be imported at the
+     top of src/styles.css and still win over the `:root` / `.dark` defaults.
+   ========================================================================== */
+
+/* Skin-scoped utilities. Additive: RADAR's own tokens are untouched. */
+@theme inline {
+  --color-skin-accent: var(--skin-accent, var(--brass));
+  --color-skin-accent-fg: var(--skin-accent-fg, #ffffff);
+  --color-skin-rule: var(--skin-rule, var(--border));
+  --color-evidence-contradicted: var(--evidence-contradicted);
+}
+
+html[data-skin] {
+  --font-serif: var(--skin-serif);
+  --font-sans: var(--skin-sans);
+  --font-mono: var(--skin-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--skin-sans);
+}
+
+html[data-skin] h1,
+html[data-skin] h2,
+html[data-skin] h3,
+html[data-skin] .font-serif,
+html[data-skin] .font-display {
+  font-family: var(--skin-serif);
+}
+
+html[data-skin] .label-mono,
+html[data-skin] .font-mono {
+  font-family: var(--skin-mono);
+}
+
+/* --------------------------------------------------- A. Boardroom (day) ---
+   The investment-committee memo: navy, bone and oxblood, tight radii. */
+html[data-skin="boardroom"] {
+  --skin-serif: "Libre Baskerville", Georgia, serif;
+  --skin-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --skin-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 0.125rem;
+  --background: #f4f1ea;
+  --foreground: #0f1b3d;
+  --card: #fbf9f4;
+  --card-foreground: #0f1b3d;
+  --muted: #eae5da;
+  --muted-foreground: #4a5270;
+  --surface-raised: #eae5da;
+  --accent: #eae5da;
+  --accent-foreground: #0f1b3d;
+  --primary: #0f1b3d;
+  --primary-foreground: #f4f1ea;
+  --secondary: #eae5da;
+  --secondary-foreground: #0f1b3d;
+  --border: #d8d1c2;
+  --border-strong: #0f1b3d;
+  --input: #d8d1c2;
+  --ring: #7a1f2b;
+  --parchment: #f4f1ea;
+  --ink: #0f1b3d;
+  --ink-muted: #4a5270;
+  --hairline: #d8d1c2;
+  --brass: #a8823a;
+  --signal: #7a1f2b;
+  --signal-foreground: #f4f1ea;
+  --skin-accent: #7a1f2b;
+  --skin-accent-fg: #f4f1ea;
+  --skin-rule: #0f1b3d;
+  --pursue: #0f1b3d;
+  --pursue-soft: #e1e4ee;
+  --consider: #a8823a;
+  --consider-soft: #f1e8d6;
+  --pass: #8a8577;
+  --decision-pursue: #0f1b3d;
+  --decision-pursue-fg: #f4f1ea;
+  --decision-consider: #a8823a;
+  --decision-consider-fg: #ffffff;
+  --decision-pass: #8a8577;
+  --decision-pass-fg: #ffffff;
+  --evidence-matched: #0f1b3d;
+  --evidence-adjacent: #a8823a;
+  --evidence-missing: #8a8577;
+  --evidence-contradicted: #7a1f2b;
+  --destructive: #7a1f2b;
+  --destructive-foreground: #f4f1ea;
+}
+
+html.dark[data-skin="boardroom"] {
+  --background: #0b1220;
+  --foreground: #ede8dc;
+  --card: #111a2e;
+  --card-foreground: #ede8dc;
+  --muted: #17213a;
+  --muted-foreground: #a7aec4;
+  --surface-raised: #17213a;
+  --accent: #17213a;
+  --accent-foreground: #ede8dc;
+  --primary: #ede8dc;
+  --primary-foreground: #0b1220;
+  --secondary: #17213a;
+  --secondary-foreground: #ede8dc;
+  --border: #25304d;
+  --border-strong: #ede8dc;
+  --input: #25304d;
+  --ring: #b0404f;
+  --parchment: #0b1220;
+  --ink: #ede8dc;
+  --ink-muted: #a7aec4;
+  --hairline: #25304d;
+  --brass: #c9a456;
+  --signal: #b0404f;
+  --signal-foreground: #ffffff;
+  --skin-accent: #b0404f;
+  --skin-accent-fg: #ffffff;
+  --skin-rule: #ede8dc;
+  --pursue: #ede8dc;
+  --pursue-soft: #1c2742;
+  --consider: #c9a456;
+  --consider-soft: #2a2618;
+  --pass: #7c8296;
+  --decision-pursue: #ede8dc;
+  --decision-pursue-fg: #0b1220;
+  --decision-consider: #c9a456;
+  --decision-consider-fg: #0b1220;
+  --decision-pass: #7c8296;
+  --decision-pass-fg: #0b1220;
+  --evidence-matched: #ede8dc;
+  --evidence-adjacent: #c9a456;
+  --evidence-missing: #7c8296;
+  --evidence-contradicted: #d0606e;
+  --destructive: #d0606e;
+  --destructive-foreground: #0b1220;
+}
+
+/* ------------------------------------------------------ B. Signal (day) ---
+   The flight deck: neutral graphite by day, amber and mint after dark. */
+html[data-skin="signal"] {
+  --skin-serif: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --skin-sans: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --skin-mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius: 0.125rem;
+  --background: #f2f2f0;
+  --foreground: #0e0e0e;
+  --card: #ffffff;
+  --card-foreground: #0e0e0e;
+  --muted: #e6e6e3;
+  --muted-foreground: #55554f;
+  --surface-raised: #e6e6e3;
+  --accent: #e6e6e3;
+  --accent-foreground: #0e0e0e;
+  --primary: #0e0e0e;
+  --primary-foreground: #f2f2f0;
+  --secondary: #e6e6e3;
+  --secondary-foreground: #0e0e0e;
+  --border: #d2d2cd;
+  --border-strong: #0e0e0e;
+  --input: #d2d2cd;
+  --ring: #b37a00;
+  --parchment: #f2f2f0;
+  --ink: #0e0e0e;
+  --ink-muted: #55554f;
+  --hairline: #d2d2cd;
+  --brass: #b37a00;
+  --signal: #b37a00;
+  --signal-foreground: #ffffff;
+  --skin-accent: #b37a00;
+  --skin-accent-fg: #ffffff;
+  --skin-rule: #0e0e0e;
+  --pursue: #b37a00;
+  --pursue-soft: #fbefd2;
+  --consider: #0b8a6c;
+  --consider-soft: #d8f3ec;
+  --pass: #7a7a74;
+  --decision-pursue: #b37a00;
+  --decision-pursue-fg: #ffffff;
+  --decision-consider: #0b8a6c;
+  --decision-consider-fg: #ffffff;
+  --decision-pass: #7a7a74;
+  --decision-pass-fg: #ffffff;
+  --evidence-matched: #0b8a6c;
+  --evidence-adjacent: #b37a00;
+  --evidence-missing: #7a7a74;
+  --evidence-contradicted: #d23b2f;
+  --destructive: #d23b2f;
+  --destructive-foreground: #ffffff;
+}
+
+html.dark[data-skin="signal"] {
+  --background: #0a0a0a;
+  --foreground: #ededea;
+  --card: #161616;
+  --card-foreground: #ededea;
+  --muted: #1e1e1e;
+  --muted-foreground: #9a9a94;
+  --surface-raised: #1e1e1e;
+  --accent: #1e1e1e;
+  --accent-foreground: #ededea;
+  --primary: #ffb000;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1e1e1e;
+  --secondary-foreground: #ededea;
+  --border: #2a2a2a;
+  --border-strong: #ededea;
+  --input: #2a2a2a;
+  --ring: #ffb000;
+  --parchment: #0a0a0a;
+  --ink: #ededea;
+  --ink-muted: #9a9a94;
+  --hairline: #2a2a2a;
+  --brass: #ffb000;
+  --signal: #ffb000;
+  --signal-foreground: #0a0a0a;
+  --skin-accent: #ffb000;
+  --skin-accent-fg: #0a0a0a;
+  --skin-rule: #ffb000;
+  --pursue: #ffb000;
+  --pursue-soft: #2a2000;
+  --consider: #2dd4a8;
+  --consider-soft: #0f2a23;
+  --pass: #6e6e68;
+  --decision-pursue: #ffb000;
+  --decision-pursue-fg: #0a0a0a;
+  --decision-consider: #2dd4a8;
+  --decision-consider-fg: #0a0a0a;
+  --decision-pass: #6e6e68;
+  --decision-pass-fg: #0a0a0a;
+  --evidence-matched: #2dd4a8;
+  --evidence-adjacent: #ffb000;
+  --evidence-missing: #6e6e68;
+  --evidence-contradicted: #ff5a4e;
+  --destructive: #ff5a4e;
+  --destructive-foreground: #0a0a0a;
+}
+
+html[data-skin="signal"] .tabular,
+html[data-skin="signal"] .label-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------- C. Atelier (day) ---
+   The private adviser: cream, emerald and gold, generous radii. */
+html[data-skin="atelier"] {
+  --skin-serif: "Instrument Serif", Georgia, serif;
+  --skin-sans: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --skin-mono: "DM Mono", ui-monospace, monospace;
+  --radius: 1rem;
+  --background: #f5f0e0;
+  --foreground: #10261f;
+  --card: #fbf8ee;
+  --card-foreground: #10261f;
+  --muted: #ece4cd;
+  --muted-foreground: #4f6158;
+  --surface-raised: #ece4cd;
+  --accent: #ece4cd;
+  --accent-foreground: #10261f;
+  --primary: #064e3b;
+  --primary-foreground: #f5f0e0;
+  --secondary: #ece4cd;
+  --secondary-foreground: #10261f;
+  --border: #ddd2b2;
+  --border-strong: #c9a84c;
+  --input: #ddd2b2;
+  --ring: #c9a84c;
+  --parchment: #f5f0e0;
+  --ink: #10261f;
+  --ink-muted: #4f6158;
+  --hairline: #ddd2b2;
+  --brass: #c9a84c;
+  --signal: #064e3b;
+  --signal-foreground: #f5f0e0;
+  --skin-accent: #c9a84c;
+  --skin-accent-fg: #10261f;
+  --skin-rule: #c9a84c;
+  --pursue: #064e3b;
+  --pursue-soft: #dcebe3;
+  --consider: #9c7c2a;
+  --consider-soft: #f1e7c8;
+  --pass: #7f8a83;
+  --decision-pursue: #064e3b;
+  --decision-pursue-fg: #f5f0e0;
+  --decision-consider: #9c7c2a;
+  --decision-consider-fg: #ffffff;
+  --decision-pass: #7f8a83;
+  --decision-pass-fg: #ffffff;
+  --evidence-matched: #064e3b;
+  --evidence-adjacent: #9c7c2a;
+  --evidence-missing: #7f8a83;
+  --evidence-contradicted: #9b2c2c;
+  --destructive: #9b2c2c;
+  --destructive-foreground: #f5f0e0;
+}
+
+html.dark[data-skin="atelier"] {
+  --background: #04261d;
+  --foreground: #f5f0e0;
+  --card: #073226;
+  --card-foreground: #f5f0e0;
+  --muted: #0a3a2d;
+  --muted-foreground: #b9c2b2;
+  --surface-raised: #0a3a2d;
+  --accent: #0a3a2d;
+  --accent-foreground: #f5f0e0;
+  --primary: #c9a84c;
+  --primary-foreground: #04261d;
+  --secondary: #0a3a2d;
+  --secondary-foreground: #f5f0e0;
+  --border: #1a4a3b;
+  --border-strong: #c9a84c;
+  --input: #1a4a3b;
+  --ring: #c9a84c;
+  --parchment: #04261d;
+  --ink: #f5f0e0;
+  --ink-muted: #b9c2b2;
+  --hairline: #1a4a3b;
+  --brass: #c9a84c;
+  --signal: #c9a84c;
+  --signal-foreground: #04261d;
+  --skin-accent: #c9a84c;
+  --skin-accent-fg: #04261d;
+  --skin-rule: #c9a84c;
+  --pursue: #7fd1ae;
+  --pursue-soft: #0c4032;
+  --consider: #c9a84c;
+  --consider-soft: #2e3318;
+  --pass: #8a968e;
+  --decision-pursue: #7fd1ae;
+  --decision-pursue-fg: #04261d;
+  --decision-consider: #c9a84c;
+  --decision-consider-fg: #04261d;
+  --decision-pass: #8a968e;
+  --decision-pass-fg: #04261d;
+  --evidence-matched: #7fd1ae;
+  --evidence-adjacent: #c9a84c;
+  --evidence-missing: #8a968e;
+  --evidence-contradicted: #e07a7a;
+  --destructive: #e07a7a;
+  --destructive-foreground: #04261d;
+}

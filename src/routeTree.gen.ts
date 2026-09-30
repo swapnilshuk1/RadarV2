@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
+import { Route as SkinsRouteImport } from './routes/skins'
 import { Route as ScrapedRouteImport } from './routes/scraped'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
@@ -25,6 +26,11 @@ import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 const WelcomeRoute = WelcomeRouteImport.update({
   id: '/welcome',
   path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SkinsRoute = SkinsRouteImport.update({
+  id: '/skins',
+  path: '/skins',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScrapedRoute = ScrapedRouteImport.update({
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
+  '/skins': typeof SkinsRoute
   '/welcome': typeof WelcomeRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/pursuit/$jobHash': typeof PursuitJobHashRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
+  '/skins': typeof SkinsRoute
   '/welcome': typeof WelcomeRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/pursuit/$jobHash': typeof PursuitJobHashRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
+  '/skins': typeof SkinsRoute
   '/welcome': typeof WelcomeRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/pursuit/$jobHash': typeof PursuitJobHashRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/scraped'
+    | '/skins'
     | '/welcome'
     | '/opportunity/$jobHash'
     | '/pursuit/$jobHash'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/scraped'
+    | '/skins'
     | '/welcome'
     | '/opportunity/$jobHash'
     | '/pursuit/$jobHash'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/scraped'
+    | '/skins'
     | '/welcome'
     | '/opportunity/$jobHash'
     | '/pursuit/$jobHash'
@@ -178,6 +190,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   ScrapedRoute: typeof ScrapedRoute
+  SkinsRoute: typeof SkinsRoute
   WelcomeRoute: typeof WelcomeRoute
   OpportunityJobHashRoute: typeof OpportunityJobHashRoute
   PursuitJobHashRoute: typeof PursuitJobHashRoute
@@ -193,6 +206,13 @@ declare module '@tanstack/react-router' {
       path: '/welcome'
       fullPath: '/welcome'
       preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/skins': {
+      id: '/skins'
+      path: '/skins'
+      fullPath: '/skins'
+      preLoaderRoute: typeof SkinsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scraped': {
@@ -282,6 +302,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   ScrapedRoute: ScrapedRoute,
+  SkinsRoute: SkinsRoute,
   WelcomeRoute: WelcomeRoute,
   OpportunityJobHashRoute: OpportunityJobHashRoute,
   PursuitJobHashRoute: PursuitJobHashRoute,
