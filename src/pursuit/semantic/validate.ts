@@ -53,7 +53,7 @@ const COMPLETION_WORD = /\b(?:secured|closed|won|landed|converted|delivered|gene
 const NEGATED_COMPLETION =
   /\b(?:not|never|did\s+not|has\s+not|had\s+not|hasn't|hadn't|without)\b[^.\n]{0,24}\b(?:secured|closed|won|landed|converted|delivered|generated|achieved|booked)\b/i;
 const FUTURE_COMPLETION =
-  /\b(?:expected|projected|forecast(?:ed)?|target(?:ed)?|potential)\b[^.\n]{0,48}\b(?:to\s+be\s+)?(?:secured|closed|won|landed|converted|delivered|generated|achieved|booked)\b/i;
+  /\b(?:expected|projected|forecast(?:ed)?|target(?:ed)?|potential)\b[^.\n]{0,48}\bto\s+(?:be\s+)?(?:secured|closed|won|landed|converted|delivered|generated|achieved|booked)\b/i;
 
 function normalizeMetricToken(value: string): string {
   return value.toLowerCase().replace(/[\s,]/g, "");
