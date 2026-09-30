@@ -398,8 +398,9 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
       const payload = {
         pricingRegion: "us-east-1",
         pricingAsOf: "2026-10-01",
-        sourceRuntime: "currently-deployed Oracle release",
+        sourceRuntime: "Oracle production dependencies with certified Pursuit source overlay",
         sourceReleaseSha: process.env.RADAR_PURSUIT_BENCHMARK_SOURCE_SHA?.trim() || null,
+        benchmarkCodeSha: process.env.RADAR_PURSUIT_BENCHMARK_CODE_SHA?.trim() || null,
         summary,
         rows: report,
       };
