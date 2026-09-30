@@ -13,7 +13,10 @@ vi.mock("../../src/pursuit/model", () => ({
   },
 }));
 
-import { findSemanticInflation } from "../../src/pursuit/semantic/validate";
+import {
+  findSemanticInflation,
+  findUnsupportedFigures,
+} from "../../src/pursuit/semantic/validate";
 import { deriveDeterministicThesis, enrichThesis } from "../../src/pursuit/thesis";
 import type { RoleBrief } from "../../src/pursuit/role-brief";
 import type { CandidateArchetype, CandidateClaim, StyleProfile } from "../../src/pursuit/types";
@@ -123,7 +126,19 @@ describe("Pursuit thesis enrichment integrity", () => {
     expect(findSemanticInflation("Secured a ₹36 Cr three-year service retainer.", claims)).toEqual([
       expect.stringMatching(/Projected metric/i),
     ]);
-    expect(findSemanticInflation("The record contains a projected ₹36 Cr three-year service retainer.", claims)).toEqual([]);
+    expect(
+      findSemanticInflation("Converted a projected ₹36 Cr three-year service retainer.", claims),
+    ).toEqual([expect.stringMatching(/Projected metric/i)]);
+    expect(
+      findSemanticInflation("The record contains a projected ₹36 Cr three-year service retainer.", claims),
+    ).toEqual([]);
+  });
+
+  it("rejects arithmetic-derived figures while allowing faithful lower-bound wording", () => {
+    expect(findUnsupportedFigures("Delivered $35M incremental attributed revenue.", claims)).toEqual([
+      "$35m",
+    ]);
+    expect(findUnsupportedFigures("Generated over 400,000 additional organic qualified leads.", claims)).toEqual([]);
   });
 
   it("rejects positive P&L claims when the ledger has no P&L source fact", () => {
