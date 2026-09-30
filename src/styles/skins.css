@@ -349,3 +349,115 @@ html.dark[data-skin="atelier"] {
   --destructive: #e07a7a;
   --destructive-foreground: #04261d;
 }
+
+/* =========================================================================
+   Structural rules for skinned memo and cockpit shells.
+
+   Token overrides above recolour RADAR. These rules restate the *shape* of
+   the memo and the pursuit workspace inside each structural shell, so a skin
+   reads as a different document type rather than a recoloured card.
+   ========================================================================= */
+
+/* The shells supply their own header, rails and actions. */
+.skin-memo-boardroom .dossier-top,
+.skin-memo-signal .dossier-top,
+.skin-memo-atelier .dossier-top {
+  display: none;
+}
+
+.skin-memo-boardroom .dossier,
+.skin-memo-signal .dossier,
+.skin-memo-atelier .dossier {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  margin: 0;
+  max-width: none;
+}
+
+/* Boardroom: ruled memorandum, square corners, small-caps section kickers. */
+.skin-memo-boardroom .dossier-chapter {
+  border-top: 1px solid var(--hairline);
+  padding-top: 1.25rem;
+}
+.skin-memo-boardroom .dossier-hero,
+.skin-memo-boardroom .dossier-chapter-content h2 {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+}
+.skin-memo-boardroom .dossier-card,
+.skin-memo-boardroom .dossier-ledger-row,
+.skin-memo-boardroom .dossier-mandate-grid > * {
+  border-radius: 0;
+}
+.skin-cockpit-boardroom .memo-card,
+.skin-cockpit-boardroom .memo-callout,
+.skin-cockpit-boardroom .pursuit-chip {
+  border-radius: 0;
+}
+
+/* Signal: monospace telemetry, compact rhythm, bracketed rules. */
+.skin-memo-signal .dossier,
+.skin-cockpit-signal {
+  font-feature-settings: "tnum" 1;
+}
+.skin-memo-signal .label-mono,
+.skin-cockpit-signal .label-mono {
+  letter-spacing: 0.16em;
+}
+.skin-memo-signal .dossier-chapter {
+  border-left: 2px solid var(--skin-rule);
+  padding-left: 0.9rem;
+  margin-bottom: 1rem;
+}
+.skin-memo-signal .dossier-card,
+.skin-cockpit-signal .memo-card,
+.skin-cockpit-signal .memo-callout {
+  border-radius: 2px;
+  padding: 0.6rem 0.75rem;
+}
+
+/* Atelier: spacious editorial paper, soft shapes, quoted thesis. */
+.skin-memo-atelier .dossier-thesis {
+  font-size: 1.35rem;
+  line-height: 1.55;
+  font-style: italic;
+}
+.skin-memo-atelier .dossier-thesis::before {
+  content: "\201C";
+  color: var(--skin-accent);
+}
+.skin-memo-atelier .dossier-chapter {
+  margin-bottom: 2.5rem;
+}
+.skin-memo-atelier .dossier-card,
+.skin-cockpit-atelier .memo-card,
+.skin-cockpit-atelier .memo-callout {
+  border-radius: 1.25rem;
+}
+.skin-cockpit-atelier .pursuit-chip,
+.skin-memo-atelier .dossier-apply-action,
+.skin-memo-atelier .dossier-decision-action {
+  border-radius: 999px;
+}
+
+/* Selected decision/tab contrast inside the skinned shells. The inverted
+   background comes from a utility; the matching foreground is stated here so
+   the label never sits ink-on-ink. */
+.skin-memo-boardroom [aria-pressed="true"],
+.skin-memo-signal [aria-pressed="true"],
+.skin-cockpit-signal [aria-pressed="true"] {
+  color: var(--parchment);
+}
+
+.skin-memo-atelier [aria-pressed="true"],
+.skin-cockpit-atelier [aria-pressed="true"] {
+  color: var(--skin-accent-fg);
+}
+
+/* Keep the lifecycle menu inside the narrower Boardroom contents rail. */
+.skin-cockpit-boardroom [role="menu"] {
+  left: 0;
+  right: auto;
+  max-width: calc(100vw - 2rem);
+}

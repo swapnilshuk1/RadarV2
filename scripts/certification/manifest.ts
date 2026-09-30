@@ -66,6 +66,7 @@ export const certificationManifest = [
       "tests/serving/singleflight_and_observability.test.ts",
       "tests/serving/singleflight-scope-isolation.test.ts",
       "tests/editorial/shortlist-badge-resolution.test.ts",
+      "tests/editorial/memo-cockpit-skins.test.ts",
       "tests/serving/current-serving-boundary.test.ts",
       "tests/persistence/deployment-determinism.test.ts",
     ],
