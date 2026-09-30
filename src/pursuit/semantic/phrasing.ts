@@ -77,21 +77,21 @@ const BANKS = {
     "A brief final follow-up on {role}: still interested, and easy to reach if it reopens.",
   ],
   counterDirectGap: [
-    "Do not imply {domain} experience you do not have. Lead instead with {evidence}, which carry the same {kinds} economics, then state plainly why you want to learn the {domain} model.",
-    "Name the {domain} gap yourself, early. Then show that {evidence} prove the harder part of the job, {kinds}, and explain how you would close the domain learning curve.",
-    "Treat {domain} as the honest gap. Anchor the answer on {evidence} as the transferable core, {kinds}, and be specific about what you would need to learn in the first months.",
+    "{domain} experience is not established. The transferable case is {evidence}, which carries comparable {kinds} economics; the domain learning curve should remain explicit.",
+    "The {domain} gap is real. {evidence} supports the harder transferable elements — {kinds} — while direct domain experience remains to be learned.",
+    "{domain} is the honest gap; {evidence} establishes the transferable core in {kinds}, not prior ownership of the domain itself.",
   ],
   counterAnalogous: [
-    "Frame {evidence} as the same {kinds} problem solved in a different setting, and invite them to test the parallels.",
-    "Acknowledge the context shift, then walk through {evidence} as a working parallel for {kinds}.",
+    "{evidence} solves a comparable {kinds} problem in a different setting; it is analogous evidence, not a claim of identical experience.",
+    "The context changes, but {evidence} provides a credible parallel for {kinds}.",
   ],
   counterRequirement: [
-    "Answer with {evidence} and be clear about where the experience is direct and where it is related.",
-    "Point to {evidence} as the relevant proof, without stretching it beyond what it shows.",
+    "{evidence} is the relevant proof; where it is related rather than direct, that distinction remains explicit.",
+    "{evidence} supports the requirement without stretching beyond what the record establishes.",
   ],
   counterNoEvidence: [
-    "Acknowledge this directly and describe how you would build it quickly; do not claim it.",
-    "Treat this as a learning agenda item, stated openly, rather than something to defend.",
+    "This is a genuine gap with no direct proof in the current record; it belongs on the learning agenda rather than being claimed.",
+    "The current record does not establish this capability directly, so it remains an explicit learning or validation point.",
   ],
   summaryOpen: {
     SAME_DOMAIN: [
