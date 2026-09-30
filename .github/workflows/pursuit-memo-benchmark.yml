@@ -65,7 +65,8 @@ jobs:
             tests/fixtures/pursuit/msm-unify-csto/role.json \
             tests/fixtures/pursuit/weber-shandwick-vp-digital/role.json \
             src/pursuit/thesis.ts \
-            src/pursuit/semantic/validate.ts
+            src/pursuit/semantic/validate.ts \
+            src/pursuit/semantic/phrasing.ts
 
       - name: Stage and run against deployed Pursuit runtime
         shell: bash
