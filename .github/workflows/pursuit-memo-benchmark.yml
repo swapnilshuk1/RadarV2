@@ -9,6 +9,12 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/pursuit-memo-benchmark.yml"
+      - "src/pursuit/thesis.ts"
+      - "src/pursuit/semantic/validate.ts"
+      - "src/pursuit/semantic/phrasing.ts"
+      - "src/pursuit/model.ts"
+      - "tests/pursuit/memo-model-benchmark.test.ts"
+      - "tests/fixtures/pursuit/**"
 
 permissions:
   contents: read
