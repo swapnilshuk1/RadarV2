@@ -21,6 +21,7 @@ import { describe, expect, it } from "vitest";
 import { loadMantleCredentials } from "../../src/lib/model/bedrock-credentials";
 import { extractFigures } from "../../src/pursuit/approval";
 import { PursuitTokenLedger } from "../../src/pursuit/budget";
+import { pursuitMantleModelIds } from "../../src/pursuit/model";
 import type { RoleBrief } from "../../src/pursuit/role-brief";
 import {
   findLeakage,
@@ -101,13 +102,13 @@ const CASES: BenchmarkCase[] = [
 const MODELS = [
   {
     id: "zai.glm-5",
-    label: "GLM-5 (deployed)",
+    label: "GLM-5",
     inputUsdPerMillion: 1.0,
     outputUsdPerMillion: 3.2,
   },
   {
     id: "deepseek.v3.2",
-    label: "DeepSeek V3.2",
+    label: "DeepSeek V3.2 (deployed default)",
     inputUsdPerMillion: 0.62,
     outputUsdPerMillion: 1.85,
   },
@@ -274,6 +275,17 @@ describe("Pursuit memo benchmark configuration", () => {
       "moonshotai.kimi-k2.5",
     ]);
     expect(CASES).toHaveLength(5);
+
+    const original = process.env.RADAR_PURSUIT_MANTLE_MODEL;
+    try {
+      delete process.env.RADAR_PURSUIT_MANTLE_MODEL;
+      expect(pursuitMantleModelIds()).toEqual(["deepseek.v3.2", "zai.glm-5"]);
+      process.env.RADAR_PURSUIT_MANTLE_MODEL = "moonshotai.kimi-k2.5";
+      expect(pursuitMantleModelIds()).toEqual(["moonshotai.kimi-k2.5", "zai.glm-5"]);
+    } finally {
+      if (original === undefined) delete process.env.RADAR_PURSUIT_MANTLE_MODEL;
+      else process.env.RADAR_PURSUIT_MANTLE_MODEL = original;
+    }
   });
 });
 
@@ -331,7 +343,7 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
                 role: spec.brief.roleTitle,
                 model: model.id,
                 label: model.label,
-                deployed: model.id === "zai.glm-5",
+                deployed: model.id === "deepseek.v3.2",
                 modelAnswered,
                 qualityProxy: quality.score,
                 qualityBreakdown: {
@@ -380,7 +392,7 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
         const rows = report.filter((row) => row.model === model.id);
         return {
           model: model.id,
-          deployed: model.id === "zai.glm-5",
+          deployed: model.id === "deepseek.v3.2",
           avgQualityProxy: Number(
             (rows.reduce((sum, row) => sum + Number(row.qualityProxy), 0) / rows.length).toFixed(1),
           ),
@@ -416,6 +428,7 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
         sourceRuntime: "Oracle production dependencies with certified Pursuit source overlay",
         sourceReleaseSha: process.env.RADAR_PURSUIT_BENCHMARK_SOURCE_SHA?.trim() || null,
         benchmarkCodeSha: process.env.RADAR_PURSUIT_BENCHMARK_CODE_SHA?.trim() || null,
+        configuredMantleOverride: originalModel?.trim() || null,
         summary,
         rows: report,
       };
