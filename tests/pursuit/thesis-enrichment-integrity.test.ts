@@ -81,8 +81,10 @@ describe("Pursuit thesis enrichment integrity", () => {
       style,
     });
 
-    expect(enriched.objections[0]?.counterPosition).toContain("Matched counter 1");
-    expect(enriched.objections[1]?.counterPosition).toContain("Matched counter 2");
+    deterministic.objections.forEach((base, index) => {
+      const matched = enriched.objections.find((objection) => objection.objection === base.objection);
+      expect(matched?.counterPosition).toContain(`Matched counter ${index + 1}`);
+    });
   });
 
   it("can add a trusted RoleBrief risk when deterministic objections miss it", async () => {
