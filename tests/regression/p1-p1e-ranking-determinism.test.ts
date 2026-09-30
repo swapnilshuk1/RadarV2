@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import type { Opportunity } from "@/data/opportunity-fixtures";
+import type { Opportunity } from "@/opportunity/contracts";
 import type { DecisionConfidence } from "@/domain/entities";
 
 // Helper to create test opportunities with specific properties

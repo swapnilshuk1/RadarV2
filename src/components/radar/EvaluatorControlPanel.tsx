@@ -3,7 +3,7 @@ import {
   controlEvaluatorFn,
   getEvaluatorTelemetryFn,
   type EvaluatorTelemetrySnapshot,
-} from "../../lib/intelligence/evaluation-server";
+} from "@/evaluation/server";
 
 function formatElapsed(startedAt: number | string | null | undefined, now: number): string {
   if (!startedAt) return "—";

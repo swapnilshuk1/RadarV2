@@ -8,7 +8,7 @@ and [deployment guide](../DEPLOYMENT.md).
 
 | Contract | Current value | Authority |
 | --- | --- | --- |
-| Staged policy / decision | `staged-v8` / `staged-decision-v8` | `src/lib/intelligence/staged/stagedPolicy.ts` |
+| Staged policy / decision | `staged-v8` / `staged-decision-v8` | `src/evaluation/policy.ts` |
 | Rich dossier | `dossier-v4.1` | `src/data/sqlite/repositories/SqliteRichDossierStore.ts` |
 | Factual review | `memo-facts-v4` | `src/dossier/factual-review-integrity.ts` |
 | Frozen input / durable checkpoints | Migrations 050 / 051 | `src/data/sqlite/migrations/` |
@@ -19,9 +19,9 @@ that evidence before evaluation. V8 context identity includes the acquisition
 recipe. New context-aware work must not reuse historical v6/v7 identities.
 
 Bedrock evaluation/composition and Gemini factual review use the configured model
-factories. GLM-5 uses Bedrock Mantle, with `BEDROCK_MANTLE_API_KEY` or the local
-`mantle.key` file (`BEDROCK_MANTLE_KEY_FILE` overrides its location). The old
-Converse bearer/CSV is not a fallback. Restart workers after key rotation.
+factories. GLM-5 uses Bedrock Mantle, with `BEDROCK_MANTLE_API_KEY` or a key file
+outside the repository referenced by `BEDROCK_MANTLE_KEY_FILE`. The old Converse
+bearer/CSV is not a fallback. Restart workers after key rotation.
 Google ADC uses standard credential discovery, including service-account
 and workload credentials; the target runtime still needs working credentials,
 permissions and quota. Tavily configuration is required for current rollout.

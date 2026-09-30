@@ -56,7 +56,7 @@ import type {
   UnavailableOpportunity,
   UnmaterializedOpportunity,
   ScrapeSource,
-} from "../../../data/opportunity-fixtures";
+} from "@/opportunity/contracts";
 import {
   classifyOpportunityCategories,
   type CategoryId,

@@ -10,7 +10,7 @@ import type {
   EvidenceBucket,
   Status,
   Traced,
-} from "@/data/opportunity-fixtures";
+} from "@/opportunity/contracts";
 
 export type { DimensionKey, DimensionResult, EvidenceBucket, Status, Traced };
 

@@ -20,7 +20,7 @@
 
 import { getRepositories } from "../../data/sqlite/provider";
 import { getDatabaseAdapter } from "../../data/database";
-import type { Opportunity } from "@/data/opportunity-fixtures";
+import type { Opportunity } from "@/opportunity/contracts";
 import type { CanonicalOpportunityMetrics } from "./metric-integrity";
 import {
   authenticateTenantMembership,
@@ -198,7 +198,7 @@ export class OpportunityService {
    * hydration uses the canonical serving read model, so legacy/corrupt
    * evaluated artifacts cannot become browser-defined recommendations.
    */
-  static async listForUser(userId: string, options?: ServiceOptions, requestedTenantId?: string, requestedPersonId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity[]> {
+  static async listForUser(userId: string, options?: ServiceOptions, requestedTenantId?: string, requestedPersonId?: string): Promise<import("@/opportunity/contracts").ServedOpportunity[]> {
     const scope = await resolveScope(userId, requestedTenantId, requestedPersonId);
     const queries = this.getServingQueries();
     const feedItems = await collectUnreviewedFeedItems(queries, scope, options?.categoryId);
@@ -210,7 +210,7 @@ export class OpportunityService {
     const opportunities = await Promise.all(
       feedItems.map((item) => queries.getDossier(scope, item.jobHash)),
     );
-    return opportunities.filter((opportunity): opportunity is import("../../data/opportunity-fixtures").ServedOpportunity => {
+    return opportunities.filter((opportunity): opportunity is import("@/opportunity/contracts").ServedOpportunity => {
       if (!opportunity) return false;
       if (options?.categoryId === "needs_more_signal") {
         return opportunity.evaluationState === "SPARSE_SPEC"
@@ -228,7 +228,7 @@ export class OpportunityService {
    * Gets a single computed opportunity DTO by hash strictly within the authorized canonical population.
    * Zero fallback to legacy un-scoped evaluators.
    */
-  static async getForUser(userId: string, jobHash: string, options?: ServiceOptions, requestedTenantId?: string, requestedPersonId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity | undefined> {
+  static async getForUser(userId: string, jobHash: string, options?: ServiceOptions, requestedTenantId?: string, requestedPersonId?: string): Promise<import("@/opportunity/contracts").ServedOpportunity | undefined> {
     const scope = await resolveScope(userId, requestedTenantId, requestedPersonId);
     const queries = this.getServingQueries();
     const opp = await queries.getDossier(scope, jobHash);
@@ -293,7 +293,7 @@ export class OpportunityService {
     requestedTenantId?: string,
     requestedPersonId?: string,
   ): Promise<{
-    opportunity: import("../../data/opportunity-fixtures").ServedOpportunity | undefined;
+    opportunity: import("@/opportunity/contracts").ServedOpportunity | undefined;
     currentIndex: number;
     totalCount: number;
     neighbors: { prev: any; next: any };

@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseAdapter } from "@/data/database";
 import { DOSSIER_COMPOSITION_RECIPE } from "@/dossier/factual-review-integrity";
-import { checkpointHash } from "@/lib/intelligence/staged/DurableDossierModel";
-import type { ProductionStagedIdentity } from "@/lib/intelligence/staged/ProductionStagedInputAdapter";
+import { checkpointHash } from "@/dossier/runtime/durable-model";
+import type { ProductionStagedIdentity } from "@/evaluation/contracts";
 
 export const PREPARING_DOSSIER_VERSION = "dossier-preparing-v1";
 export const DOSSIER_COMPOSITION_LEASE_MS = 180_000;

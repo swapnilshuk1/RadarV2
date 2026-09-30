@@ -6,7 +6,7 @@
  * Expected: NOT treated as hasStructuredEvidence (regression from provenance fallback)
  */
 
-import type { OpportunitySource } from "@/data/opportunity-fixtures";
+import type { OpportunitySource } from "@/opportunity/contracts";
 
 export const UNGROUNDED_EVIDENCE = {
   source: {

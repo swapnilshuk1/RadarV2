@@ -61,13 +61,16 @@ new evaluation policy or used as substitute candidate evidence.
 | Responsibility                                                 | Location                                                                                                               |
 | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Portal acquisition, payload preservation, enrichment queue     | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts`                                                           |
-| Durable scheduling and evaluation worker                       | `src/lib/intelligence/EvaluationWorkScheduler.ts`, `EvaluationWorker.ts`                                               |
-| Production input, context acquisition, checkpoints and rollout | `src/lib/intelligence/staged/`                                                                                         |
+| Candidate profile, projection, pipeline and profile transport   | `src/candidate/`                                                                                                        |
+| Opportunity contracts and application actions                  | `src/opportunity/`                                                                                                      |
+| Durable scheduling and evaluation worker                       | `src/evaluation/work-scheduler.ts`, `src/evaluation/worker.ts`                                                        |
+| Evaluation input, context acquisition, checkpoints and policy  | `src/evaluation/staged-input.ts`, `context-provider.ts`, `durable-model.ts`, `policy.ts`                          |
 | Evidence extraction, conflicts and source fingerprints         | `src/dossier/evidence.ts`                                                                                              |
 | Role requirements and mapping contracts                        | `src/dossier/staged-role.ts`                                                                                           |
 | Screening, decision policy and provenance validation           | `src/dossier/staged-screening.ts`, `staged-decision.ts`, `staged-decision-contract.ts`, `staged-decision-integrity.ts` |
 | Whole-memo composition and compact factual review              | `src/dossier/composition.ts`, `staged-composition.ts`, `memo-review.ts`, `factual-review-integrity.ts`                 |
 | Canonical executive memo and Template B                        | `src/dossier/contracts.ts`, `DossierView.tsx`                                                                          |
+| Dossier composition/review workers and publication             | `src/dossier/runtime/`                                                                                                  |
 | Persistence, migrations and serving queries                    | `src/data/`                                                                                                            |
 | Application routes and shared interface                        | `src/routes/`, `src/components/`                                                                                       |
 

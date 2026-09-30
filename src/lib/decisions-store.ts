@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { DecisionVerb } from "../data/opportunity-fixtures";
+import type { DecisionVerb } from "@/opportunity/contracts";
 import {
   getDecisionsFn,
   saveDecisionFn,

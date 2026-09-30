@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { DecisionPolicyEngine } from "../../src/lib/intelligence/policy/DecisionPolicyEngine";
-import type { CandidateProjection } from "../../src/lib/domain/candidate_projection";
+import type { CandidateProjection } from "@/candidate/projection";
 import type { JobProjection } from "../../src/lib/domain/job_projection";
 
 const BASE_CANDIDATE: CandidateProjection = {

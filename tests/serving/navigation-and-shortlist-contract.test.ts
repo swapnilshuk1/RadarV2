@@ -7,7 +7,7 @@ import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/Sql
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
-import { computeEvaluationContextFingerprint } from "../../src/lib/domain/evaluation_fingerprint";
+import { computeEvaluationContextFingerprint } from "@/evaluation/fingerprint";
 
 const currentContext = computeEvaluationContextFingerprint({
   tenantId: "tenant_A",

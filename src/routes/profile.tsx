@@ -8,13 +8,18 @@ import {
   getProfileOverviewFn,
   getDefaultProfileScopeFn,
   refreshRecommendationsFn,
-} from "../lib/intelligence/document-server";
+} from "@/candidate/server";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 import { useAttentionPreference } from "../lib/attention-store";
-import { getUserPreferencesFn } from "../lib/intelligence/preferences-server";
-import { PROFILE_PIPELINE_STAGES, isIntentRequiredProfileState, resolveProfilePipelineStepState } from "../lib/intelligence/profile-pipeline-presentation";
-import { resolveIntentActivationPresentation } from "../lib/intelligence/profile-intent-presentation";
-import { profilePollDelay, shouldPollProfile } from "../lib/intelligence/profile-polling";
+import { getUserPreferencesFn } from "@/candidate/preferences-server";
+import {
+  PROFILE_PIPELINE_STAGES,
+  isIntentRequiredProfileState,
+  resolveProfilePipelineStepState,
+  resolveIntentActivationPresentation,
+  profilePollDelay,
+  shouldPollProfile,
+} from "@/candidate/presentation";
 import { getPursuitVaultFn } from "../pursuit/server";
 import { ArchetypeVault } from "../pursuit/components/ArchetypeVault";
 

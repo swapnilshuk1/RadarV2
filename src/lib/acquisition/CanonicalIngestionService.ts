@@ -35,14 +35,14 @@ import type {
   LifecycleState,
   EvidenceState,
 } from "@/lib/domain/canonical_acquisition";
-import type { SearchCriteriaPayload } from "@/lib/domain/evaluation_context";
+import type { SearchCriteriaPayload } from "@/evaluation/context-contracts";
 import { isExternalPostingUrl } from "./external-posting-url";
 import { validateJobDocument } from "./validator";
 import { getBlobStore, type BlobStore } from "@/lib/storage/blob-store";
 import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
 import { classifyOpportunityCategories } from "@/lib/domain/category_taxonomy";
 import { parseVerifiedIndeedListingUrl } from "./indeed-listing-identity";
-import { EvaluationWorkScheduler } from "@/lib/intelligence/EvaluationWorkScheduler";
+import { EvaluationWorkScheduler } from "@/evaluation/work-scheduler";
 
 export interface IngestOpportunityPayload {
   sourcePortal: string;

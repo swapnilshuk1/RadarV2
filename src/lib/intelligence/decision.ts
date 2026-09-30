@@ -2,7 +2,7 @@
 // Confidence is NOT consulted here. A high-priority / low-confidence record
 // still yields PURSUE — the Narrative Formatter phrases the uncertainty.
 
-import type { DecisionVerb } from "@/data/opportunity-fixtures";
+import type { DecisionVerb } from "@/opportunity/contracts";
 
 export const BANDS = { PURSUE: 0.55, CONSIDER: 0.3 } as const;
 

@@ -23,7 +23,7 @@ import type {
   OpaqueCursor,
 } from "../opportunity-queries";
 import type { CanonicalOpportunityMetrics } from "../metric-integrity";
-import type { ServedOpportunity } from "../../../data/opportunity-fixtures";
+import type { ServedOpportunity } from "@/opportunity/contracts";
 import { servingTelemetry, ServingStopwatch } from "./observability";
 import { getRepositories } from "../../../data/sqlite/provider";
 

@@ -11,7 +11,7 @@ import type { TenantOntologyConfig } from "../../src/lib/ontology/compiler/types
 import canonicalRawJson from "../../src/data/ontology/executive_ontology.json";
 import { CapabilityAssessmentEngine } from "../../src/lib/intelligence/engines/CapabilityAssessmentEngine";
 import { buildCandidateEvaluationContext } from "../../src/lib/intelligence/context";
-import type { CandidateProjection } from "../../src/lib/domain/candidate_projection";
+import type { CandidateProjection } from "@/candidate/projection";
 import type { JobProjection } from "../../src/lib/domain/job_projection";
 
 describe("Phase M2: Tenant-Aware Ontology Compiler Suite", () => {

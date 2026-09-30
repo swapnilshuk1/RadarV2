@@ -2,7 +2,7 @@
 
 import fs from "fs";
 import type { CareerIntent } from "./career-intent";
-import type { EligibilitySpec } from "../../../src/lib/domain/evaluation_context";
+import type { EligibilitySpec } from "../../../src/evaluation/context-contracts";
 
 export class InsufficientSearchCriteriaError extends Error {
   constructor(message: string) {

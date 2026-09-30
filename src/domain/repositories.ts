@@ -16,9 +16,8 @@ import type {
   CredentialAuditLog,
   CredentialStatus,
 } from "./entities";
-import type { CandidateProjection } from "../lib/domain/candidate_projection";
-import type { CandidateDocumentRecord, SqliteDocumentStore } from "../data/sqlite/repositories/SqliteDocumentStore";
-import type { OpportunitySource } from "../data/opportunity-fixtures";
+import type { CandidateProjection } from "@/candidate/projection";
+import type { OpportunitySource } from "@/opportunity/contracts";
 
 /**
  * Repository Contracts
@@ -203,31 +202,3 @@ export interface CredentialStore {
     auditLog: CredentialAuditLog;
   }): Promise<void>;
 }
-
-// ============================================================================
-// 3. STORAGE ABSTRACTION
-// ============================================================================
-
-import type { SqliteEvaluationStore } from "../data/sqlite/repositories/SqliteEvaluationStore";
-import type { SqliteOpportunityQueries } from "../data/sqlite/repositories/SqliteOpportunityQueries";
-import type { SqliteEvaluationContextStore } from "../data/sqlite/repositories/SqliteEvaluationContextStore";
-import type { SqliteScrapeRunStore } from "../data/sqlite/repositories/SqliteScrapeRunStore";
-
-export interface StorageProvider {
-  sources: SourceStore;
-  companies: CompanyStore;
-  opportunities: OpportunityStore;
-  acquisition: AcquisitionStore;
-  knowledge: KnowledgeStore;
-  reasoning: ReasoningStore;
-  people: PersonStore;
-  decisions: DecisionSupportStore;
-  documents: SqliteDocumentStore;
-  evaluations: SqliteEvaluationStore;
-  credentials: CredentialStore;
-  /** The sole production serving read-model authority. */
-  canonicalServing: SqliteOpportunityQueries;
-  evaluationContexts: SqliteEvaluationContextStore;
-  scrapeRuns: SqliteScrapeRunStore;
-}
-

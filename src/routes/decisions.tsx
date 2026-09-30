@@ -1,7 +1,8 @@
-import { type ServedOpportunity, isEvaluated, isUnavailable, type EvaluatedOpportunity } from "../data/opportunity-fixtures";
+import { type ServedOpportunity, isEvaluated, isUnavailable, type EvaluatedOpportunity } from "@/opportunity/contracts";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState, useMemo, useCallback } from "react";
-import { applicationActionFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
+import type { DecisionVerb, Opportunity } from "@/opportunity/contracts";
+import { applicationActionFor } from "@/opportunity/application-action";
 import { useDecisions } from "../lib/decisions-store";
 import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/components/PursuitLauncher";
 import { DecisionBadge } from "../components/radar/DecisionBadge";

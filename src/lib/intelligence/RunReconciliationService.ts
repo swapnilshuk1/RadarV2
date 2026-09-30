@@ -1,7 +1,7 @@
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
 import { SqliteScrapeRunStore } from "@/data/sqlite/repositories/SqliteScrapeRunStore";
 import { EnrichmentQueue } from "../../../scripts/scraper/persist/queue";
-import { failEvaluationDependency } from './evaluationDependency';
+import { failEvaluationDependency } from '@/evaluation/dependency';
 
 export interface RunProgress {
   runId: string;

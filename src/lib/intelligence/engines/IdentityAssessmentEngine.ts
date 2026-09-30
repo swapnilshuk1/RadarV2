@@ -1,9 +1,9 @@
-import { CandidateProjection } from "../../domain/candidate_projection";
+import { CandidateProjection } from "@/candidate/projection";
 import { EvaluationJobProjection } from "../../domain/job_projection";
 import { IdentityAssessment } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
 import { IdentityDistanceCalculator } from "../utils/IdentityDistanceCalculator";
-import type { CandidateEvaluationContext } from "../context";
+import type { CandidateEvaluationContext } from "@/evaluation/context";
 
 export class IdentityAssessmentEngine {
   /**

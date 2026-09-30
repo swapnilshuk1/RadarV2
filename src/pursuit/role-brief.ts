@@ -7,8 +7,8 @@
  * changes, only this file moves.
  */
 
-import type { ServedOpportunity } from "../data/opportunity-fixtures";
-import { isEvaluated } from "../data/opportunity-fixtures";
+import type { ServedOpportunity } from "@/opportunity/contracts";
+import { isEvaluated } from "@/opportunity/contracts";
 import type { Dossier } from "../dossier/contracts";
 
 export interface RoleRequirement {

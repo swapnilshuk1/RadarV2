@@ -5,7 +5,7 @@ import { createRepositories } from "../../src/data/sqlite/provider";
 import { setBlobStore, MemoryBlobStore } from "../../src/lib/storage/blob-store";
 import { EnrichmentQueue } from "../../scripts/scraper/persist/queue";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
-import type { StorageProvider } from "../../src/domain/repositories";
+import type { StorageProvider } from "../../src/data/storage-provider";
 import type { Provenance } from "../../scripts/scraper/types";
 
 // Mock the LLM extraction step to be deterministic and fast

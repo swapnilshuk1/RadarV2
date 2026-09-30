@@ -1,6 +1,6 @@
 import { getDatabaseAdapter } from "../src/data/database";
 import { loadMantleCredentials } from "../src/lib/model/bedrock-credentials";
-import { DossierCompositionWorker } from "../src/lib/intelligence/staged/DossierCompositionWorker";
+import { DossierCompositionWorker } from "../src/dossier/runtime/composition-worker";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
 

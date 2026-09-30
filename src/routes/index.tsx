@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type DecisionVerb, type EvaluatedOpportunity, type ServedOpportunity, isEvaluated, isUnavailable, isUnmaterialized } from "../data/opportunity-fixtures";
+import { type DecisionVerb, type EvaluatedOpportunity, type ServedOpportunity, isEvaluated, isUnavailable, isUnmaterialized } from "@/opportunity/contracts";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
 import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/components/PursuitLauncher";

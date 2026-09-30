@@ -4,7 +4,7 @@ import { GoogleAuth } from "google-auth-library";
 import { adcTokenProvider } from "../../src/lib/model/google-adc";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
-import { durableDossierModel } from "../../src/lib/intelligence/staged/DurableDossierModel";
+import { durableDossierModel } from "@/dossier/runtime/durable-model";
 import { dossier as fixtureDossier, stagedEvaluation } from "../fixtures/staged-rich-dossier";
 import { reviewMemo } from "../../src/dossier/memo-review";
 import { assignedMemoPointsFor, memoInputPacket, validateMemoCopy } from "../../src/dossier/composition";

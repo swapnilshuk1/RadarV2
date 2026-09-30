@@ -4,7 +4,7 @@ import type {DatabaseAdapter} from '@/data/database';
 import {candidateConflictSchema,claimSchema,sourceSchema} from '@/dossier/contracts';
 import {validateClaims} from '@/dossier/grounding';
 import type {StagedResearchInput} from '@/dossier/staged-role';
-import type {ProductionStagedIdentity} from '@/lib/intelligence/staged/ProductionStagedInputAdapter';
+import type {ProductionStagedIdentity} from '@/evaluation/contracts';
 
 const candidateDecisionProfileSchema=z.object({
   projection:z.object({

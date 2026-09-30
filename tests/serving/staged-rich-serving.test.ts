@@ -12,10 +12,10 @@ import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { SqliteStagedEvaluationStore } from "../../src/data/sqlite/repositories/SqliteStagedEvaluationStore";
 import { SqliteRichDossierStore } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";
-import { StagedServingPublisher } from "../../src/lib/intelligence/staged/StagedServingPublisher";
+import { StagedServingPublisher } from "@/dossier/runtime/serving-publisher";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
-import { computeEvaluationContextFingerprint } from "../../src/lib/domain/evaluation_fingerprint";
+import { computeEvaluationContextFingerprint } from "@/evaluation/fingerprint";
 import { resolveCanonicalServingReadModel } from "../../src/lib/intelligence/serving/CanonicalServingReadModel";
 import type { Dossier, JsonValue, Passage } from "../../src/dossier/contracts";
 import {
@@ -28,9 +28,9 @@ import { stagedEvaluation, evaluationFingerprint, dossier } from "../fixtures/st
 import { RICH_DOSSIER_VERSION } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";
 import { SqliteDossierReviewQueue } from "../../src/data/sqlite/repositories/SqliteDossierReviewQueue";
 import { PREPARING_DOSSIER_VERSION, SqliteDossierCompositionQueue, compositionCheckpointScope } from "../../src/data/sqlite/repositories/SqliteDossierCompositionQueue";
-import { DossierReviewWorker } from "../../src/lib/intelligence/staged/DossierReviewWorker";
-import { DossierCompositionWorker } from "../../src/lib/intelligence/staged/DossierCompositionWorker";
-import { ProductionStagedDossierService } from "../../src/lib/intelligence/staged/ProductionStagedDossierService";
+import { DossierReviewWorker } from "@/dossier/runtime/review-worker";
+import { DossierCompositionWorker } from "@/dossier/runtime/composition-worker";
+import { ProductionStagedDossierService } from "@/dossier/runtime/service";
 import { ModelProviderUnavailableError } from "../../src/lib/model/provider-unavailable";
 import { renderToStaticMarkup } from "react-dom/server";
 

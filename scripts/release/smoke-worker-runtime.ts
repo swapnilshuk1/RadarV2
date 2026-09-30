@@ -1,6 +1,6 @@
-import { DossierCompositionWorker } from "../../src/lib/intelligence/staged/DossierCompositionWorker";
-import { DossierReviewWorker } from "../../src/lib/intelligence/staged/DossierReviewWorker";
-import { EvaluationDaemon } from "../../src/lib/intelligence/EvaluationDaemon";
+import { DossierCompositionWorker } from "../../src/dossier/runtime/composition-worker";
+import { DossierReviewWorker } from "../../src/dossier/runtime/review-worker";
+import { EvaluationDaemon } from "../../src/evaluation/daemon";
 import { TechnologyOntology } from "../../src/lib/ontology/TechnologyOntology";
 
 TechnologyOntology.load();

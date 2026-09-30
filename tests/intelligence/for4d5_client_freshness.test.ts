@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isEvaluated, isUnavailable, type EvaluatedOpportunity, type UnmaterializedOpportunity, type Opportunity } from '../../src/data/opportunity-fixtures.js';
+import { isEvaluated, isUnavailable, type EvaluatedOpportunity, type UnmaterializedOpportunity, type Opportunity } from '@/opportunity/contracts';
 
 describe('FOR-4D5 Client Freshness & Revalidation Integrity', () => {
   it('Test 1: Fresh server metrics calculation returns totalShortlisted = 720 rather than stale 487', () => {

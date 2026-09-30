@@ -3,10 +3,10 @@ import Database from 'better-sqlite3';
 import { SqliteAdapter } from '../../src/data/database/sqlite';
 import { runMigrations } from '../../src/data/sqlite/migrations/runner';
 import { SqliteStagedEvaluationStore, STAGED_CONTRACT_VERSION, STAGED_POLICY_VERSION, stagedUnavailableEvaluation } from '../../src/data/sqlite/repositories/SqliteStagedEvaluationStore';
-import { assertCanonicalJdContentHash, DeterministicStagedInputUnavailableError } from '../../src/lib/intelligence/staged/ProductionStagedInputAdapter';
+import { assertCanonicalJdContentHash, DeterministicStagedInputUnavailableError } from '@/evaluation/staged-input';
 import { computeContentHash } from '../../src/lib/domain/canonical_identity';
 import {stagedEvaluation} from '../fixtures/staged-rich-dossier';
-import { durableStagedModel } from '../../src/lib/intelligence/staged/DurableStagedModel';
+import { durableStagedModel } from '@/evaluation/durable-model';
 import { createSqliteModelInvocationSink } from '../../src/lib/model/model-invocation';
 
 describe('staged production persistence boundary', () => {

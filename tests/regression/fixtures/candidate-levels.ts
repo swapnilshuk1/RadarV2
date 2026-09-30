@@ -5,7 +5,7 @@
  * Tests that classifier output is respected, not hardcoded to "STRATEGIC".
  */
 
-import type { CandidateProjection } from "@/src/domain/candidate_projection";
+import type { CandidateProjection } from "@/candidate/projection";
 import type { OperatingLevel } from "@/src/domain/semantic";
 
 const BASE_CANDIDATE: CandidateProjection = {

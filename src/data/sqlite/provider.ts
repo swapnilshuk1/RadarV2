@@ -13,7 +13,7 @@ import { SqliteOpportunityQueries } from "./repositories/SqliteOpportunityQuerie
 import { SqliteEvaluationContextStore } from "./repositories/SqliteEvaluationContextStore";
 import { SqliteScrapeRunStore } from "./repositories/SqliteScrapeRunStore";
 import { getDatabaseAdapter, type DatabaseAdapter } from "../database";
-import type { StorageProvider } from "../../domain/repositories";
+import type { StorageProvider } from "@/data/storage-provider";
 
 export function getDatabase(dbPath?: string): DatabaseAdapter {
   return getDatabaseAdapter(dbPath);

@@ -1,6 +1,6 @@
 // src/lib/intelligence/similarity/SimilarityTypes.ts
 
-import type { Opportunity } from "../../../data/opportunity-fixtures";
+import type { Opportunity } from "@/opportunity/contracts";
 
 export interface CandidateProjectionPlaceholder {
   id: string;

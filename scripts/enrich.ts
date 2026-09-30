@@ -69,7 +69,7 @@ export function assertCanonicalPayloadIdentity(
 export async function processJob(
   queue: EnrichmentQueue, 
   job: import("./scraper/persist/queue").EnrichmentJob,
-  deps?: { repos?: import("../src/domain/repositories").StorageProvider }
+  deps?: { repos?: import("../src/data/storage-provider").StorageProvider }
 ): Promise<{llmMs: number; busyMs: number; dimensions?: any}> {
   const leaseOwner = job.lease_owner;
   if (!leaseOwner) throw new Error("ENRICHMENT_LEASE_OWNER_MISSING");
@@ -556,7 +556,7 @@ export async function enrichJobsForRun(
   runId: string,
   deps?: {
     queue?: EnrichmentQueue;
-    repos?: import("../src/domain/repositories").StorageProvider;
+    repos?: import("../src/data/storage-provider").StorageProvider;
     pipelineVersion?: string;
     /** Explicit operator action may enrich captures from a stopped scrape. */
     allowTerminalRun?: boolean;

@@ -15,9 +15,9 @@
  */
 
 import { createHash } from "node:crypto";
-import type { CandidateProjection } from "../../domain/candidate_projection";
+import type { CandidateProjection } from "@/candidate/projection";
 import type { JobProjection } from "../../domain/job_projection";
-import type { OpportunitySource } from "../../../data/opportunity-fixtures";
+import type { OpportunitySource } from "@/opportunity/contracts";
 
 export type FingerprintClassification = "CANONICAL_V4" | "LEGACY_NON_CANONICAL";
 export type EvaluationFreshnessState = "FRESH" | "STALE" | "LEGACY";

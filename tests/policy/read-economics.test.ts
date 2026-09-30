@@ -29,16 +29,16 @@ describe("remote DB read-economics guardrails", () => {
   });
 
   test("global evaluator recovery runs at startup and only sweeps every five minutes", () => {
-    const daemon = source("src/lib/intelligence/EvaluationDaemon.ts");
+    const daemon = source("src/evaluation/daemon.ts");
     expect(daemon).toContain("GLOBAL_RECONCILIATION_INTERVAL_MS = 5 * 60_000");
     expect(daemon).toContain('this.reconcileActiveRuns("startup")');
     expect(daemon).not.toContain("lastGlobalReconcileAt >= 10_000");
   });
 
-  test("review health is event-driven with a five-minute SLA sweep", () => {
+  test("review attention is event-driven and idle polling backs off", () => {
     const reviewWorker = source("scripts/run-dossier-review-worker.ts");
-    expect(reviewWorker).toContain("REVIEW_HEALTH_INTERVAL_MS = 5 * 60_000");
     expect(reviewWorker).toContain('result.status === "needs_attention"');
-    expect(reviewWorker).toContain("now - lastHealthCheckAt >= REVIEW_HEALTH_INTERVAL_MS");
+    expect(reviewWorker).toContain("MAX_IDLE_POLL_MS = 30_000");
+    expect(reviewWorker).toContain("Math.min(BASE_IDLE_POLL_MS * 2 ** idlePolls, MAX_IDLE_POLL_MS)");
   });
 });

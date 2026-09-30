@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canReopenPursuit } from "../../src/lib/intelligence/pursuit-affordance";
-import { profilePollDelay, shouldPollProfile } from "../../src/lib/intelligence/profile-polling";
+import { profilePollDelay, shouldPollProfile } from "@/candidate/presentation";
 
 describe("Profile and dossier journey controls", () => {
   it("shows a reopen action only after the candidate chose PURSUE", () => {

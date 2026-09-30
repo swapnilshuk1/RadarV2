@@ -1,7 +1,7 @@
 /** Durable CV/document worker. Run explicitly by a worker bootstrap, never a request handler. */
 import crypto from "node:crypto";
 import { getDatabaseAdapter } from "../src/data/database";
-import { ProjectionPipeline } from "../src/lib/intelligence/pipeline/ProjectionPipeline";
+import { ProjectionPipeline } from "../src/candidate/pipeline";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
 

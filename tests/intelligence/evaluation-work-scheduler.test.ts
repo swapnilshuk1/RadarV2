@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { beforeEach, describe, expect, it } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
-import { EvaluationWorkScheduler } from "../../src/lib/intelligence/EvaluationWorkScheduler";
+import { EvaluationWorkScheduler } from "@/evaluation/work-scheduler";
 import { computeContentHash } from "../../src/lib/domain/canonical_identity";
 
 describe("EvaluationWorkScheduler staged-v8 recovery", () => {

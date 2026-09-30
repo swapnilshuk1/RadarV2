@@ -1,4 +1,4 @@
-import type { DecisionVerb } from "../../data/opportunity-fixtures";
+import type { DecisionVerb } from "@/opportunity/contracts";
 
 const STYLES: Record<DecisionVerb, string> = {
   PURSUE: "bg-decision-pursue text-white",

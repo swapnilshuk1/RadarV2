@@ -19,7 +19,7 @@ import { getRepositories, createRepositories } from "../../data/sqlite/provider"
 import type { DatabaseAdapter } from "../../data/database";
 import type { AuthorizedPersonScope } from "../security/auth";
 import type { ActiveServingContext } from "../security/scope-resolver";
-import type { SearchCriteriaPayload } from "../domain/evaluation_context";
+import type { SearchCriteriaPayload } from "@/evaluation/context-contracts";
 import { InsufficientSearchCriteriaError } from "../../../scripts/scraper/run/search-planner";
 
 export interface ResolvedScraperPlan {

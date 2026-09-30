@@ -16,7 +16,7 @@ import fs from "fs";
 import path from "path";
 import { DatabaseAdapter, QueryParams } from "@/data/database/adapter";
 import { CanonicalIngestionService, InvalidCanonicalUrlError } from "@/lib/acquisition/CanonicalIngestionService";
-import { applicationActionFor } from "@/data/opportunity-fixtures";
+import { applicationActionFor } from "@/opportunity/application-action";
 import { extractExternalPostingUrl } from "@/lib/acquisition/external-posting-url";
 import { MemoryBlobStore } from "@/lib/storage/blob-store";
 import {

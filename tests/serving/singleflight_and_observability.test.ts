@@ -18,7 +18,7 @@ import { servingTelemetry, type ServingTelemetry } from "../../src/lib/intellige
 import type { OpportunityQueries, FeedPage, NavigationContext } from "../../src/lib/intelligence/opportunity-queries";
 import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
 import type { CanonicalOpportunityMetrics } from "../../src/lib/intelligence/metric-integrity";
-import type { ServedOpportunity } from "../../src/data/opportunity-fixtures";
+import type { ServedOpportunity } from "@/opportunity/contracts";
 
 describe("Phase 9 & 10: Singleflight & Observability Suite", () => {
   const scopeA: AuthorizedPersonScope = { tenantId: "tenant_A", personId: "person_A", role: "member" };

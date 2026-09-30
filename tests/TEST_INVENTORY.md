@@ -82,7 +82,7 @@ RADAR v2 Test Architecture
 | Authoritative Suite | Primary Invariant Protected | Certification Stage |
 | :--- | :--- | :---: |
 | `tests/intelligence/identity.test.ts` | Executive seniority categorization (`C_SUITE`, `VP`), role matching, and theme extraction. | Full Suite |
-| `tests/intelligence/worker-profile-resolution.test.ts` | EvaluationWorker resolves candidate profile strictly from tenant/person scope without static fallbacks. | Full Suite |
+| `tests/intelligence/candidate-profile-scope.test.ts` | Candidate profile persistence and resolution remain strictly tenant/person scoped. | Full Suite |
 | `tests/intelligence/profile-projection-version-compat.test.ts` | Legacy profile projections deterministically reproduce the exact context-pinned content version without a latest-row fallback. | Full Suite |
 | `tests/intelligence/profile-journey-controls.test.ts` | Profile processing, recommendation refresh, and polling controls. | Full Suite |
 | `tests/intelligence/recommendation-freshness.test.ts` | Recommendation freshness follows immutable profile and evaluation context versions. | Full Suite |
@@ -268,7 +268,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/staged-production-integration.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 5 | 13 |
 | `tests/intelligence/staged-queue-lifecycle.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 12 | 12 |
 | `tests/intelligence/staged-screening-authority.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 3 | 14 |
-| `tests/intelligence/worker-profile-resolution.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 7 | 24 |
+| `tests/intelligence/candidate-profile-scope.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 3 | 3 |
 | `tests/intelligence/write-refresh-runtime-correctness.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 4 |
 | `tests/ontology/tenant-ontology-compiler.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 10 | 55 |
 | `tests/persistence/active_pointer_precedence.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 1 | 3 |

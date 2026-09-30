@@ -5,7 +5,7 @@ import {
   isEvaluated,
   isUnmaterialized,
   isUnavailable,
-} from "../data/opportunity-fixtures";
+} from "@/opportunity/contracts";
 import { getOpportunityDetailsFn, requestDetailedDossierFn, requestFactualVerificationFn } from "../lib/intelligence/opportunity-server";
 import { useDecisions } from "../lib/decisions-store";
 import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";

@@ -4,7 +4,7 @@ import { dossierSchema, type Dossier } from "@/dossier/contracts";
 import { DOSSIER_COMPOSITION_RECIPE, reviewFingerprint } from "@/dossier/factual-review-integrity";
 import { assertMemoIntegrity } from "@/dossier/memo-integrity";
 import { validateComposition, validateClaims } from "@/dossier/grounding";
-import type { ProductionStagedIdentity } from "@/lib/intelligence/staged/ProductionStagedInputAdapter";
+import type { ProductionStagedIdentity } from "@/evaluation/contracts";
 import type { DossierPresentationIdentity } from "./SqliteRichDossierStore";
 
 export const DRAFT_DOSSIER_VERSION = "dossier-v4.1-draft";

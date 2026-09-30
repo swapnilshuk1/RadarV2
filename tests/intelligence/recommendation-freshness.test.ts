@@ -5,7 +5,7 @@ import {
   compareRecommendationLineage,
   getRecommendationFreshness,
   refreshSavedRecommendations,
-} from "../../src/lib/intelligence/recommendation-freshness";
+} from "@/candidate/recommendation-freshness";
 
 const scope = { tenantId: "tenant_A", personId: "person_A", roles: [] };
 
@@ -61,16 +61,13 @@ describe("recommendation profile freshness", () => {
       activation: { context: { profileVersion: "profile-B" } },
       coverage: { examined: 1, candidates: 1, materialized: 1 },
     }));
-    const notify = vi.fn(async () => undefined);
     const result = await refreshSavedRecommendations(database("profile-A", "profile-B"), scope, {
       getSavedIntent: vi.fn(async () => intent),
       activate,
-      notify,
     });
     expect(result.profileVersion).toBe("profile-B");
     expect(activate).toHaveBeenCalledWith(
       expect.objectContaining({ ...intent, scope, activatedBy: "profile-refresh" }),
     );
-    expect(notify).toHaveBeenCalledWith(scope.personId);
   });
 });

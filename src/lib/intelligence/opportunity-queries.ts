@@ -15,7 +15,7 @@
  */
 
 import type { AuthorizedPersonScope } from "../security/auth";
-import type { ScrapeSource, ServedOpportunity } from "../../data/opportunity-fixtures";
+import type { ScrapeSource, ServedOpportunity } from "@/opportunity/contracts";
 import type {
   EngineVerdict,
   UserAction,

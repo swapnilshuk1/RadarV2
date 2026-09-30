@@ -1,5 +1,5 @@
 import { getRepositories } from "../../../data/sqlite/provider";
-import type { StorageProvider } from "../../../domain/repositories";
+import type { StorageProvider } from "@/data/storage-provider";
 import type { Opportunity } from "../../../domain/entities";
 
 /**

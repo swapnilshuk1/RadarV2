@@ -7,7 +7,7 @@
  * Expected: SPARSE_SPEC, vetoed=false, priority=null
  */
 
-import type { OpportunitySource } from "@/data/opportunity-fixtures";
+import type { OpportunitySource } from "@/opportunity/contracts";
 
 export const SPARSE_COMMERCIAL = {
   source: {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CareerAssessmentEngine } from "../../src/lib/intelligence/engines/CareerAssessmentEngine";
-import type { CandidateProjection } from "../../src/domain/candidate_projection";
+import type { CandidateProjection } from "@/candidate/projection";
 import type { JobProjection } from "../../src/domain/job_projection";
 
 describe("Phase 4 — Fallback Semantics Verification Audit", () => {

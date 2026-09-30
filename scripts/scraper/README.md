@@ -16,7 +16,7 @@ Scrape run -> portal capture -> preserved payload -> canonical opportunity/versi
 | Portal adapters | `scripts/scraper/portals/` |
 | Payload and ingestion persistence | `scripts/scraper/persist/`, `src/lib/storage/blob-store.ts` |
 | Enrichment leases, completion and dependency release | `scripts/scraper/persist/queue.ts`, `scripts/enrich.ts` |
-| Evaluation scheduling | `src/lib/intelligence/EvaluationWorkScheduler.ts` |
+| Evaluation scheduling | `src/evaluation/work-scheduler.ts` |
 | Staged worker | `npm run worker:evaluations` (`scripts/run-evaluation-worker.ts`) |
 
 The configured database and canonical source/version lineage are authoritative.
