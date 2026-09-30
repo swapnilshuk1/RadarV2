@@ -271,33 +271,40 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
                     <div className="px-2.5 pb-2 pt-1">
                       <p className="text-sm font-medium text-ink">Resolve pursuit</p>
                       <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                        Move this pursuit out of your active working set. Nothing is deleted.
+                        Choose an outcome. The pursuit stays in your history.
                       </p>
                     </div>
-                    {([
-                      ["CLOSED_WON", "Won", "You accepted or completed this opportunity."],
-                      ["CLOSED_LOST", "Lost", "The opportunity ended without an accepted outcome."],
-                      ["WITHDRAWN", "Withdrawn", "You chose to stop pursuing this opportunity."],
-                    ] as const).map(([status, label, description]) => (
-                      <button
-                        key={status}
-                        type="button"
-                        role="menuitem"
-                        disabled={busy}
-                        onClick={() => {
-                          setResolveOpen(false);
-                          void run(() =>
-                            updateState({
-                              data: { ...scope, jobHash, status, nextAction: null, nextActionDue: null },
-                            }),
-                          );
-                        }}
-                        className="block w-full rounded-lg px-2.5 py-2 text-left hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-accent-ink/30"
-                      >
-                        <span className="block text-sm font-medium text-ink">{label}</span>
-                        <span className="mt-0.5 block text-xs leading-relaxed text-ink-muted">{description}</span>
-                      </button>
-                    ))}
+                    <div className="space-y-1.5">
+                      {([
+                        ["CLOSED_WON", "Mark as won", "Accepted or completed this opportunity."],
+                        ["CLOSED_LOST", "Mark as lost", "The opportunity ended without an accepted outcome."],
+                        ["WITHDRAWN", "Withdraw pursuit", "You chose to stop pursuing this opportunity."],
+                      ] as const).map(([status, label, description]) => (
+                        <button
+                          key={status}
+                          type="button"
+                          role="menuitem"
+                          disabled={busy}
+                          onClick={() => {
+                            setResolveOpen(false);
+                            void run(() =>
+                              updateState({
+                                data: { ...scope, jobHash, status, nextAction: null, nextActionDue: null },
+                              }),
+                            );
+                          }}
+                          className="group flex w-full items-center justify-between gap-4 rounded-lg border border-border bg-surface-raised/35 px-3 py-2.5 text-left transition-colors hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-accent-ink/30 disabled:opacity-50"
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium text-ink group-hover:text-accent-ink">{label}</span>
+                            <span className="mt-0.5 block text-xs leading-relaxed text-ink-muted">{description}</span>
+                          </span>
+                          <span aria-hidden="true" className="shrink-0 text-base text-ink-muted transition-transform group-hover:translate-x-0.5 group-hover:text-ink">
+                            →
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
