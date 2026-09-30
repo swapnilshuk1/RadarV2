@@ -511,10 +511,6 @@ export async function enrichThesis(
   const severityOrder = { MATERIAL: 0, MODERATE: 1, MINOR: 2 } as const;
   const finalObjections = objections
     .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity])
-    .filter(
-      (objection, index, all) =>
-        all.findIndex((other) => objectionSimilarity(other.objection, objection.objection) >= 0.7) === index,
-    )
     .slice(0, 4);
 
   const cleanRoleText = (value: string | undefined, fallback: string) => {
