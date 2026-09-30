@@ -110,6 +110,7 @@ export const certificationManifest = [
       "tests/pursuit/core-host-integration.test.ts",
       "tests/pursuit/integration-boundaries.test.ts",
       "tests/pursuit/memo-model-benchmark.test.ts",
+      "tests/pursuit/thesis-enrichment-integrity.test.ts",
       "tests/pursuit/semantic-acceptance.test.ts",
       "tests/pursuit/approval-ledger.test.ts",
     ],
