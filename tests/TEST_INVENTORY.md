@@ -251,7 +251,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/m9_3-server-boundary.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 10 |
 | `tests/intelligence/m9_3-sync-decisions-reconciliation.test.ts` | Decision Persistence | **KEEP** | Full Suite | 2 | 4 |
 | `tests/intelligence/m9_4_1-multi-tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 4 | 8 |
-| `tests/intelligence/memo-composition-model-benchmark.test.ts` | Memo composition model quality/cost benchmark | **KEEP** | Operator only (`RADAR_RUN_LIVE_MEMO_COMPOSITION_BENCHMARK=true`) | 2 | 5 |
+| `tests/intelligence/memo-composition-model-benchmark.test.ts` | Memo composition model quality/cost benchmark | **KEEP** | Operator only (`RADAR_RUN_LIVE_MEMO_COMPOSITION_BENCHMARK=true`) | 2 | 6 |
 | `tests/intelligence/memo-contract.test.ts` | **KEEP** | Memo evidence coverage, decision conditions and review provenance |
 | `tests/intelligence/metrics-portal-breakdown.test.ts` | Metrics & Aggregation | **KEEP** | Stage 3 | 2 | 9 |
 | `tests/intelligence/model-c-quality.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 18 | 35 |
