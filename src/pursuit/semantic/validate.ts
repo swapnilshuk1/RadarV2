@@ -3,7 +3,13 @@
  * whether that synthesis is licensed by evidence.
  */
 
-import type { InterviewBriefContent, MessageContent, ProofStory, ResumeContent } from "../types";
+import type {
+  CandidateClaim,
+  InterviewBriefContent,
+  MessageContent,
+  ProofStory,
+  ResumeContent,
+} from "../types";
 import { DIRECT_ONLY_PHRASES } from "./phrasing";
 import type { EvidenceRelationship } from "./types";
 
@@ -38,6 +44,73 @@ export function findLeakage(text: string): string[] {
 export function hasOverclaim(text: string, strongest: EvidenceRelationship): boolean {
   if (strongest === "DIRECT") return false;
   return DIRECT_ONLY_PHRASES.some((p) => p.test(text));
+}
+
+const QUANTIFIED_TOKEN =
+  /(?:[$€£₹]\s?\d[\d,]*(?:\.\d+)?\s?(?:k|m|mn|bn|b|million|billion|crore|cr|lakh)?)|(?:\d[\d,]*(?:\.\d+)?\s?(?:%|x\b|k\b|m\b|mn\b|bn\b|b\b|million|billion|crore|cr\b|lakh|\+))/gi;
+const PROJECTION_WORD = /\b(?:projected|forecast|forecasted|pipeline|target(?:ed)?|expected|potential)\b/i;
+const COMPLETION_WORD = /\b(?:secured|closed|won|landed|converted|delivered|generated|achieved|booked)\b/i;
+
+function normalizeMetricToken(value: string): string {
+  return value.toLowerCase().replace(/[\s,]/g, "");
+}
+
+function quantifiedTokens(value: string): string[] {
+  return (value.match(QUANTIFIED_TOKEN) ?? []).map(normalizeMetricToken);
+}
+
+/**
+ * High-precision semantic inflation checks for generated candidate-facing prose.
+ * These deliberately cover only transformations we can prove from the ledger:
+ * a projected figure becoming an achieved result, and P&L ownership appearing
+ * without any source-backed P&L/profitability fact.
+ */
+export function findSemanticInflation(
+  text: string,
+  claims: readonly CandidateClaim[],
+): string[] {
+  const issues: string[] = [];
+  const claimText = claims
+    .map((claim) => [claim.statement, claim.sourceLocator, claim.metricBaseline, claim.metricResult]
+      .filter(Boolean)
+      .join(" "))
+    .join("\n");
+
+  const hasSourcePnl = /\b(?:p\s*&\s*l|profit\s+and\s+loss|profitability)\b/i.test(claimText);
+  const positivePnl =
+    /\b(?:owned|owning|managed|managing|held|carried)\b[^.\n]{0,40}\bp\s*&\s*l\b/i.test(text) ||
+    /\bp\s*&\s*l\b[^.\n]{0,40}\b(?:ownership|accountability|responsibility)\b/i.test(text);
+  const negatedPnl =
+    /\b(?:no|not|without|lacks?|lacking|gap\s+in|unproven)\b[^.\n]{0,50}\bp\s*&\s*l\b/i.test(text);
+  if (positivePnl && !negatedPnl && !hasSourcePnl) issues.push("P&L ownership is not source-backed.");
+
+  const projectedMetrics = new Set(
+    claims
+      .filter((claim) =>
+        PROJECTION_WORD.test(
+          [claim.statement, claim.sourceLocator, claim.metricBaseline, claim.metricResult]
+            .filter(Boolean)
+            .join(" "),
+        ),
+      )
+      .flatMap((claim) =>
+        quantifiedTokens(
+          [claim.statement, claim.sourceLocator, claim.metricBaseline, claim.metricResult]
+            .filter(Boolean)
+            .join(" "),
+        ),
+      ),
+  );
+  if (projectedMetrics.size > 0) {
+    for (const sentence of text.split(/(?<=[.!?])\s+|\n+/)) {
+      if (!COMPLETION_WORD.test(sentence) || PROJECTION_WORD.test(sentence)) continue;
+      const tokens = quantifiedTokens(sentence);
+      const inflated = tokens.find((token) => projectedMetrics.has(token));
+      if (inflated) issues.push(`Projected metric ${inflated} is stated as an achieved result.`);
+    }
+  }
+
+  return [...new Set(issues)];
 }
 
 export function validateResume(
