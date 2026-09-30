@@ -173,6 +173,7 @@ RADAR v2 Test Architecture
 
 | Authoritative Suite | Primary Invariant Protected | Certification Stage |
 | :--- | :--- | :---: |
+| `tests/editorial/memo-cockpit-skins.test.ts` | Editorial | **KEEP** | Stage 3 | 5 | 10 |
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Shortlist badge state resolution (`pursue`, `consider`, `needs more signal`). | **Stage 6** |
 
 ---

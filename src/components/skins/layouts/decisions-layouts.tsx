@@ -565,7 +565,7 @@ export function RadarCardsLayout({
               {row.verb ? (
                 <DecisionBadge verb={row.verb} size="sm" />
               ) : (
-                <span className="text-[0.62rem] font-mono uppercase tracking-[0.14em] text-ink-muted bg-surface/80 border border-hairline px-2.5 py-1 rounded-sm">
+                <span className="text-[0.62rem] font-mono uppercase tracking-[0.14em] text-ink-muted bg-background/80 border border-hairline px-2.5 py-1 rounded-sm">
                   UNREVIEWED
                 </span>
               )}

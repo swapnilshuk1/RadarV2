@@ -8,6 +8,8 @@
 
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { COCKPIT_SHELLS } from "@/components/skins/layouts/cockpit-layouts";
+import { useSkin } from "@/components/skins/useSkin";
 import { InterviewBriefPanel } from "./InterviewBriefPanel";
 import { OutreachKit } from "./OutreachKit";
 import { ResumeStudio } from "./ResumeStudio";
@@ -44,6 +46,7 @@ interface Props {
 }
 
 export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) {
+  const skin = useSkin();
   const [view, setView] = useState(initialView);
   const [surface, setSurface] = useState<Surface>("STRATEGY");
   const [busy, setBusy] = useState(false);
@@ -201,134 +204,145 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
     return { done: checks.filter(Boolean).length, total: checks.length };
   })();
 
+  const stageLabel = pursuitStatusLabels[view.pursuit.status];
+  const statusLine = `Pursuit stage: ${stageLabel} · Package readiness ${readiness.done}/${readiness.total} · ${view.ledgerCoverage.sourceBacked} verified claims from ${view.ledgerCoverage.documents} document${view.ledgerCoverage.documents === 1 ? "" : "s"}`;
+  const primaryLabel = busy
+    ? "Working…"
+    : preparing
+      ? workerUnavailable
+        ? "Service unavailable"
+        : view.pursuit.preparationState === "DERIVING"
+          ? "Preparing package…"
+          : "Queued…"
+      : hasStrategy
+        ? "Regenerate strategy"
+        : "Derive strategy";
+  const Shell = COCKPIT_SHELLS[skin];
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-background/98 backdrop-blur">
-      <div className="glass-header sticky top-0 z-10 border-b border-border">
-        <div className="memo-container flex flex-wrap items-center justify-between gap-3 py-3">
-          <div>
-            <p className="label-mono text-muted-foreground">Pursuit cockpit</p>
-            <p className="font-display text-xl leading-tight">
-              {view.pursuit.roleTitle ?? "Role"}
-              {view.pursuit.company ? ` · ${view.pursuit.company}` : ""}
-            </p>
-            <p className="label-mono mt-1 text-muted-foreground">
-              Pursuit stage: {pursuitStatusLabels[view.pursuit.status]}{" "}
-              · Package readiness {readiness.done}/{readiness.total} ·{" "}
-              {view.ledgerCoverage.sourceBacked} verified claims from{" "}
-              {view.ledgerCoverage.documents} document
-              {view.ledgerCoverage.documents === 1 ? "" : "s"}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {!resolved && (
+    <Shell
+      title={view.pursuit.roleTitle ?? "Role"}
+      company={view.pursuit.company ?? ""}
+      statusLine={statusLine}
+      stageLabel={stageLabel}
+      readiness={readiness}
+      coverage={view.ledgerCoverage}
+      surfaces={SURFACES}
+      activeSurface={surface}
+      onSelectSurface={(key) => {
+        const selected = SURFACES.find((item) => item.key === key);
+        if (selected) setSurface(selected.key);
+      }}
+      primaryAction={
+        resolved
+          ? null
+          : {
+              label: primaryLabel,
+              disabled: busy || preparing,
+              onClick: () => void handleDerive(view.pursuit.activeArchetypeId),
+            }
+      }
+      secondaryActions={
+        <>
+          {resolved ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                void run(() => updateState({ data: { ...scope, jobHash, status: "READY" } }))
+              }
+              className="pursuit-chip pursuit-chip-primary"
+            >
+              Reopen pursuit
+            </button>
+          ) : (
+            <div ref={resolveMenuRef} className="relative">
               <button
                 type="button"
                 disabled={busy || preparing}
-                onClick={() => handleDerive(view.pursuit.activeArchetypeId)}
-                className="pursuit-chip pursuit-chip-primary"
+                aria-expanded={resolveOpen}
+                aria-haspopup="menu"
+                onClick={() => setResolveOpen((open) => !open)}
+                className="pursuit-chip"
+                title={preparing ? "Finish preparation before resolving this pursuit." : undefined}
               >
-                {busy
-                  ? "Working…"
-                  : preparing
-                    ? workerUnavailable
-                      ? "Service unavailable"
-                      : view.pursuit.preparationState === "DERIVING"
-                      ? "Preparing package…"
-                      : "Queued…"
-                    : hasStrategy
-                      ? "Regenerate strategy"
-                      : "Derive strategy"}
+                Resolve pursuit <span aria-hidden="true">{resolveOpen ? "▴" : "▾"}</span>
               </button>
-            )}
-            {resolved ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void run(() => updateState({ data: { ...scope, jobHash, status: "READY" } }))}
-                className="pursuit-chip pursuit-chip-primary"
-              >
-                Reopen pursuit
-              </button>
-            ) : (
-              <div ref={resolveMenuRef} className="relative">
-                <button
-                  type="button"
-                  disabled={busy || preparing}
-                  aria-expanded={resolveOpen}
-                  aria-haspopup="menu"
-                  onClick={() => setResolveOpen((open) => !open)}
-                  className="pursuit-chip"
-                  title={preparing ? "Finish preparation before resolving this pursuit." : undefined}
+              {resolveOpen && (
+                <div
+                  role="menu"
+                  aria-label="Resolve pursuit"
+                  className="absolute right-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-xl border border-border bg-background p-2 shadow-2xl"
                 >
-                  Resolve pursuit <span aria-hidden="true">{resolveOpen ? "▴" : "▾"}</span>
-                </button>
-                {resolveOpen && (
-                  <div
-                    role="menu"
-                    aria-label="Resolve pursuit"
-                    className="absolute right-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-xl border border-border bg-background p-2 shadow-2xl"
-                  >
-                    <div className="px-2.5 pb-2 pt-1">
-                      <p className="text-sm font-medium text-ink">Resolve pursuit</p>
-                      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                        Choose an outcome. The pursuit stays in your history.
-                      </p>
-                    </div>
-                    <div className="space-y-1.5">
-                      {([
-                        ["CLOSED_WON", "Mark as won", "Accepted or completed this opportunity."],
-                        ["CLOSED_LOST", "Mark as lost", "The opportunity ended without an accepted outcome."],
-                        ["WITHDRAWN", "Withdraw pursuit", "You chose to stop pursuing this opportunity."],
-                      ] as const).map(([status, label, description]) => (
-                        <button
-                          key={status}
-                          type="button"
-                          role="menuitem"
-                          disabled={busy}
-                          onClick={() => {
-                            setResolveOpen(false);
-                            void run(() =>
-                              updateState({
-                                data: { ...scope, jobHash, status, nextAction: null, nextActionDue: null },
-                              }),
-                            );
-                          }}
-                          className="group flex w-full items-center justify-between gap-4 rounded-lg border border-border bg-surface-raised/35 px-3 py-2.5 text-left transition-colors hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-accent-ink/30 disabled:opacity-50"
-                        >
-                          <span className="min-w-0">
-                            <span className="block text-sm font-medium text-ink group-hover:text-accent-ink">{label}</span>
-                            <span className="mt-0.5 block text-xs leading-relaxed text-ink-muted">{description}</span>
-                          </span>
-                          <span aria-hidden="true" className="shrink-0 text-base text-ink-muted transition-transform group-hover:translate-x-0.5 group-hover:text-ink">
-                            →
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+                  <div className="px-2.5 pb-2 pt-1">
+                    <p className="text-sm font-medium text-ink">Resolve pursuit</p>
+                    <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                      Choose an outcome. The pursuit stays in your history.
+                    </p>
                   </div>
-                )}
-              </div>
-            )}
-            <button type="button" onClick={onClose} className="pursuit-chip">
-              Close
-            </button>
-          </div>
-        </div>
-        <div className="memo-container flex gap-1 overflow-x-auto pb-2">
-          {SURFACES.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => setSurface(item.key)}
-              className={`pursuit-tab ${surface === item.key ? "pursuit-tab-active" : ""}`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="memo-container py-6">
+                  <div className="space-y-1.5">
+                    {(
+                      [
+                        ["CLOSED_WON", "Mark as won", "Accepted or completed this opportunity."],
+                        [
+                          "CLOSED_LOST",
+                          "Mark as lost",
+                          "The opportunity ended without an accepted outcome.",
+                        ],
+                        [
+                          "WITHDRAWN",
+                          "Withdraw pursuit",
+                          "You chose to stop pursuing this opportunity.",
+                        ],
+                      ] as const
+                    ).map(([status, label, description]) => (
+                      <button
+                        key={status}
+                        type="button"
+                        role="menuitem"
+                        disabled={busy}
+                        onClick={() => {
+                          setResolveOpen(false);
+                          void run(() =>
+                            updateState({
+                              data: {
+                                ...scope,
+                                jobHash,
+                                status,
+                                nextAction: null,
+                                nextActionDue: null,
+                              },
+                            }),
+                          );
+                        }}
+                        className="group flex w-full items-center justify-between gap-4 rounded-lg border border-border bg-surface-raised/35 px-3 py-2.5 text-left transition-colors hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-accent-ink/30 disabled:opacity-50"
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-ink group-hover:text-accent-ink">
+                            {label}
+                          </span>
+                          <span className="mt-0.5 block text-xs leading-relaxed text-ink-muted">
+                            {description}
+                          </span>
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          className="shrink-0 text-base text-ink-muted transition-transform group-hover:translate-x-0.5 group-hover:text-ink"
+                        >
+                          →
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      }
+      onClose={onClose}
+    >
+      <>
         {resolved && (
           <div className="memo-callout mb-5" role="status">
             <p className="text-sm font-medium">{pursuitStatusLabels[view.pursuit.status]}</p>
@@ -442,7 +456,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
             </ul>
           </div>
         )}
-      </div>
-    </div>
+      </>
+    </Shell>
   );
 }
