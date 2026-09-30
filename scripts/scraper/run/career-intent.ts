@@ -24,6 +24,9 @@ export class CareerIntentModel {
     const intentData = candidateState?.intent || {};
     const targetRoles = intentData.targetRoles || [];
     const targetTitles = targetRoles.map((r: any) => typeof r === "string" ? r : r?.title).filter(Boolean);
+    if (targetTitles.length === 0) {
+      throw new Error("PROFILE_INTENT_REQUIRED: explicit target titles are required.");
+    }
     const preferredLocations = intentData.locations || ["Gurugram", "Remote India"];
     const industries = intentData.industries || [];
     const profileFunctions = intentData.functions || [];
@@ -39,7 +42,7 @@ export class CareerIntentModel {
     });
 
     if (targetLevels.size === 0) {
-      targetLevels.add("VP").add("Head").add("Chief");
+      throw new Error("PROFILE_INTENT_REQUIRED: target titles must contain a recognized seniority level.");
     }
 
     return {
@@ -49,7 +52,7 @@ export class CareerIntentModel {
       ownership: ["P&L", "Commercial"],
       industries,
       exclusions: [],
-      targetTitles: targetTitles.length > 0 ? targetTitles : ["Vice President", "Chief Commercial Officer", "Head of Growth"],
+      targetTitles,
       preferredLocations,
     };
   }
@@ -90,12 +93,11 @@ export class CareerIntentModel {
       if (lower.includes("head") || lower.includes("lead")) targetLevels.add("Head");
     });
 
-    if (targetLevels.size === 0) {
-      targetLevels.add("VP").add("Head").add("Chief");
-    }
-
     if (targetTitles.length === 0) {
-      targetTitles = ["Vice President", "Chief Commercial Officer", "Head of Growth"];
+      throw new Error("PROFILE_INTENT_REQUIRED: explicit target titles are required.");
+    }
+    if (targetLevels.size === 0) {
+      throw new Error("PROFILE_INTENT_REQUIRED: target titles must contain a recognized seniority level.");
     }
 
     // 2. Functional Intent
