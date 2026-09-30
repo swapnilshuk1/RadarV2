@@ -167,6 +167,7 @@ describe("deterministic release deployment", () => {
     );
     expect(capturedActivation).toContain("/health/system");
     expect(capturedActivation).toContain("system_ready=0");
+    expect(capturedActivation).toContain("readiness_deadline=$((SECONDS + 180))");
     expect(capturedActivation.indexOf("system_ready=0")).toBeLessThan(
       capturedActivation.indexOf("RADAR_PM2_REQUIRED="),
     );

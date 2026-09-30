@@ -133,7 +133,8 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
   const loadHostEnvironment = `set -a; . ${shellQuote(`${config.appDirectory}/.env`)}; set +a`;
   const waitForSystemReadiness = [
     "system_ready=0",
-    `for attempt in $(seq 1 30); do if curl --fail --silent --show-error ${shellQuote(systemReadinessUrl)} >/dev/null; then system_ready=1; break; fi; sleep 2; done`,
+    "readiness_deadline=$((SECONDS + 180))",
+    `while [ "$SECONDS" -lt "$readiness_deadline" ]; do if curl --max-time 5 --fail --silent ${shellQuote(systemReadinessUrl)} >/dev/null 2>&1; then system_ready=1; break; fi; sleep 2; done`,
     `[ "$system_ready" = "1" ]`,
   ].join("; ");
 

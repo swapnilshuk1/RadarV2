@@ -85,6 +85,13 @@ release; Caddy and the separate proof processes are not touched. Failed
 activation attempts to restore the previously healthy release. Missing configuration or a
 mismatched target fails before deployment mutation.
 
+The current Oracle VM has about 1 GB of RAM and the certified archive is about
+151 MB. Starting the web process and seven workers can take longer than one
+minute while the host swaps. The workflow waits up to three minutes for system
+readiness before attempting rollback. One click is configured; a deployment
+finishing within three minutes is not yet proven on this VM. The CI run and
+deployment run show the actual duration.
+
 Choose an artifact built for the actual target operating system, CPU architecture
 and Node runtime. A Windows build is not a Linux deployment artifact, and a Linux
 x64 artifact is not proof of ARM64 compatibility. Verify the live host rather than
