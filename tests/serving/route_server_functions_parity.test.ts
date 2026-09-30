@@ -17,11 +17,11 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
-import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
+import { OpportunityService } from "@/opportunity/service";
 
 const { corpusHealth } = vi.hoisted(() => ({ corpusHealth: vi.fn() }));
 vi.mock("@tanstack/react-router", () => ({ createFileRoute: () => (options: unknown) => options }));
-vi.mock("../../src/lib/intelligence/scrape-server", () => ({
+vi.mock("../../src/acquisition/server", () => ({
   getCorpusHealthFn: corpusHealth,
   triggerCorpusRegenerationFn: vi.fn(),
   getCorpusRegenerationStatusFn: vi.fn(),
@@ -101,7 +101,7 @@ describe("Phase 11 & 12: Route Server Function & Client Cache Suite", () => {
 
   it("keeps shortlist membership on the canonical server path", () => {
     const shortlistRoute = fs.readFileSync(path.resolve("src/routes/index.tsx"), "utf8");
-    const service = fs.readFileSync(path.resolve("src/lib/intelligence/opportunity-service.ts"), "utf8");
+    const service = fs.readFileSync(path.resolve("src/opportunity/service.ts"), "utf8");
 
     expect(service).toContain("shortlistQueue: !sparseSignalQueue");
     expect(service).toContain('categoryId === "needs_more_signal"');

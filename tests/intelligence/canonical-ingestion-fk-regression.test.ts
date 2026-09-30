@@ -15,9 +15,9 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 import { DatabaseAdapter, QueryParams } from "@/data/database/adapter";
-import { CanonicalIngestionService, InvalidCanonicalUrlError } from "@/lib/acquisition/CanonicalIngestionService";
+import { CanonicalIngestionService, InvalidCanonicalUrlError } from "@/acquisition/ingestion-service";
 import { applicationActionFor } from "@/opportunity/application-action";
-import { extractExternalPostingUrl } from "@/lib/acquisition/external-posting-url";
+import { extractExternalPostingUrl } from "@/acquisition/external-posting-url";
 import { MemoryBlobStore } from "@/lib/storage/blob-store";
 import {
   EXTRACTOR_VERSION,

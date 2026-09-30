@@ -1,5 +1,5 @@
 /**
- * src/lib/acquisition/CanonicalIngestionService.ts
+ * src/acquisition/CanonicalIngestionService.ts
  *
  * Phase M9: Canonical Acquisition & Projection Interceptor
  *
@@ -36,12 +36,12 @@ import type {
   EvidenceState,
 } from "@/lib/domain/canonical_acquisition";
 import type { SearchCriteriaPayload } from "@/evaluation/context-contracts";
-import { isExternalPostingUrl } from "./external-posting-url";
-import { validateJobDocument } from "./validator";
+import { isExternalPostingUrl } from "@/acquisition/external-posting-url";
+import { validateJobDocument } from "@/acquisition/validator";
 import { getBlobStore, type BlobStore } from "@/lib/storage/blob-store";
 import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
 import { classifyOpportunityCategories } from "@/lib/domain/category_taxonomy";
-import { parseVerifiedIndeedListingUrl } from "./indeed-listing-identity";
+import { parseVerifiedIndeedListingUrl } from "@/acquisition/indeed-listing-identity";
 import { EvaluationWorkScheduler } from "@/evaluation/work-scheduler";
 
 export interface IngestOpportunityPayload {

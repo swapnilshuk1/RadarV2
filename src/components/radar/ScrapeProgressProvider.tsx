@@ -6,7 +6,7 @@ import {
   getRunProgressFn,
   abortScrapeFn,
   confirmScrapeFn,
-} from "../../lib/intelligence/scrape-server";
+} from "@/acquisition/server";
 
 export type ScrapeStage = "discover" | "evaluate" | "prioritize" | "complete" | "stopped" | "failed";
 

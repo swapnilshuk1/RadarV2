@@ -11,11 +11,11 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { SingleflightGroup, SingleflightOpportunityQueries } from "../../src/lib/intelligence/serving/singleflight";
-import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
-import type { OpportunityQueries, FeedPage, NavigationContext } from "../../src/lib/intelligence/opportunity-queries";
+import { SingleflightGroup, SingleflightOpportunityQueries } from "@/opportunity/serving/singleflight";
+import { OpportunityService } from "@/opportunity/service";
+import type { OpportunityQueries, FeedPage, NavigationContext } from "@/opportunity/queries";
 import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
-import type { CanonicalOpportunityMetrics } from "../../src/lib/intelligence/metric-integrity";
+import type { CanonicalOpportunityMetrics } from "@/opportunity/metrics";
 import type { ServedOpportunity } from "@/opportunity/contracts";
 
 describe("Checkpoint D: Close Serving Boundary & Singleflight Invariants", () => {

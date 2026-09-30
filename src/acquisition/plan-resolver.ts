@@ -1,5 +1,5 @@
 /**
- * src/lib/intelligence/ScraperPlanResolver.ts
+ * src/acquisition/plan-resolver.ts
  *
  * RADAR v2 — Authoritative Scraper Search Plan Resolver & Compiler.
  *
@@ -15,12 +15,12 @@
  */
 
 import path from "node:path";
-import { getRepositories, createRepositories } from "../../data/sqlite/provider";
-import type { DatabaseAdapter } from "../../data/database";
-import type { AuthorizedPersonScope } from "../security/auth";
-import type { ActiveServingContext } from "../security/scope-resolver";
+import { getRepositories, createRepositories } from "@/data/sqlite/provider";
+import type { DatabaseAdapter } from "@/data/database";
+import type { AuthorizedPersonScope } from "@/lib/security/auth";
+import type { ActiveServingContext } from "@/lib/security/scope-resolver";
 import type { SearchCriteriaPayload } from "@/evaluation/context-contracts";
-import { InsufficientSearchCriteriaError } from "../../../scripts/scraper/run/search-planner";
+import { InsufficientSearchCriteriaError } from "../../scripts/scraper/run/search-planner";
 
 export interface ResolvedScraperPlan {
   readonly searchPlanId: string;
@@ -101,7 +101,7 @@ export class ScraperPlanResolver {
       });
     }
 
-    const { SearchPlanner } = await import("../../../scripts/scraper/run/search-planner");
+    const { SearchPlanner } = await import("../../scripts/scraper/run/search-planner");
     const intent = {
       targetLevel: Array.from(targetLevels),
       functions,

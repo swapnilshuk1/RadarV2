@@ -22,19 +22,19 @@ import {
   type FeedFilters,
   type NavigationContext,
   type OpaqueCursor,
-} from "../../../lib/intelligence/opportunity-queries";
+} from "@/opportunity/queries";
 import {
   encodeCursor,
   decodeCursor,
   CursorValidationError,
-} from "../../../lib/intelligence/cursor";
+} from "@/opportunity/cursor";
 import {
   MetricIntegrityValidator,
   reconcileEvaluationPopulation,
   type CanonicalOpportunityMetrics,
   type EvaluationPopulationBreakdown,
-} from "../../../lib/intelligence/metric-integrity";
-import type { ServingStopwatch } from "../../../lib/intelligence/serving/observability";
+} from "@/opportunity/metrics";
+import type { ServingStopwatch } from "@/opportunity/serving/observability";
 import type {
   EngineVerdict,
   UserAction,
@@ -47,7 +47,7 @@ import type {
 import {
   resolveCanonicalServingReadModel,
   type CanonicalEvaluationState,
-} from "../../../lib/intelligence/serving/CanonicalServingReadModel";
+} from "@/opportunity/serving/read-model";
 export type AttentionDecision = "CANDIDATE" | "NOT_CANDIDATE";
 import type {
   Opportunity,

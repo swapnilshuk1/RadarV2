@@ -1,4 +1,4 @@
-import { isExternalPostingUrl } from "@/lib/acquisition/external-posting-url";
+import { isExternalPostingUrl } from "@/acquisition/external-posting-url";
 import type { Opportunity } from "./contracts";
 
 export interface ApplicationAction {

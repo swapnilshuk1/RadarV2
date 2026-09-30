@@ -13,11 +13,11 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { SingleflightGroup, SingleflightOpportunityQueries } from "../../src/lib/intelligence/serving/singleflight";
-import { servingTelemetry, type ServingTelemetry } from "../../src/lib/intelligence/serving/observability";
-import type { OpportunityQueries, FeedPage, NavigationContext } from "../../src/lib/intelligence/opportunity-queries";
+import { SingleflightGroup, SingleflightOpportunityQueries } from "@/opportunity/serving/singleflight";
+import { servingTelemetry, type ServingTelemetry } from "@/opportunity/serving/observability";
+import type { OpportunityQueries, FeedPage, NavigationContext } from "@/opportunity/queries";
 import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
-import type { CanonicalOpportunityMetrics } from "../../src/lib/intelligence/metric-integrity";
+import type { CanonicalOpportunityMetrics } from "@/opportunity/metrics";
 import type { ServedOpportunity } from "@/opportunity/contracts";
 
 describe("Phase 9 & 10: Singleflight & Observability Suite", () => {

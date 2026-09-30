@@ -1,5 +1,5 @@
 import type {DatabaseAdapter} from '@/data/database';
-import type {AcquisitionFeedRow} from '../acquisition-feed';
+import type {AcquisitionFeedRow} from '@/acquisition/contracts';
 import {RICH_DOSSIER_FAILURE_VERSION} from '@/data/sqlite/repositories/SqliteRichDossierStore';
 
 /** Scoped read model shared by the authenticated route and integration checks. */

@@ -1,12 +1,12 @@
 /** Canonical boundary between a transport response and a usable job document. */
-import type { FailureClass } from "./failure-taxonomy";
+import type { FailureClass } from "@/acquisition/failure-taxonomy";
 import type {
   AcquisitionQuality,
   DocumentExtractionState,
   DocumentTransportState,
   DocumentUsabilityState,
   ValidatedJobDocument,
-} from "../domain/canonical_acquisition";
+} from "@/lib/domain/canonical_acquisition";
 
 export type { AcquisitionQuality, ValidatedJobDocument };
 export type ValidationConfidence = "HIGH" | "MEDIUM" | "LOW" | "UNUSABLE";

@@ -37,7 +37,7 @@ describe("Gate 4 canonical write and runtime correctness", () => {
 
   it("keeps request handlers and serving reads free of fire-and-forget processing", () => {
     const documentServer = fs.readFileSync("src/candidate/server.ts", "utf8");
-    const serving = fs.readFileSync("src/lib/intelligence/opportunity-service.ts", "utf8");
+    const serving = fs.readFileSync("src/opportunity/service.ts", "utf8");
     expect(documentServer).not.toContain("void pipeline.run");
     expect(serving).not.toContain("startGlobalDaemon");
   });

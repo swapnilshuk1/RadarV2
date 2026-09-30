@@ -5,7 +5,7 @@ import type {
   ContentQualityResult,
   ContentQualityTier
 } from "../types";
-import { validateJobDocument, type DocumentContentOrigin } from "../../../src/lib/acquisition/validator";
+import { validateJobDocument, type DocumentContentOrigin } from "@/acquisition/validator";
 
 // Global keep-alive agent to reuse TLS handshakes across concurrent detail requests.
 const agent = new Agent({
@@ -14,7 +14,7 @@ const agent = new Agent({
   connections: 50,
 });
 
-import type { FailureClass } from "../../../src/lib/acquisition/failure-taxonomy";
+import type { FailureClass } from "@/acquisition/failure-taxonomy";
 
 export interface HttpFetchResult {
   fetched: boolean;

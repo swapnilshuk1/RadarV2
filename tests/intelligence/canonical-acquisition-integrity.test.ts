@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import Database from "better-sqlite3";
 import { DatabaseAdapter, QueryParams } from "@/data/database/adapter";
-import { ResponseValidator } from "@/lib/acquisition/validator";
+import { ResponseValidator } from "@/acquisition/validator";
 import { classifyOpportunityCategories, resolveCanonicalCategoryId } from "@/lib/domain/category_taxonomy";
-import { CanonicalIngestionService } from "@/lib/acquisition/CanonicalIngestionService";
+import { CanonicalIngestionService } from "@/acquisition/ingestion-service";
 
 class TestSqliteAdapter implements DatabaseAdapter {
   constructor(public db: Database.Database) {}

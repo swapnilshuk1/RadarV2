@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { resolveCanonicalIdentity } from "@/lib/acquisition/canonical-identity";
+import { resolveCanonicalIdentity } from "@/acquisition/canonical-identity";
 import {
   MAX_INDEED_LISTING_REDIRECT_HOPS,
   parseVerifiedIndeedListingUrl,
   resolveIndeedListingBounded,
-} from "@/lib/acquisition/indeed-listing-identity";
+} from "@/acquisition/indeed-listing-identity";
 
 describe("Indeed listing identity", () => {
   it("converges direct and sponsored ingress on the verified stable jk", async () => {

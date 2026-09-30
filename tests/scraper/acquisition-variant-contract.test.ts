@@ -6,7 +6,7 @@ import { compileCoverageVariants, createFreshnessVariant } from "../../scripts/s
 import { compileG2ControlledCohort, G2_CONTROLLED_COHORT } from "../../scripts/scraper/run/g2-controlled-cohort";
 import { compileG3ReadinessRevalidation, G3_READINESS_REVALIDATION } from "../../scripts/scraper/run/g3-readiness-revalidation";
 import { compileNcrDiscoveryReachCohort, NCR_DISCOVERY_REACH_COHORT } from "../../scripts/scraper/run/ncr-discovery-reach-cohort";
-import type { ResolvedScraperPlan } from "../../src/lib/intelligence/ScraperPlanResolver";
+import type { ResolvedScraperPlan } from "@/acquisition/plan-resolver";
 
 const plan = {
   searchPlanId: "sp_test",

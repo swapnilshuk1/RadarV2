@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRepositories } from "../../data/sqlite/provider";
 import { requireAuthUser } from "../auth/guard";
-import { resolveScope } from "./opportunity-service";
+import { resolveScope } from "@/opportunity/service";
 
 type CandidateScopeRequest = { tenantId?: string; personId?: string };
 function requestedScope(data?: CandidateScopeRequest) {

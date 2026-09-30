@@ -1,5 +1,5 @@
 /**
- * src/lib/acquisition/failure-taxonomy.ts
+ * src/acquisition/failure-taxonomy.ts
  * 
  * Formal Failure Taxonomy & Recovery Policy Engine for RADAR v2 Acquisition.
  */

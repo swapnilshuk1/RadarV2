@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { naukriHandler } from "../../scripts/scraper/portals/naukri";
 import { checkLinkedInSessionState } from "../../scripts/scraper/portals/linkedin";
-import { resolveCanonicalIdentity } from "../../src/lib/acquisition/canonical-identity";
+import { resolveCanonicalIdentity } from "@/acquisition/canonical-identity";
 import { SearchPlanner } from "../../scripts/scraper/run/search-planner";
 
 describe("Scraper Bottleneck Fixes & Optimization Regression Tests", () => {

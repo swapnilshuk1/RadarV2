@@ -44,7 +44,7 @@ function groupsForKnownSource(file: string): CertificationGroupId[] | null {
   }
 
   if (
-    file.startsWith("src/lib/acquisition/") ||
+    file.startsWith("src/acquisition/") ||
     file.startsWith("src/lib/intelligence/extraction/") ||
     file.startsWith("src/lib/intelligence/semantic/")
   )
@@ -53,7 +53,7 @@ function groupsForKnownSource(file: string): CertificationGroupId[] | null {
   if (
     file.startsWith("src/data/") ||
     file.startsWith("src/routes/") ||
-    file.startsWith("src/lib/intelligence/serving/") ||
+    file.startsWith("src/opportunity/") ||
     file.includes("opportunity-service") ||
     file.includes("opportunity-queries")
   )

@@ -1,5 +1,5 @@
 /**
- * src/lib/acquisition/canonical-identity.ts
+ * src/acquisition/canonical-identity.ts
  * 
  * Canonical Job Identity Resolution Subsystem.
  * Strips transient tracking parameters and resolves job cards to deterministic,
@@ -10,7 +10,7 @@
  */
 
 import crypto from "crypto";
-import { parseVerifiedIndeedListingUrl } from "./indeed-listing-identity";
+import { parseVerifiedIndeedListingUrl } from "@/acquisition/indeed-listing-identity";
 
 export type IdentityMethod = "STABLE_JOB_ID" | "URL_FINGERPRINT" | "CONTENT_HASH";
 export type IdentityConfidence = "HIGH" | "MEDIUM" | "LOW";
@@ -24,7 +24,7 @@ export interface CanonicalIdentity {
   identityConfidence: IdentityConfidence;
 }
 
-export { parseVerifiedIndeedListingUrl as resolveVerifiedIndeedListingIdentity } from "./indeed-listing-identity";
+export { parseVerifiedIndeedListingUrl as resolveVerifiedIndeedListingIdentity } from "@/acquisition/indeed-listing-identity";
 
 /**
  * Resolves the single authoritative unique source identity for a discovered card.

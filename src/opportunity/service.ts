@@ -1,5 +1,5 @@
 /**
- * src/lib/intelligence/opportunity-service.ts
+ * src/opportunity/service.ts
  *
  * RADAR V4 Canonical Multi-Tenant Opportunity Serving Service (Milestone M8).
  *
@@ -18,16 +18,16 @@
  *   → Opportunity DTO
  */
 
-import { getRepositories } from "../../data/sqlite/provider";
-import { getDatabaseAdapter } from "../../data/database";
+import { getRepositories } from "@/data/sqlite/provider";
+import { getDatabaseAdapter } from "@/data/database";
 import type { Opportunity } from "@/opportunity/contracts";
-import type { CanonicalOpportunityMetrics } from "./metric-integrity";
+import type { CanonicalOpportunityMetrics } from "@/opportunity/metrics";
 import {
   authenticateTenantMembership,
   authorizePersonScope,
   TenantIsolationError,
   type AuthorizedPersonScope,
-} from "../security/auth";
+} from "@/lib/security/auth";
 
 export type ServiceOptions = { categoryId?: string };
 
@@ -92,8 +92,8 @@ export async function resolveScope(
     : scope;
 }
 
-import { SingleflightOpportunityQueries } from "./serving/singleflight";
-import type { FeedPage, FeedFilters, OpaqueCursor, NavigationContext } from "./opportunity-queries";
+import { SingleflightOpportunityQueries } from "@/opportunity/serving/singleflight";
+import type { FeedPage, FeedFilters, OpaqueCursor, NavigationContext } from "@/opportunity/queries";
 
 /** Exhausts the canonical decided feed; the Decisions ledger is never a partial first page. */
 export async function collectDecidedFeedItems(

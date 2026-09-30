@@ -16,7 +16,7 @@ This directory contains current guidance only.
 | [Dossier preview](../scripts/dossier/README.md)                        | Local rendering of an already generated dossier                               |
 | [Factual review worker](operations/DOSSIER_REVIEW_WORKER.md)           | Labelled drafts, portable Gemini review, durable retry and reviewed promotion |
 
-Current source lives in `C:\Users\swapn\Downloads\Radar V2` on `main`. Keep an
+Use `main` as the integration baseline. Keep an
 active backfill on its pinned checkout until it finishes. Source constants and
 the approved target's actual state determine operational versions and counts.
 Documentation and a successful build are not proof of live deployment or completed

@@ -14,7 +14,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveShortlistCardScore, resolveShortlistCardBadgeState } from "@/routes/index";
 import type { Opportunity } from "@/opportunity/contracts";
-import type { CanonicalOpportunityMetrics } from "@/lib/intelligence/metric-integrity";
+import type { CanonicalOpportunityMetrics } from "@/opportunity/metrics";
 
 describe("Journey D: Loader Data → Component State & UI Rendering Parity", () => {
   const mockMetrics: CanonicalOpportunityMetrics = {

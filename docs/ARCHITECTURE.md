@@ -64,7 +64,9 @@ unless composition/publication is explicitly requested.
 
 | Responsibility                                                | Implementation                                                                                                                                             |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Acquisition and enrichment                                    | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts`                                                                                               |
+| Acquisition contracts, planning and web boundary             | `src/acquisition/`                                                                                                                                          |
+| Acquisition execution and enrichment workers                  | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts`                                                                                               |
+| Opportunity serving, pagination and application actions       | `src/opportunity/`                                                                                                                                          |
 | Dependency scheduling                                         | `src/evaluation/work-scheduler.ts`, `scripts/scraper/persist/queue.ts`                                                                      |
 | Durable claims and worker lifecycle                           | `src/evaluation/worker.ts`                                                                                                                 |
 | Immutable production input                                    | `src/evaluation/staged-input.ts`                                                                                              |

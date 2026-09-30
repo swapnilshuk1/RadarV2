@@ -14,8 +14,8 @@ import { tmpdir } from "node:os";
 import { describe, it, expect, beforeEach } from "vitest";
 import { RunController } from "../../scripts/scraper/run/manager";
 import { HealthManager } from "../../scripts/scraper/run/health-manager";
-import { ResponseValidator, validateJobDocument } from "@/lib/acquisition/validator";
-import { resolveCanonicalIdentity } from "@/lib/acquisition/canonical-identity";
+import { ResponseValidator, validateJobDocument } from "@/acquisition/validator";
+import { resolveCanonicalIdentity } from "@/acquisition/canonical-identity";
 import { sanitizeCompanyName } from "../../scripts/scraper/utils/sanitize";
 
 describe("Gate 1: Pipeline & Accounting Invariants", () => {

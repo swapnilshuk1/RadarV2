@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canReopenPursuit } from "../../src/lib/intelligence/pursuit-affordance";
+import { canReopenPursuit } from "@/opportunity/pursuit-affordance";
 import { profilePollDelay, shouldPollProfile } from "@/candidate/presentation";
 
 describe("Profile and dossier journey controls", () => {

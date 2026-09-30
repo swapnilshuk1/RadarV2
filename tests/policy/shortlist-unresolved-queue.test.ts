@@ -1,7 +1,7 @@
 import { describe, test, expect } from "vitest";
 import { getRepositories } from "../../src/data/sqlite/provider";
 import { getDatabaseAdapter } from "../../src/data/database/index";
-import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
+import { OpportunityService } from "@/opportunity/service";
 
 async function seedTenantUser(userId: string) {
   const db = getDatabaseAdapter();

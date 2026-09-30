@@ -16,7 +16,7 @@ import { EvidenceNormalizer } from "@/lib/intelligence/extraction/EvidenceNormal
 import { OntologyResolver } from "@/lib/intelligence/extraction/OntologyResolver";
 import { CandidateProjectionBuilderImpl } from "@/candidate/projection-builder";
 import { OperatingLevelEngine } from "@/lib/intelligence/engines/OperatingLevelEngine";
-import { OpportunityService } from "@/lib/intelligence/opportunity-service";
+import { OpportunityService } from "@/opportunity/service";
 import { activateSearchPlanForIntent } from "@/evaluation/search-plan-activation";
 import { TenantScopedPersonStore } from "@/data/sqlite/repositories/TenantScopedPersonStore";
 import type { AuthorizedPersonScope } from "@/lib/security/auth";

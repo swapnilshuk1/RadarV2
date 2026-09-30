@@ -1,6 +1,7 @@
 import { createFileRoute,Link,useRouter } from '@tanstack/react-router';
 import { useEffect } from 'react';
-import { getAcquisitionFeedFn,type AcquisitionFeedRow } from '@/lib/intelligence/acquisition-feed';
+import { getAcquisitionFeedFn } from '@/acquisition/feed';
+import type { AcquisitionFeedRow } from '@/acquisition/contracts';
 
 export const Route=createFileRoute('/scraped')({
   loader:({location})=>{

@@ -16,13 +16,13 @@ import { StagedServingPublisher } from "@/dossier/runtime/serving-publisher";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
 import { computeEvaluationContextFingerprint } from "@/evaluation/fingerprint";
-import { resolveCanonicalServingReadModel } from "../../src/lib/intelligence/serving/CanonicalServingReadModel";
+import { resolveCanonicalServingReadModel } from "@/opportunity/serving/read-model";
 import type { Dossier, JsonValue, Passage } from "../../src/dossier/contracts";
 import {
   createStagedEvaluationFingerprint,
   parseCanonicalStagedDecisionResult,
 } from "../../src/dossier/staged-decision-integrity";
-import { readAcquisitionFeed } from "../../src/lib/intelligence/server/acquisition-feed-read-model";
+import { readAcquisitionFeed } from "@/acquisition/feed-read-model";
 
 import { stagedEvaluation, evaluationFingerprint, dossier } from "../fixtures/staged-rich-dossier";
 import { RICH_DOSSIER_VERSION } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";

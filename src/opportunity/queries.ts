@@ -1,5 +1,5 @@
 /**
- * src/lib/intelligence/opportunity-queries.ts
+ * src/opportunity/queries.ts
  *
  * RADAR v2 — Application Query Contract: OpportunityQueries (ADR-SERVING-001).
  *
@@ -14,7 +14,7 @@
  * 4. Read-Only: 100% side-effect free.
  */
 
-import type { AuthorizedPersonScope } from "../security/auth";
+import type { AuthorizedPersonScope } from "@/lib/security/auth";
 import type { ScrapeSource, ServedOpportunity } from "@/opportunity/contracts";
 import type {
   EngineVerdict,
@@ -23,9 +23,9 @@ import type {
   ReviewWorkflowState,
   CanonicalServingVerdict,
   CanonicalReviewState,
-} from "../../domain/decision_v4";
-import type { CategoryId } from "../domain/category_taxonomy";
-import type { CanonicalOpportunityMetrics } from "./metric-integrity";
+} from "@/domain/decision_v4";
+import type { CategoryId } from "@/lib/domain/category_taxonomy";
+import type { CanonicalOpportunityMetrics } from "@/opportunity/metrics";
 import type { OpaqueCursor } from "./cursor";
 
 export type { OpaqueCursor } from "./cursor";

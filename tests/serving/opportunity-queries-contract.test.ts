@@ -17,7 +17,7 @@ import type {
   FeedFilters,
   NavigationContext,
   OpaqueCursor,
-} from "../../src/lib/intelligence/opportunity-queries";
+} from "@/opportunity/queries";
 
 describe("Phase 3: OpportunityQueries Query Contract & DTOs", () => {
   it("conforms to the FeedSummary DTO shape", () => {

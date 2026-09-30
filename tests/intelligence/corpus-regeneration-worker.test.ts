@@ -28,5 +28,5 @@ describe("durable corpus regeneration",()=>{
     await db.execute("UPDATE corpus_regeneration_jobs SET status='processing',locked_by='other' WHERE id='corpus-regeneration'");await enqueue(db);
     expect(await processNextCorpusRegenerationJob("worker-b",async()=>{called++;return {success:true,processedCount:1};},db)).toBe(false);expect(called).toBe(1);
   });
-  it("keeps pipeline execution out of web runtime",()=>{const server=fs.readFileSync(path.resolve(process.cwd(),"src/lib/intelligence/scrape-server.ts"),"utf8");expect(server).toContain("INSERT INTO corpus_regeneration_jobs");expect(server).not.toContain("runCorpusPipeline");});
+  it("keeps pipeline execution out of web runtime",()=>{const server=fs.readFileSync(path.resolve(process.cwd(),"src/acquisition/server.ts"),"utf8");expect(server).toContain("INSERT INTO corpus_regeneration_jobs");expect(server).not.toContain("runCorpusPipeline");});
 });

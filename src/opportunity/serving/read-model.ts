@@ -5,7 +5,7 @@ import {
   type CanonicalReviewState,
   type CanonicalServingVerdict,
   type UserAction,
-} from "../../../domain/decision_v4";
+} from "@/domain/decision_v4";
 
 export type CanonicalEvaluationState =
   | "EVALUATED"

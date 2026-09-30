@@ -1,5 +1,5 @@
 /**
- * src/lib/intelligence/serving/singleflight.ts
+ * src/opportunity/serving/singleflight.ts
  *
  * RADAR v2 — Phase 10 In-Flight Request Singleflighting.
  *
@@ -13,7 +13,7 @@
  * 4. Error Propagation: Failed in-flight operations reject cleanly to all coalesced callers.
  */
 
-import type { AuthorizedPersonScope } from "../../security/auth";
+import type { AuthorizedPersonScope } from "@/lib/security/auth";
 import type {
   OpportunityQueries,
   FeedSummary,
@@ -21,11 +21,11 @@ import type {
   FeedFilters,
   NavigationContext,
   OpaqueCursor,
-} from "../opportunity-queries";
-import type { CanonicalOpportunityMetrics } from "../metric-integrity";
+} from "@/opportunity/queries";
+import type { CanonicalOpportunityMetrics } from "@/opportunity/metrics";
 import type { ServedOpportunity } from "@/opportunity/contracts";
 import { servingTelemetry, ServingStopwatch } from "./observability";
-import { getRepositories } from "../../../data/sqlite/provider";
+import { getRepositories } from "@/data/sqlite/provider";
 
 export interface SingleflightResult<T> {
   readonly result: T;

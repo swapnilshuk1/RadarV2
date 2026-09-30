@@ -1,10 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import path from "path";
-import fs from "fs";
-import { ARTIFACTS_DIR } from "../../../scripts/scraper/config";
-import { requireAuthUser } from "../auth/guard";
-import { getRepositories } from "../../data/sqlite/provider";
-import { getDatabaseAdapter } from "../../data/database";
+import { requireAuthUser } from "@/lib/auth/guard";
+import { getRepositories } from "@/data/sqlite/provider";
+import { getDatabaseAdapter } from "@/data/database";
 
 type CandidateScopeRequest = { tenantId?: string; personId?: string };
 function requestedCandidateScope(data?: CandidateScopeRequest) {
@@ -30,7 +27,7 @@ export const getCapturedEnrichmentRunsFn = createServerFn({ method: "GET" })
   .validator((data?: CandidateScopeRequest) => data)
   .handler(async ({ data }): Promise<CapturedEnrichmentRun[]> => {
     const user = await requireAuthUser();
-    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { resolveServingScope } = await import("@/lib/security/scope-resolver");
     const requested = requestedCandidateScope(data);
     const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const db = getDatabaseAdapter();
@@ -66,16 +63,16 @@ export const startCapturedEnrichmentFn = createServerFn({ method: "POST" })
   .validator((data: { runId: string } & CandidateScopeRequest) => data)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { resolveServingScope } = await import("@/lib/security/scope-resolver");
     const requested = requestedCandidateScope(data);
     const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
     const run = await getRepositories().scrapeRuns.getRun(scope, data.runId);
     if (!run) {
-      const { TenantIsolationError } = await import("../security/auth");
+      const { TenantIsolationError } = await import("@/lib/security/auth");
       throw new TenantIsolationError(`Scrape run '${data.runId}' not found or unauthorized for current tenant/person.`);
     }
 
-    const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
+    const { EnrichmentQueue } = await import("../../scripts/scraper/persist/queue");
     const queue = new EnrichmentQueue();
     let stats = await queue.getRunStats(data.runId);
     // A deliberate retry from the shortlist is scoped to this authorized run.
@@ -102,12 +99,12 @@ export const getScrapePlanPreviewFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     try {
-      const { resolveScraperAuthContext } = await import("../security/scope-resolver");
+      const { resolveScraperAuthContext } = await import("@/lib/security/scope-resolver");
       const requested = requestedCandidateScope(data);
       const { scope, activeContext } = await resolveScraperAuthContext(user.id, requested?.tenantId, undefined, requested?.personId);
-      const { ScraperPlanResolver } = await import("./ScraperPlanResolver");
+      const { ScraperPlanResolver } = await import("@/acquisition/plan-resolver");
       const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(scope, activeContext);
-      const { compileCoverageVariants } = await import("../../../scripts/scraper/run/acquisition-variants");
+      const { compileCoverageVariants } = await import("../../scripts/scraper/run/acquisition-variants");
       const variants = compileCoverageVariants(resolvedPlan, ["LinkedIn", "Naukri", "Indeed"]);
 
       const firstVariant = variants[0];
@@ -141,10 +138,10 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
 
     try {
       console.log("[Server] triggerScrapeFn: resolving verified scraper auth scope…");
-      const { resolveScraperAuthContext } = await import("../security/scope-resolver");
+      const { resolveScraperAuthContext } = await import("@/lib/security/scope-resolver");
       const requested = requestedCandidateScope(data);
       const { scope, activeContext } = await resolveScraperAuthContext(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
-      const { ScraperPlanResolver } = await import("./ScraperPlanResolver");
+      const { ScraperPlanResolver } = await import("@/acquisition/plan-resolver");
       const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(scope, activeContext);
       const repos = getRepositories();
 
@@ -178,45 +175,22 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const { runId, afterIndex } = data;
-    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { resolveServingScope } = await import("@/lib/security/scope-resolver");
     const requested = requestedCandidateScope(data);
     const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const scopedRun = await getRepositories().scrapeRuns.getRun(scope, runId);
     if (!scopedRun) {
-      const { TenantIsolationError } = await import("../security/auth");
+      const { TenantIsolationError } = await import("@/lib/security/auth");
       throw new TenantIsolationError(`Scrape run '${runId}' not found or unauthorized for current tenant/person.`);
     }
-    const { Journal } = await import("../../../scripts/scraper/run/journal");
-    
-    const runDir = path.join(ARTIFACTS_DIR, "runs", runId);
-    const journalPath = path.join(runDir, "journal.ndjson");
-    const manifestPath = path.join(runDir, "manifest.json");
-    
-    const { events, nextIndex } = Journal.readIncremental(journalPath, afterIndex);
-    
-    let manifest: any = null;
-    try {
-      manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-    } catch {}
-
-    const summary = {
-      portalsCompleted: 0,
-      cardsFound: 0,
-      extracted: 0
-    };
-    
-    const allEvents = Journal.replay(journalPath);
-    for (const e of allEvents) {
-      if (e.type === "unit_done" || e.type === "unit_empty" || e.type === "unit_failed") summary.portalsCompleted++;
-      if (e.type === "snapshot_written") summary.cardsFound++;
-      if (e.type === "extraction_written") summary.extracted++;
-    }
+    const { readLocalRunEvents } = await import("./local-artifacts.server");
+    const { events, nextIndex, manifest, summary } = readLocalRunEvents(runId, afterIndex);
 
     // Load active enrichment stats from canonical Turso operational queue
     let enrichmentStats: any = null;
     let isEnriching = false;
     try {
-      const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
+      const { EnrichmentQueue } = await import("../../scripts/scraper/persist/queue");
       const queue = new EnrichmentQueue();
       enrichmentStats = await queue.getRunStats(runId);
       if (enrichmentStats && enrichmentStats.total > 0 && (enrichmentStats.pending + enrichmentStats.processing > 0)) {
@@ -241,106 +215,11 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
     };
   });
 
-export function buildCanonicalRunData(runId: string, enrichmentCompleted?: number) {
-  const runDir = path.join(ARTIFACTS_DIR, "runs", runId);
-  const manifestPath = path.join(runDir, "manifest.json");
-
-  if (!fs.existsSync(manifestPath)) return null;
-
-  try {
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-    const opportunitiesFound = manifest.opportunitiesFound ?? manifest.cards?.length ?? 0;
-
-    let evaluatedCount = manifest.evaluatedCount ?? 0;
-    if (enrichmentCompleted !== undefined) {
-      evaluatedCount = Math.max(evaluatedCount, enrichmentCompleted);
-    }
-
-    const remainingCount = Math.max(0, opportunitiesFound - evaluatedCount);
-
-    const ACTIVE_STATES = ["queued", "initializing", "waiting_for_confirmation", "running", "enriching", "stopping", "completing"];
-    const isActive = ACTIVE_STATES.includes(manifest.status);
-
-    const sources = manifest.sources || {
-      LinkedIn: "pending",
-      Naukri: "pending",
-      Indeed: "pending"
-    };
-
-    let stage = manifest.stage;
-    if (!stage) {
-      if (manifest.status === "completed") stage = "complete";
-      else if (manifest.status === "stopped" || manifest.status === "aborted") stage = "stopped";
-      else if (manifest.status === "failed") stage = "failed";
-      else if (manifest.status === "enriching") stage = "evaluate";
-      else stage = "discover";
-    }
-
-    return {
-      runId,
-      status: manifest.status,
-      isActive,
-      stage,
-      opportunitiesFound,
-      evaluatedCount,
-      remainingCount,
-      sources,
-      startedAt: manifest.startedAt,
-      updatedAt: manifest.updatedAt,
-      finishedAt: manifest.finishedAt,
-      portalHealth: manifest.portalHealth || {},
-      recentActivities: manifest.recentActivities || []
-    };
-  } catch (err: any) {
-    console.error(`[Server] Failed to read manifest for run ${runId}:`, err.message);
-    return null;
-  }
-}
-
-export function getActiveScrapeState() {
-  try {
-    const latestPath = path.join(ARTIFACTS_DIR, "runs", "latest.json");
-    if (!fs.existsSync(latestPath)) return null;
-    const latest = JSON.parse(fs.readFileSync(latestPath, "utf-8"));
-    if (!latest?.runId) return null;
-
-    const runData = buildCanonicalRunData(latest.runId);
-    if (runData && runData.isActive) {
-      return runData;
-    }
-    return null; // Active-only per Directive #2
-  } catch {
-    return null;
-  }
-}
-
-export function getRunProgressState(runId: string) {
-  return buildCanonicalRunData(runId);
-}
-
-export async function abortScrapeState(runId: string, force = false) {
-  const manifestPath = path.join(ARTIFACTS_DIR, "runs", runId, "manifest.json");
-  try {
-    if (fs.existsSync(manifestPath)) {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-      manifest.status = force ? "aborted" : "stopping";
-      manifest.updatedAt = new Date().toISOString();
-      if (force) manifest.finishedAt = manifest.updatedAt;
-      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
-      console.log(`[Server] Abort requested for run ${runId}. Manifest status set to '${manifest.status}'.`);
-    }
-    // A web instance never owns a scraper process. The durable status above is
-    // the stop command observed by the dedicated worker between work units.
-    return { success: true, status: force ? "aborted" : "stopping" };
-  } catch (e: any) {
-    return { success: false, error: e.message };
-  }
-}
-
-async function canonicalProgress(run: import("../../data/sqlite/repositories/SqliteScrapeRunStore").ScrapeRun) {
+async function canonicalProgress(run: import("@/data/sqlite/repositories/SqliteScrapeRunStore").ScrapeRun) {
+  const { buildCanonicalRunData } = await import("./local-artifacts.server");
   const disk = buildCanonicalRunData(run.id);
   const db = getDatabaseAdapter();
-  const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
+  const { EnrichmentQueue } = await import("../../scripts/scraper/persist/queue");
   const enrichment = await new EnrichmentQueue().getRunStats(run.id);
   const activeContext = run.searchPlanId
     ? await db.one<{ context_fingerprint: string }>(
@@ -381,7 +260,7 @@ export const getActiveScrapeFn = createServerFn({ method: "GET" })
   .validator((data?: CandidateScopeRequest) => data)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { resolveServingScope } = await import("@/lib/security/scope-resolver");
     const requested = requestedCandidateScope(data);
     const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const run = await getRepositories().scrapeRuns.getActiveRun(scope);
@@ -392,7 +271,7 @@ export const getLatestRunFn = createServerFn({ method: "GET" })
   .validator((data?: CandidateScopeRequest) => data)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { resolveServingScope } = await import("@/lib/security/scope-resolver");
     const requested = requestedCandidateScope(data);
     const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const repos = getRepositories();
@@ -408,14 +287,14 @@ export const getRunProgressFn = createServerFn({ method: "GET" })
   .validator((d: { runId: string } & CandidateScopeRequest) => d)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { resolveServingScope } = await import("@/lib/security/scope-resolver");
     const requested = requestedCandidateScope(data);
     const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId);
     const repos = getRepositories();
 
     const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
     if (!dbRun) {
-      const { TenantIsolationError } = await import("../security/auth");
+      const { TenantIsolationError } = await import("@/lib/security/auth");
       throw new TenantIsolationError(`Scrape run '${data.runId}' not found or unauthorized for current tenant/person.`);
     }
 
@@ -426,46 +305,35 @@ export const confirmScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string } & CandidateScopeRequest) => d)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { resolveServingScope } = await import("@/lib/security/scope-resolver");
     const requested = requestedCandidateScope(data);
     const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
     const repos = getRepositories();
 
     const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
     if (!dbRun) {
-      const { TenantIsolationError } = await import("../security/auth");
+      const { TenantIsolationError } = await import("@/lib/security/auth");
       throw new TenantIsolationError(`Cannot confirm run '${data.runId}': unauthorized or not found.`);
     }
 
     await repos.scrapeRuns.updateRunStatus(scope, data.runId, "running");
 
-    const manifestPath = path.join(ARTIFACTS_DIR, "runs", data.runId, "manifest.json");
-    try {
-      if (fs.existsSync(manifestPath)) {
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-        if (manifest.status === "waiting_for_confirmation") {
-          manifest.status = "running";
-          fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
-        }
-      }
-      return { success: true };
-    } catch (e: any) {
-      return { success: false, error: e.message };
-    }
+    const { confirmLocalScrapeState } = await import("./local-artifacts.server");
+    return confirmLocalScrapeState(data.runId);
   });
 
 export const abortScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string } & CandidateScopeRequest) => d)
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
-    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { resolveServingScope } = await import("@/lib/security/scope-resolver");
     const requested = requestedCandidateScope(data);
     const { scope } = await resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId, "write:person");
     const repos = getRepositories();
 
     const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
     if (!dbRun) {
-      const { TenantIsolationError } = await import("../security/auth");
+      const { TenantIsolationError } = await import("@/lib/security/auth");
       throw new TenantIsolationError(`Cannot abort run '${data.runId}': unauthorized or not found.`);
     }
 
@@ -474,8 +342,8 @@ export const abortScrapeFn = createServerFn({ method: "POST" })
     const cancel = dbRun.status === "queued" || dbRun.status === "stopping";
     const changed = await repos.scrapeRuns.updateRunStatus(scope, data.runId, cancel ? "aborted" : "stopping");
     if (!changed) return { success: true, status: dbRun.status };
-    const result = await abortScrapeState(data.runId, cancel);
-    return result;
+    const { abortScrapeState } = await import("./local-artifacts.server");
+    return abortScrapeState(data.runId, cancel);
   });
 
 export const getLiveScrapedFn = createServerFn({ method: "GET" })
@@ -483,7 +351,7 @@ export const getLiveScrapedFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const requested = requestedCandidateScope(data);
-    await import("../security/scope-resolver").then(({ resolveServingScope }) => resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId));
+    await import("@/lib/security/scope-resolver").then(({ resolveServingScope }) => resolveServingScope(user.id, requested?.tenantId, undefined, requested?.personId));
     // Process-local scrape artifacts have no canonical person/tenant ownership.
     // They are deliberately no longer a production serving authority.
     return [];
@@ -527,7 +395,7 @@ export const getCorpusHealthFn = createServerFn({ method: "GET" })
   .handler(async () => {
     await requireAuthUser({ requireAdmin: true });
     try {
-      const { calculateCorpusHealth } = await import("../../../scripts/corpus/health");
+      const { calculateCorpusHealth } = await import("../../scripts/corpus/health");
       return calculateCorpusHealth();
     } catch (err: any) {
       console.error("[Server] getCorpusHealthFn failed:", err.message);
@@ -539,12 +407,12 @@ export const getPipelineStatsFn = createServerFn({ method: "GET" })
   .handler(async () => {
     const user = await requireAuthUser();
     try {
-      const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
+      const { EnrichmentQueue } = await import("../../scripts/scraper/persist/queue");
       const queue = new EnrichmentQueue();
       const stats = await queue.getGlobalPipelineStats();
       
       // Compute actual database evaluation metrics via canonical serving
-      const { OpportunityService } = await import("./opportunity-service");
+      const { OpportunityService } = await import("@/opportunity/service");
       const metrics = await OpportunityService.getMetricsForUser(user.id);
 
       return {

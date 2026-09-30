@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getCorpusHealthFn, triggerCorpusRegenerationFn, getCorpusRegenerationStatusFn } from "../lib/intelligence/scrape-server";
+import { getCorpusHealthFn, triggerCorpusRegenerationFn, getCorpusRegenerationStatusFn } from "@/acquisition/server";
 import type { CorpusHealthStats } from "../../scripts/corpus/health";
 
 export const Route = createFileRoute("/corpus")({

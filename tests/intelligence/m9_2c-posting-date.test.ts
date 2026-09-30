@@ -4,7 +4,7 @@ import { SqliteAdapter } from "../../src/data/database/sqlite";
 import Database from "better-sqlite3";
 import * as fs from "fs";
 import * as path from "path";
-import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
+import { CanonicalIngestionService } from "@/acquisition/ingestion-service";
 import { runMigrations } from "../../src/data/sqlite/migrations/runner";
 
 describe("M9.2C Canonical Posting-Date Provenance", () => {

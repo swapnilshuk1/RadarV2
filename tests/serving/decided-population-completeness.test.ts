@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectDecidedFeedItems } from "../../src/lib/intelligence/opportunity-service";
+import { collectDecidedFeedItems } from "@/opportunity/service";
 
 describe("Decided opportunity population completeness", () => {
   it("follows the canonical cursor so the 51st decided opportunity remains reachable", async () => {

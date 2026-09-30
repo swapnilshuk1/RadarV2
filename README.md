@@ -60,9 +60,10 @@ new evaluation policy or used as substitute candidate evidence.
 
 | Responsibility                                                 | Location                                                                                                               |
 | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Portal acquisition, payload preservation, enrichment queue     | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts`                                                           |
+| Acquisition contracts, validation, planning and web boundary  | `src/acquisition/`                                                                                                      |
+| Acquisition workers, portal execution and enrichment queue     | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts`                                                           |
 | Candidate profile, projection, pipeline and profile transport   | `src/candidate/`                                                                                                        |
-| Opportunity contracts and application actions                  | `src/opportunity/`                                                                                                      |
+| Opportunity contracts, serving, pagination and actions         | `src/opportunity/`                                                                                                      |
 | Durable scheduling and evaluation worker                       | `src/evaluation/work-scheduler.ts`, `src/evaluation/worker.ts`                                                        |
 | Evaluation input, context acquisition, checkpoints and policy  | `src/evaluation/staged-input.ts`, `context-provider.ts`, `durable-model.ts`, `policy.ts`                          |
 | Evidence extraction, conflicts and source fingerprints         | `src/dossier/evidence.ts`                                                                                              |
@@ -90,7 +91,7 @@ enrichment, dossier, document or corpus workers. Apply migrations explicitly wit
 
 ```powershell
 $env:RADAR_ENV = 'dev'
-$env:TURSO_CONNECTION_URL = 'file:C:/Users/swapn/Downloads/Radar V2/.radar/local-review/app.sqlite'
+$env:TURSO_CONNECTION_URL = 'file:./.radar/local-review/app.sqlite'
 $env:TURSO_DATABASE_URL = $env:TURSO_CONNECTION_URL
 $env:TURSO_AUTH_TOKEN = 'local-only'
 npm run dev

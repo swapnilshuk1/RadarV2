@@ -7,7 +7,7 @@ import { ingestIntoSqlite } from "./scraper/persist/ingest";
 import { writeExtraction, readExtractionIfFresh, writeLiveScraped, collectRecords } from "./scraper/persist/writer";
 import { EXTRACTOR_VERSION } from "./scraper/versions";
 import type { DetailedCard } from "./scraper/types";
-import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
+import { resolveCanonicalIdentity } from "@/acquisition/canonical-identity";
 import { makeLogger } from "./scraper/utils/logger";
 import { CONFIG } from "./scraper/config";
 import { getDatabaseAdapter, type DatabaseAdapter } from "../src/data/database";

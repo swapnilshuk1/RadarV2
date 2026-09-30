@@ -12,7 +12,7 @@ const source = (relative: string) => fs.readFileSync(path.join(root, relative), 
 
 describe("Phase C runtime separation", () => {
   it("keeps worker loops out of web server actions", () => {
-    const scrapeServer = source("src/lib/intelligence/scrape-server.ts");
+    const scrapeServer = source("src/acquisition/server.ts");
     const evaluationServer = source("src/evaluation/server.ts");
     expect(scrapeServer).not.toContain('import("../../../scripts/scrape")');
     expect(scrapeServer).not.toContain("runCorpusPipeline");

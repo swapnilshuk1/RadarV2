@@ -1,5 +1,5 @@
 /**
- * src/lib/intelligence/serving/observability.ts
+ * src/opportunity/serving/observability.ts
  *
  * RADAR v2 — Phase 9 Request Observability & Serving Telemetry.
  *

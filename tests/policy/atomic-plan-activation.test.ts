@@ -4,7 +4,7 @@ import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { SqliteEvaluationContextStore } from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import { setupLineageTestFixture, activateLineageTestContext } from "../persistence/lineage_fixture";
-import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
+import { CanonicalIngestionService } from "@/acquisition/ingestion-service";
 import { materializeExistingCanonicalPool } from "@/evaluation/context-materialization";
 import { STAGED_POLICY_VERSION } from "@/evaluation/policy";
 

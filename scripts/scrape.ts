@@ -66,15 +66,15 @@ import { normalizeUrl } from "./scraper/utils/url";
 import { getDatabaseAdapter } from "../src/data/database";
 import { fastFetchDetail } from "./scraper/utils/http-fetch";
 import { EnrichmentQueue } from "./scraper/persist/queue";
-import { resolveCanonicalIdentity, sourceIdentityForCard, acquisitionSurfaceKey } from "../src/lib/acquisition/canonical-identity";
-import { parseVerifiedIndeedListingUrl } from "../src/lib/acquisition/indeed-listing-identity";
+import { resolveCanonicalIdentity, sourceIdentityForCard, acquisitionSurfaceKey } from "@/acquisition/canonical-identity";
+import { parseVerifiedIndeedListingUrl } from "@/acquisition/indeed-listing-identity";
 import {
   FailurePolicyEngine,
   type FailureClass,
   normalizeFailureClass,
   classifyCardFailure,
-} from "../src/lib/acquisition/failure-taxonomy";
-import { ResponseValidator } from "../src/lib/acquisition/validator";
+} from "@/acquisition/failure-taxonomy";
+import { ResponseValidator } from "@/acquisition/validator";
 import { passesHardFilter } from "./scraper/utils/hard-filter";
 import { HealthManager } from "./scraper/run/health-manager";
 import { QueryMetricsStore } from "./scraper/run/metrics";
@@ -92,7 +92,7 @@ import {
   CanonicalIngestionService,
   type CanonicalIngestionResult,
   AcquisitionIntegrityError,
-} from "../src/lib/acquisition/CanonicalIngestionService";
+} from "@/acquisition/ingestion-service";
 import {
   PersistenceUnavailableError,
   withPersistenceBoundary,
@@ -291,7 +291,7 @@ export interface RunOptions {
   /** Candidate identity is a capability selected at the request boundary. */
   scope?: AuthorizedPersonScope;
   searchPlanId?: string;
-  resolvedPlan?: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan;
+  resolvedPlan?: import("@/acquisition/plan-resolver").ResolvedScraperPlan;
   variants?: AcquisitionVariant[];
   /** Internal durable-worker claim identity; never supplied by request handlers. */
   claimedRunId?: string;
@@ -471,12 +471,12 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     }
   }
 
-  let resolvedPlan: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan | undefined = opts.resolvedPlan;
+  let resolvedPlan: import("@/acquisition/plan-resolver").ResolvedScraperPlan | undefined = opts.resolvedPlan;
   let searchSource: "PLAN" | "SUPPLIED" | "DEFAULT" = "DEFAULT";
   let evaluationProjection: "ACTIVE" | "DEFERRED_NO_SEARCH_PLAN" = "DEFERRED_NO_SEARCH_PLAN";
 
   if (effectiveScope) {
-    const { ScraperPlanResolver } = await import("../src/lib/intelligence/ScraperPlanResolver");
+    const { ScraperPlanResolver } = await import("@/acquisition/plan-resolver");
     const db = getDatabaseAdapter();
     const scope = effectiveScope;
 

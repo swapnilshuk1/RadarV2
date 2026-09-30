@@ -18,7 +18,7 @@ import { activateLineageTestContext, setupLineageTestFixture } from "../persiste
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
-import { MetricIntegrityValidator, reconcileEvaluationPopulation } from "../../src/lib/intelligence/metric-integrity";
+import { MetricIntegrityValidator, reconcileEvaluationPopulation } from "@/opportunity/metrics";
 
 describe("Phase 7: SQL Metrics Aggregation Suite", () => {
   let sqliteDb: Database.Database;

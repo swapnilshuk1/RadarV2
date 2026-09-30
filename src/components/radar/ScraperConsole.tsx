@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { getRunEventsFn } from "../../lib/intelligence/scrape-server";
+import { getRunEventsFn } from "@/acquisition/server";
 
 interface ScraperConsoleProps {
   runId: string | null;

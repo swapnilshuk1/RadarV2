@@ -11,7 +11,7 @@
  */
 
 import { getDatabaseAdapter } from "../data/database";
-import { OpportunityService } from "../lib/intelligence/opportunity-service";
+import { OpportunityService } from "@/opportunity/service";
 import { createSqliteModelInvocationSink } from "../lib/model/model-invocation";
 import { generateArtifactSet } from "./artifacts";
 import { PursuitTokenLedger, type PursuitModelContext } from "./budget";

@@ -94,7 +94,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-import { getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
+import { getShortlistMetricsFn } from "@/opportunity/server";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: async ({ location }) => {

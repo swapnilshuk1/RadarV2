@@ -11,7 +11,7 @@
  * 5. Visible Integrity Warning: Discrepancies generate structured warnings without silent fallbacks.
  */
 
-import { DatabaseAdapter } from "../../data/database";
+import { DatabaseAdapter } from "@/data/database";
 
 export type IntegrityStatus = "PASS" | "WARNING" | "ERROR" | "UNAVAILABLE";
 

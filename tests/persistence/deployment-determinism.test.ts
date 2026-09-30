@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { getDatabaseAdapter, resetDatabaseAdapter } from "../../src/data/database/index";
 import { getRepositories } from "../../src/data/sqlite/provider";
-import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
+import { OpportunityService } from "@/opportunity/service";
 
 describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", () => {
   const origEnv = { ...process.env };
@@ -94,7 +94,7 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
   });
 
   it("8. OpportunityService delegates serving queries exclusively to repos.canonicalServing and DatabaseAdapter", async () => {
-    const servicePath = path.resolve(process.cwd(), "src/lib/intelligence/opportunity-service.ts");
+    const servicePath = path.resolve(process.cwd(), "src/opportunity/service.ts");
     const serviceContent = fs.readFileSync(servicePath, "utf-8");
 
     // Static isolation: zero filesystem data artifacts

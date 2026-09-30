@@ -6,7 +6,7 @@ import { applicationActionFor } from "@/opportunity/application-action";
 import { useDecisions } from "../lib/decisions-store";
 import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/components/PursuitLauncher";
 import { DecisionBadge } from "../components/radar/DecisionBadge";
-import { getDecidedOpportunitiesFn } from "../lib/intelligence/opportunity-server";
+import { getDecidedOpportunitiesFn } from "@/opportunity/server";
 import { listPursuitSummariesFn } from "../pursuit/server";
 import { pursuitStatusLabels } from "../pursuit/types";
 

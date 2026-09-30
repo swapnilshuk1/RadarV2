@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import { OpportunityService } from "./opportunity-service";
-import { requireAuthUser } from "../auth/guard";
+import { OpportunityService } from "@/opportunity/service";
+import { requireAuthUser } from "@/lib/auth/guard";
 import { getDatabaseAdapter } from "@/data/database";
-import { resolveServingScope } from "../security/scope-resolver";
+import { resolveServingScope } from "@/lib/security/scope-resolver";
 import { EvaluationWorkScheduler } from "@/evaluation/work-scheduler";
 import { supportsStagedPolicy } from "@/evaluation/policy";
 import { SqliteStagedEvaluationStore } from "@/data/sqlite/repositories/SqliteStagedEvaluationStore";
