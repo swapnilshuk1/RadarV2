@@ -32,9 +32,11 @@ function parseConfig(): DeployConfig {
   if (!sha || !/^[0-9a-f]{40}$/i.test(sha))
     throw new Error("Usage: npm run deploy -- <approved-40-character-sha>");
   const artifact = path.resolve(required("RADAR_DEPLOY_ARTIFACT"));
-  if (!fs.isFileSync(artifact)) throw new Error("DEPLOY_ARTIFACT_MISSING");
+  if (!fs.existsSync(artifact) || !fs.statSync(artifact).isFile())
+    throw new Error("DEPLOY_ARTIFACT_MISSING");
   const keyPath = path.resolve(required("RADAR_DEPLOY_SSH_KEY_PATH"));
-  if (!fs.isFileSync(keyPath)) throw new Error("DEPLOY_SSH_KEY_MISSING");
+  if (!fs.existsSync(keyPath) || !fs.statSync(keyPath).isFile())
+    throw new Error("DEPLOY_SSH_KEY_MISSING");
   const deploymentMode = required("RADAR_DEPLOYMENT_MODE");
   if (deploymentMode !== "single_host" && deploymentMode !== "distributed") {
     throw new Error("DEPLOY_MODE_INVALID");
