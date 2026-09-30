@@ -17,6 +17,7 @@ export interface CorpusHealthStats {
  * Calculates health statistics for the Job Intelligence Corpus.
  */
 export async function calculateCorpusHealth(): Promise<CorpusHealthStats> {
+  const corpusSource = process.env.RADAR_CORPUS_HEALTH_SOURCE_PATH || LIVE_SCRAPED_JSON;
   let totalJobs = 0;
   let textCoverage = 0;
   let totalDescLength = 0;
@@ -29,9 +30,9 @@ export async function calculateCorpusHealth(): Promise<CorpusHealthStats> {
   let editorialCoverage = 0;
 
   // 1. Read from live-scraped.json if available
-  if (fs.existsSync(LIVE_SCRAPED_JSON)) {
+  if (fs.existsSync(corpusSource)) {
     try {
-      const records = JSON.parse(fs.readFileSync(LIVE_SCRAPED_JSON, "utf-8")) as any[];
+      const records = JSON.parse(fs.readFileSync(corpusSource, "utf-8")) as any[];
       totalJobs = records.length;
       
       for (const rec of records) {
