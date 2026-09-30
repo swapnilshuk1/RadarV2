@@ -1,6 +1,7 @@
 // src/lib/intelligence/classifiers/CandidateSeniorityClassifier.ts
 
 import { ClassifierResult, CandidateSeniorityLevel } from "../../domain/semantic";
+import { SeniorityResolver } from "../semantic/resolvers/SeniorityResolver";
 
 /**
  * P0-E: Candidate Seniority Classifier
@@ -22,43 +23,36 @@ export class CandidateSeniorityClassifier {
    * @returns ClassifierResult<CandidateSeniorityLevel>
    */
   public static classify(title: string, text: string): ClassifierResult<CandidateSeniorityLevel> {
-    const tLower = title.toLowerCase();
+    const contextLower = text.toLowerCase();
     const evidenceIds: string[] = [];
 
-    // C-Suite detection
-    const isCSuite = /\b(cmo|cgo|cro|coo|ceo|cfo|chief\s+\w+(?:\s+\w+)?\s+officer)\b/.test(tLower);
-    const contextLower = text.toLowerCase();
-    // Do not promote generic leadership, board exposure, or target language to
-    // attained C-suite seniority. Only an explicit attained C-suite fact counts.
+    // Preserve the attained-fact safeguard: target/aspirational C-suite language
+    // must never upgrade the candidate's current rank.
     const hasAttainedCSuiteFact =
       /\b(?:currently|current|serving\s+as|served\s+as|appointed\s+as|held\s+the\s+(?:role|position)\s+of)\b[^.\n]{0,80}\b(?:chief|cmo|cgo|cro|coo|ceo|cfo)\b/.test(contextLower) ||
       /\b(?:is|was|served\s+as|appointed\s+as|held)\s+(?:an?\s+)?c[\s-]?suite\b/.test(contextLower);
 
-    if (isCSuite || hasAttainedCSuiteFact) {
-      evidenceIds.push(isCSuite ? `c_suite:title:${title.trim()}` : "c_suite:attained_fact");
-      return { value: "C_SUITE", evidenceIds, confidence: 0.95 };
+    const resolved = SeniorityResolver.resolve(title, text);
+    if (resolved.seniorityBand === "C_SUITE" || hasAttainedCSuiteFact) {
+      evidenceIds.push(
+        resolved.seniorityBand === "C_SUITE"
+          ? `c_suite:title:${title.trim()}`
+          : "c_suite:attained_fact",
+      );
+      return { value: "C_SUITE", evidenceIds, confidence: Math.max(resolved.confidence, 0.95) };
     }
 
-    // VP-level detection
-    const isVP = /\b(vp|vice\s+president|svp|senior\s+vice\s+president|avp|assistant\s+vice\s+president)\b/.test(tLower);
-    const hasVPResponsibilities = /\bhead\s+of\b|\bcountry\s+head\b|\bhead\s+-\b/.test(tLower);
-
-    if (isVP || hasVPResponsibilities) {
-      evidenceIds.push(isVP ? `vp_functional:title:${title.trim()}` : "vp_functional:head_title");
-      return { value: "VP_FUNCTIONAL", evidenceIds, confidence: 0.9 };
+    if (resolved.seniorityBand === "VP" || resolved.seniorityBand === "HEAD") {
+      evidenceIds.push(`vp_functional:title:${title.trim()}`);
+      return { value: "VP_FUNCTIONAL", evidenceIds, confidence: resolved.confidence };
     }
 
-    // Director-level detection
-    const isDirector = /\b(director|senior\s+director|associate\s+director)\b/.test(tLower);
-    const hasDirectorScope = /\bhead\s+of\b|\bcoordinator\b|\bmanager\b/.test(tLower);
-
-    if (isDirector || hasDirectorScope) {
-      evidenceIds.push(isDirector ? `director:title:${title.trim()}` : "director:scope_title");
-      return { value: "DIRECTOR", evidenceIds, confidence: 0.85 };
+    if (resolved.seniorityBand === "DIRECTOR") {
+      evidenceIds.push(`director:title:${title.trim()}`);
+      return { value: "DIRECTOR", evidenceIds, confidence: resolved.confidence };
     }
 
-    // Fallback: unknown seniority
     evidenceIds.push("unknown:no_seniority_signals");
-    return { value: "UNKNOWN", evidenceIds, confidence: 0.5 };
+    return { value: "UNKNOWN", evidenceIds, confidence: resolved.confidence };
   }
 }
