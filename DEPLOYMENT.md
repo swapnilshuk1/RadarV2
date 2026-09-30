@@ -51,23 +51,39 @@ commit SHA. Pushing `main` runs CI; it does not deploy or activate serving.
 ## Deploy a selected certified commit to Oracle
 
 In GitHub, open **Actions → Deploy Oracle → Run workflow** on `main` and enter
-the full 40-character commit SHA. The workflow has no push trigger. It accepts
-only a commit on `main` with a successful CI run and an unexpired release
-artifact, then runs the existing deployment script without rebuilding or
-recertifying. The equivalent CLI command is
+the full 40-character SHA from a green **CI** run. That is the normal deployment
+procedure; no local SSH, terminal preflight, rebuild or recertification is
+needed. The workflow has no push trigger. It accepts only a commit on `main`
+with a successful CI run and an unexpired release artifact. The equivalent CLI command is
 `gh workflow run deploy-oracle.yml --ref main -f sha=<40-character-sha>`.
 
-Configure the GitHub `Oracle` environment before the first run. Its variables
-are `RADAR_DEPLOY_SSH_HOST`, `RADAR_DEPLOY_SSH_USER`,
-`RADAR_DEPLOY_APP_DIRECTORY`, `RADAR_DEPLOY_DB_FINGERPRINT`,
-`RADAR_DEPLOY_READINESS_URL`, and `RADAR_DEPLOYMENT_MODE`; set
-`RADAR_SERVER_SCRAPER_ENABLED` only when this host actually runs scraping.
-Its secrets are `TURSO_CONNECTION_URL`, `RADAR_DEPLOY_RECOVERY_COMMAND`,
-`ORACLE_SSH_PRIVATE_KEY`, and `ORACLE_SSH_KNOWN_HOSTS` (the verified SSH host
-key entry). Store the Oracle runtime's Turso credentials on the host, outside
-the release archive. The workflow checks that Oracle runs Linux x64 and Node 22,
-matching the current CI artifact, before downloading or deploying it. Missing
-configuration or a mismatched target fails before any deployment mutation.
+The GitHub `Oracle` environment was configured on 30 September 2026. Its
+non-secret settings are:
+
+| Setting | Verified value |
+| --- | --- |
+| SSH host / user | `161.118.175.246` / `ubuntu` |
+| App directory | `/home/ubuntu/radar-sqlite-candidate` |
+| Public readiness URL | `https://161.118.175.246.sslip.io` |
+| Web port behind Caddy | `3001` (`RADAR_WEB_PORT` in the host environment) |
+| Database | Turso `radar-db-preprod-clean-20260924`, fingerprint `turso:8917b590608c33c2` |
+| Deployment mode / server scraper | `single_host` / disabled |
+
+The app directory's historical name does **not** describe the active database.
+The running app and workers use Turso. The host's `/home/ubuntu/radar-sqlite-candidate/.env`
+holds the runtime credentials; the release archive contains none. The workflow
+has `TURSO_CONNECTION_URL`, `RADAR_DEPLOY_RECOVERY_COMMAND`,
+`ORACLE_SSH_PRIVATE_KEY`, and `ORACLE_SSH_KNOWN_HOSTS` as `Oracle` environment
+secrets. The local Windows `.ssh` folder is not used by GitHub Actions after
+setup. Rotate the corresponding GitHub secret if the Oracle key changes. The
+recovery command creates a timestamped Turso branch before a release switch.
+
+The workflow checks the certified artifact, database fingerprint, SSH host key,
+Linux x64 / Node 22 runtime and exact release readiness. It recreates only
+RADAR-managed PM2 processes so their working directory changes to the new
+release; Caddy and the separate proof processes are not touched. Failed
+activation attempts to restore the previously healthy release. Missing configuration or a
+mismatched target fails before deployment mutation.
 
 Choose an artifact built for the actual target operating system, CPU architecture
 and Node runtime. A Windows build is not a Linux deployment artifact, and a Linux

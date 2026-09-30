@@ -80,7 +80,7 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
     expect(content).not.toContain("161.118.175.246");
     expect(content).not.toContain("oracle_official.key");
     expect(content).not.toContain("npm run build");
-    expect(content).toContain("pm2 startOrRestart ecosystem.config.cjs --update-env");
+    expect(content).toContain("pm2 start ecosystem.config.cjs --update-env");
     expect(content).toContain("allManagedWorkers");
     expect(content).toContain("workersStarted: true");
   });

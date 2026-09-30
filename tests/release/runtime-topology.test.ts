@@ -53,7 +53,7 @@ describe("production runtime topology", () => {
     }
     const deploy = fs.readFileSync(path.resolve(process.cwd(), "scripts/deploy.ts"), "utf8");
     expect(deploy).toContain("const writers");
-    expect(deploy).toContain("pm2 startOrRestart ecosystem.config.cjs --update-env");
+    expect(deploy).toContain("pm2 start ecosystem.config.cjs --update-env");
     expect(deploy).toContain("verifyAllProcesses");
     expect(deploy).toContain("RADAR_DEPLOYMENT_MODE");
     expect(deploy).toContain("pm2 stop 'radar-scrape'");

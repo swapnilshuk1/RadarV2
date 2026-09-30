@@ -115,7 +115,10 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     ? allManagedWorkers
     : allManagedWorkers.filter((name) => name !== "radar-scrape");
   const requiredProcesses = ["radar-v2", ...writers];
-  const startAllProcesses = "pm2 startOrRestart ecosystem.config.cjs --update-env";
+  const startAllProcesses = "pm2 start ecosystem.config.cjs --update-env";
+  // PM2 restart keeps the old cwd for existing names. Recreate only RADAR's
+  // managed processes so every process uses the newly extracted release.
+  const replaceManagedProcesses = `(pm2 delete ${["radar-v2", ...allManagedWorkers].map(shellQuote).join(" ")} >/dev/null 2>&1 || true)`;
   const enforceProcessTopology = runServerScraper
     ? ":"
     : "pm2 stop 'radar-scrape' >/dev/null 2>&1 || true";
@@ -144,14 +147,15 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
   const rawPriorSha = runner("ssh", sshArgs(config, readPriorShaCommand));
   const priorSha = rawPriorSha && /^[0-9a-f]{40}$/i.test(rawPriorSha) ? rawPriorSha : null;
 
-  // Locate and verify retained previous release directory before activation.
-  // Must fail closed: rollback-eligible only if scripts/release/verify.ts succeeds for exact priorSha.
+  // A serving release can acquire runtime files after extraction, so its
+  // payload checksum is not a reliable rollback check. Require the previous
+  // release directory and an exact, healthy live readiness response instead.
   const priorReleaseDirectory = priorSha ? `${config.appDirectory}/releases/${priorSha}` : null;
   let priorReleaseVerified = false;
   if (priorSha && priorReleaseDirectory) {
     const verifyPriorCommand = [
       `if [ -d ${shellQuote(priorReleaseDirectory)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/ecosystem.config.cjs`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/release-manifest.json`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/node_modules/.bin/tsx`)} ]; then`,
-      `  (cd ${shellQuote(priorReleaseDirectory)} && node_modules/.bin/tsx scripts/release/verify.ts . ${shellQuote(priorSha)} >/dev/null 2>&1 && echo "VERIFIED") || echo "FAILED";`,
+      `  (curl --fail --silent --show-error ${shellQuote(`${config.readinessUrl.replace(/\/$/, "")}/health/ready`)} | RADAR_PREVIOUS_SHA=${shellQuote(priorSha)} node -e ${shellQuote('const fs=require("node:fs"); const response=JSON.parse(fs.readFileSync(0,"utf8")); if(response.status!=="ready" || response.releaseSha!==process.env.RADAR_PREVIOUS_SHA) process.exit(1)')} && echo "VERIFIED") || echo "FAILED";`,
       `fi`,
     ].join(" ");
     const priorCheckResult = runner("ssh", sshArgs(config, verifyPriorCommand));
@@ -159,6 +163,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
       priorReleaseVerified = true;
     }
   }
+  if (priorSha && !priorReleaseVerified) throw new Error("DEPLOY_PREVIOUS_RELEASE_NOT_READY");
 
   runner(
     "ssh",
@@ -173,27 +178,8 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     `${config.user}@${config.host}:${remoteArtifact}`,
   ]);
 
-  const stopProcessFunction = [
-    "stop_pm2_process() {",
-    '  target="$1"',
-    '  if pm2_out=$(pm2 stop "$target" 2>&1); then',
-    "    return 0",
-    "  fi",
-    '  if echo "$pm2_out" | grep -qiE "(process|namespace).*not found|already stopped" && ! echo "$pm2_out" | grep -qi "command not found"; then',
-    "    return 0",
-    "  fi",
-    '  echo "$pm2_out" >&2',
-    "  return 1",
-    "}",
-  ].join("\n");
-
-  const stopWriters = allManagedWorkers
-    .map((name) => `stop_pm2_process ${shellQuote(name)}`)
-    .join("; ");
-
   const activate = [
     "set -eu",
-    stopProcessFunction,
     `rm -rf ${shellQuote(stagingDirectory)}`,
     `mkdir -p ${shellQuote(stagingDirectory)}`,
     `tar -xzf ${shellQuote(remoteArtifact)} -C ${shellQuote(stagingDirectory)}`,
@@ -204,8 +190,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     `export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)}`,
     `export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)}`,
     `export RADAR_SERVER_SCRAPER_ENABLED=${shellQuote(String(runServerScraper))}`,
-    stopWriters,
-    "stop_pm2_process radar-v2",
+    replaceManagedProcesses,
     "npm run db:migrate",
     "npm run db:status",
     startAllProcesses,
@@ -264,7 +249,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
       canRestorePrior
         ? [
             `printf '%s' ${shellQuote(rollbackFailedReceipt)} > ${shellQuote(receipt)}`,
-            `if (cd ${shellQuote(priorReleaseDirectory!)} && export RADAR_RELEASE_SHA=${shellQuote(priorSha!)} && export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)} && export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)} && ${startAllProcesses} && ${verifyAllProcesses} && ${waitForSystemReadiness} && printf '%s' ${shellQuote(priorSha!)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}); then`,
+            `if (cd ${shellQuote(priorReleaseDirectory!)} && export RADAR_RELEASE_SHA=${shellQuote(priorSha!)} && export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)} && export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)} && export RADAR_SERVER_SCRAPER_ENABLED=${shellQuote(String(runServerScraper))} && ${replaceManagedProcesses} && ${startAllProcesses} && ${verifyAllProcesses} && ${waitForSystemReadiness} && printf '%s' ${shellQuote(priorSha!)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}); then`,
             `  printf '%s' ${shellQuote(rollbackSuccessReceipt)} > ${shellQuote(receipt)}`,
             `else`,
             ...requiredProcesses.map((name) => `  pm2 stop ${shellQuote(name)} || true`),
