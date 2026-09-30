@@ -1,0 +1,215 @@
+name: Memo Composition Model Benchmark
+run-name: Memo composition benchmark · deployed Oracle release
+
+on:
+  workflow_dispatch:
+  # Bootstrap the first live comparison when this workflow lands on main.
+  # Subsequent runs are manual so ordinary pushes never spend model tokens.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/memo-composition-benchmark.yml"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: memo-composition-model-benchmark
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    environment: Oracle
+    env:
+      RADAR_DEPLOY_SSH_HOST: ${{ vars.RADAR_DEPLOY_SSH_HOST }}
+      RADAR_DEPLOY_SSH_USER: ${{ vars.RADAR_DEPLOY_SSH_USER }}
+      RADAR_DEPLOY_APP_DIRECTORY: ${{ vars.RADAR_DEPLOY_APP_DIRECTORY }}
+      ORACLE_SSH_PRIVATE_KEY: ${{ secrets.ORACLE_SSH_PRIVATE_KEY }}
+      ORACLE_SSH_KNOWN_HOSTS: ${{ secrets.ORACLE_SSH_KNOWN_HOSTS }}
+
+    steps:
+      - name: Checkout benchmark harness
+        uses: actions/checkout@v4
+
+      - name: Validate Oracle benchmark configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in RADAR_DEPLOY_SSH_HOST RADAR_DEPLOY_SSH_USER RADAR_DEPLOY_APP_DIRECTORY ORACLE_SSH_PRIVATE_KEY ORACLE_SSH_KNOWN_HOSTS; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Oracle environment setting $name is missing."
+              exit 1
+            fi
+          done
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$ORACLE_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/oracle-ssh-key"
+          chmod 600 "$RUNNER_TEMP/oracle-ssh-key"
+          printf '%s\n' "$ORACLE_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Package benchmark-only inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/memo-composition-benchmark.tar.gz" \
+            vitest.memo-composition-benchmark.config.ts \
+            tests/intelligence/memo-composition-model-benchmark.test.ts
+
+      - name: Run against deployed memo runtime and production read model
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/oracle-ssh-key"
+          remote_bundle="/tmp/radar-memo-composition-benchmark-${GITHUB_RUN_ID}.tar.gz"
+          remote_work="/tmp/radar-memo-composition-benchmark-${GITHUB_RUN_ID}"
+
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$key" \
+            "$RUNNER_TEMP/memo-composition-benchmark.tar.gz" \
+            "$RADAR_DEPLOY_SSH_USER@$RADAR_DEPLOY_SSH_HOST:$remote_bundle"
+
+          printf -v q_app '%q' "$RADAR_DEPLOY_APP_DIRECTORY"
+          printf -v q_bundle '%q' "$remote_bundle"
+          printf -v q_work '%q' "$remote_work"
+
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$key" \
+            "$RADAR_DEPLOY_SSH_USER@$RADAR_DEPLOY_SSH_HOST" \
+            "APP=$q_app BUNDLE=$q_bundle WORK=$q_work bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          current_sha="$(cat "$APP/CURRENT_SHA")"
+          if [[ ! "$current_sha" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "DEPLOYED_RELEASE_SHA_INVALID" >&2
+            exit 1
+          fi
+          release="$APP/releases/$current_sha"
+          test -d "$release/src"
+          test -x "$release/node_modules/.bin/vitest"
+          test -f "$release/src/dossier/staged-composition.ts"
+
+          rm -rf "$WORK"
+          mkdir -p "$WORK"
+          tar -xzf "$BUNDLE" -C "$WORK"
+          ln -s "$release/src" "$WORK/src"
+          ln -s "$release/node_modules" "$WORK/node_modules"
+          cp "$release/package.json" "$WORK/package.json"
+
+          set -a
+          . "$APP/.env"
+          set +a
+
+          if [[ -n "${BEDROCK_MANTLE_KEY_FILE:-}" && "${BEDROCK_MANTLE_KEY_FILE#/}" == "$BEDROCK_MANTLE_KEY_FILE" ]]; then
+            if [[ -f "$APP/$BEDROCK_MANTLE_KEY_FILE" ]]; then
+              export BEDROCK_MANTLE_KEY_FILE="$APP/$BEDROCK_MANTLE_KEY_FILE"
+            elif [[ -f "$release/$BEDROCK_MANTLE_KEY_FILE" ]]; then
+              export BEDROCK_MANTLE_KEY_FILE="$release/$BEDROCK_MANTLE_KEY_FILE"
+            fi
+          fi
+          if [[ -z "${BEDROCK_MANTLE_API_KEY:-}" && -z "${BEDROCK_MANTLE_KEY_FILE:-}" ]]; then
+            echo "BEDROCK_MANTLE_CREDENTIAL_UNAVAILABLE" >&2
+            exit 1
+          fi
+
+          cd "$WORK"
+          set +e
+          RADAR_ENV=production \
+          RADAR_RUN_LIVE_MEMO_COMPOSITION_BENCHMARK=true \
+          RADAR_MEMO_COMPOSITION_BENCHMARK_REPORT="$WORK/memo-composition-benchmark.json" \
+          RADAR_MEMO_BENCHMARK_SOURCE_SHA="$current_sha" \
+            "$release/node_modules/.bin/vitest" run \
+              --config "$WORK/vitest.memo-composition-benchmark.config.ts"
+          status=$?
+          set -e
+          printf '%s\n' "$status" > "$WORK/exit-status.txt"
+          REMOTE
+
+      - name: Fetch benchmark report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/oracle-ssh-key"
+          remote_work="/tmp/radar-memo-composition-benchmark-${GITHUB_RUN_ID}"
+          mkdir -p "$RUNNER_TEMP/memo-composition-benchmark-results"
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$key" \
+            "$RADAR_DEPLOY_SSH_USER@$RADAR_DEPLOY_SSH_HOST:$remote_work/memo-composition-benchmark.json" \
+            "$RUNNER_TEMP/memo-composition-benchmark-results/" || true
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$key" \
+            "$RADAR_DEPLOY_SSH_USER@$RADAR_DEPLOY_SSH_HOST:$remote_work/exit-status.txt" \
+            "$RUNNER_TEMP/memo-composition-benchmark-results/" || true
+
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: memo-composition-benchmark-${{ github.run_id }}
+          path: ${{ runner.temp }}/memo-composition-benchmark-results/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Post benchmark summary
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BENCHMARK_ISSUE: "18"
+        run: |
+          set -euo pipefail
+          report_file="$RUNNER_TEMP/memo-composition-benchmark-results/memo-composition-benchmark.json"
+          status_file="$RUNNER_TEMP/memo-composition-benchmark-results/exit-status.txt"
+          body="$RUNNER_TEMP/memo-composition-benchmark-comment.md"
+          {
+            echo "## Memo composition benchmark"
+            echo
+            echo "- Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            if [[ -s "$report_file" ]]; then
+              source_sha="$(jq -r '.sourceReleaseSha // "unknown"' "$report_file")"
+              printf '%s\n' "- Deployed source release: `$source_sha`"
+              echo "- Scope: five persisted PURSUE evaluations; evaluation and frozen evidence held fixed"
+              echo
+              echo "| Model | Successful memos | Total cost | Avg cost | Avg latency | Calls | Repairs |"
+              echo "| --- | ---: | ---: | ---: | ---: | ---: | ---: |"
+              jq -r '.summary[] | "| \(.model) | \(.successfulMemos)/\(.attemptedMemos) | $\(.totalCostUsd) | $\(.avgCostUsd) | \(.avgLatencyMs) ms | \(.calls) | \(.repairCalls) |"' "$report_file"
+              echo
+              printf '%s\n' "Artifact: `memo-composition-benchmark-$GITHUB_RUN_ID`"
+            else
+              echo "- Report: unavailable"
+            fi
+            if [[ -s "$status_file" ]]; then
+              status="$(tr -d '[:space:]' < "$status_file")"
+              printf '%s\n' "- Benchmark exit status: `$status`"
+            else
+              echo "- Benchmark exit status: unavailable"
+            fi
+          } > "$body"
+          gh issue comment "$BENCHMARK_ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$body"
+
+      - name: Enforce deployed baseline result
+        shell: bash
+        run: |
+          set -euo pipefail
+          status_file="$RUNNER_TEMP/memo-composition-benchmark-results/exit-status.txt"
+          report_file="$RUNNER_TEMP/memo-composition-benchmark-results/memo-composition-benchmark.json"
+          test -s "$report_file"
+          test -s "$status_file"
+          status="$(tr -d '[:space:]' < "$status_file")"
+          if [[ "$status" != "0" ]]; then
+            echo "::error::Memo composition benchmark could not establish the deployed GLM-5 baseline."
+            exit "$status"
+          fi
+
+      - name: Clean remote benchmark workspace
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          key="$RUNNER_TEMP/oracle-ssh-key"
+          remote_bundle="/tmp/radar-memo-composition-benchmark-${GITHUB_RUN_ID}.tar.gz"
+          remote_work="/tmp/radar-memo-composition-benchmark-${GITHUB_RUN_ID}"
+          printf -v q_bundle '%q' "$remote_bundle"
+          printf -v q_work '%q' "$remote_work"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$key" \
+            "$RADAR_DEPLOY_SSH_USER@$RADAR_DEPLOY_SSH_HOST" \
+            "rm -rf $q_work $q_bundle"
