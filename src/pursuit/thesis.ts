@@ -15,6 +15,7 @@
  */
 
 import { generateWithFallback } from "./model";
+import { extractFigures } from "./approval";
 import type { PursuitModelContext } from "./budget";
 import { interpretPursuit } from "./semantic/interpret";
 import { lowerFirst } from "./semantic/engine";
@@ -395,6 +396,21 @@ export async function enrichThesis(
       : undefined,
   }));
   const allowed = new Set(ledger.map((claim) => claim.claimId));
+  const allowedFigures = new Set(
+    extractFigures(
+      [
+        JSON.stringify(input.brief),
+        ...input.claims.flatMap((claim) => [
+          claim.statement,
+          claim.sourceLocator ?? "",
+          claim.metricBaseline ?? "",
+          claim.metricResult ?? "",
+        ]),
+      ].join("\n"),
+    ),
+  );
+  const hasUnsupportedFigure = (value: string): boolean =>
+    extractFigures(value).some((figure) => !allowedFigures.has(figure));
 
   const result = await generateWithFallback<EnrichmentOutput>(
     "pursuit-thesis",
@@ -476,6 +492,7 @@ export async function enrichThesis(
   const safeCounter = (value: string | undefined): string | null => {
     const counter = stripClaimRefs(value);
     if (!counter || findLeakage(counter).length > 0) return null;
+    if (hasUnsupportedFigure(counter)) return null;
     if (hasOverclaim(counter, "ADJACENT")) return null;
     if (findSemanticInflation(counter, input.claims).length > 0) return null;
     return counter;
@@ -520,6 +537,7 @@ export async function enrichThesis(
   const cleanCandidateText = (value: string | undefined, fallback: string) => {
     const v = stripClaimRefs(value);
     if (!v || findLeakage(v).length > 0) return fallback;
+    if (hasUnsupportedFigure(v)) return fallback;
     const strongest = deterministic.semantic?.positioning.mode === "DIRECT_DOMAIN" ? "DIRECT" : "ANALOGOUS";
     if (hasOverclaim(v, strongest)) return fallback;
     return findSemanticInflation(v, input.claims).length > 0 ? fallback : v;
@@ -536,6 +554,7 @@ export async function enrichThesis(
   const safeProof = proof.filter((p) => {
     if (!p.claimId || !rankedIds.has(p.claimId)) return false;
     if (findLeakage(p.whyItMatters).length > 0) return false;
+    if (hasUnsupportedFigure(p.whyItMatters)) return false;
     if (findSemanticInflation(p.whyItMatters, input.claims).length > 0) return false;
     return !hasOverclaim(p.whyItMatters, relationshipForClaim(p.claimId));
   });
