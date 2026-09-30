@@ -13,6 +13,7 @@ import { z } from "zod";
 import { getDatabaseAdapter } from "../data/database";
 import { writeAuthorizedDecision } from "../data/sqlite/repositories/SqliteDecisionSupportStore";
 import { requireAuthUser } from "../lib/auth/guard";
+import { isWorkerOnline } from "../lib/health/worker-heartbeat";
 import { authenticateTenantMembership, authorizePersonScope } from "../lib/security/auth";
 import { resolveServingScope } from "../lib/security/scope-resolver";
 import { renderInterviewBrief, renderMessage, renderResume } from "./artifacts";
@@ -74,7 +75,7 @@ async function readCockpit(scope: store.Scope, jobHash: string): Promise<Cockpit
   if (!pursuit) throw new Error("PURSUIT_NOT_FOUND");
   const thesis = pursuit.activeThesisId ? await store.getThesis(pursuit.activeThesisId) : null;
   const profileVersion = pursuitProfileVersion(pursuit, thesis);
-  const [thesisHistory, artifacts, archetypes, claims, activities, coverage, preparation] =
+  const [thesisHistory, artifacts, archetypes, claims, activities, coverage, preparation, workerAvailable] =
     await Promise.all([
       store.listThesisHistory(pursuit.id),
       store.listLatestArtifacts(pursuit.id),
@@ -83,9 +84,13 @@ async function readCockpit(scope: store.Scope, jobHash: string): Promise<Cockpit
       store.listActivities(pursuit.id),
       store.ledgerCoverageForProfile(scope, profileVersion),
       store.livePreparation(scope, pursuit.id),
+      pursuit.preparationState === "QUEUED"
+        ? isWorkerOnline("pursuit-preparation")
+        : Promise.resolve(null),
     ]);
   return {
     preparation,
+    workerAvailable,
     scope: { tenantId: scope.tenantId, personId: scope.personId },
     pursuit,
     thesis,
@@ -254,7 +259,16 @@ export const getPursuitPreparationStatusFn = createServerFn({ method: "GET" })
   .validator((data: unknown) => scopeInput.extend({ jobHash: z.string().min(1) }).parse(data))
   .handler(async ({ data }) => {
     const scope = await authorize(data, "read:person");
-    return store.preparationStatus(scope, data.jobHash);
+    const status = await store.preparationStatus(scope, data.jobHash);
+    return status
+      ? {
+          ...status,
+          workerAvailable:
+            status.preparationState === "QUEUED"
+              ? await isWorkerOnline("pursuit-preparation")
+              : null,
+        }
+      : null;
   });
 
 /**

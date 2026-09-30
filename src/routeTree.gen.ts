@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WorkbenchRouteImport } from './routes/workbench'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ScrapedRouteImport } from './routes/scraped'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -26,11 +25,6 @@ import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 
-const WorkbenchRoute = WorkbenchRouteImport.update({
-  id: '/workbench',
-  path: '/workbench',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const WelcomeRoute = WelcomeRouteImport.update({
   id: '/welcome',
   path: '/welcome',
@@ -117,7 +111,6 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
   '/welcome': typeof WelcomeRoute
-  '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/pursuit/$jobHash': typeof PursuitJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
@@ -135,7 +128,6 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
   '/welcome': typeof WelcomeRoute
-  '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/pursuit/$jobHash': typeof PursuitJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
@@ -154,7 +146,6 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
   '/welcome': typeof WelcomeRoute
-  '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/pursuit/$jobHash': typeof PursuitJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
@@ -174,7 +165,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/scraped'
     | '/welcome'
-    | '/workbench'
     | '/opportunity/$jobHash'
     | '/pursuit/$jobHash'
     | '/qa/mapping'
@@ -192,7 +182,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/scraped'
     | '/welcome'
-    | '/workbench'
     | '/opportunity/$jobHash'
     | '/pursuit/$jobHash'
     | '/qa/mapping'
@@ -210,7 +199,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/scraped'
     | '/welcome'
-    | '/workbench'
     | '/opportunity/$jobHash'
     | '/pursuit/$jobHash'
     | '/qa/mapping'
@@ -229,7 +217,6 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ScrapedRoute: typeof ScrapedRoute
   WelcomeRoute: typeof WelcomeRoute
-  WorkbenchRoute: typeof WorkbenchRoute
   OpportunityJobHashRoute: typeof OpportunityJobHashRoute
   PursuitJobHashRoute: typeof PursuitJobHashRoute
   QaMappingRoute: typeof QaMappingRoute
@@ -240,13 +227,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/workbench': {
-      id: '/workbench'
-      path: '/workbench'
-      fullPath: '/workbench'
-      preLoaderRoute: typeof WorkbenchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/welcome': {
       id: '/welcome'
       path: '/welcome'
@@ -365,7 +345,6 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ScrapedRoute: ScrapedRoute,
   WelcomeRoute: WelcomeRoute,
-  WorkbenchRoute: WorkbenchRoute,
   OpportunityJobHashRoute: OpportunityJobHashRoute,
   PursuitJobHashRoute: PursuitJobHashRoute,
   QaMappingRoute: QaMappingRoute,

@@ -129,6 +129,16 @@ export const pursuitStatusLabels: Record<PursuitStatus, string> = {
 
 export type PreparationState = "QUEUED" | "DERIVING" | "READY" | "FAILED";
 
+export const PURSUIT_WORKER_UNAVAILABLE_MESSAGE =
+  "Preparation service is currently unavailable. Your pursuit is saved and will continue when the worker is available.";
+
+export function preparationServiceUnavailable(
+  state: PreparationState,
+  workerAvailable: boolean | null | undefined,
+): boolean {
+  return state === "QUEUED" && workerAvailable === false;
+}
+
 /** Canonical opportunity/evaluation lineage a pursuit or strategy version was derived from. */
 export interface PursuitLineage {
   canonicalJobId: string | null;
@@ -498,4 +508,6 @@ export interface CockpitView {
   ledgerCoverage: { total: number; sourceBacked: number; documents: number };
   /** Latest durable preparation job for this pursuit, if any. */
   preparation?: { status: string; attempts: number; lastError: string | null; createdAt: string } | null;
+  /** Release- and database-matched Pursuit worker liveness when preparation is queued. */
+  workerAvailable?: boolean | null;
 }

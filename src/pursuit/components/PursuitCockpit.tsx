@@ -24,7 +24,7 @@ import {
   updatePursuitStateFn,
 } from "../server";
 import type { ArtifactContent, CockpitView, LearningSignal, PursuitStatus } from "../types";
-import { pursuitStatusLabels } from "../types";
+import { preparationServiceUnavailable, PURSUIT_WORKER_UNAVAILABLE_MESSAGE, pursuitStatusLabels } from "../types";
 import type { ArtifactApprovalBlocker } from "../approval";
 
 type Surface = "STRATEGY" | "RESUME" | "OUTREACH" | "INTERVIEW";
@@ -48,6 +48,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
   const [surface, setSurface] = useState<Surface>("STRATEGY");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [workerAvailable, setWorkerAvailable] = useState<boolean | null>(initialView.workerAvailable ?? null);
   const [approvalBlockersByArtifact, setApprovalBlockersByArtifact] = useState<Record<string, ArtifactApprovalBlocker[]>>({});
 
   const derive = useServerFn(derivePursuitFn);
@@ -64,6 +65,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
   // off as the wait grows — a long derivation must not cost a linear read bill.
   const preparing =
     view.pursuit.preparationState === "QUEUED" || view.pursuit.preparationState === "DERIVING";
+  const workerUnavailable = preparationServiceUnavailable(view.pursuit.preparationState, workerAvailable);
   useEffect(() => {
     if (!preparing) return;
     let cancelled = false;
@@ -82,12 +84,16 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
       try {
         const status = await fetchStatus({ data: { ...scope, jobHash } });
         if (cancelled) return;
+        if (status) setWorkerAvailable(status.workerAvailable);
         const settled =
           status && status.preparationState !== "QUEUED" && status.preparationState !== "DERIVING";
         if (settled) {
           // One full read, only once preparation has actually settled.
           const full = await fetchCockpit({ data: { ...scope, jobHash } });
-          if (!cancelled) setView(full);
+          if (!cancelled) {
+            setView(full);
+            setWorkerAvailable(full.workerAvailable ?? null);
+          }
           return;
         }
       } catch {
@@ -115,7 +121,9 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
     setBusy(true);
     setError(null);
     try {
-      setView(await action());
+      const next = await action();
+      setView(next);
+      setWorkerAvailable(next.workerAvailable ?? null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Something went wrong.");
     } finally {
@@ -204,7 +212,9 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
               {busy
                 ? "Working…"
                 : preparing
-                  ? view.pursuit.preparationState === "DERIVING"
+                  ? workerUnavailable
+                    ? "Service unavailable"
+                    : view.pursuit.preparationState === "DERIVING"
                     ? "Preparing package…"
                     : "Queued…"
                   : hasStrategy
@@ -239,7 +249,14 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
             </p>
           </div>
         )}
-        {preparing && (
+        {workerUnavailable && (
+          <div className="memo-callout mb-5 border-l-amber-500" role="status" data-testid="pursuit-worker-unavailable">
+            <p className="text-sm">
+              {PURSUIT_WORKER_UNAVAILABLE_MESSAGE}
+            </p>
+          </div>
+        )}
+        {preparing && !workerUnavailable && (
           <div className="memo-callout mb-5">
             <p className="text-sm">
               {view.pursuit.preparationState === "DERIVING"

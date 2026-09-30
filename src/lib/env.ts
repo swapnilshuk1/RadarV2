@@ -52,7 +52,7 @@ export interface LoadUnifiedEnvironmentOptions {
  * Authoritative unified environment loader.
  * Loads all environment variables across the system with strict precedence:
  * 1. Existing process.env (Shell variables always win)
- * 2. In development (NODE_ENV !== "production" && RADAR_ENV !== "production"):
+ * 2. In development (excluding production and test runtimes):
  *    .env.development.local -> .env.local -> .env.development -> .env -> gemini.env -> groq.env
  * 3. In production, variables are supplied by the process supervisor only.
  *
@@ -66,7 +66,9 @@ export function loadUnifiedEnvironment(options?: LoadUnifiedEnvironmentOptions):
   const rootDir = options?.rootDir || process.cwd();
   const nodeEnv = process.env.NODE_ENV;
   const radarEnv = process.env.RADAR_ENV;
-  const isDev = nodeEnv !== "production" && radarEnv !== "production";
+  // Tests use isolated fixtures; never import local Turso credentials or a
+  // deployment fingerprint from .env into a test process by default.
+  const isDev = nodeEnv !== "production" && radarEnv !== "production" && radarEnv !== "test";
 
   if (!isDev && !options?.envFiles) {
     _hasLoadedUnifiedEnvironment = true;

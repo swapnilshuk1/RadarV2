@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import path from "path";
+import os from "node:os";
 import { getDatabaseAdapter, resetDatabaseAdapter, getRadarEnv } from "../../src/data/database/index";
+import { loadUnifiedEnvironment } from "../../src/lib/env";
 
 describe("RADAR V4 Phase 2A — Database Safety Lockdown", () => {
   const origEnv = { ...process.env };
@@ -65,6 +67,22 @@ describe("RADAR V4 Phase 2A — Database Safety Lockdown", () => {
     await adapter.execute("INSERT INTO _safety_test (id, val) VALUES (?, ?)", ["k1", "v1"]);
     const row = await adapter.one<{ id: string; val: string }>("SELECT * FROM _safety_test WHERE id = ?", ["k1"]);
     expect(row).toEqual({ id: "k1", val: "v1" });
+  });
+
+  it("does not import a local database fingerprint into test execution", () => {
+    const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), "radar-test-env-"));
+    const fixtureFile = path.join(fixtureDir, ".env");
+    fs.writeFileSync(fixtureFile, "RADAR_EXPECTED_DB_TARGET_FINGERPRINT=canonical-target\n");
+    try {
+      process.env.RADAR_ENV = "test";
+      process.env.NODE_ENV = "test";
+      delete process.env.RADAR_EXPECTED_DB_TARGET_FINGERPRINT;
+      loadUnifiedEnvironment({ rootDir: fixtureDir, forceReload: true });
+      expect(process.env.RADAR_EXPECTED_DB_TARGET_FINGERPRINT).toBeUndefined();
+    } finally {
+      fs.unlinkSync(fixtureFile);
+      fs.rmdirSync(fixtureDir);
+    }
   });
 
   it("6. No-op dummy adapter is completely eliminated", () => {

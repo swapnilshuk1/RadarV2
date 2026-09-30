@@ -3,7 +3,7 @@ vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => ({ validator: () => ({ handler: (fn: unknown) => fn }) }),
 }));
 vi.mock("../../src/lib/auth/guard", () => ({ requireAuthUser: async () => ({ id: "person_A" }) }));
-import { getDatabaseAdapter, resetDatabaseAdapter } from "../../src/data/database";
+import { getDatabaseAdapter, getDatabaseTargetIdentity, resetDatabaseAdapter } from "../../src/data/database";
 import { writeAuthorizedDecision } from "../../src/data/sqlite/repositories/SqliteDecisionSupportStore";
 import {
   openPursuitInTransaction,
@@ -18,11 +18,11 @@ import {
   type PreparationJob,
 } from "../../src/pursuit/store";
 import { projectLedger, resolveCanonicalSources } from "../../src/pursuit/ledger";
-import { listPursuitSummariesFn, openPursuitFn, preflightArtifactApprovalFn, saveArtifactFn } from "../../src/pursuit/server";
+import { getPursuitPreparationStatusFn, listPursuitSummariesFn, openPursuitFn, preflightArtifactApprovalFn, saveArtifactFn } from "../../src/pursuit/server";
 import { ledgerApprovalBlockers } from "../../src/pursuit/approval";
 import { pursuitProfileVersion } from "../../src/pursuit/lineage";
 import { createSqliteModelInvocationSink } from "../../src/lib/model/model-invocation";
-import type { PursuitThesis, CandidateClaim } from "../../src/pursuit/types";
+import { preparationServiceUnavailable, PURSUIT_WORKER_UNAVAILABLE_MESSAGE, type PursuitThesis, type CandidateClaim } from "../../src/pursuit/types";
 
 describe("Pursuit in the RADAR host", () => {
   const prior = process.env.RADAR_ENV;
@@ -142,6 +142,34 @@ describe("Pursuit in the RADAR host", () => {
     await expect(
       writeAuthorizedDecision(db, "person_B", "tenant_B", "hash_A", "PURSUE"),
     ).rejects.toThrow("OUT_OF_SCOPE_OPPORTUNITY");
+  });
+
+  it("reports an offline queued worker without changing the preparation job", async () => {
+    const before = await db.one<{ status: string }>(
+      "SELECT status FROM pursuit_preparation_jobs WHERE job_hash='hash_A'",
+    );
+    const offline = await getPursuitPreparationStatusFn({ data: { ...scope, jobHash: "hash_A" } });
+    expect(offline?.preparationState).toBe("QUEUED");
+    expect(offline?.workerAvailable).toBe(false);
+    expect(preparationServiceUnavailable(offline!.preparationState, offline!.workerAvailable)).toBe(true);
+    expect(PURSUIT_WORKER_UNAVAILABLE_MESSAGE).toMatch(/pursuit is saved and will continue/i);
+    await db.execute(
+      `INSERT INTO worker_heartbeats(worker_name,instance_id,release_sha,database_fingerprint,last_seen_at)
+       VALUES (?,?,?,?,?)`,
+      ["pursuit-preparation", "pursuit-test", process.env.RADAR_RELEASE_SHA ?? "development", getDatabaseTargetIdentity().fingerprint, new Date().toISOString()],
+    );
+    const online = await getPursuitPreparationStatusFn({ data: { ...scope, jobHash: "hash_A" } });
+    expect(online?.workerAvailable).toBe(true);
+    expect(preparationServiceUnavailable(online!.preparationState, online!.workerAvailable)).toBe(false);
+    await db.execute(
+      "UPDATE worker_heartbeats SET last_seen_at=? WHERE instance_id='pursuit-test'",
+      [new Date(Date.now() - 151_000).toISOString()],
+    );
+    const stale = await getPursuitPreparationStatusFn({ data: { ...scope, jobHash: "hash_A" } });
+    expect(stale?.workerAvailable).toBe(false);
+    expect(preparationServiceUnavailable("FAILED", false)).toBe(false);
+    expect(preparationServiceUnavailable("READY", false)).toBe(false);
+    expect(await db.one("SELECT status FROM pursuit_preparation_jobs WHERE job_hash='hash_A'")).toEqual(before);
   });
 
   it("reopens an existing pursuit without changing a later CONSIDER decision", async () => {
