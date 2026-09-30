@@ -7,6 +7,8 @@ import type {
 } from "@/evaluation/context-contracts";
 import type { JobProjection } from "@/lib/domain/job_projection";
 import { GeographyResolver } from "@/lib/intelligence/semantic/resolvers/GeographyResolver";
+import { SeniorityResolver } from "@/lib/intelligence/semantic/resolvers/SeniorityResolver";
+import type { SeniorityBand } from "@/lib/intelligence/semantic/types";
 
 export type EligibilityDecision = "ELIGIBLE" | "REVIEW" | "INELIGIBLE";
 export type EligibilityReasonCode =
@@ -16,6 +18,7 @@ export type EligibilityReasonCode =
   | "EXCLUDED_COMPANY"
   | "FUNCTION_CONTRADICTION"
   | "SENIORITY_CONTRADICTION"
+  | "SENIORITY_REVIEW"
   | "EMPLOYMENT_CONTRADICTION"
   | "LOCATION_CONTRADICTION"
   | "LOCATION_REVIEW"
@@ -138,6 +141,68 @@ function minimumTargetExperienceYears(seniorityRange: readonly string[]): number
   return null;
 }
 
+const SENIORITY_RANK: Readonly<Record<SeniorityBand, number>> = {
+  UNKNOWN: 0,
+  COORDINATOR_ENTRY: 1,
+  INDIVIDUAL_CONTRIBUTOR: 2,
+  MANAGER: 3,
+  LEAD: 3,
+  DIRECTOR: 4,
+  HEAD: 4,
+  VP: 5,
+  C_SUITE: 6,
+};
+
+function targetSeniorityFloor(seniorityRange: readonly string[]): SeniorityBand | null {
+  const bands = seniorityRange
+    .map((value): SeniorityBand => {
+      const normalized = normalize(value);
+      if (/\bchief\b|\bc suite\b/.test(normalized)) return "C_SUITE";
+      if (/\bevp\b|\bsvp\b|\bvp\b|vice president/.test(normalized)) return "VP";
+      if (/\bhead\b/.test(normalized)) return "HEAD";
+      if (/\bdirector\b/.test(normalized)) return "DIRECTOR";
+      if (/\blead\b/.test(normalized)) return "LEAD";
+      if (/\bmanager\b/.test(normalized)) return "MANAGER";
+      return SeniorityResolver.resolve(value).seniorityBand;
+    })
+    .filter((band) => band !== "UNKNOWN");
+  if (bands.length === 0) return null;
+  return bands.reduce((floor, band) =>
+    SENIORITY_RANK[band] < SENIORITY_RANK[floor] ? band : floor
+  );
+}
+
+function titleSeniorityAssessment(
+  title: string,
+  targetRange: readonly string[],
+): { kind: "NONE" | "REVIEW" | "REJECT"; reason?: string } {
+  const target = targetSeniorityFloor(targetRange);
+  if (!target) return { kind: "NONE" };
+
+  const resolved = SeniorityResolver.resolve(title);
+  if (resolved.seniorityBand === "UNKNOWN" || resolved.confidence < 0.9) {
+    return {
+      kind: "REVIEW",
+      reason: `Title '${title}' does not establish seniority confidently enough for the configured ${target} floor.`,
+    };
+  }
+
+  const gap = SENIORITY_RANK[target] - SENIORITY_RANK[resolved.seniorityBand];
+  if (gap >= 2) {
+    return {
+      kind: "REJECT",
+      reason: `Title '${title}' resolves to ${resolved.seniorityBand}, materially below the configured ${target} floor.`,
+    };
+  }
+  if (gap === 1) {
+    return {
+      kind: "REVIEW",
+      reason: `Title '${title}' resolves one seniority band below the configured ${target} floor.`,
+    };
+  }
+  return { kind: "NONE" };
+}
+
 function resolveLocationPolicy(
   version: OpportunityVersion,
   projection: JobProjection | undefined,
@@ -258,29 +323,13 @@ export function evaluateAttentionGate(
     spec.locations,
   );
   if (locationResult) return { ...locationResult, matchedConcepts };
-  const junior = hasAny(title, [
-    "intern",
-    "assistant",
-    "associate",
-    "manager",
-    "analyst",
-    "engineer",
-    "developer",
-  ]);
-  const executive = hasAny(title, [
-    "chief",
-    "vice president",
-    "vp",
-    "director",
-    "head",
-    "svp",
-    "evp",
-  ]);
-  if (spec.seniorityRange.length && junior && !executive)
+  const seniority = titleSeniorityAssessment(title, spec.seniorityRange);
+  if (seniority.kind === "REJECT") {
     return reject(
       "SENIORITY_CONTRADICTION",
-      `Title '${title}' is materially below the configured executive range.`,
+      seniority.reason || `Title '${title}' is materially below the configured seniority range.`,
     );
+  }
   const requiredExperience = minimumTargetExperienceYears(spec.seniorityRange);
   const jobExperience = explicitExperienceRange(version.rawContent || "");
   if (requiredExperience !== null && jobExperience && jobExperience.max < requiredExperience) {
@@ -330,9 +379,9 @@ export function evaluateAttentionGate(
     );
     return withLocation({
       decision: "CANDIDATE",
-      eligibility: "ELIGIBLE",
-      reasons: [],
-      reasonCodes: ["ROLE_FAMILY_MATCH"],
+      eligibility: seniority.kind === "REVIEW" ? "REVIEW" : "ELIGIBLE",
+      reasons: seniority.kind === "REVIEW" && seniority.reason ? [seniority.reason] : [],
+      reasonCodes: seniority.kind === "REVIEW" ? ["SENIORITY_REVIEW"] : ["ROLE_FAMILY_MATCH"],
       matchedConcepts,
     });
   }
