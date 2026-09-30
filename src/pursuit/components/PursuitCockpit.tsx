@@ -7,7 +7,7 @@
  */
 
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { InterviewBriefPanel } from "./InterviewBriefPanel";
 import { OutreachKit } from "./OutreachKit";
 import { ResumeStudio } from "./ResumeStudio";
@@ -49,6 +49,7 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resolveOpen, setResolveOpen] = useState(false);
+  const resolveMenuRef = useRef<HTMLDivElement | null>(null);
   const [workerAvailable, setWorkerAvailable] = useState<boolean | null>(initialView.workerAvailable ?? null);
   const [approvalBlockersByArtifact, setApprovalBlockersByArtifact] = useState<Record<string, ArtifactApprovalBlocker[]>>({});
 
@@ -68,6 +69,23 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
     view.pursuit.preparationState === "QUEUED" || view.pursuit.preparationState === "DERIVING";
   const workerUnavailable = preparationServiceUnavailable(view.pursuit.preparationState, workerAvailable);
   const resolved = isTerminalPursuitStatus(view.pursuit.status);
+
+  useEffect(() => {
+    if (!resolveOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!resolveMenuRef.current?.contains(event.target as Node)) setResolveOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setResolveOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [resolveOpen]);
+
   useEffect(() => {
     if (!preparing) return;
     let cancelled = false;
@@ -232,15 +250,57 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
                 Reopen pursuit
               </button>
             ) : (
-              <button
-                type="button"
-                disabled={busy || preparing}
-                onClick={() => setResolveOpen((open) => !open)}
-                className="pursuit-chip"
-                title={preparing ? "Finish preparation before resolving this pursuit." : undefined}
-              >
-                Resolve pursuit
-              </button>
+              <div ref={resolveMenuRef} className="relative">
+                <button
+                  type="button"
+                  disabled={busy || preparing}
+                  aria-expanded={resolveOpen}
+                  aria-haspopup="menu"
+                  onClick={() => setResolveOpen((open) => !open)}
+                  className="pursuit-chip"
+                  title={preparing ? "Finish preparation before resolving this pursuit." : undefined}
+                >
+                  Resolve pursuit <span aria-hidden="true">{resolveOpen ? "▴" : "▾"}</span>
+                </button>
+                {resolveOpen && (
+                  <div
+                    role="menu"
+                    aria-label="Resolve pursuit"
+                    className="absolute right-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-xl border border-border bg-background p-2 shadow-2xl"
+                  >
+                    <div className="px-2.5 pb-2 pt-1">
+                      <p className="text-sm font-medium text-ink">Resolve pursuit</p>
+                      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                        Move this pursuit out of your active working set. Nothing is deleted.
+                      </p>
+                    </div>
+                    {([
+                      ["CLOSED_WON", "Won", "You accepted or completed this opportunity."],
+                      ["CLOSED_LOST", "Lost", "The opportunity ended without an accepted outcome."],
+                      ["WITHDRAWN", "Withdrawn", "You chose to stop pursuing this opportunity."],
+                    ] as const).map(([status, label, description]) => (
+                      <button
+                        key={status}
+                        type="button"
+                        role="menuitem"
+                        disabled={busy}
+                        onClick={() => {
+                          setResolveOpen(false);
+                          void run(() =>
+                            updateState({
+                              data: { ...scope, jobHash, status, nextAction: null, nextActionDue: null },
+                            }),
+                          );
+                        }}
+                        className="block w-full rounded-lg px-2.5 py-2 text-left hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-accent-ink/30"
+                      >
+                        <span className="block text-sm font-medium text-ink">{label}</span>
+                        <span className="mt-0.5 block text-xs leading-relaxed text-ink-muted">{description}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             <button type="button" onClick={onClose} className="pursuit-chip">
               Close
@@ -268,41 +328,6 @@ export function PursuitCockpit({ scope, jobHash, initialView, onClose }: Props) 
             <p className="mt-1 text-sm text-muted-foreground">
               This pursuit is resolved. Its strategy, artifacts and activity history remain available.
             </p>
-          </div>
-        )}
-        {resolveOpen && !resolved && (
-          <div className="memo-card mb-5">
-            <p className="label-mono text-muted-foreground">Resolve pursuit</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Move this pursuit out of the active working set. Nothing is deleted.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {([
-                ["CLOSED_WON", "Won"],
-                ["CLOSED_LOST", "Lost"],
-                ["WITHDRAWN", "Withdrawn"],
-              ] as const).map(([status, label]) => (
-                <button
-                  key={status}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => {
-                    setResolveOpen(false);
-                    void run(() =>
-                      updateState({
-                        data: { ...scope, jobHash, status, nextAction: null, nextActionDue: null },
-                      }),
-                    );
-                  }}
-                  className="pursuit-chip"
-                >
-                  {label}
-                </button>
-              ))}
-              <button type="button" onClick={() => setResolveOpen(false)} className="pursuit-chip">
-                Cancel
-              </button>
-            </div>
           </div>
         )}
         {view.ledgerCoverage.total === 0 && (
