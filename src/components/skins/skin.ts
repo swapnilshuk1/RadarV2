@@ -10,7 +10,7 @@
  * no component needs to change.
  */
 
-export type SkinId = "radar" | "boardroom" | "signal" | "atelier";
+export type SkinId = "radar" | "boardroom" | "signal" | "atelier" | "iphone";
 export type Appearance = "light" | "dark" | "system";
 
 export interface SkinDefinition {
@@ -51,6 +51,13 @@ export const SKINS: SkinDefinition[] = [
     favours: "light",
     swatch: ["#f5f0e0", "#064e3b", "#c9a84c"],
   },
+  {
+    id: "iphone",
+    name: "iPhone",
+    stance: "A clear, tactile interface with familiar Apple-style surfaces.",
+    favours: "light",
+    swatch: ["#f5f5f7", "#007aff", "#1c1c1e"],
+  },
 ];
 
 export const DEFAULT_SKIN: SkinId = "radar";
@@ -67,7 +74,7 @@ export const SKIN_BOOTSTRAP_SCRIPT = `(() => {
   try {
     const root = document.documentElement;
     const skin = localStorage.getItem("radar.skin.v1");
-    if (skin === "boardroom" || skin === "signal" || skin === "atelier") {
+    if (skin === "boardroom" || skin === "signal" || skin === "atelier" || skin === "iphone") {
       root.dataset.skin = skin;
     } else {
       root.removeAttribute("data-skin");
