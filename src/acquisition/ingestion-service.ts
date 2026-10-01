@@ -670,16 +670,16 @@ export class CanonicalIngestionService {
             );
           }
         }
-        if (runRow.status !== "running") {
+        if (runRow.status !== "running" && !(runRow.status === "stopping" && options.scrapeLease)) {
           throw new AcquisitionIntegrityError(
-            `RUN_NOT_RUNNING_REJECTED: Scrape run '${effectiveScope.runId}' is in status '${runRow.status}', but canonical admission status must be 'running'.`
+            `RUN_NOT_RUNNING_REJECTED: Scrape run '${effectiveScope.runId}' is in status '${runRow.status}'; admission requires a running run or a stopping run with its current execution lease.`
           );
         }
         verifiedRunId = runRow.id;
         if (options.scrapeLease) {
           const fence = await tx.one<{ id: string }>(`SELECT id FROM scrape_runs
             WHERE id=? AND tenant_id=? AND person_id=? AND lease_owner=? AND lease_token=?
-              AND lease_expires_at>? AND status='running'`, [verifiedRunId, effectiveScope.tenantId,
+              AND lease_expires_at>? AND status IN ('running','stopping')`, [verifiedRunId, effectiveScope.tenantId,
             effectiveScope.personId, options.scrapeLease.owner, options.scrapeLease.token, Date.now()]);
           if (!fence) throw new AcquisitionIntegrityError("SCRAPE_RUN_LEASE_LOST");
         }

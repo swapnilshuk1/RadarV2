@@ -69,6 +69,16 @@ describe("Phase 4A: Scrape Run State Machine & Atomic Uniqueness Contract", () =
     expect(active?.status).toBe("initializing");
   });
 
+  it("requeues retained transfer work only for the current scoped live owner", async () => {
+    await store.createRun(scopeA,{id:'transfer-retry',searchPlanId:'plan_A',portalTargets:['LinkedIn'],initialStatus:'queued'});
+    const claimed=await store.claimNextForWorker('owner',60000);
+    await store.updateRunStatus(scopeA,claimed!.id,'running',undefined,{owner:'owner',token:claimed!.leaseToken!});
+    expect(await store.requeueForTransfer(scopeB,claimed!.id,'owner',claimed!.leaseToken!,'offline')).toBe(false);
+    expect(await store.requeueForTransfer(scopeA,claimed!.id,'stale',claimed!.leaseToken!,'offline')).toBe(false);
+    expect(await store.requeueForTransfer(scopeA,claimed!.id,'owner',claimed!.leaseToken!,'offline')).toBe(true);
+    expect((await store.getRun(scopeA,claimed!.id))?.status).toBe('queued');
+  });
+
   it("2. Cross-Tenant Concurrency: Tenant A and Tenant B both create active runs without blocking", async () => {
     const [runA, runB] = await Promise.all([
       store.createRun(scopeA, {

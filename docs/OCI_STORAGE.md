@@ -147,10 +147,24 @@ single-host/global-market execution is preserved when ingress is not configured.
 The local scraper still uses Turso for run/discovery orchestration; canonical
 admission is routed through ingress when configured. This is not an offline scraper.
 
-The local outbox stores the versioned acquisition envelope before upload, verifies
-uploaded bytes, and persists the receipt. It is bounded at 512 MiB/5,000 entries;
-capacity exhaustion preserves entries and stops admission. Pending entries for a
-resumed run are replayed after it returns to running. A terminal run's unadmitted
+The local outbox fsyncs each versioned acquisition envelope before scheduling an
+independent uploader. Portal detail acquisition continues while upload, verification
+and authenticated admission run in the background. Set
+`RADAR_ACQUISITION_UPLOAD_CONCURRENCY` to 1–8 (default 2); this bounds concurrent
+transfers rather than browser tabs. The existing OCI HTTPS agent reuses connections.
+Small envelopes use individual conditional uploads, not multipart or end-of-run
+batches. Canonical admission still requires verified OCI bytes and an ingress receipt;
+local capture alone is not canonical admission or eligibility for evaluation.
+
+The spool is bounded at 512 MiB/5,000 entries, including retained receipts;
+capacity exhaustion preserves entries and stops capture. Recovery is scoped to the
+same tenant, person and run. Persisted receipts are applied locally without repeating
+canonical admission. Retryable transfer failures requeue the run with retained bytes;
+integrity failures remain visible and require investigation. Acquisition retains its
+execution lease while draining captured payloads; completion never waits for
+enrichment or evaluation. Stop prevents new captures and drains staged payloads under
+the current lease before marking the run aborted. Interrupted stop/drain recovery
+retains that stop intent. A terminal run's unadmitted
 entries require explicit recovery into an authorized running run; they are not
 silently discarded or admitted with an expired lease. Acknowledged entries are
 automatically retired after seven days under the retention policy below.
@@ -173,7 +187,23 @@ being deleted by age. Inventory them for explicit recovery.
 Run stop/confirmation use the durable states already polled by the local worker.
 Processing-host UI reads durable events/status instead of requiring the local
 journal. Workers publish summary telemetry at heartbeat intervals; this is not a
-complete mirror of every local journal event.
+complete mirror of every local journal event. Progress distinguishes discovered cards,
+JDs saved locally, pending transfers and admitted captures. Detail timing separates
+browser queue wait from extraction. Optional title locators have a one-second budget;
+the required JD acquisition and validation remain intact. Portal pool exceptions are
+reported immediately and failed units leave the running state, so another portal's
+activity cannot mask a stranded LinkedIn unit.
+
+The 2 October acquisition performance proof deliberately limited only its own run
+to two cards per page. In 1m 53s it discovered 16 cards across all three portals and
+staged/admitted 13 payloads with zero ingestion failures. LinkedIn completed five
+search units and advanced from Vice President to CMO; Naukri and Indeed also
+captured jobs. Envelope uploads took 53–118 ms, verification 44–94 ms, and ingress
+acknowledgement 387–3913 ms. These are observations from a small live test, not a
+throughput guarantee. Normal search defaults were not changed. The original
+LinkedIn stall's exception was not retained, so its root cause remains unconfirmed;
+the corrected reporting prevents future portal failures from silently stranding UI
+state. Private runtime evidence is saved in `.radar/acquisition-performance-proof.json`.
 
 ## Verification and historical transfer
 

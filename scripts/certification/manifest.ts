@@ -35,6 +35,8 @@ export const certificationManifest = [
       "tests/persistence/blob-store-connectivity.test.ts",
       "tests/persistence/oci-blob-store.test.ts",
       "tests/acquisition/oci-handoff.test.ts",
+      "tests/acquisition/transfer-session.test.ts",
+      "tests/scraper/acquisition-wait-budget.test.ts",
       "tests/acquisition/retention-and-execution.test.ts",
       "tests/scraper/acquisition-variant-contract.test.ts",
     ],

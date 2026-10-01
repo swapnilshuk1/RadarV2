@@ -2,7 +2,8 @@
 export async function pool<T, R>(
   items: T[],
   limit: number,
-  worker: (item: T, idx: number) => Promise<R>
+  worker: (item: T, idx: number) => Promise<R>,
+  onError?: (error: unknown, item: T) => void | Promise<void>
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let cursor = 0;
@@ -13,6 +14,7 @@ export async function pool<T, R>(
       try {
         results[i] = await worker(items[i], i);
       } catch (err) {
+        await onError?.(err, items[i]);
         // Store rejection as-is — caller decides retry policy.
         results[i] = err as any;
       }

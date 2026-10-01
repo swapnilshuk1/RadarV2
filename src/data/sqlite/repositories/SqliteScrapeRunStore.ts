@@ -364,6 +364,16 @@ export class SqliteScrapeRunStore {
     return result.rowsAffected === 1;
   }
 
+  /** Retry unsent captured work without admitting a stale or foreign owner. */
+  async requeueForTransfer(scope: AuthorizedPersonScope, runId: string, owner: string, token: string, reason: string): Promise<boolean> {
+    const result = await this.db.execute(
+      `UPDATE scrape_runs SET status='queued', error_message=?, updated_at=?
+       WHERE id=? AND tenant_id=? AND person_id=? AND lease_owner=? AND lease_token=?
+         AND lease_expires_at>? AND status IN ('running','stopping')`,
+      [reason, new Date().toISOString(), runId, scope.tenantId, scope.personId, owner, token, Date.now()]);
+    return result.rowsAffected === 1;
+  }
+
   async failWorkerLease(
     runId: string,
     workerId: string,

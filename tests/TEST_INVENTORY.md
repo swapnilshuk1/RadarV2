@@ -196,7 +196,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (180 Total Files)
+## 3. Complete Test File Registry
 
 Every test file in the repository is mechanically tracked below:
 
@@ -212,6 +212,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/acquisition/reset-corpus-fail-closed.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 14 |
 | `tests/acquisition/scoped-ingestion.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 6 | 30 |
 | `tests/acquisition/oci-handoff.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 10 | 20 |
+| `tests/acquisition/transfer-session.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 4 | 20 |
+| `tests/scraper/acquisition-wait-budget.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 3 | 9 |
 | `tests/acquisition/retention-and-execution.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 8 | 20 |
 | `tests/acquisition/source-payload-provenance.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 9 | 42 |
 | `tests/certification/certification-gate-integrity.test.ts` | Certification Integrity | **KEEP** | Full Suite | 7 | 26 |

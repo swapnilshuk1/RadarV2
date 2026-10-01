@@ -18,6 +18,9 @@ export interface CanonicalScrapeState {
   opportunitiesFound: number;
   evaluatedCount: number;
   enrichedCount?: number;
+  locallyCapturedCount?: number;
+  pendingUploadCount?: number;
+  admittedCount?: number;
   errorMessage?: string | null;
   remainingCount: number;
   sources: Record<string, "pending" | "searching" | "completed" | "failed">;
@@ -85,6 +88,9 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
       opportunitiesFound: data.opportunitiesFound || 0,
       evaluatedCount: data.evaluatedCount || 0,
       enrichedCount: data.enrichedCount || 0,
+      locallyCapturedCount: data.locallyCapturedCount || 0,
+      pendingUploadCount: data.pendingUploadCount || 0,
+      admittedCount: data.admittedCount || 0,
       errorMessage: data.errorMessage,
       recentActivities: data.recentActivities || [],
       remainingCount: data.remainingCount || 0,

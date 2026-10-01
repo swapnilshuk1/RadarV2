@@ -41,10 +41,12 @@ and a test showing that it cannot expose tenant-owned data across boundaries.
 ```mermaid
 flowchart TD
   X[Local acquisition device: database execution lease and local profile lock] --> A
-  A --> Y[Bounded outbox: upload and verify OCI envelope]
+  A --> Q[Fsynced bounded local outbox]
+  Q --> Y[Independent bounded uploader: verify OCI envelope]
   Y --> Z[Oracle ingress: scope, hash, run and execution-token validation]
   Z --> B
-  A[Portal acquisition] --> B[Preserved payload and canonical opportunity version]
+  A[Portal acquisition]
+  B[Preserved payload and canonical opportunity version]
   B --> C[Exact enrichment dependency]
   C --> D[Durable staged evaluation job]
   D --> E[Frozen JD, bound candidate evidence and acquired context]

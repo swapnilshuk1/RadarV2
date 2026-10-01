@@ -547,7 +547,14 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
     writeJsonAtomic(this.manifestPath, this.manifest);
   }
 
+  releaseForRetry(): void {
+    this.journal.close();
+    releaseOwnerLock(this.ownerLock);
+    this.ownerLock = undefined;
+  }
+
   isCancellationRequested(): boolean {
+    if (this.manifest.captureStopped) return true;
     try {
       if (fs.existsSync(this.manifestPath)) {
         const diskManifest = JSON.parse(fs.readFileSync(this.manifestPath, "utf-8"));

@@ -49,6 +49,19 @@ function reference(bytes: Buffer) {
 }
 
 describe("OCI acquisition handoff", () => {
+  it("drains already captured work while stopping but rejects new admission after abort", async () => {
+    const {db,store,sqlite}=await fixture();
+    try {
+      await db.execute("UPDATE scrape_runs SET status='stopping' WHERE id=?",[scope.runId]);
+      const bytes=encodeEnvelope(payload,scope);const ref=reference(bytes);await store.put(ref.payloadKey,bytes);
+      const accepted=await acquisitionIngress(request(ref),{db,store,devices:[device]});expect(accepted.status).toBe(200);
+      await db.execute("UPDATE scrape_runs SET status='aborted' WHERE id=?",[scope.runId]);
+      const nextBytes=encodeEnvelope({...payload,sourceJobId:'1234568',canonicalUrl:'https://www.linkedin.com/jobs/view/1234568'},scope);
+      const next=reference(nextBytes);await store.put(next.payloadKey,nextBytes);
+      const rejected=await acquisitionIngress(request(next),{db,store,devices:[device]});expect(rejected.status).toBe(409);
+      expect(await db.one("SELECT COUNT(*) AS count FROM opportunity_versions")).toEqual({count:1});
+    } finally {sqlite.close();}
+  });
   it("rolls back canonical admission after acquisition execution ownership is lost", async () => {
     const { db, store, sqlite } = await fixture();
     try {

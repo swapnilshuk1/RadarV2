@@ -32,17 +32,23 @@ async function claimAndRun(): Promise<boolean> {
   const leaseToken = claimedRun.leaseToken;
   const scope = { tenantId: claimedRun.tenantId, personId: claimedRun.personId };
   let heartbeatFailure: Error | null = null;
+  let lastTelemetryAt = 0;
   const heartbeat = async () => {
     if (heartbeatFailure) throw heartbeatFailure;
     await repos.scrapeRuns.heartbeatWorkerLease(claimedRun.id, WORKER_ID, leaseToken, LEASE_MS);
+    if (Date.now() - lastTelemetryAt < HEARTBEAT_MS) return;
     try {
       const manifest = JSON.parse(await readFile(path.join(ARTIFACTS_DIR,"runs",claimedRun.id,"manifest.json"), "utf8"));
+      lastTelemetryAt = Date.now();
       await repos.scrapeRuns.updateRunMetrics(scope, claimedRun.id, {
         totalDiscovered: Math.max(manifest.opportunitiesFound ?? 0, manifest.cards?.length ?? 0),
       }, { owner: WORKER_ID, token: leaseToken });
       await repos.scrapeRuns.recordEvent(scope, claimedRun.id, { stage: manifest.status || "running", eventType: "run_progress",
         payload: { opportunitiesFound: Math.max(manifest.opportunitiesFound ?? 0, manifest.cards?.length ?? 0),
           updatedAt: manifest.updatedAt, recentActivities: manifest.recentActivities || [],
+          locallyCapturedCount: manifest.cards?.filter((card: { handoffStatus?: string }) => card.handoffStatus).length || 0,
+          pendingUploadCount: manifest.cards?.filter((card: { handoffStatus?: string }) => card.handoffStatus && card.handoffStatus !== "acknowledged").length || 0,
+          admittedCount: manifest.telemetry?.canonicalIngestSuccess || 0,
           sources: manifest.sources || {}, portalHealth: manifest.portalHealth || {} } });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") console.error("Scrape telemetry publication failed");
@@ -81,8 +87,9 @@ async function claimAndRun(): Promise<boolean> {
       freshSource: typeof config.freshSource === "boolean" ? config.freshSource : undefined,
       newRun: config.newRun === true,
     });
-    await completion;
+    const result = await completion;
     if (heartbeatFailure) throw heartbeatFailure;
+    if (!result.success) return false;
   } catch (error) {
     const message = error instanceof Error ? error.message : "SCRAPE_WORKER_FAILED";
     if (message === "ACQUISITION_EXECUTION_BUSY") {

@@ -32,6 +32,7 @@ export function ScrapeProgressPanel() {
         <div><dt>Enriched</dt><dd className="text-xl">{runState.enrichedCount ?? 0}</dd></div>
         <div><dt>Evaluated</dt><dd className="text-xl">{runState.evaluatedCount}</dd></div>
       </dl>
+      {!!runState.locallyCapturedCount && <p>{runState.locallyCapturedCount} JDs saved locally · {runState.pendingUploadCount ?? 0} awaiting transfer · {runState.admittedCount ?? 0} admitted for processing.</p>}
       <p className="text-muted-foreground">{runState.remainingCount} awaiting evaluation. Completed evaluations may still need dossier preparation; see Scraped jobs for each role.</p>
       {runState.status === "queued" && <p>Your search is saved. It will begin when the search worker is available. You can leave this page or cancel the queued search.</p>}
       {stopping && <p>The worker will stop at its next safe checkpoint. Captured jobs remain saved. If shutdown is interrupted, cancel the remaining search below.</p>}
