@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { fetch as acquisitionFetch } from "undici";
 import type { BlobStore } from "../lib/storage/blob-store";
 import type { CanonicalIngestionResult, IngestOpportunityPayload } from "./ingestion-service";
 import { byteHash, decodeEnvelope, encodeEnvelope, handoffPrefix, type AcquisitionEnvelope, type AcquisitionReference } from "./handoff";
@@ -78,7 +79,7 @@ export function remoteAcquisitionOutbox(store: BlobStore): AcquisitionOutbox {
   return new AcquisitionOutbox(path.resolve(process.env.RADAR_ACQUISITION_OUTBOX_DIR || ".radar/acquisition-outbox"), store, async reference => {
     for (let attempt = 0; ; attempt++) {
       try {
-        const response = await fetch(endpoint, { method: "POST", redirect: "error",
+        const response = await acquisitionFetch(endpoint, { method: "POST", redirect: "error",
           headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
           body: JSON.stringify(reference), signal: AbortSignal.timeout(60_000) });
         if (!response.ok) {
