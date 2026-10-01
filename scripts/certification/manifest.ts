@@ -66,6 +66,7 @@ export const certificationManifest = [
       "tests/serving/singleflight_and_observability.test.ts",
       "tests/serving/singleflight-scope-isolation.test.ts",
       "tests/editorial/shortlist-badge-resolution.test.ts",
+      "tests/editorial/memo-cockpit-skins.test.ts",
       "tests/serving/current-serving-boundary.test.ts",
       "tests/persistence/deployment-determinism.test.ts",
     ],
@@ -108,6 +109,8 @@ export const certificationManifest = [
     files: [
       "tests/pursuit/core-host-integration.test.ts",
       "tests/pursuit/integration-boundaries.test.ts",
+      "tests/pursuit/memo-model-benchmark.test.ts",
+      "tests/pursuit/thesis-enrichment-integrity.test.ts",
       "tests/pursuit/semantic-acceptance.test.ts",
       "tests/pursuit/approval-ledger.test.ts",
     ],

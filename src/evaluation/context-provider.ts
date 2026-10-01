@@ -53,15 +53,30 @@ function attemptRows(
   }));
 }
 
+import { loadUnifiedEnvironment } from '@/lib/env';
+
+function resolveTavilyApiKey(key?: string): string | undefined {
+  if (key !== undefined) return key.trim() || undefined;
+  if (process.env.TAVILY_API_KEY?.trim()) return process.env.TAVILY_API_KEY.trim();
+  try {
+    loadUnifiedEnvironment();
+  } catch {}
+  return process.env.TAVILY_API_KEY?.trim() || undefined;
+}
+
 /** Uses verified company identity plus bounded web search; never sends candidate sources. */
 export class ProductionContextProvider implements ContextProvider {
   readonly id=policy.version;
+  private readonly searchKey?: string;
+
   constructor(
     private readonly db:DatabaseAdapter,
     private readonly tenantId:string,
     private readonly request:typeof fetch=fetch,
-    private readonly searchKey=process.env.TAVILY_API_KEY,
-  ){}
+    searchKey?: string,
+  ){
+    this.searchKey = resolveTavilyApiKey(searchKey);
+  }
 
   async acquire(opportunity:SliceInput['opportunity'],fields:readonly string[]){
     if(!this.searchKey?.trim())throw new ModelProviderUnavailableError('CONTEXT_SEARCH_CONFIGURATION_REQUIRED');

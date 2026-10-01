@@ -183,7 +183,12 @@ export function validateStagedGap(
 export function screeningConstraintForDrivers(
   drivers: StagedScreeningDriver[],
 ): ScreeningConstraint {
-  if (drivers.some(driver => ['MISSING_EXPERIENCE', 'AFFIRMATIVE_CONFLICT'].includes(driver.gapNature))) {
+  const hasSubstantiveOperationalBlocker = drivers.some(
+    driver =>
+      ['MISSING_EXPERIENCE', 'AFFIRMATIVE_CONFLICT'].includes(driver.gapNature) &&
+      driver.screeningGateBasis !== 'MANDATORY_CREDENTIAL'
+  );
+  if (hasSubstantiveOperationalBlocker) {
     return 'BLOCKED_REQUIRED';
   }
   if (drivers.length) return 'MAX_FRAGILE';
@@ -216,7 +221,8 @@ export function validateStagedDecisionModel(
   }
   if (constraint === 'BLOCKED_REQUIRED') {
     const substantiveSelected = drivers.some(driver =>
-      ['MISSING_EXPERIENCE', 'AFFIRMATIVE_CONFLICT'].includes(driver.gapNature)
+      ['MISSING_EXPERIENCE', 'AFFIRMATIVE_CONFLICT'].includes(driver.gapNature) &&
+      driver.screeningGateBasis !== 'MANDATORY_CREDENTIAL'
     );
     if (!substantiveSelected) {
       throw new Error('BLOCKED screening viability must identify a substantive unresolved screening driver');

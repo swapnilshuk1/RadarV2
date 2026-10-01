@@ -67,7 +67,7 @@ describe("rich staged serving activation", () => {
       `INSERT INTO opportunity_versions(id,canonical_job_id,content_hash,job_title,raw_content,lifecycle_state) VALUES('version','job','hash','Head of Growth','Lead growth.','ACTIVE')`,
     );
     await db.execute(
-      `INSERT INTO search_plan_candidates(tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,attention_decision) VALUES('tenant_A','person_A','plan_A','job','version','CANDIDATE')`,
+      `INSERT INTO search_plan_candidates(tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,attention_decision,eligibility) VALUES('tenant_A','person_A','plan_A','job','version','CANDIDATE','ELIGIBLE')`,
     );
     await new SqliteStagedEvaluationStore(db).save({
       ...identity,

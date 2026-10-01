@@ -12,6 +12,8 @@ import { resolveDossierDecisionState } from "../lib/intelligence/decision-state"
 import { DossierView } from "@/dossier/DossierView";
 import { isExternalPostingUrl } from "@/acquisition/external-posting-url";
 import { PursuitLauncherProvider, usePursuitLauncher } from "@/pursuit/components/PursuitLauncher";
+import { MEMO_SHELLS } from "@/components/skins/layouts/memo-layouts";
+import { useSkin } from "@/components/skins/useSkin";
 import { canReopenPursuit } from "@/opportunity/pursuit-affordance";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
@@ -70,6 +72,7 @@ function OpportunityBriefBody() {
   const scope = Route.useSearch() as { tenantId?: string; personId?: string };
   const { decisions, decide: recordDecision } = useDecisions(scope);
   const pursuit = usePursuitLauncher();
+  const skin = useSkin();
   const router = useRouter();
   const [decisionStatus, setDecisionStatus] = useState<string | null>(null);
   const [decisionPending, setDecisionPending] = useState(false);
@@ -191,60 +194,86 @@ function OpportunityBriefBody() {
   ) : null;
 
   if (isEvaluated(o) && o.richDossier) {
+    const d = o.richDossier;
+    const evidenceCount =
+      (d.evidence?.roleClaims?.length ?? 0) +
+      (d.evidence?.candidateClaims?.length ?? 0) +
+      (d.evidence?.contextualClaims?.length ?? 0) +
+      (d.evidence?.relationalClaims?.length ?? 0);
+    const openQuestions = (d.resolutions ?? []).filter((r) => r.status === "OPEN").length;
+    const proofPoints = d.candidateFit.map((fit) => fit.assessment.text);
+    const Shell = MEMO_SHELLS[skin];
+    const usesDefaultMemo = skin === "radar" || skin === "iphone";
     return (
       <>
         {decisionFeedback}
-        <DossierView
-          dossier={o.richDossier}
-          reviewState={
-            o.memoReviewState === "reviewed"
-              ? "reviewed"
-              : o.memoReviewState === "review_attention"
-                ? "attention"
-                : "pending"
-          }
-          actions={
-            <>
-              <Link to="/" search={scope} className="dossier-return-link">
-                ← Shortlist
-              </Link>
-              <div className="dossier-decision-actions" aria-label="Your decision">
-                {(["PURSUE", "CONSIDER", "PASS"] as const).map((verb) => (
+        <Shell
+          role={o.role}
+          company={o.company}
+          location={o.location}
+          verdict={dossierState.engineVerdict ?? o.decision ?? "DOSSIER"}
+          fit={o.engineRecommendation?.qualityScore ?? null}
+          evidenceCount={evidenceCount}
+          openQuestions={openQuestions}
+          proofPoints={proofPoints}
+          selectedVerb={dossierState.selectedActionForControls ?? null}
+          decisionPending={decisionPending}
+          onDecide={usesDefaultMemo ? undefined : (verb) => void decide(verb)}
+        >
+          <DossierView
+            dossier={o.richDossier}
+            reviewState={
+              o.memoReviewState === "reviewed"
+                ? "reviewed"
+                : o.memoReviewState === "review_attention"
+                  ? "attention"
+                  : "pending"
+            }
+            actions={
+              <>
+                <Link to="/" search={scope} className="dossier-return-link">
+                  ← Shortlist
+                </Link>
+                {usesDefaultMemo && (
+                  <div className="dossier-decision-actions" aria-label="Your decision">
+                    {(["PURSUE", "CONSIDER", "PASS"] as const).map((verb) => (
+                      <button
+                        key={verb}
+                        type="button"
+                        className="dossier-decision-action"
+                        aria-pressed={dossierState.selectedActionForControls === verb}
+                        disabled={decisionPending}
+                        onClick={() => void decide(verb)}
+                      >
+                        {verb}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {pursuit.available && canReopenPursuit(o.userDecision?.userAction) && (
                   <button
-                    key={verb}
                     type="button"
-                    className="dossier-decision-action"
-                    aria-pressed={dossierState.selectedActionForControls === verb}
-                    disabled={decisionPending}
-                    onClick={() => void decide(verb)}
+                    className="dossier-apply-action"
+                    disabled={pursuit.pending}
+                    onClick={() => void pursuit.launch(o.jobHash)}
                   >
-                    {verb}
+                    {pursuit.pending ? "Opening…" : "Pursuit cockpit"}
                   </button>
-                ))}
-              </div>
-              {pursuit.available && canReopenPursuit(o.userDecision?.userAction) && (
-                <button
-                  type="button"
-                  className="dossier-apply-action"
-                  disabled={pursuit.pending}
-                  onClick={() => void pursuit.launch(o.jobHash)}
-                >
-                  {pursuit.pending ? "Opening…" : "Pursuit cockpit"}
-                </button>
-              )}
-              {isExternalPostingUrl(o.applyUrl) && (
-                <a
-                  href={o.applyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="dossier-apply-action"
-                >
-                  Apply now ↗
-                </a>
-              )}
-            </>
-          }
-        />
+                )}
+                {isExternalPostingUrl(o.applyUrl) && (
+                  <a
+                    href={o.applyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="dossier-apply-action"
+                  >
+                    Apply now ↗
+                  </a>
+                )}
+              </>
+            }
+          />
+        </Shell>
       </>
     );
   }

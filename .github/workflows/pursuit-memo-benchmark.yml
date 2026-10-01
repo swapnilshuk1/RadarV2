@@ -1,0 +1,234 @@
+name: Pursuit Memo Benchmark
+run-name: Pursuit memo benchmark · deployed Oracle release
+
+on:
+  workflow_dispatch:
+  # Bootstrap once when this workflow first lands on main. Later benchmark runs
+  # are operator-triggered so normal code changes never spend model tokens.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pursuit-memo-benchmark.yml"
+      - "src/pursuit/thesis.ts"
+      - "src/pursuit/semantic/validate.ts"
+      - "src/pursuit/semantic/phrasing.ts"
+      - "src/pursuit/model.ts"
+      - "tests/pursuit/memo-model-benchmark.test.ts"
+      - "tests/fixtures/pursuit/**"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: pursuit-memo-benchmark
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: Oracle
+    env:
+      RADAR_DEPLOY_SSH_HOST: ${{ vars.RADAR_DEPLOY_SSH_HOST }}
+      RADAR_DEPLOY_SSH_USER: ${{ vars.RADAR_DEPLOY_SSH_USER }}
+      RADAR_DEPLOY_APP_DIRECTORY: ${{ vars.RADAR_DEPLOY_APP_DIRECTORY }}
+      ORACLE_SSH_PRIVATE_KEY: ${{ secrets.ORACLE_SSH_PRIVATE_KEY }}
+      ORACLE_SSH_KNOWN_HOSTS: ${{ secrets.ORACLE_SSH_KNOWN_HOSTS }}
+
+    steps:
+      - name: Checkout benchmark harness
+        uses: actions/checkout@v4
+
+      - name: Validate Oracle benchmark configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in RADAR_DEPLOY_SSH_HOST RADAR_DEPLOY_SSH_USER RADAR_DEPLOY_APP_DIRECTORY ORACLE_SSH_PRIVATE_KEY ORACLE_SSH_KNOWN_HOSTS; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Oracle environment setting $name is missing."
+              exit 1
+            fi
+          done
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$ORACLE_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/oracle-ssh-key"
+          chmod 600 "$RUNNER_TEMP/oracle-ssh-key"
+          printf '%s\n' "$ORACLE_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Package benchmark-only inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/pursuit-memo-benchmark.tar.gz" \
+            vitest.pursuit-memo-benchmark.config.ts \
+            tests/pursuit/memo-model-benchmark.test.ts \
+            tests/fixtures/pursuit/candidate-claims.json \
+            tests/fixtures/pursuit/archetypes.json \
+            tests/fixtures/pursuit/globallogic-data-ai/role.json \
+            tests/fixtures/pursuit/wpp-client-services/role.json \
+            tests/fixtures/pursuit/antal-managing-partner/role.json \
+            tests/fixtures/pursuit/msm-unify-csto/role.json \
+            tests/fixtures/pursuit/weber-shandwick-vp-digital/role.json \
+            src/pursuit/thesis.ts \
+            src/pursuit/model.ts \
+            src/pursuit/semantic/validate.ts \
+            src/pursuit/semantic/phrasing.ts
+
+      - name: Stage and run against deployed Pursuit runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/oracle-ssh-key"
+          remote_bundle="/tmp/radar-pursuit-memo-benchmark-${GITHUB_RUN_ID}.tar.gz"
+          remote_work="/tmp/radar-pursuit-memo-benchmark-${GITHUB_RUN_ID}"
+
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$key" \
+            "$RUNNER_TEMP/pursuit-memo-benchmark.tar.gz" \
+            "$RADAR_DEPLOY_SSH_USER@$RADAR_DEPLOY_SSH_HOST:$remote_bundle"
+
+          printf -v q_app '%q' "$RADAR_DEPLOY_APP_DIRECTORY"
+          printf -v q_bundle '%q' "$remote_bundle"
+          printf -v q_work '%q' "$remote_work"
+
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$key" \
+            "$RADAR_DEPLOY_SSH_USER@$RADAR_DEPLOY_SSH_HOST" \
+            "APP=$q_app BUNDLE=$q_bundle WORK=$q_work GITHUB_SHA=$GITHUB_SHA bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          current_sha="$(cat "$APP/CURRENT_SHA")"
+          if [[ ! "$current_sha" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "DEPLOYED_RELEASE_SHA_INVALID" >&2
+            exit 1
+          fi
+          release="$APP/releases/$current_sha"
+          test -d "$release/src"
+          test -x "$release/node_modules/.bin/vitest"
+          test -f "$release/src/pursuit/thesis.ts"
+
+          rm -rf "$WORK"
+          mkdir -p "$WORK"
+          cp -a "$release/src" "$WORK/src"
+          tar -xzf "$BUNDLE" -C "$WORK"
+          ln -s "$release/node_modules" "$WORK/node_modules"
+          cp "$release/package.json" "$WORK/package.json"
+
+          set -a
+          . "$APP/.env"
+          set +a
+
+          if [[ -n "${BEDROCK_MANTLE_KEY_FILE:-}" && "${BEDROCK_MANTLE_KEY_FILE#/}" == "$BEDROCK_MANTLE_KEY_FILE" ]]; then
+            if [[ -f "$APP/$BEDROCK_MANTLE_KEY_FILE" ]]; then
+              export BEDROCK_MANTLE_KEY_FILE="$APP/$BEDROCK_MANTLE_KEY_FILE"
+            elif [[ -f "$release/$BEDROCK_MANTLE_KEY_FILE" ]]; then
+              export BEDROCK_MANTLE_KEY_FILE="$release/$BEDROCK_MANTLE_KEY_FILE"
+            fi
+          fi
+          if [[ -z "${BEDROCK_MANTLE_API_KEY:-}" && -z "${BEDROCK_MANTLE_KEY_FILE:-}" ]]; then
+            echo "BEDROCK_MANTLE_CREDENTIAL_UNAVAILABLE" >&2
+            exit 1
+          fi
+
+          cd "$WORK"
+          set +e
+          RADAR_RUN_LIVE_PURSUIT_MEMO_BENCHMARK=true \
+          RADAR_PURSUIT_ENABLE_GEMINI=false \
+          RADAR_PURSUIT_MEMO_BENCHMARK_REPORT="$WORK/pursuit-memo-benchmark.json" \
+          RADAR_PURSUIT_BENCHMARK_SOURCE_SHA="$current_sha" \
+          RADAR_PURSUIT_BENCHMARK_CODE_SHA="$GITHUB_SHA" \
+          NODE_ENV=test \
+            "$release/node_modules/.bin/vitest" run \
+              --config "$WORK/vitest.pursuit-memo-benchmark.config.ts"
+          status=$?
+          set -e
+          printf '%s\n' "$status" > "$WORK/exit-status.txt"
+          REMOTE
+
+      - name: Fetch benchmark report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/oracle-ssh-key"
+          remote_work="/tmp/radar-pursuit-memo-benchmark-${GITHUB_RUN_ID}"
+          mkdir -p "$RUNNER_TEMP/pursuit-memo-benchmark-results"
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$key" \
+            "$RADAR_DEPLOY_SSH_USER@$RADAR_DEPLOY_SSH_HOST:$remote_work/pursuit-memo-benchmark.json" \
+            "$RUNNER_TEMP/pursuit-memo-benchmark-results/" || true
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$key" \
+            "$RADAR_DEPLOY_SSH_USER@$RADAR_DEPLOY_SSH_HOST:$remote_work/exit-status.txt" \
+            "$RUNNER_TEMP/pursuit-memo-benchmark-results/" || true
+
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pursuit-memo-benchmark-${{ github.run_id }}
+          path: ${{ runner.temp }}/pursuit-memo-benchmark-results/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Post benchmark summary
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BENCHMARK_ISSUE: "16"
+        run: |
+          set -euo pipefail
+          report_file="$RUNNER_TEMP/pursuit-memo-benchmark-results/pursuit-memo-benchmark.json"
+          status_file="$RUNNER_TEMP/pursuit-memo-benchmark-results/exit-status.txt"
+          body="$RUNNER_TEMP/pursuit-memo-benchmark-comment.md"
+          {
+            echo "## Pursuit memo benchmark"
+            echo
+            echo "- Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            if [[ -s "$report_file" ]]; then
+              printf '%s\n' "- Oracle deployed release: $(jq -r '.sourceReleaseSha // "unknown"' "$report_file")"
+              printf '%s\n' "- Pursuit source overlay: $(jq -r '.benchmarkCodeSha // "unknown"' "$report_file")"
+              printf '%s\n' "- Host Mantle override: $(jq -r '.configuredMantleOverride // "none (code default)"' "$report_file")"
+              printf '%s\n' "- Pricing snapshot: $(jq -r '.pricingRegion + " · " + .pricingAsOf' "$report_file")"
+              echo
+              echo "| Model | Avg quality proxy | Total cost (USD) | Avg latency | Answered | Safety failures |"
+              echo "| --- | ---: | ---: | ---: | ---: | ---: |"
+              jq -r '.summary[] | "| \(.model) | \(.avgQualityProxy) | \(.totalCostUsd) | \(.avgLatencyMs) ms | \(.answeredCases)/5 | \(.safetyFailures) |"' "$report_file"
+              echo
+              printf '%s\n' "Artifact: pursuit-memo-benchmark-$GITHUB_RUN_ID"
+            else
+              echo "- Report: unavailable"
+            fi
+            if [[ -s "$status_file" ]]; then
+              printf '%s\n' "- Benchmark exit status: $(tr -d '[:space:]' < "$status_file")"
+            else
+              echo "- Benchmark exit status: unavailable"
+            fi
+          } > "$body"
+          gh issue comment "$BENCHMARK_ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$body"
+
+      - name: Enforce benchmark safety result
+        shell: bash
+        run: |
+          set -euo pipefail
+          status_file="$RUNNER_TEMP/pursuit-memo-benchmark-results/exit-status.txt"
+          report_file="$RUNNER_TEMP/pursuit-memo-benchmark-results/pursuit-memo-benchmark.json"
+          test -s "$report_file"
+          test -s "$status_file"
+          status="$(tr -d '[:space:]' < "$status_file")"
+          if [[ "$status" != "0" ]]; then
+            echo "::error::Pursuit memo benchmark reported a model availability or safety failure."
+            exit "$status"
+          fi
+
+      - name: Clean remote benchmark workspace
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          key="$RUNNER_TEMP/oracle-ssh-key"
+          remote_bundle="/tmp/radar-pursuit-memo-benchmark-${GITHUB_RUN_ID}.tar.gz"
+          remote_work="/tmp/radar-pursuit-memo-benchmark-${GITHUB_RUN_ID}"
+          printf -v q_bundle '%q' "$remote_bundle"
+          printf -v q_work '%q' "$remote_work"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$key" \
+            "$RADAR_DEPLOY_SSH_USER@$RADAR_DEPLOY_SSH_HOST" \
+            "rm -rf $q_work $q_bundle"

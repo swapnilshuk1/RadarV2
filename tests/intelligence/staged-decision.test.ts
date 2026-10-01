@@ -328,6 +328,13 @@ describe('staged production decision boundary', () => {
 
     expect(screeningConstraintForDrivers([missingExperience])).toBe('BLOCKED_REQUIRED');
     expect(screeningConstraintForDrivers([missingArtifact])).toBe('MAX_FRAGILE');
+    const missingCredential: StagedScreeningDriver = {
+      ...base,
+      screeningGateBasis: 'MANDATORY_CREDENTIAL',
+      gapNature: 'MISSING_EXPERIENCE',
+      gapReasoning: 'Degree credential not evidenced.',
+    };
+    expect(screeningConstraintForDrivers([missingCredential])).toBe('MAX_FRAGILE');
     expect(screeningConstraintForDrivers([])).toBe('NONE');
   });
 

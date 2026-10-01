@@ -29,7 +29,7 @@ export interface MaterializationSourceBoundary {
  * Source acquisition and model-invocation history remain intact; neither is a
  * serving artifact and both are needed for provenance and operational audit.
  */
-async function pruneNonCandidateContextArtifacts(
+export async function pruneNonCandidateContextArtifacts(
   tx: DatabaseAdapter,
   identity: {
     tenantId: string;
@@ -202,7 +202,7 @@ export async function materializeExistingCanonicalPool(
       gate.locationEvidence ?? null,
     ]);
 
-    if (gate.decision !== "CANDIDATE") {
+    if (gate.decision !== "CANDIDATE" || gate.eligibility !== "ELIGIBLE") {
       rejectedWork.push({
         tenantId: scope.tenantId,
         personId: scope.personId,

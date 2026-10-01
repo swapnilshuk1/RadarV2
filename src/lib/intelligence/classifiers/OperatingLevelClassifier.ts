@@ -4,6 +4,7 @@ import { ClassifierResult, OperatingLevel } from "../../domain/semantic";
 import { DecisionAuthorityClassifier } from "./DecisionAuthorityClassifier";
 import { CommercialScopeClassifier } from "./CommercialScopeClassifier";
 import { WorkNatureClassifier } from "./WorkNatureClassifier";
+import { SeniorityResolver } from "../semantic/resolvers/SeniorityResolver";
 
 export class OperatingLevelClassifier {
   public static classify(text: string, title: string): ClassifierResult<OperatingLevel> {
@@ -68,24 +69,19 @@ export class OperatingLevelClassifier {
     // 2. Ultimate enterprise-wide decision-makers (CMO, CGO, COO, CRO, Chief) map to "EXECUTIVE".
     // When a STRATEGIC candidate (e.g. VP level) is assessed against an EXECUTIVE job (e.g. CMO),
     // the engine resolves this as a "PROMOTION" opportunity, rewarding the upside while signaling humility.
-    const isUltimateExec = tLower.includes("cmo") || tLower.includes("cgo") || tLower.includes("cro") || tLower.includes("coo") || tLower.includes("chief");
-    const isVPLevel = tLower.includes("vp") || tLower.includes("vice president") || tLower.includes("svp");
-
-    // 1. Title Seniority Prior Classification
-    const isExecutiveTitle = isUltimateExec || isVPLevel || tLower.includes("country head") || tLower.includes("head of") || tLower.includes("head -") || tLower.includes("director");
-
-    const isExplicitMidTierTitle = 
-      (tLower.includes("manager") || 
-       tLower.includes("senior manager") || 
-       tLower.includes("specialist") || 
-       tLower.includes("analyst") || 
-       tLower.includes("coordinator") || 
-       tLower.includes("associate") || 
-       tLower.includes("copywriter")) && 
-      !tLower.includes("general manager") && 
-      !tLower.includes("country manager") && 
-      !tLower.includes("managing director") && 
-      !tLower.includes("p&l manager");
+    const seniority = SeniorityResolver.resolve(title, text);
+    const isUltimateExec = seniority.seniorityBand === "C_SUITE";
+    const isVPLevel = seniority.seniorityBand === "VP";
+    const isStrategicTitle =
+      seniority.seniorityBand === "VP" ||
+      seniority.seniorityBand === "HEAD" ||
+      seniority.seniorityBand === "DIRECTOR";
+    const isExecutiveTitle = isUltimateExec || isStrategicTitle;
+    const isExplicitMidTierTitle =
+      seniority.seniorityBand === "MANAGER" ||
+      seniority.seniorityBand === "LEAD" ||
+      seniority.seniorityBand === "INDIVIDUAL_CONTRIBUTOR" ||
+      seniority.seniorityBand === "COORDINATOR_ENTRY";
 
     // 2. Contradiction Checks for Executive Prior
     const hasLowYoEContradiction = 
@@ -100,8 +96,8 @@ export class OperatingLevelClassifier {
 
     // 3. Apply Asymmetric Prior Rule
     if (isExecutiveTitle && !hasLowYoEContradiction && !isTacticalExecutionOnly && !isNarrowUnitScope) {
-      if (isVPLevel) {
-        evidenceIds.push("ol_calibration_vp_strategic");
+      if (!isUltimateExec) {
+        evidenceIds.push(isVPLevel ? "ol_calibration_vp_strategic" : "ol_calibration_senior_strategic");
         return { value: "STRATEGIC", evidenceIds, confidence: 0.9 };
       }
       evidenceIds.push("ol_asymmetric_exec_prior");

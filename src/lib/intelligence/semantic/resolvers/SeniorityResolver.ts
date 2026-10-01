@@ -120,11 +120,13 @@ const DESIGNATION_PATTERNS: readonly DesignationPattern[] = [
   {
     regex: /\bgeneral\s+manager\b/i,
     canonicalTitle: "GENERAL_MANAGER",
-    seniorityBand: "C_SUITE",
-    isFalsePositiveExecutive: false,
+    seniorityBand: "MANAGER",
+    isFalsePositiveExecutive: true,
     peopleManagementSignal: true,
     businessOwnershipSignal: true,
-    confidence: 0.96,
+    // "General Manager" is especially title-inflated in India/MEA. Treat it as
+    // a managerial prior unless broader role evidence establishes higher scope.
+    confidence: 0.82,
   },
 
   // 3. Vice President Tiers
@@ -149,11 +151,13 @@ const DESIGNATION_PATTERNS: readonly DesignationPattern[] = [
   {
     regex: /\b(?:avp|assistant\s+vice\s+president|associate\s+vice\s+president)\b/i,
     canonicalTitle: "ASSISTANT_VICE_PRESIDENT",
-    seniorityBand: "VP",
-    isFalsePositiveExecutive: false,
+    seniorityBand: "DIRECTOR",
+    isFalsePositiveExecutive: true,
     peopleManagementSignal: true,
     businessOwnershipSignal: false,
-    confidence: 0.97,
+    // AVP is commonly a sub-VP grade in India/MEA; do not equate it with a
+    // full Vice President target without corroborating scope.
+    confidence: 0.90,
   },
   {
     regex: /\b(?:vp|vice\s+president)\b/i,
@@ -230,6 +234,64 @@ const DESIGNATION_PATTERNS: readonly DesignationPattern[] = [
     peopleManagementSignal: true,
     businessOwnershipSignal: false,
     confidence: 0.97,
+  },
+
+  // 6. Manager / individual-contributor bands. These are deliberately after
+  // C-suite/VP/head/director patterns so words such as "Executive Director"
+  // and "Chief Marketing Officer" resolve to their higher complete title.
+  {
+    regex: /\b(?:senior|sr\.?)\s+manager\b/i,
+    canonicalTitle: "SENIOR_MANAGER",
+    seniorityBand: "MANAGER",
+    isFalsePositiveExecutive: true,
+    peopleManagementSignal: true,
+    businessOwnershipSignal: false,
+    confidence: 0.96,
+  },
+  {
+    regex: /\bmanager\b/i,
+    canonicalTitle: "MANAGER",
+    seniorityBand: "MANAGER",
+    isFalsePositiveExecutive: true,
+    peopleManagementSignal: true,
+    businessOwnershipSignal: false,
+    confidence: 0.93,
+  },
+  {
+    regex: /\b(?:senior\s+|sr\.?\s+)?executive\b/i,
+    canonicalTitle: "EXECUTIVE_INDIVIDUAL_CONTRIBUTOR",
+    seniorityBand: "INDIVIDUAL_CONTRIBUTOR",
+    isFalsePositiveExecutive: true,
+    peopleManagementSignal: false,
+    businessOwnershipSignal: false,
+    confidence: 0.96,
+  },
+  {
+    regex: /\b(?:strategist|specialist|consultant)\b/i,
+    canonicalTitle: "SPECIALIST_INDIVIDUAL_CONTRIBUTOR",
+    seniorityBand: "INDIVIDUAL_CONTRIBUTOR",
+    isFalsePositiveExecutive: true,
+    peopleManagementSignal: false,
+    businessOwnershipSignal: false,
+    confidence: 0.92,
+  },
+  {
+    regex: /\bofficer\b/i,
+    canonicalTitle: "OFFICER_INDIVIDUAL_CONTRIBUTOR",
+    seniorityBand: "INDIVIDUAL_CONTRIBUTOR",
+    isFalsePositiveExecutive: true,
+    peopleManagementSignal: false,
+    businessOwnershipSignal: false,
+    confidence: 0.90,
+  },
+  {
+    regex: /\blead\b/i,
+    canonicalTitle: "FUNCTIONAL_LEAD",
+    seniorityBand: "LEAD",
+    isFalsePositiveExecutive: true,
+    peopleManagementSignal: false,
+    businessOwnershipSignal: false,
+    confidence: 0.82,
   },
 ];
 

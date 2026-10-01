@@ -11,6 +11,7 @@ import {
 } from "@/candidate/server";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 import { useAttentionPreference } from "../lib/attention-store";
+import { careerIntentSchema, DESIRED_ROLE_LEVEL_MAX_LENGTH, formatIntentSaveError } from "@/candidate/intent-validation";
 import { getUserPreferencesFn } from "@/candidate/preferences-server";
 import {
   PROFILE_PIPELINE_STAGES,
@@ -95,6 +96,7 @@ function ProfilePage() {
   const [nonNegotiables, setNonNegotiables] = useState<string>((decisionPreferences.nonNegotiables || []).join("\n"));
   const [isSavingIntent, setIsSavingIntent] = useState(false);
   const [intentSavedMsg, setIntentSavedMsg] = useState("");
+  const [intentSaveError, setIntentSaveError] = useState("");
   const [intentActivationPending, setIntentActivationPending] = useState(false);
   const [refreshingRecommendations, setRefreshingRecommendations] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
@@ -247,6 +249,7 @@ function ProfilePage() {
     e.preventDefault();
     setIsSavingIntent(true);
     setIntentSavedMsg("");
+    setIntentSaveError("");
 
     try {
       const locList = locations.split(",").map(s => s.trim()).filter(Boolean);
@@ -271,7 +274,7 @@ function ProfilePage() {
       const hasDecisionPreferences = Object.values(candidateDecisionPreferences).some(value => value !== undefined);
 
       const result = await saveIntentFn({
-        data: {
+        data: careerIntentSchema.parse({
           ...requireScope(),
           currency: currency || undefined,
           targetSalaryAmount: targetSalary.trim() ? Number(targetSalary) : undefined,
@@ -283,7 +286,7 @@ function ProfilePage() {
           preferredWorkModel: workModel || undefined,
           travelTolerance: travelTolerance || undefined,
           decisionPreferences: hasDecisionPreferences ? candidateDecisionPreferences as any : undefined
-        }
+        })
       });
       const presentation = resolveIntentActivationPresentation(result);
       setIntentSavedMsg(presentation.message);
@@ -294,6 +297,8 @@ function ProfilePage() {
       if (presentation.navigateHome) navigate({ to: "/" });
     } catch (err: any) {
       console.error("Save intent failed:", err);
+      setIntentSavedMsg("");
+      setIntentSaveError(formatIntentSaveError(err));
     } finally {
       setIsSavingIntent(false);
     }
@@ -618,7 +623,7 @@ function ProfilePage() {
 
               <div>
                 <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">DESIRED NEXT-ROLE LEVEL</label>
-                <input className="w-full p-2.5 text-[13px] rounded-xs border border-border/80 bg-background" value={desiredNextRoleLevel} onChange={(e) => setDesiredNextRoleLevel(e.target.value)} placeholder="e.g. CMO / SVP+ / founder-level" />
+                <input className="w-full p-2.5 text-[13px] rounded-xs border border-border/80 bg-background" maxLength={DESIRED_ROLE_LEVEL_MAX_LENGTH} value={desiredNextRoleLevel} onChange={(e) => setDesiredNextRoleLevel(e.target.value)} placeholder="e.g. CMO / SVP+ / founder-level" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -777,6 +782,9 @@ function ProfilePage() {
             )}
 
             {saveStatus && <p role="status" className="text-sm">{saveStatus}</p>}
+            {intentSaveError && (
+              <p role="alert" className="text-sm text-destructive mt-2">{intentSaveError}</p>
+            )}
             {intentSavedMsg && (
               <p className={`mono text-[11px] font-bold text-center mt-2 ${intentActivationPending ? "text-caution" : "text-emerald-800"}`}>
                 ✓ {intentSavedMsg}

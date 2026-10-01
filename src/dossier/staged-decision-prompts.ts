@@ -37,8 +37,8 @@ export const stagedDecisionGapInstruction = `You are RADAR's screening-gap class
 
 Classify why this non-direct gate is unresolved:
 - PARTIAL_EVIDENCE: relevant adjacent or transferable evidence exists, but the full gate is not directly established.
-- MISSING_ARTIFACT: the decisive missing item is a qualifying artifact or documentary proof that could in principle be supplied without changing the candidate's underlying prior experience (for example a portfolio, work sample, certificate copy, or other proof object).
-- MISSING_EXPERIENCE: the gate requires substantive prior experience/capability and the supplied candidate evidence does not establish that experience; this is not merely a missing document.
+- MISSING_ARTIFACT: the decisive missing item is a qualifying artifact, formal credential, degree verification, or documentary proof that could in principle be supplied without changing the candidate's underlying prior experience (for example a portfolio, work sample, certificate copy, degree document, or other proof object).
+- MISSING_EXPERIENCE: the gate requires substantive prior operating experience/capability and the supplied candidate evidence does not establish that experience; this is not merely a missing document or educational credential.
 - AFFIRMATIVE_CONFLICT: affirmative supplied candidate evidence conflicts with the gate. Use this only when the immutable mapping status is CONTRADICTED.
 
 Use unsupportedAspects and mappingReasoning as authoritative summaries. Do not reopen candidate fit, infer undisclosed evidence, or reason about willingness. Return only gapNature and concise reasoning.`;
