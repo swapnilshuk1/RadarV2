@@ -12,6 +12,7 @@ import { SqliteOpportunityQueries } from "../src/data/sqlite/repositories/Sqlite
 import { resolveServingScope, resolveScraperAuthContext } from "../src/lib/security/scope-resolver";
 import { TenantIsolationError } from "../src/lib/security/auth";
 import { verifyMigrationChecksums, verifyRequiredSchema } from "../src/data/sqlite/migrations/runner";
+import { randomUUID } from "node:crypto";
 
 async function runProductionSmoke() {
   console.log("\n============================================================");
@@ -185,7 +186,7 @@ async function runProductionSmoke() {
       );
     }
 
-    const probeKey = `snapshots/smoke-probe-${Date.now()}.json`;
+    const probeKey = `_health/smoke-probe-${randomUUID()}.json`;
     const probePayload = JSON.stringify({ smoke: true, time: new Date().toISOString() });
     let putSucceeded = false;
     try {
