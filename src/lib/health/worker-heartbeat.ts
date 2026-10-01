@@ -19,6 +19,18 @@ export const REQUIRED_WORKERS = [
 export type RequiredWorkerName = (typeof REQUIRED_WORKERS)[number];
 export const WORKER_HEARTBEAT_STALE_MS = 150_000;
 
+export function assertWorkerPlacement(
+  workerName: RequiredWorkerName,
+  env: NodeJS.ProcessEnv = process.env,
+): void {
+  if (env.RADAR_RUNTIME_ROLE === "acquisition" && workerName !== "scrape") {
+    throw new Error("PROCESSING_WORKER_DISABLED_ON_ACQUISITION_HOST");
+  }
+  if (env.RADAR_RUNTIME_ROLE === "processing" && workerName === "scrape") {
+    throw new Error("PORTAL_ACQUISITION_DISABLED_ON_PROCESSING_HOST");
+  }
+}
+
 export async function isWorkerOnline(
   workerName: RequiredWorkerName,
   options: {
@@ -66,6 +78,7 @@ export async function startWorkerHeartbeat(
   // distributed workers must have shared remote object storage configured.
   describeBlobStoreConfiguration();
   const db = getDatabaseAdapter();
+  assertWorkerPlacement(workerName);
   const identity = getDatabaseTargetIdentity();
   const releaseSha = process.env.RADAR_RELEASE_SHA ?? "development";
   const instanceId = `${workerName}-${process.pid}-${randomUUID()}`;

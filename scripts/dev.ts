@@ -59,6 +59,16 @@ function processSpecs(databaseTarget: string, fullStack: boolean): ManagedProces
     restart: true,
   };
 
+  if (process.env.RADAR_RUNTIME_ROLE === "acquisition") {
+    return [vite, {
+      name: "scrape",
+      command: process.execPath,
+      args: ["--import", "tsx", "scripts/run-scrape-worker.ts"],
+      env: workerEnv,
+      restart: true,
+    }];
+  }
+
   if (!fullStack) {
     // Normal product development keeps the evaluator service alive so the UI
     // Start/Pause/Resume/Stop controls are real. Durable control defaults to

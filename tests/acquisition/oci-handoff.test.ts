@@ -10,6 +10,7 @@ import { AcquisitionOutbox } from "../../src/acquisition/outbox";
 import { acquisitionIngress } from "../../src/acquisition/ingress";
 import { byteHash, encodeEnvelope, handoffPrefix } from "../../src/acquisition/handoff";
 import { assertAcquisitionHost } from "../../src/acquisition/execution-role";
+import { assertWorkerPlacement } from "../../src/lib/health/worker-heartbeat";
 import { STAGED_POLICY_VERSION } from "../../src/evaluation/policy";
 import type { CanonicalIngestionResult, IngestOpportunityPayload } from "../../src/acquisition/ingestion-service";
 
@@ -118,5 +119,13 @@ describe("OCI acquisition handoff", () => {
     expect(() => assertAcquisitionHost({ RADAR_RUNTIME_ROLE: "processing" })).toThrow("DISABLED");
     expect(() => assertAcquisitionHost({ RADAR_DEPLOYMENT_MODE: "distributed" })).toThrow("DESIGNATED");
     expect(() => assertAcquisitionHost({ RADAR_DEPLOYMENT_MODE: "distributed", RADAR_RUNTIME_ROLE: "acquisition" })).not.toThrow();
+  });
+  it("prevents laptop processing workers from consuming Oracle work", () => {
+    for (const name of ["enrichment","evaluation","documents","dossier-composition","dossier-review","corpus","pursuit-preparation"] as const) {
+      expect(() => assertWorkerPlacement(name,{RADAR_RUNTIME_ROLE:"acquisition"})).toThrow("PROCESSING_WORKER_DISABLED");
+      expect(() => assertWorkerPlacement(name,{RADAR_RUNTIME_ROLE:"processing"})).not.toThrow();
+    }
+    expect(() => assertWorkerPlacement("scrape",{RADAR_RUNTIME_ROLE:"processing"})).toThrow("ACQUISITION_DISABLED");
+    expect(() => assertWorkerPlacement("scrape",{RADAR_RUNTIME_ROLE:"acquisition"})).not.toThrow();
   });
 });
