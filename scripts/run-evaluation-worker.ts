@@ -4,8 +4,15 @@
  * Serving routes deliberately never start this daemon. Deploy this process
  * separately wherever queued evaluation work should be consumed.
  */
+import { loadUnifiedEnvironment } from "../src/lib/env";
+import { loadMantleCredentials } from "../src/lib/model/bedrock-credentials";
 import { EvaluationDaemon } from "../src/evaluation/daemon";
 import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
+
+loadUnifiedEnvironment();
+try {
+  loadMantleCredentials();
+} catch {}
 
 const daemon = new EvaluationDaemon(`evaluation-worker-${process.pid}`, 2000);
 await startWorkerHeartbeat("evaluation");

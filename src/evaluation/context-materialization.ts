@@ -29,7 +29,7 @@ export interface MaterializationSourceBoundary {
  * Source acquisition and model-invocation history remain intact; neither is a
  * serving artifact and both are needed for provenance and operational audit.
  */
-async function pruneNonCandidateContextArtifacts(
+export async function pruneNonCandidateContextArtifacts(
   tx: DatabaseAdapter,
   identity: {
     tenantId: string;

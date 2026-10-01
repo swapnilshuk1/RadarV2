@@ -68,6 +68,7 @@ scraper-profile-temp-*/
 
 # Scratch files and backups
 scratch/
+production-screenshots/
 *.bak
 partial*.txt
 reports/*_dossier_generated.*
