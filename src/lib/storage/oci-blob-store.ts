@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Agent } from "node:https";
+import { createRequire } from "node:module";
 import type { BlobStore } from "./blob-store";
 import type { ObjectStorageClient } from "oci-objectstorage";
 
@@ -61,9 +62,12 @@ export class OciObjectBlobStore implements BlobStore {
     // with Node 22 native Fetch content-length headers. Use the SDK's supported
     // Node HTTP transport, isolated from portal transport globals.
     const agent = new Agent({ keepAlive: true, maxSockets: 8 });
+    // Preserve the SDK's CommonJS transport modules in the production SSR
+    // runtime. Bundling node-fetch turns its callable export into a namespace.
+    const sdkRequire = createRequire(import.meta.url);
     this.factory = factory || (async signal => {
-      const common = await import("oci-common");
-      const { ObjectStorageClient } = await import("oci-objectstorage");
+      const common = sdkRequire("oci-common") as typeof import("oci-common");
+      const { ObjectStorageClient } = sdkRequire("oci-objectstorage") as typeof import("oci-objectstorage");
       provider ??= options.auth === "instance_principal"
         ? new common.InstancePrincipalsAuthenticationDetailsProviderBuilder().build()
         : Promise.resolve(new common.ConfigFileAuthenticationDetailsProvider(options.configFile, options.profile || "DEFAULT"));
