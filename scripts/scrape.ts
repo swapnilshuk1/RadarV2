@@ -1193,6 +1193,19 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         log(`[Scrape] Run ${mgr.runId} was aborted/stopped by user. Finalizing...`, "warn");
         mgr.recordActivity("Search stopped. Finalizing acquired opportunities...");
         mgr.finalize("aborted");
+        if (runScope) {
+          const repos = getRepositories();
+          await withPersistenceBoundary("stopped scrape run metrics", () =>
+            repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
+              totalDiscovered: mgr.manifest.cards.length,
+              totalEnqueued: ingestedCount,
+              metrics: mgr.manifest.telemetry as any,
+            }, opts.scrapeLease),
+          );
+          await withPersistenceBoundary("stopped scrape run terminalization", () =>
+            repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "aborted", undefined, opts.scrapeLease),
+          );
+        }
         try {
           const records = collectRecords();
           writeLiveScraped(records);
