@@ -7,8 +7,8 @@ export class BlobIntegrityError extends Error {
 }
 
 export class BlobStorageError extends Error {
-  constructor(public readonly status: number | undefined, public readonly retryable: boolean) {
-    super(`OCI_BLOB_${retryable ? "NETWORK" : "ERROR"}: status=${status ?? "transport"}`);
+  constructor(public readonly status: number | undefined, public readonly retryable: boolean, reason = "") {
+    super(`OCI_BLOB_${retryable ? "NETWORK" : "ERROR"}: status=${status ?? "transport"}${reason ? ` reason=${reason}` : ""}`);
     this.name = "BlobStorageError";
   }
 }
@@ -88,7 +88,11 @@ export class OciObjectBlobStore implements BlobStore {
         // Preserve not-found and conditional-create responses for the caller.
         if (status === 404 || status === 412) throw error;
         const retryable = status === undefined || status === 429 || status >= 500;
-        if (!retryable || attempt + 1 >= this.maxAttempts) throw new BlobStorageError(status, retryable);
+        if (!retryable || attempt + 1 >= this.maxAttempts) {
+          const detail = error as { name?: string; code?: string; cause?: { code?: string } };
+          const reason = String(detail.cause?.code || detail.code || detail.name || "Unknown").replace(/[^A-Za-z0-9_]/g, "").slice(0,80);
+          throw new BlobStorageError(status, retryable, reason);
+        }
         await new Promise(resolve => setTimeout(resolve, 200 * 2 ** attempt));
       }
     }

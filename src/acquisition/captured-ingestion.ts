@@ -10,7 +10,7 @@ export async function ingestCapturedOpportunity(payload: IngestOpportunityPayloa
     try { return await remoteAcquisitionOutbox(getBlobStore({ enforceDistributed: true })).acquire(payload, scope, lease); }
     catch (error) {
       if (error instanceof BlobStorageError && error.retryable) {
-        throw Object.assign(new Error("ACQUISITION_UPLOAD_UNAVAILABLE: durable outbox retained"), { code: "PERSISTENCE_UNAVAILABLE" });
+        throw Object.assign(new Error(`ACQUISITION_UPLOAD_UNAVAILABLE: durable outbox retained; ${error.message}`), { code: "PERSISTENCE_UNAVAILABLE" });
       }
       throw error;
     }

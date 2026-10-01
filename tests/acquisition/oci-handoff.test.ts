@@ -55,11 +55,26 @@ describe("OCI acquisition handoff", () => {
       const first = await acquisitionIngress(request(ref), { db, store, devices: [device] });
       expect(first.status).toBe(200); const receipt = await first.json();
       expect(receipt.isNewOpportunity).toBe(true);
+      const version = await db.one<{source_payload_key:string; source_media_type:string}>("SELECT source_payload_key,source_media_type FROM opportunity_versions");
+      expect(version?.source_payload_key).toBe(receipt.sourcePayloadKey);
+      expect(version?.source_media_type).toBe("application/json");
+      expect((await store.get(version!.source_payload_key))!.length).toBeGreaterThan(0);
       await db.execute("UPDATE scrape_runs SET status='completed', lease_expires_at=0 WHERE id=?", [scope.runId]);
       const replay = await acquisitionIngress(request(ref), { db, store, devices: [device] });
       expect(replay.status).toBe(200); expect(await replay.json()).toEqual(receipt);
       expect(await db.one("SELECT COUNT(*) AS count FROM opportunity_versions")).toEqual({ count: 1 });
     } finally { sqlite.close(); }
+  });
+  it("rejects unusable text without creating an unbacked opportunity version", async () => {
+    const { db, store, sqlite } = await fixture();
+    try {
+      const capture = {...payload,sourceJobId:"unusable-source",canonicalUrl:"https://www.linkedin.com/jobs/view/unusable-source",rawContent:"No details",enrichmentDispatch:undefined};
+      const bytes=encodeEnvelope(capture,scope);const ref=reference(bytes);await store.put(ref.payloadKey,bytes);
+      const response=await acquisitionIngress(request(ref),{db,store,devices:[device]});
+      expect(response.status).not.toBe(200);
+      expect(await db.one("SELECT COUNT(*) AS n FROM opportunity_versions")).toEqual({n:0});
+      expect(await db.one("SELECT COUNT(*) AS n FROM enrichment_jobs")).toEqual({n:0});
+    } finally {sqlite.close();}
   });
   it("rejects stale ownership without committing canonical rows", async () => {
     const { db, store, sqlite } = await fixture();

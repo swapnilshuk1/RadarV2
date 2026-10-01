@@ -404,6 +404,8 @@ export class CanonicalIngestionService {
           err
         );
       }
+      sourcePayloadKey = enrichmentPayloadKey;
+      sourceMediaType = "application/json";
     }
     // Binary source payloads are content-addressed before canonical admission.
     // Existing persisted keys are reused for backward-compatible replay only
