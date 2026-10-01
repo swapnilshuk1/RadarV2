@@ -73,3 +73,29 @@ Title/function wording and apparent title seniority are advisory signals;
 explicit exclusions and clear JD-backed contradictions remain blocking.
 The case retains its honest ROLE_UNKNOWN flag and unchanged provenance.
 No alias list, fuzzy-match threshold or forced eligibility rewrite is required.
+
+## Indicative-title correction verified — 2 October 2026
+
+Release `521f5f31901cff771865b74ffd2426e328bb5ba4` deploys the advisory designation
+gate and the shared ELIGIBLE/REVIEW shortlist rule. Final certification passed
+all nine stages: 655 tests passed and one skipped, including unknown/unrelated
+terminology, title-only function/seniority uncertainty, explicit exclusions,
+canonical-pool scheduling, shortlist feed/navigation and metric parity.
+Authenticated browser acceptance shows Head of Marketing — CONSIDER at IAM
+Institute of Hotel Management on the shortlist with one remaining to review.
+The actual database-backed query also returns that case, its navigation and an
+actionable queue count of one with metric integrity PASS. No saved decision,
+source identity, evaluated artifact or ROLE_UNKNOWN audit flag was rewritten.
+All seven Oracle processing workers and the laptop acquisition worker were
+restarted onto the corrected code. Current deployment identity remains available
+from health endpoints and CURRENT_SHA rather than this dated proof record.
+
+This changes eligibility policy, not title recognition accuracy: unresolved
+terminology is allowed into mandate evaluation instead of treated as a veto.
+More unfamiliar roles may therefore be evaluated; valid recommendations still
+require the existing intelligence pipeline. No additional model invocation or
+new persistence system was added to the gate. No database migration is needed.
+
+Exact-release production smoke also passed after rollout: 7/7 required workers,
+private OCI round trip, metric integrity PASS and actionable queue count one.
+The verified release was recorded in CURRENT_SHA and the PM2 process list saved.
