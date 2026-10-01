@@ -37,8 +37,12 @@ async function claimAndRun(): Promise<boolean> {
     await repos.scrapeRuns.heartbeatWorkerLease(claimedRun.id, WORKER_ID, leaseToken, LEASE_MS);
     try {
       const manifest = JSON.parse(await readFile(path.join(ARTIFACTS_DIR,"runs",claimedRun.id,"manifest.json"), "utf8"));
+      await repos.scrapeRuns.updateRunMetrics(scope, claimedRun.id, {
+        totalDiscovered: Math.max(manifest.opportunitiesFound ?? 0, manifest.cards?.length ?? 0),
+      }, { owner: WORKER_ID, token: leaseToken });
       await repos.scrapeRuns.recordEvent(scope, claimedRun.id, { stage: manifest.status || "running", eventType: "run_progress",
-        payload: { opportunitiesFound: manifest.opportunitiesFound ?? manifest.cards?.length ?? 0,
+        payload: { opportunitiesFound: Math.max(manifest.opportunitiesFound ?? 0, manifest.cards?.length ?? 0),
+          updatedAt: manifest.updatedAt, recentActivities: manifest.recentActivities || [],
           sources: manifest.sources || {}, portalHealth: manifest.portalHealth || {} } });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") console.error("Scrape telemetry publication failed");

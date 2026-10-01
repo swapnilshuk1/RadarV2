@@ -22,6 +22,15 @@ describe("Scrape Progress & Persistent Control UX Contract", () => {
     }
   });
 
+  it("uses newly discovered cards when the cached counter trails discovery", () => {
+    fs.writeFileSync(testManifestPath, JSON.stringify({
+      status: "running", opportunitiesFound: 76,
+      cards: Array.from({ length: 92 }, (_, index) => ({ id: index })),
+    }));
+    const state = getRunProgressState(testRunId);
+    expect(state?.opportunitiesFound).toBe(92);
+  });
+
   afterEach(() => {
     try {
       if (fs.existsSync(testRunDir)) {

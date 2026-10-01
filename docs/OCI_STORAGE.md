@@ -258,3 +258,17 @@ The final acquisition rollout on 2 October 2026 is recorded in
 including certification, deployed smoke, real retention and cross-host lease
 proof. That record also distinguishes the subsequent indicative-title
 shortlist correction independently of the completed OCI remediation.
+# Local search progress and console
+
+Captured counts use the larger of the cached summary and discovered cards.
+The acquisition worker publishes discovery counts, activity and timestamps every
+30 seconds while retaining its run lease. Enrichment and evaluation counts come
+from their durable queues; they can advance while a portal is reading job details.
+An already-running worker keeps its loaded code until the next restart.
+
+For a full local console log, start the next development session in PowerShell
+with `npm run dev 2>&1 | Tee-Object -FilePath .radar/dev-console.log`.
+Do not start a second development process while a search is running. A durable
+run journal is available under `.scraper-artifacts/runs/<run-id>/manifest.json`
+and `journal.ndjson`; it records scraper activity, rather than all npm output.
+

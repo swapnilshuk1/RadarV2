@@ -163,6 +163,10 @@ database, rewriting immutable data, or running unrelated destructive helpers.
 
 ## Verify before activation
 
+Activation and rollback delete each managed PM2 process independently before
+starting the selected release. A disabled or absent scraper must not prevent
+other workers from leaving the previous release directory.
+
 After deployment, verify the actual running SHA, database target, migration state,
 the intended process set and the rendered journey being exercised. Verify provider
 access only when that release path actually uses the provider. Do not fail a

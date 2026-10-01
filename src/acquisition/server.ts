@@ -266,7 +266,7 @@ async function canonicalProgress(run: import("@/data/sqlite/repositories/SqliteS
     sources: disk?.sources || Object.fromEntries(run.portalTargets.map(portal => [portal, "pending"])),
     portalHealth: disk?.portalHealth || {}, recentActivities: disk?.recentActivities || [],
     errorMessage: run.errorMessage,
-    startedAt: run.startedAt || run.createdAt, updatedAt: run.updatedAt, finishedAt: run.finishedAt || undefined,
+    startedAt: run.startedAt || run.createdAt, updatedAt: disk?.updatedAt || latestTelemetry?.createdAt || run.updatedAt, finishedAt: run.finishedAt || undefined,
   };
 }
 
