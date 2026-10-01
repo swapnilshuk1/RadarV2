@@ -56,6 +56,17 @@ describe("Corpus Reset Fail-Closed Safety Protocol", () => {
     } finally {f.cleanup();}
   });
 
+  it("restores the idle factual-review semaphore after deleting stale corpus leases",async()=>{
+    const f=resetFixture();
+    try {
+      f.sqlite.exec("CREATE TABLE dossier_review_lane(id TEXT PRIMARY KEY,lease_token TEXT,lease_until INTEGER,next_attempt_at INTEGER NOT NULL DEFAULT 0,failures INTEGER NOT NULL DEFAULT 0); INSERT INTO dossier_review_lane VALUES('factual-review','stale',999999,999999,3)");
+      const result=await resetCorpus(f.db,{auditFile:f.auditFile,apply:true,target:"isolated-test"});
+      expect(result).toMatchObject({reseededTables:["dossier_review_lane"]});
+      expect(await f.db.one("SELECT * FROM dossier_review_lane")).toEqual({id:"factual-review",lease_token:null,lease_until:null,next_attempt_at:0,failures:0});
+      expect(await getTableCount(f.db,"opportunity_versions")).toBe(0);
+    } finally {f.cleanup();}
+  });
+
   it("does not delete anything when the durable export cannot be created",async()=>{
     const f=resetFixture();
     try {

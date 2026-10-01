@@ -88,7 +88,14 @@ export async function resetCorpus(db: DatabaseAdapter, options: { auditFile: str
   for(const [table,hash] of protectedHashes) if(fingerprint(await tx.many(`SELECT * FROM ${quoted(table)}`))!==hash) throw new Error(`RESET_PROTECTED_CHANGED: ${table}`);
   if((await tx.many("PRAGMA foreign_key_check")).length) throw new Error("RESET_FOREIGN_KEY_CHECK_FAILED");
   if(serialize(await tx.many("SELECT name,sql FROM sqlite_master WHERE type='trigger' ORDER BY name"))!==serialize(triggers)) throw new Error("RESET_TRIGGERS_CHANGED");
-  return {applied:true,versions:versions.length,deleted,preservedTables:protectedHashes.size,auditFile:options.auditFile};
+  // This is a migration-seeded semaphore, not a discarded dossier. Restore its
+  // idle row after clearing the old lease/backoff so the review worker can claim.
+  const reseededTables:string[]=[];
+  if(names.has("dossier_review_lane")) {
+   await tx.execute("INSERT INTO dossier_review_lane(id) VALUES('factual-review')");
+   reseededTables.push("dossier_review_lane");
+  }
+  return {applied:true,versions:versions.length,deleted,preservedTables:protectedHashes.size,reseededTables,auditFile:options.auditFile};
  });
 }
 
