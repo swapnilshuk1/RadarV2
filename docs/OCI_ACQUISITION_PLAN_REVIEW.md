@@ -64,11 +64,12 @@ are a dated verification record; `/health/ready`, `/health/system` and the deplo
 `CURRENT_SHA` remain authoritative for current runtime state.
 
 The earlier real candidate/JD/context journey already produced the reviewed
-Template B CONSIDER memo for LinkedIn job `4472931309`. A separate known serving
-issue remains: its acquisition eligibility is `REVIEW/ROLE_UNKNOWN` because the
-literal attention gate does not equate the configured `Marketing Head` with
-`Head of Marketing`. Consequently the CONSIDER count is one while the actionable
-shortlist excludes the row. Storage, review publication and source availability
-are healthy; this requires semantic role matching, not changing provenance or
-forcing the row's eligibility by hand. It is outside the storage/acquisition
-P0/P1 remediation and must not be described as a resolved shortlist issue.
+Template B CONSIDER memo for LinkedIn job `4472931309`. The initial serving rule
+excluded its `REVIEW/ROLE_UNKNOWN` association because the gate did not equate
+`Marketing Head` with `Head of Marketing`. The subsequent indicative-title
+correction lets REVIEW candidates reach evaluation and includes valid current
+PURSUE/CONSIDER recommendations in shortlist feed, navigation and counts.
+Title/function wording and apparent title seniority are advisory signals;
+explicit exclusions and clear JD-backed contradictions remain blocking.
+The case retains its honest ROLE_UNKNOWN flag and unchanged provenance.
+No alias list, fuzzy-match threshold or forced eligibility rewrite is required.

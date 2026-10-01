@@ -113,4 +113,13 @@ describe("materializeExistingCanonicalPool staged-v8 boundary", () => {
     expect(writes).toContain("DELETE FROM evaluation_requirements");
     expect(writes).toContain("DELETE FROM materialized_dossier_presentations");
   });
+
+  it("queues an unfamiliar designation for evaluation without pruning its context artifacts", async () => {
+    const db = adapter(sourceRow({ job_title: "Customer Momentum Steward" }));
+    const result = await materializeExistingCanonicalPool(scope, prepared, { sourceSearchPlanId: "source-plan" }, db);
+    expect(result).toMatchObject({ candidates: 1, queued: 1 });
+    const writes = JSON.stringify(db.execute.mock.calls);
+    expect(writes).toContain("ROLE_UNKNOWN");
+    expect(writes).not.toContain("DELETE FROM materialized_dossier_presentations");
+  });
 });

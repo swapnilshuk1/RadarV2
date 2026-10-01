@@ -82,6 +82,8 @@ export const certificationManifest = [
       "Exact evaluated identity/scalar attachment, source trust, presentation provenance, and account isolation",
     files: [
       "tests/intelligence/context-materialization.test.ts",
+      "tests/intelligence/attention-gate.test.ts",
+      "tests/intelligence/seniority-integrity.test.ts",
       "tests/security/decisions-account-isolation.test.ts",
       "tests/intelligence/staged-decision.test.ts",
       "tests/intelligence/staged-queue-lifecycle.test.ts",

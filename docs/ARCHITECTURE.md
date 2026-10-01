@@ -277,3 +277,19 @@ For active contexts the durable evaluation worker drafts and publishes only
 PURSUE/CONSIDER results. PASS remains a completed evaluation, with `passSkipped`
 reported by readiness; it is not missing dossier work. No automatic context
 activation is introduced.
+
+## Indicative titles and shortlist membership
+
+Search-plan role labels, function words and designation-derived seniority are
+advisory acquisition signals. A missing phrase match or unusual title produces
+REVIEW and continues to the existing evaluator, including context activation and
+canonical-pool materialization. Title-only function/seniority suspicions also
+produce REVIEW. Explicit company/employment/geography constraints, unusable
+capture and clear JD experience contradictions keep their blocking behavior.
+
+The canonical shortlist includes ELIGIBLE or REVIEW associations only after a
+valid current-context STAGED_EVALUATED PURSUE/CONSIDER result, with no user
+selection yet. Feed, navigation and actionable queue count share this predicate.
+REVIEW is not a shortlist recommendation by itself; PASS, invalid, unevaluated,
+explicitly ineligible and decided rows remain excluded. Acquisition uncertainty
+is retained for reasoning rather than overwritten as proven role equivalence.

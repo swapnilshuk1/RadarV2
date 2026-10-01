@@ -88,7 +88,8 @@ expectation; that supplemental suite is not a clean pass.
 The real memo exposed an existing metrics inconsistency: valid engine PURSUE/
 CONSIDER evaluations were excluded from verdict totals when acquisition eligibility
 was REVIEW. Verdict counts now partition every valid evaluated candidate; the
-actionable shortlist still requires ELIGIBLE. A database-backed regression covers
+actionable shortlist accepts ELIGIBLE or REVIEW after a valid current-context
+PURSUE/CONSIDER evaluation. A database-backed regression covers
 that distinction, and the metrics suite is included in release certification.
 
 Real LinkedIn captures crossed authenticated ingress automatically. Oracle
@@ -255,5 +256,5 @@ through Oracle processing to a reviewed Template B memo (PURSUE/CONSIDER) and UI
 The final acquisition rollout on 2 October 2026 is recorded in
 [the remediation closeout](OCI_ACQUISITION_PLAN_REVIEW.md#verified-completion--2-october-2026),
 including certification, deployed smoke, real retention and cross-host lease
-proof. That record also distinguishes the outstanding semantic role-matching
-shortlist issue from the completed OCI remediation.
+proof. That record also distinguishes the subsequent indicative-title
+shortlist correction independently of the completed OCI remediation.

@@ -341,7 +341,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       whereConditions.push(`quality_score IS NULL`);
       whereConditions.push(`evaluation_fingerprint IS NOT NULL`);
       whereConditions.push(`user_action = 'NONE'`);
-      whereConditions.push(`eligibility = 'ELIGIBLE'`);
+      whereConditions.push(`eligibility IN ('ELIGIBLE', 'REVIEW')`);
     }
     if (filters?.categoryId === "needs_more_signal") {
       whereConditions.push(`evaluation_state = 'SPARSE_SPEC'`);
@@ -681,7 +681,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          COUNT(CASE WHEN (me.id IS NULL OR me.evaluation_state = 'SPARSE_SPEC') AND d.action = 'CONSIDER' THEN 1 END) AS sparse_decisions_consider,
          COUNT(CASE WHEN (me.id IS NULL OR me.evaluation_state = 'SPARSE_SPEC') AND d.action = 'PASS' THEN 1 END) AS sparse_decisions_pass,
          COUNT(CASE
-           WHEN spc.eligibility = 'ELIGIBLE'
+           WHEN spc.eligibility IN ('ELIGIBLE', 'REVIEW')
             AND (d.action IS NULL OR d.action = 'NONE')
             AND me.evaluation_state = 'STAGED_EVALUATED'
             AND me.decision IN ('PURSUE', 'CONSIDER')
@@ -1524,7 +1524,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       whereConditions.push(`quality_score IS NULL`);
       whereConditions.push(`evaluation_fingerprint IS NOT NULL`);
       whereConditions.push(`user_action = 'NONE'`);
-      whereConditions.push(`eligibility = 'ELIGIBLE'`);
+      whereConditions.push(`eligibility IN ('ELIGIBLE', 'REVIEW')`);
     }
     if (filters?.categoryId === "needs_more_signal") {
       whereConditions.push(`evaluation_state = 'SPARSE_SPEC'`);

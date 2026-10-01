@@ -301,17 +301,22 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
     await seedItem({ id: "review-consider", title: "Head of Marketing", engineVerdict: "CONSIDER" });
     await seedItem({ id: "ineligible-pursue", title: "Out-of-scope role", engineVerdict: "PURSUE" });
     await seedItem({ id: "eligible-consider", title: "Eligible role", engineVerdict: "CONSIDER" });
+    await seedItem({ id: "review-pass", title: "Unknown title rejected on mandate", engineVerdict: "PASS" });
+    await seedItem({ id: "review-invalid", title: "Unknown title without a valid evaluation", engineVerdict: "CONSIDER", evaluationState: "INVALID", score: 100 });
     await db.execute("UPDATE search_plan_candidates SET eligibility='REVIEW' WHERE canonical_job_id='opp_review-consider'");
+    await db.execute("UPDATE search_plan_candidates SET eligibility='REVIEW' WHERE canonical_job_id IN ('opp_review-pass','opp_review-invalid')");
     await db.execute("UPDATE search_plan_candidates SET eligibility='INELIGIBLE' WHERE canonical_job_id='opp_ineligible-pursue'");
 
     const metrics = await queries.getMetrics(scope);
-    expect(metrics.evaluationPopulation.evaluated).toBe(3);
-    expect(metrics.engineBreakdown).toEqual({ pursue: 1, consider: 2, pass: 0, sparse: 0 });
+    expect(metrics.evaluationPopulation.evaluated).toBe(4);
+    expect(metrics.engineBreakdown).toEqual({ pursue: 1, consider: 2, pass: 1, sparse: 0 });
     expect(metrics.totalShortlisted).toBe(3);
-    expect(metrics.discoveryMetrics?.actionableReviewQueue).toBe(1);
+    expect(metrics.discoveryMetrics?.actionableReviewQueue).toBe(2);
     expect(metrics.integrity.status).toBe("PASS");
     const queue = await queries.getFeed(scope, undefined, { shortlistQueue: true });
-    expect(queue.items.map((item) => item.jobHash)).toEqual(["eligible-consider"]);
+    expect(queue.items.map((item) => item.jobHash).sort()).toEqual(["eligible-consider", "review-consider"]);
+    expect(await queries.getNavigation(scope, "review-consider", { shortlistQueue: true })).not.toBeNull();
+    expect(await queries.getNavigation(scope, "ineligible-pursue", { shortlistQueue: true })).toBeNull();
   });
 
   it("rejects compensating state and engine-verdict bucket mismatches", async () => {

@@ -202,7 +202,8 @@ export async function materializeExistingCanonicalPool(
       gate.locationEvidence ?? null,
     ]);
 
-    if (gate.decision !== "CANDIDATE" || gate.eligibility !== "ELIGIBLE") {
+    // REVIEW is uncertainty for the evaluator to resolve, never a title allowlist veto.
+    if (gate.decision !== "CANDIDATE" || gate.eligibility === "INELIGIBLE") {
       rejectedWork.push({
         tenantId: scope.tenantId,
         personId: scope.personId,

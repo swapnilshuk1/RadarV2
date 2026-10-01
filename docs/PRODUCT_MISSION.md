@@ -39,6 +39,17 @@ The mission is **not** to build the most conservative parser, the purest ontolog
 
 ## 2. Product Success Standard
 
+Owner-selected role designations and seniority are indicative search intent,
+not a definitive title allowlist. Company terminology, title order and unfamiliar
+designations must not veto an opportunity before mandate evaluation. The
+attention gate records uncertainty as REVIEW; the evaluator reasons about actual
+role scope, candidate evidence and context. A valid current-context PURSUE or
+CONSIDER recommendation may reach the shortlist with that uncertainty intact.
+Explicit exclusions, unusable acquisition and clear JD-backed contradictions
+remain hard boundaries. Do not solve terminology variation with an ever-growing
+alias list, fuzzy-match threshold, invented role equivalence or manual eligibility
+promotion.
+
 A completed dossier should be capable of answering, when relevant:
 
 1. **What is the opportunity and what is RADAR's call?**

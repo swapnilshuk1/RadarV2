@@ -46,15 +46,15 @@ describe("seniority and career-intent integrity", () => {
     expect(SeniorityResolver.resolve("General Manager Marketing").seniorityBand).toBe("MANAGER");
   });
 
-  it("rejects a high-confidence multi-band junior title before evaluation", () => {
+  it("flags an apparently junior title for mandate evaluation rather than vetoing by designation", () => {
     expect(evaluateAttentionGate(opportunity("Marketing Executive"), vpMarketingCriteria)).toMatchObject({
-      decision: "NOT_CANDIDATE",
-      eligibility: "INELIGIBLE",
-      reasonCodes: ["SENIORITY_CONTRADICTION"],
+      decision: "CANDIDATE",
+      eligibility: "REVIEW",
+      reasonCodes: ["SENIORITY_REVIEW"],
     });
   });
 
-  it("routes a one-band-below title to review rather than shortlist evaluation", () => {
+  it("routes a one-band-below title to review for mandate evaluation", () => {
     expect(evaluateAttentionGate(opportunity("Marketing Director"), vpMarketingCriteria)).toMatchObject({
       decision: "CANDIDATE",
       eligibility: "REVIEW",

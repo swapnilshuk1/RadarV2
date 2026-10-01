@@ -221,7 +221,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/editorial/memo-cockpit-skins.test.ts` | Editorial | **KEEP** | Stage 3 | 5 | 10 |
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 7 | 25 |
 | `tests/intelligence/active-context-resolution.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 12 |
-| `tests/intelligence/attention-gate.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 1 | 1 |
+| `tests/intelligence/attention-gate.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 6 | 6 |
 | `tests/intelligence/bedrock-converse-model.test.ts` | Bedrock transport / structured output | **KEEP** | Stage 3 | 20 | 86 |
 | `tests/intelligence/bedrock-schema.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 9 |
 | `tests/intelligence/candidate-profile-scope.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 3 | 5 |
@@ -233,7 +233,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/capability-precedence.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 11 |
 | `tests/intelligence/capability.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 7 | 28 |
 | `tests/intelligence/career.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 7 |
-| `tests/intelligence/context-materialization.test.ts` | Dossier V2 Materialization | **KEEP** | Dossier V2 Merge Gate | 3 | 6 |
+| `tests/intelligence/context-materialization.test.ts` | Dossier V2 Materialization | **KEEP** | Dossier V2 Merge Gate | 4 | 6 |
 | `tests/intelligence/corpus-regeneration-worker.test.ts` | Runtime Workers | **KEEP** | Full Suite | 3 | 7 |
 | `tests/intelligence/dossier-grounding.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 30 | 72 |
 | `tests/intelligence/dossier-review-queue.test.ts` | Durable review / cooldown / leases / withholding | **KEEP** | Stage 3 | 6 | 21 |

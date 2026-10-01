@@ -17,6 +17,7 @@ export type EligibilityReasonCode =
   | "ROLE_UNKNOWN"
   | "EXCLUDED_COMPANY"
   | "FUNCTION_CONTRADICTION"
+  | "FUNCTION_REVIEW"
   | "SENIORITY_CONTRADICTION"
   | "SENIORITY_REVIEW"
   | "EMPLOYMENT_CONTRADICTION"
@@ -324,12 +325,6 @@ export function evaluateAttentionGate(
   );
   if (locationResult) return { ...locationResult, matchedConcepts };
   const seniority = titleSeniorityAssessment(title, spec.seniorityRange);
-  if (seniority.kind === "REJECT") {
-    return reject(
-      "SENIORITY_CONTRADICTION",
-      seniority.reason || `Title '${title}' is materially below the configured seniority range.`,
-    );
-  }
   const requiredExperience = minimumTargetExperienceYears(spec.seniorityRange);
   const jobExperience = explicitExperienceRange(version.rawContent || "");
   if (requiredExperience !== null && jobExperience && jobExperience.max < requiredExperience) {
@@ -367,10 +362,13 @@ export function evaluateAttentionGate(
     explicitTechnical &&
     !hasAny(title, ["digital transformation", "strategy", "client experience", "client services"])
   )
-    return reject(
-      "FUNCTION_CONTRADICTION",
-      `Title '${title}' states an explicitly incompatible function.`,
-    );
+    return withLocation({
+      decision: "CANDIDATE",
+      eligibility: "REVIEW",
+      reasons: [`Title '${title}' suggests a different function; evaluate the actual mandate.`],
+      reasonCodes: ["FUNCTION_REVIEW"],
+      matchedConcepts,
+    });
   if (includesConcept(roleText, spec.roleFamilies) || includesConcept(roleText, spec.functions)) {
     matchedConcepts.push(
       ...[...spec.roleFamilies, ...spec.functions].filter((concept) =>
@@ -379,9 +377,9 @@ export function evaluateAttentionGate(
     );
     return withLocation({
       decision: "CANDIDATE",
-      eligibility: seniority.kind === "REVIEW" ? "REVIEW" : "ELIGIBLE",
-      reasons: seniority.kind === "REVIEW" && seniority.reason ? [seniority.reason] : [],
-      reasonCodes: seniority.kind === "REVIEW" ? ["SENIORITY_REVIEW"] : ["ROLE_FAMILY_MATCH"],
+      eligibility: seniority.kind !== "NONE" ? "REVIEW" : "ELIGIBLE",
+      reasons: seniority.kind !== "NONE" && seniority.reason ? [seniority.reason] : [],
+      reasonCodes: seniority.kind !== "NONE" ? ["SENIORITY_REVIEW"] : ["ROLE_FAMILY_MATCH"],
       matchedConcepts,
     });
   }
