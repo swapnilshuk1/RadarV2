@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { Agent } from "node:https";
 import type { BlobStore } from "./blob-store";
 import type { ObjectStorageClient } from "oci-objectstorage";
 
@@ -56,6 +57,10 @@ export class OciObjectBlobStore implements BlobStore {
       throw new Error("Invalid OCI timeout/attempt limits");
     }
     let provider: Promise<import("oci-common").AuthenticationDetailsProvider> | undefined;
+    // Scraper dependencies install an Undici dispatcher that is incompatible
+    // with Node 22 native Fetch content-length headers. Use the SDK's supported
+    // Node HTTP transport, isolated from portal transport globals.
+    const agent = new Agent({ keepAlive: true, maxSockets: 8 });
     this.factory = factory || (async signal => {
       const common = await import("oci-common");
       const { ObjectStorageClient } = await import("oci-objectstorage");
@@ -64,7 +69,7 @@ export class OciObjectBlobStore implements BlobStore {
         : Promise.resolve(new common.ConfigFileAuthenticationDetailsProvider(options.configFile, options.profile || "DEFAULT"));
       const client = new ObjectStorageClient({ authenticationDetailsProvider: await provider }, {
         retryConfiguration: common.NoRetryConfigurationDetails,
-        httpOptions: { signal },
+        httpOptions: { signal, agent },
       });
       client.regionId = options.region;
       return client;
