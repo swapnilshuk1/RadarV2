@@ -72,9 +72,12 @@ Oracle reads with the exact VM's instance principal; the laptop API private key
 was not installed on Oracle. Laptop development starts web/acquisition only;
 Oracle starts processing/serving and no portal scraper.
 
-The certified application release is `bc9f9bc667eebeb5186190f015c648d3f4c21ee3`.
+The deployed application release is `bc9f9bc667eebeb5186190f015c648d3f4c21ee3`.
 Its full certification passed all nine stages (627 tests passed, one skipped),
 including the production SSR build and strict release TypeScript verification.
+Exact-release post-deployment smoke passed with all seven required workers healthy,
+canonical metrics reconciled and OCI write/read/delete health probes successful.
+The verified release is recorded in Oracle's CURRENT_SHA and saved in PM2.
 The reset utility's additional nine focused tests passed. The separate scraper
 TypeScript configuration retains five existing fixture type errors. A supplemental
 acquisition/scraper run passed 113 tests and failed one attention-gate fixture
