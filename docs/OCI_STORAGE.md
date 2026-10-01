@@ -72,13 +72,19 @@ Oracle reads with the exact VM's instance principal; the laptop API private key
 was not installed on Oracle. Laptop development starts web/acquisition only;
 Oracle starts processing/serving and no portal scraper.
 
-The deployed application release is `fc978794664103fde9f91a3f88313f21432e1553`.
-Its full certification passed all nine stages (618 tests passed, one skipped),
+The certified application release is `bc9f9bc667eebeb5186190f015c648d3f4c21ee3`.
+Its full certification passed all nine stages (627 tests passed, one skipped),
 including the production SSR build and strict release TypeScript verification.
 The reset utility's additional nine focused tests passed. The separate scraper
 TypeScript configuration retains five existing fixture type errors. A supplemental
 acquisition/scraper run passed 113 tests and failed one attention-gate fixture
 expectation; that supplemental suite is not a clean pass.
+
+The real memo exposed an existing metrics inconsistency: valid engine PURSUE/
+CONSIDER evaluations were excluded from verdict totals when acquisition eligibility
+was REVIEW. Verdict counts now partition every valid evaluated candidate; the
+actionable shortlist still requires ELIGIBLE. A database-backed regression covers
+that distinction, and the metrics suite is included in release certification.
 
 Real LinkedIn captures crossed authenticated ingress automatically. Oracle
 enriched and evaluated them using the preserved candidate and acquired company
@@ -88,6 +94,12 @@ memo was inspected in the Oracle UI, including candidate evidence links and
 explicit/inferred cues. PASS evaluations retained their decisions without dossiers.
 Model invocation records contain actual provider token usage for evaluation,
 composition and factual review.
+
+The proof corpus contains 12 OCI-backed versions. Five evaluations completed
+(one CONSIDER and four PASS); one exhausted its retries because its model output
+asserted a reporting line from collaboration evidence. That evidence-validation
+failure remains visible in the evaluation queue and is not a storage migration
+blocker. No model-validation rule was relaxed to make the proof pass.
 
 Worker restart automatically replayed retained outbox entries after an ingress
 deployment failure. Oracle's stop control stopped the laptop at a safe checkpoint;
