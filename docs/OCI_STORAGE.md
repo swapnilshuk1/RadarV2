@@ -251,3 +251,9 @@ Deploy writers/readers together after migration. Rollback must retain OCI access
 for newly admitted keys, rather than simply switching every reader back to local
 storage. Final acceptance still requires a real local JD/candidate/context journey
 through Oracle processing to a reviewed Template B memo (PURSUE/CONSIDER) and UI.
+
+The final acquisition rollout on 2 October 2026 is recorded in
+[the remediation closeout](OCI_ACQUISITION_PLAN_REVIEW.md#verified-completion--2-october-2026),
+including certification, deployed smoke, real retention and cross-host lease
+proof. That record also distinguishes the outstanding semantic role-matching
+shortlist issue from the completed OCI remediation.

@@ -42,3 +42,33 @@ sources, and OCI staging retirement is handled separately. A remote database
 alone does not make local storage invalid; the unsafe combination is cross-host
 consumers without shared payload access. Existing historical data was discarded
 through the approved audited reset instead of fabricated restoration.
+
+## Verified completion — 2 October 2026
+
+The remaining acquisition remediation was certified and deployed as
+`4a7923b959ba078a2f3d32ec90490ba53a50f22f` (migration 071). All nine certification
+stages passed: 636 tests passed and one skipped; type verification and production
+build passed. Exact-release production smoke passed with seven healthy processing
+workers, metric integrity and a private OCI write/read/delete round trip.
+The deployed SSR bundle independently read a real bound source. GitHub's Oracle
+deployment mode is now `distributed`, matching the host configuration.
+
+A live laptop-held execution lease rejected a competing Oracle claim. Automatic
+retention ran successfully at laptop-worker startup. An isolated test database
+proved actual deletion of an expired synthetic private-OCI handoff and its
+acknowledged local outbox file, without altering production receipts. A fresh
+LinkedIn run admitted two honest new source versions through the token-fenced
+Oracle ingress; the run was cooperatively stopped after those receipts. All 14
+canonical versions are OCI-backed, with no foreign-key violations. These counts
+are a dated verification record; `/health/ready`, `/health/system` and the deployed
+`CURRENT_SHA` remain authoritative for current runtime state.
+
+The earlier real candidate/JD/context journey already produced the reviewed
+Template B CONSIDER memo for LinkedIn job `4472931309`. A separate known serving
+issue remains: its acquisition eligibility is `REVIEW/ROLE_UNKNOWN` because the
+literal attention gate does not equate the configured `Marketing Head` with
+`Head of Marketing`. Consequently the CONSIDER count is one while the actionable
+shortlist excludes the row. Storage, review publication and source availability
+are healthy; this requires semantic role matching, not changing provenance or
+forcing the row's eligibility by hand. It is outside the storage/acquisition
+P0/P1 remediation and must not be described as a resolved shortlist issue.
