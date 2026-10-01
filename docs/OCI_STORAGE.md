@@ -72,12 +72,14 @@ Oracle reads with the exact VM's instance principal; the laptop API private key
 was not installed on Oracle. Laptop development starts web/acquisition only;
 Oracle starts processing/serving and no portal scraper.
 
-The deployed application release is `bc9f9bc667eebeb5186190f015c648d3f4c21ee3`.
+The initial cutover proof used release `bc9f9bc667eebeb5186190f015c648d3f4c21ee3`.
 Its full certification passed all nine stages (627 tests passed, one skipped),
 including the production SSR build and strict release TypeScript verification.
 Exact-release post-deployment smoke passed with all seven required workers healthy,
 canonical metrics reconciled and OCI write/read/delete health probes successful.
 The verified release is recorded in Oracle's CURRENT_SHA and saved in PM2.
+For the current release, read `/health/ready` and Oracle's `CURRENT_SHA`; historical
+proof SHAs and test counts in this section are not current-version authority.
 The reset utility's additional nine focused tests passed. The separate scraper
 TypeScript configuration retains five existing fixture type errors. A supplemental
 acquisition/scraper run passed 113 tests and failed one attention-gate fixture
@@ -149,8 +151,8 @@ uploaded bytes, and persists the receipt. It is bounded at 512 MiB/5,000 entries
 capacity exhaustion preserves entries and stops admission. Pending entries for a
 resumed run are replayed after it returns to running. A terminal run's unadmitted
 entries require explicit recovery into an authorized running run; they are not
-silently discarded or admitted with an expired lease. Confirmed entries currently
-remain local for diagnostics; no automatic outbox deletion is enabled.
+silently discarded or admitted with an expired lease. Acknowledged entries are
+automatically retired after seven days under the retention policy below.
 
 Transport retains extracted source text and structured acquisition data. Browser
 HTML stays in the existing local diagnostic snapshots, and recognized credential/
@@ -164,7 +166,8 @@ admission stores the ingress receipt and pending evaluation dispatch inside the
 same database transaction. Replay returns the original result or reconciles pending
 dispatch without needing to scrape again, even after the run becomes terminal.
 OCI and Turso are not one transaction: unreferenced objects can remain after failed
-admission. Reference-aware orphan retention is deliberately not enabled yet.
+admission. Unacknowledged and unclassified objects remain protected rather than
+being deleted by age. Inventory them for explicit recovery.
 
 Run stop/confirmation use the durable states already polled by the local worker.
 Processing-host UI reads durable events/status instead of requiring the local
@@ -191,9 +194,58 @@ worker principal, verify all active/source references and resolve missing canoni
 sources explicitly. Do not manufacture replacement bytes at an original immutable
 source key. Existing terminal processing blobs may already have been deleted by
 older enrichment workers. The new cleanup protects blobs referenced as canonical
-sources or by active processing; OCI payload deletion is disabled until retention
-classes and all consumers are reconciled. Do not put a blanket age-based lifecycle
-rule on the bucket.
+sources or by active processing. Automatic OCI deletion is confined to acknowledged
+handoff staging; canonical sources remain durable. Do not put blanket age-based
+lifecycle deletion on the bucket.
+
+## Execution authority, refresh and retention
+
+Migration 071 adds `acquisition_execution_lease` and staging retirement receipts.
+Every distributed `startRun`, including direct CLI execution, acquires the same
+120-second database-clock lease and renews every 30 seconds. Stale renewal/release
+is token-fenced; ownership loss closes local browser contexts. Ingress validates
+the execution token inside canonical admission's transaction. Busy workers leave
+work queued. Run leases still own run mutations; profile locks protect local files.
+The acquisition ledger records observations; its legacy item leases do not execute
+the live scraper. All portal runs are serialized across hosts, including different
+people. There is no concurrent multi-account scheduler. Keep the designated laptop
+and device ACL; another host cannot own browser execution simultaneously.
+
+`--fresh-source` and alias `--fresh` start a new run and bypass cached source
+snapshots. `FRESH_SOURCE=true` and legacy `FRESH_RUN=true` mean the same thing.
+`--new-run` starts new orchestration while permitting a valid source cache.
+Worker config `freshSource: true` forces refresh for its queued run. Identical
+content still reuses the immutable canonical version; no replacement bytes are
+written to an existing source key. Content-keyed downstream results may be reused.
+
+Shared snapshots omit browser HTML/session metadata and redundant root/card copies
+of the full JD. Distinct discovery snippets remain evidence. Canonical material
+and detail text remain for existing hash/enrichment contracts. Turso's canonical
+source text is deliberate durable truth, not a disposable cache.
+
+| Class | Cleanup policy |
+| --- | --- |
+| Canonical source / source-bound processing snapshot | Durable; never age-deleted |
+| Pending upload, dispatch-pending receipt, unacknowledged outbox | Protected until successful admission/recovery |
+| Acknowledged OCI handoff staging | Seven days after admission, following dispatch completion and reference checks |
+| Acknowledged local outbox | Seven days after local acknowledgement, with matching committed receipt |
+| Local snapshots, extraction/enrichment caches and metrics | Seven days, only when acquisition/enrichment is inactive |
+| Known terminal run files | Thirty days using durable terminal status |
+| Profiles, credentials, local original blobs, unknown runs/objects | Excluded from automatic deletion |
+
+The acquisition worker cleans at startup and hourly while sharing the execution
+lease with browser runs. It skips busy acquisition, never follows symlinks and
+persists retirement to avoid repeated remote deletes. Failures remain retryable.
+Each diagnostic directory removes at most 500 eligible files per pass; later
+hourly passes continue the sweep, keeping cleanup bounded.
+The laptop principal needs `handoff/` delete permission; Oracle's VM retains only
+health-probe delete permission. No bucket lifecycle deletion is required.
+
+Inspect with `npx tsx scripts/storage/retain-acquisition.ts` on the acquisition
+host; add `--apply` for the same cleanup used automatically by the worker. It
+requires migration 071 and the configured target. Unknown objects remain protected
+because age cannot prove absence of pending retries. Non-job corpus retention is
+outside this job-acquisition policy; do not turn articles into job evaluations.
 
 Deploy writers/readers together after migration. Rollback must retain OCI access
 for newly admitted keys, rather than simply switching every reader back to local

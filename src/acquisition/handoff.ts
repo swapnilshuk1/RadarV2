@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { compactSourceSnapshot } from "./source-snapshot";
 import type { IngestOpportunityPayload, IngestScope } from "./ingestion-service";
 
 export const HANDOFF_MAX_BYTES = 20 * 1024 * 1024;
@@ -13,7 +14,7 @@ export interface AcquisitionReference {
   payloadKey: string;
   sha256: string;
   sizeBytes: number;
-  lease: { owner: string; token: string };
+  lease: { owner: string; token: string; executionToken?: string };
 }
 export function byteHash(bytes: Buffer): string { return createHash("sha256").update(bytes).digest("hex"); }
 export function handoffPrefix(tenantId: string, personId: string): string {
@@ -22,6 +23,9 @@ export function handoffPrefix(tenantId: string, personId: string): string {
 
 export function encodeEnvelope(payload: IngestOpportunityPayload, scope: AcquisitionEnvelope["scope"]): Buffer {
   const { sourcePayload, ...material } = payload;
+  if (material.enrichmentDispatch) material.enrichmentDispatch = {
+    ...material.enrichmentDispatch, detailedCard: compactSourceSnapshot(material.enrichmentDispatch.detailedCard),
+  };
   const envelope: AcquisitionEnvelope = { schemaVersion: 1, scope, payload: material,
     ...(sourcePayload != null ? { sourcePayloadBase64: Buffer.from(sourcePayload).toString("base64") } : {}) };
   // Browser HTML is a local diagnostic artifact. Never serialize credential/session metadata.

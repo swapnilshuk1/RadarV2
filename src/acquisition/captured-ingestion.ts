@@ -4,7 +4,7 @@ import { remoteAcquisitionOutbox } from "./outbox";
 import { BlobStorageError } from "../lib/storage/oci-blob-store";
 
 export async function ingestCapturedOpportunity(payload: IngestOpportunityPayload, scope: IngestScope,
-  lease?: { owner: string; token: string }) {
+  lease?: { owner: string; token: string; executionToken?: string }) {
   if (process.env.RADAR_ACQUISITION_INGRESS_URL) {
     if (scope.mode !== "SCOPED" || !lease) throw new Error("REMOTE_ACQUISITION_REQUIRES_SCOPED_WORKER_LEASE");
     try { return await remoteAcquisitionOutbox(getBlobStore({ enforceDistributed: true })).acquire(payload, scope, lease); }

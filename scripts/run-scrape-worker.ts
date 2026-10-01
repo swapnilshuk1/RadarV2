@@ -4,6 +4,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { getRepositories } from "../src/data/sqlite/provider";
+import { getDatabaseAdapter } from "../src/data/database";
 import { startRun } from "./scrape";
 import type { PortalName } from "./scraper/types";
 import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
@@ -12,6 +13,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ARTIFACTS_DIR } from "./scraper/config";
 import { getBlobStore } from "../src/lib/storage/blob-store";
+import { runAcquisitionRetention } from "../src/acquisition/retention";
 
 const WORKER_ID = `scrape-worker-${process.pid}-${randomUUID()}`;
 const LEASE_MS = 120_000;
@@ -72,11 +74,17 @@ async function claimAndRun(): Promise<boolean> {
       claimedRunId: claimedRun.id,
       assertWorkerLease: heartbeat,
       scrapeLease: { owner: WORKER_ID, token: leaseToken },
+      freshSource: typeof config.freshSource === "boolean" ? config.freshSource : undefined,
+      newRun: config.newRun === true,
     });
     await completion;
     if (heartbeatFailure) throw heartbeatFailure;
   } catch (error) {
     const message = error instanceof Error ? error.message : "SCRAPE_WORKER_FAILED";
+    if (message === "ACQUISITION_EXECUTION_BUSY") {
+      await getDatabaseAdapter().execute("UPDATE scrape_runs SET status='queued' WHERE id=? AND status='initializing' AND lease_owner=? AND lease_token=?", [claimedRun.id, WORKER_ID, leaseToken]);
+      return false;
+    }
     if (!message.includes("SCRAPE_RUN_LEASE_LOST")) {
       await repos.scrapeRuns.failWorkerLease(claimedRun.id, WORKER_ID, leaseToken, message);
     }
@@ -96,7 +104,18 @@ async function run() {
   }
   await startWorkerHeartbeat("scrape");
   let idleMs = 1_000;
+  let nextRetentionAt = 0;
   while (!stopping) {
+    if (process.env.RADAR_DEPLOYMENT_MODE === "distributed" && Date.now() >= nextRetentionAt) {
+      nextRetentionAt = Date.now() + 3600_000;
+      try {
+        const report = await runAcquisitionRetention(getDatabaseAdapter(), getBlobStore({ enforceDistributed: true }), {
+          artifactsDir: ARTIFACTS_DIR,
+          outboxDir: path.resolve(process.env.RADAR_ACQUISITION_OUTBOX_DIR || ".radar/acquisition-outbox"), apply: true,
+        });
+        console.info("[scrape-worker] Retention", JSON.stringify(report));
+      } catch (error) { console.error("[scrape-worker] Retention failed; retained remaining artifacts", (error as Error).name); }
+    }
     const claimed = await claimAndRun();
     if (claimed) { idleMs = 1_000; continue; }
     await new Promise((resolve) => setTimeout(resolve, idleMs));

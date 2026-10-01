@@ -301,9 +301,8 @@ export class CanonicalIngestionService {
         throw new AcquisitionIntegrityError("MISSING_PIPELINE_VERSION: Usable canonical opportunity requires an explicit enrichment pipelineVersion.");
       }
 
-      const snapshot: any = JSON.parse(
-        JSON.stringify(payload.enrichmentDispatch.detailedCard)
-      );
+      const { compactSourceSnapshot } = await import("./source-snapshot");
+      const snapshot: any = compactSourceSnapshot(payload.enrichmentDispatch.detailedCard);
 
       const canonicalMaterial = {
         title: snapshot.canonicalMaterial?.title ?? snapshot.title ?? snapshot.jobTitle ?? "",

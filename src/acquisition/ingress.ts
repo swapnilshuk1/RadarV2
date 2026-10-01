@@ -77,6 +77,8 @@ export async function acquisitionIngress(request: Request, deps?: { db?: Databas
       scope: envelope.scope, scrapeLease: ref.lease,
       deferPostCommitDispatch: true,
       onCanonicalCommit: async (tx, result, work) => {
+        const execution = await tx.one("SELECT 1 FROM acquisition_execution_lease WHERE id='portal-acquisition' AND token=? AND lease_until>CAST((julianday('now')-2440587.5)*86400000 AS INTEGER)", [ref.lease.executionToken || ""]);
+        if (!execution) throw Object.assign(new Error("ACQUISITION_EXECUTION_LEASE_LOST"), { name: "AcquisitionIntegrityError" });
         await tx.execute(`INSERT INTO acquisition_ingress_submissions
           (submission_id,tenant_id,person_id,search_plan_id,run_id,content_hash,canonical_job_id,opportunity_version,response_json)
           VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(submission_id) DO NOTHING`, [ref.submissionId, scope.tenantId, scope.personId,

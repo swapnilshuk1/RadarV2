@@ -37,11 +37,13 @@ For current pre-production use, think in three distinct targets:
 ## Prove locally and identify the release
 
 Use an isolated local database with explicit environment overrides. `npm run dev`
-starts the web application plus the supervised evaluator service; evaluation remains
+starts the web application plus the complete supervised worker fleet; evaluation remains
 STOPPED until an authorized user presses **Start evaluation** in RADAR. It never runs
 migrations. Apply migrations explicitly with `npm run db:migrate` against the selected
-non-production target. Use `npm run dev:full` only when intentionally exercising the
-complete local worker fleet.
+non-production target. `npm run dev:full` retains the same full startup. Use
+`npm run dev -- --minimal` for web and evaluator only; searches then require a
+separate scraper worker. Local payload files are not shared with workers on other
+hosts: use isolated databases or shared object storage when running multiple hosts.
 During development, validate only the behavior invalidated by the change. Do not
 run TypeScript/build/full certification as a ritual after each correction. On the
 final release candidate, run the authoritative certification once; it already
@@ -70,7 +72,7 @@ retry path does not upload the 151 MB release again. It is safe to retry a faile
 workflow while the deployment concurrency lock is active; the selected SHA and
 live readiness result are recorded in the workflow summary.
 
-The GitHub `Oracle` environment was configured on 30 September 2026. Its
+The GitHub `Oracle` environment was updated for OCI on 2 October 2026. Its
 non-secret settings are:
 
 | Setting                          | Verified value                                                                |
@@ -80,7 +82,15 @@ non-secret settings are:
 | Public readiness URL             | `https://161.118.175.246.sslip.io`                                            |
 | Web port behind Caddy            | `3001` (`RADAR_WEB_PORT` in the host environment)                             |
 | Database                         | Turso `radar-db-preprod-clean-20260924`, fingerprint `turso:8917b590608c33c2` |
-| Deployment mode / server scraper | `single_host` / disabled                                                      |
+| Deployment mode / server scraper | `distributed` (OCI) / disabled                                               |
+
+The designated laptop runs acquisition; Oracle uses `RADAR_RUNTIME_ROLE=processing`,
+native OCI instance-principal reads, web and seven processing workers. Apply
+migration 071 before switching ingress and acquisition together. Keep the GitHub
+`Oracle` environment's `RADAR_DEPLOYMENT_MODE=distributed`: the deployment script
+exports that setting over host configuration. Rollback must retain OCI access
+for newly admitted source keys. See [OCI storage](docs/OCI_STORAGE.md) for the
+current topology, source-refresh semantics, retention and runtime checks.
 
 The app directory's historical name does **not** describe the active database.
 The running app and workers use Turso. The host's `/home/ubuntu/radar-sqlite-candidate/.env`

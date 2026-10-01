@@ -40,6 +40,10 @@ and a test showing that it cannot expose tenant-owned data across boundaries.
 
 ```mermaid
 flowchart TD
+  X[Local acquisition device: database execution lease and local profile lock] --> A
+  A --> Y[Bounded outbox: upload and verify OCI envelope]
+  Y --> Z[Oracle ingress: scope, hash, run and execution-token validation]
+  Z --> B
   A[Portal acquisition] --> B[Preserved payload and canonical opportunity version]
   B --> C[Exact enrichment dependency]
   C --> D[Durable staged evaluation job]
@@ -53,6 +57,16 @@ flowchart TD
   K --> L[Serving queries and DossierView]
   M[(active_evaluation_contexts)] --> L
 ```
+
+Distributed portal execution is serialized by migration 071's database-clock
+execution lease. Run leases remain the authority for scoped run mutations. Local
+locks protect profiles, not cross-host ownership. Oracle is processing-only; every
+canonical processing source is in OCI. Shared payloads exclude browser HTML and
+duplicate full-JD fields while preserving distinct evidence. Source refresh bypasses
+local source snapshots; it does not manufacture a new canonical version for the
+same content. Acknowledged handoff staging and inactive diagnostic caches expire
+under reference-aware cleanup; canonical and pending sources do not. Exact classes,
+timing and commands are in [OCI storage](OCI_STORAGE.md).
 
 Persisting an evaluation, composing a dossier and publishing a projection do not
 switch the active context. Shadow work can therefore succeed without becoming

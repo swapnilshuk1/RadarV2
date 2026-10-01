@@ -26,7 +26,8 @@ export function extractionPath(cardHash: string, extractorVersion?: string): str
   return path.join(EXTRACTION_DIR, `${cardHash}.json`);
 }
 
-export function readSnapshotIfFresh(cardHash: string, maxAgeHours: number): DetailedCard | null {
+export function readSnapshotIfFresh(cardHash: string, maxAgeHours: number, forceSource = false): DetailedCard | null {
+  if (forceSource) return null;
   const p = snapshotPath(cardHash);
   if (!fs.existsSync(p)) return null;
   if (fileAgeHours(p) > maxAgeHours) return null;

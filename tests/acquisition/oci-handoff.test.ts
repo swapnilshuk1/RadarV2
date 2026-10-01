@@ -15,7 +15,7 @@ import { STAGED_POLICY_VERSION } from "../../src/evaluation/policy";
 import type { CanonicalIngestionResult, IngestOpportunityPayload } from "../../src/acquisition/ingestion-service";
 
 const scope = { mode: "SCOPED" as const, tenantId: "tenant_A", personId: "person_A", searchPlanId: "plan_A", runId: "oci-run" };
-const lease = { owner: "local-worker", token: "test-lease" };
+const lease = { owner: "local-worker", token: "test-lease", executionToken: "test-execution" };
 const token = "synthetic-test-device-token-never-used-live";
 const device = { tokenSha256: byteHash(Buffer.from(token)), userId: "person_A", tenantId: "tenant_A", personId: "person_A" };
 const payload: IngestOpportunityPayload = { sourcePortal: "LinkedIn", sourceJobId: "1234567",
@@ -37,6 +37,7 @@ async function fixture() {
   await db.execute(`INSERT INTO scrape_runs(id,tenant_id,person_id,search_plan_id,status,portal_targets,lease_owner,lease_token,lease_expires_at)
     VALUES(?,?,?,?, 'running','[]',?,?,?)`, [scope.runId, scope.tenantId, scope.personId, scope.searchPlanId, lease.owner, lease.token, Date.now()+60_000]);
   const store = new MemoryBlobStore();
+  await db.execute("INSERT INTO acquisition_execution_lease VALUES('portal-acquisition',?,?)", [lease.executionToken, Date.now()+60_000]);
   return { db, store, sqlite };
 }
 function request(ref: unknown, credential = token) {
@@ -48,6 +49,17 @@ function reference(bytes: Buffer) {
 }
 
 describe("OCI acquisition handoff", () => {
+  it("rolls back canonical admission after acquisition execution ownership is lost", async () => {
+    const { db, store, sqlite } = await fixture();
+    try {
+      const bytes = encodeEnvelope(payload, scope); const ref = reference(bytes);
+      await store.put(ref.payloadKey, bytes);
+      await db.execute("UPDATE acquisition_execution_lease SET token='another-host'");
+      expect((await acquisitionIngress(request(ref), { db, store, devices: [device] })).status).toBe(409);
+      expect(await db.one("SELECT id FROM opportunity_versions")).toBeNull();
+      expect(await db.one("SELECT submission_id FROM acquisition_ingress_submissions")).toBeNull();
+    } finally { sqlite.close(); }
+  });
   it("admits through ingress and replays the original receipt after the run stops", async () => {
     const { db, store, sqlite } = await fixture();
     try {

@@ -15,6 +15,7 @@
 import path from "path";
 import fs from "fs";
 import { assertAcquisitionHost } from "../src/acquisition/execution-role";
+import { acquireExecutionLease } from "../src/acquisition/execution-lease";
 import { ingestCapturedOpportunity } from "../src/acquisition/captured-ingestion";
 import { remoteAcquisitionOutbox } from "../src/acquisition/outbox";
 import { getBlobStore } from "../src/lib/storage/blob-store";
@@ -301,7 +302,11 @@ export interface RunOptions {
   /** Internal lease fence invoked at execution boundaries by the scrape worker. */
   assertWorkerLease?: () => Promise<void>;
   /** Token-fenced durable run mutations for the claiming scraper worker. */
-  scrapeLease?: { owner: string; token: string };
+  scrapeLease?: { owner: string; token: string; executionToken?: string };
+  /** Start a new run and bypass cached source snapshots. */
+  freshSource?: boolean;
+  /** Start a new orchestration run while allowing fresh cached sources. */
+  newRun?: boolean;
 }
 
 export interface RunRuntimeSession {
@@ -405,6 +410,34 @@ installSignalHandlers();
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
   assertAcquisitionHost();
+  if (process.env.RADAR_DEPLOYMENT_MODE !== "distributed") return startRunInternal(opts);
+  const lease = await acquireExecutionLease(getDatabaseAdapter());
+  let lost = false;
+  let renewal: Promise<void> | undefined;
+  const renew = async () => {
+    if (lost) throw new Error("ACQUISITION_EXECUTION_LEASE_LOST");
+    await lease.renew();
+  };
+  const timer = setInterval(() => {
+    if (!renewal) renewal = renew().catch(async () => {
+      lost = true;
+      await shutdownAllRuns("ACQUISITION_EXECUTION_LEASE_LOST");
+    }).finally(() => { renewal = undefined; });
+  }, 30_000);
+  timer.unref();
+  const release = async () => { clearInterval(timer); await renewal; await lease.release(); };
+  try {
+    const run = await startRunInternal({ ...opts,
+      ...(opts.scrapeLease ? { scrapeLease: { ...opts.scrapeLease, executionToken: lease.token } } : {}),
+      assertWorkerLease: async () => {
+      await renew();
+      await opts.assertWorkerLease?.();
+    } });
+    return { ...run, completion: run.completion.finally(release) };
+  } catch (error) { await release(); throw error; }
+}
+
+async function startRunInternal(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
   if (opts.scope && opts.authContext && opts.scope.tenantId !== opts.authContext.tenantId) {
     throw new Error("SCRAPER_ACTOR_SCOPE_TENANT_MISMATCH");
   }
@@ -459,7 +492,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     );
   }
 
-  const freshRun = runtimeOpts.fresh || process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
+  const freshSource = opts.freshSource ?? runtimeOpts.freshSource ?? false;
+  const freshRun = !opts.claimedRunId && (opts.newRun || runtimeOpts.newRun || freshSource);
 
   let keywords = opts.keywords ?? (runtimeOpts.keywords && runtimeOpts.keywords.length > 0 ? runtimeOpts.keywords : undefined);
   let portals = opts.portals ?? (runtimeOpts.portals.length > 0 ? runtimeOpts.portals : DEFAULT_PORTALS);
@@ -1151,6 +1185,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             runtime.authSessions.get(unit.portal),
             persistenceState,
             opts.scrapeLease,
+            freshSource,
           );
           if (outcome) {
             portalIngested += outcome.opportunities;
@@ -1627,7 +1662,8 @@ export async function processUnit(
   pageManager?: PageManager,
   authSession?: PortalAuthSession,
   persistenceState?: PersistenceRunState,
-  scrapeLease?: { owner: string; token: string },
+  scrapeLease?: { owner: string; token: string; executionToken?: string },
+  freshSource = false,
 ): Promise<ProcessOutcome> {
   const outcome: ProcessOutcome = {
     status: "failed",
@@ -2012,7 +2048,7 @@ export async function processUnit(
         let detailedCard: import("./scraper/types").DetailedCard | null = null;
         let writtenSnapshotPath: string | null = null;
         let boundSnapshotPath: string | null = null;
-        let snapshot = readSnapshotIfFresh(feedCard.cardHash, CONFIG.snapshotFreshHours);
+        let snapshot = readSnapshotIfFresh(feedCard.cardHash, CONFIG.snapshotFreshHours, freshSource);
         let detail: import("./scraper/types").DetailedCard["detail"] = {
           fetched: false,
           rawHtml: "",

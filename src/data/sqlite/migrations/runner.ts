@@ -18,6 +18,7 @@ export interface RequiredSchemaStatus {
   readonly evaluationControlTablePresent: boolean;
   readonly durableWorkerTablesPresent: boolean;
   readonly operationalLeaseSchemaPresent: boolean;
+  readonly acquisitionExecutionSchemaPresent: boolean;
 }
 
 export const migrationChecksum = (content: string) =>
@@ -62,6 +63,7 @@ const REQUIRED_TABLES = [
   "scrape_runs",
   "corpus_regeneration_jobs",
   "worker_heartbeats",
+  "acquisition_execution_lease",
 ] as const;
 
 const REQUIRED_SCOPE_COLUMNS = [
@@ -151,6 +153,9 @@ export async function getRequiredSchemaStatus(db: DatabaseAdapter): Promise<Requ
       "worker_heartbeats",
     ].every(tablePresent),
     operationalLeaseSchemaPresent: scrapeLeaseColumnsPresent && tablePresent("worker_heartbeats"),
+    acquisitionExecutionSchemaPresent:
+      tablePresent("acquisition_execution_lease") &&
+      (await hasColumn(db, "acquisition_ingress_submissions", "staging_retired_at")),
   };
 }
 
@@ -180,6 +185,10 @@ export async function verifyRequiredSchema(db: DatabaseAdapter): Promise<Require
     throw new Error(`[MigrationRunner] ${drift}`);
   }
   const currentRequirements: Array<[keyof RequiredSchemaStatus, string]> = [
+    [
+      "acquisitionExecutionSchemaPresent",
+      "acquisition execution/retirement schema (migration 071)",
+    ],
     ["tenantScopeTablesPresent", "tenant scope tables/columns"],
     ["candidateTruthTablesPresent", "candidate truth tables/columns"],
     ["evaluationControlTablePresent", "evaluation context/control tables"],

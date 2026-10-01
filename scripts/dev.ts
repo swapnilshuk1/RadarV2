@@ -142,7 +142,9 @@ async function main() {
     process.env.TURSO_CONNECTION_URL || process.env.TURSO_DATABASE_URL || "";
   const fullStack = process.argv.includes("--full");
   console.log(
-    fullStack
+    process.env.RADAR_RUNTIME_ROLE === "acquisition"
+      ? "[dev-supervisor] ACQUISITION mode: web + scrape worker; processing runs on Oracle."
+      : fullStack
       ? "[dev-supervisor] FULL STACK mode: all local workers are enabled; queued work may be consumed."
       : "[dev-supervisor] INTERACTIVE mode: web + evaluator service. Evaluation remains idle until the UI starts it.",
   );
