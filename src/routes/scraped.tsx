@@ -1,64 +1,55 @@
-import { createFileRoute, Link, useRouter } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
-import { getAcquisitionFeedFn } from '@/acquisition/feed';
-import type { AcquisitionFeedRow, AcquisitionFeedState } from '@/acquisition/contracts';
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { acquisitionNavigationSearch } from "@/acquisition/navigation";
+import { getAcquisitionFeedFn } from "@/acquisition/feed";
+import type { AcquisitionFeedRow, AcquisitionFeedState } from "@/acquisition/contracts";
 
-export const Route = createFileRoute('/scraped')({
-  loader: ({ location }) => {
-    const raw = location.search as {
-      offset?: unknown;
-      tenantId?: unknown;
-      personId?: unknown;
-    };
-    const deps = {
-      offset: Math.max(0, Number(raw.offset) || 0),
-      tenantId: typeof raw.tenantId === 'string' ? raw.tenantId : undefined,
-      personId: typeof raw.personId === 'string' ? raw.personId : undefined,
-    };
-    if (Boolean(deps.tenantId) !== Boolean(deps.personId)) {
-      throw new Error('CANDIDATE_SCOPE_INCOMPLETE');
-    }
-    return getAcquisitionFeedFn({ data: deps });
-  },
+export const Route = createFileRoute("/scraped")({
+  validateSearch: acquisitionNavigationSearch,
+  loaderDeps: ({ search }) => ({
+    offset: search.offset,
+    state: search.state,
+    tenantId: search.tenantId,
+    personId: search.personId,
+  }),
+  loader: ({ deps }) => getAcquisitionFeedFn({ data: deps }),
   head: () => ({
     meta: [
-      { title: 'Scraped jobs - RADAR' },
-      { name: 'description', content: 'Every captured role and its current analysis status.' },
+      { title: "Scraped jobs - RADAR" },
+      { name: "description", content: "Every captured role and its current analysis status." },
     ],
   }),
   component: ScrapedFeed,
 });
 
 const labels: Record<AcquisitionFeedState, string> = {
-  NOT_PURSUED: 'Evaluated · not shortlisted',
-  READY: 'Dossier ready',
-  PREPARING: 'Preparing dossier',
-  PROCESSING: 'Analysis in progress',
-  WAITING: 'Awaiting processing',
-  NEEDS_ATTENTION: 'Needs attention',
-  OUTSIDE_SEARCH: 'Outside your search',
+  NOT_PURSUED: "Evaluated · not shortlisted",
+  READY: "Dossier ready",
+  PREPARING: "Preparing dossier",
+  PROCESSING: "Analysis in progress",
+  WAITING: "Awaiting processing",
+  NEEDS_ATTENTION: "Needs attention",
+  OUTSIDE_SEARCH: "Outside your search",
 };
 
 function ScrapedFeed() {
-  const { rows, counts, total, unadmittedCaptures, nextOffset } = Route.useLoaderData();
-  const { offset = 0, tenantId, personId } = Route.useSearch() as {
-    offset?: number;
-    tenantId?: string;
-    personId?: string;
-  };
+  const { rows, counts, total, filteredTotal, unadmittedCaptures, nextOffset } =
+    Route.useLoaderData();
+  const { offset = 0, state: selectedState, tenantId, personId } = Route.useSearch();
   const scope = { tenantId, personId };
+  const navigation = { ...scope, offset, state: selectedState };
   const router = useRouter();
-
-  const [selectedState, setSelectedState] = useState<AcquisitionFeedState | null>(null);
+  const selectState = (state?: AcquisitionFeedState) =>
+    void router.navigate({ to: "/scraped", search: { ...scope, offset: 0, state } });
 
   useEffect(() => {
     const timer = setInterval(() => {
-      if (document.visibilityState === 'visible') void router.invalidate();
+      if (document.visibilityState === "visible") void router.invalidate();
     }, 15_000);
     return () => clearInterval(timer);
   }, [router]);
 
-  const displayedRows = selectedState ? rows.filter((r) => r.state === selectedState) : rows;
+  const displayedRows = rows;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
@@ -71,9 +62,12 @@ function ScrapedFeed() {
       </header>
 
       {unadmittedCaptures > 0 && (
-        <p role="status" className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-800 dark:text-amber-200">
-          {unadmittedCaptures} additional source captures could not be admitted to this search plan. Their
-          capture records are retained for recovery.
+        <p
+          role="status"
+          className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-800 dark:text-amber-200"
+        >
+          {unadmittedCaptures} additional source captures could not be admitted to this search plan.
+          Their capture records are retained for recovery.
         </p>
       )}
 
@@ -89,12 +83,12 @@ function ScrapedFeed() {
                 key={state}
                 type="button"
                 aria-pressed={isSelected}
-                onClick={() => setSelectedState((curr) => (curr === state ? null : state))}
+                onClick={() => selectState(selectedState === state ? undefined : state)}
                 className={`relative flex flex-col justify-between rounded-xl border p-3.5 text-left transition-all ${
                   isSelected
-                    ? 'border-primary bg-primary/10 ring-2 ring-primary/20 shadow-xs'
-                    : 'border-border bg-background hover:border-foreground/30 hover:bg-muted/40'
-                } ${count === 0 ? 'opacity-60' : 'cursor-pointer'}`}
+                    ? "border-primary bg-primary/10 ring-2 ring-primary/20 shadow-xs"
+                    : "border-border bg-background hover:border-foreground/30 hover:bg-muted/40"
+                } ${count === 0 ? "opacity-60" : "cursor-pointer"}`}
               >
                 <div className="text-2xl font-semibold tabular-nums text-foreground">{count}</div>
                 <div className="mt-2 text-xs leading-snug text-muted-foreground font-medium">
@@ -112,15 +106,16 @@ function ScrapedFeed() {
         {selectedState && (
           <div className="mt-4 flex items-center justify-between rounded-lg border border-border/80 bg-muted/30 px-4 py-2.5 text-sm">
             <span className="text-muted-foreground">
-              Showing <strong className="text-foreground">{displayedRows.length}</strong> of {rows.length} roles filtered by{' '}
+              Showing <strong className="text-foreground">{displayedRows.length}</strong> of{" "}
+              {filteredTotal} matching roles filtered by{" "}
               <strong className="text-foreground">{labels[selectedState]}</strong>
             </span>
             <button
               type="button"
-              onClick={() => setSelectedState(null)}
+              onClick={() => selectState()}
               className="text-xs font-medium text-primary hover:underline"
             >
-              Show all ({rows.length})
+              Clear filter ({total} total)
             </button>
           </div>
         )}
@@ -131,7 +126,7 @@ function ScrapedFeed() {
         <ul className="divide-y divide-border">
           {displayedRows.map((row) => (
             <li
-              key={row.id + ':' + row.version}
+              key={row.id + ":" + row.version}
               className="flex flex-wrap items-center justify-between gap-4 py-5 hover:bg-muted/10 transition-colors -mx-2 px-2 rounded-lg"
             >
               <div className="min-w-0 flex-1">
@@ -141,24 +136,24 @@ function ScrapedFeed() {
                 <Link
                   to="/scraped/$jobHash"
                   params={{ jobHash: row.jobHash }}
-                  search={scope}
+                  search={{ ...navigation, canonicalJobId: row.id, version: row.version }}
                   className="mt-1 block font-medium text-foreground hover:text-primary hover:underline transition-colors"
                 >
                   {row.role}
                 </Link>
                 <p className="text-sm text-muted-foreground">
                   {row.company}
-                  {row.location ? ' · ' + row.location : ''}
+                  {row.location ? " · " + row.location : ""}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                {row.state === 'READY' ? (
+                {row.state === "READY" ? (
                   <>
                     <Link
                       to="/scraped/$jobHash"
                       params={{ jobHash: row.jobHash }}
-                      search={scope}
+                      search={{ ...navigation, canonicalJobId: row.id, version: row.version }}
                       className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     >
                       Decision log
@@ -176,11 +171,13 @@ function ScrapedFeed() {
                   <Link
                     to="/scraped/$jobHash"
                     params={{ jobHash: row.jobHash }}
-                    search={scope}
+                    search={{ ...navigation, canonicalJobId: row.id, version: row.version }}
                     className="rounded-md border border-border px-3 py-1.5 text-xs text-foreground hover:bg-muted transition-colors inline-flex items-center gap-1.5"
                   >
                     <span>{labels[row.state]}</span>
-                    <span aria-hidden="true" className="text-muted-foreground">&rarr;</span>
+                    <span aria-hidden="true" className="text-muted-foreground">
+                      &rarr;
+                    </span>
                   </Link>
                 )}
               </div>
@@ -193,12 +190,12 @@ function ScrapedFeed() {
             <p className="text-muted-foreground text-sm">
               {selectedState
                 ? `No roles matching "${labels[selectedState]}" on this page.`
-                : 'No captured roles in this search yet.'}
+                : "No captured roles in this search yet."}
             </p>
             {selectedState && (
               <button
                 type="button"
-                onClick={() => setSelectedState(null)}
+                onClick={() => selectState()}
                 className="mt-3 text-xs font-medium text-primary hover:underline"
               >
                 Clear filter to view all roles
@@ -209,11 +206,14 @@ function ScrapedFeed() {
       </section>
 
       {/* Pagination */}
-      <nav aria-label="Scraped jobs pages" className="mt-8 flex justify-between border-t border-border pt-4">
+      <nav
+        aria-label="Scraped jobs pages"
+        className="mt-8 flex justify-between border-t border-border pt-4"
+      >
         {offset > 0 ? (
           <Link
             to="/scraped"
-            search={{ ...scope, offset: Math.max(0, offset - 100) }}
+            search={{ ...navigation, offset: Math.max(0, offset - 100) }}
             className="text-sm text-foreground hover:underline"
           >
             &larr; Previous
@@ -224,7 +224,7 @@ function ScrapedFeed() {
         {nextOffset !== null && (
           <Link
             to="/scraped"
-            search={{ ...scope, offset: nextOffset }}
+            search={{ ...navigation, offset: nextOffset }}
             className="text-sm text-foreground hover:underline"
           >
             Next &rarr;

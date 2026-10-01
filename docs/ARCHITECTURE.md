@@ -295,3 +295,30 @@ selection yet. Feed, navigation and actionable queue count share this predicate.
 REVIEW is not a shortlist recommendation by itself; PASS, invalid, unevaluated,
 explicitly ineligible and decided rows remain excluded. Acquisition uncertainty
 is retained for reasoning rather than overwritten as proven role equivalence.
+
+
+## Scraped-job decision log
+
+`/scraped` lists the scoped acquisition population and applies lifecycle filters in
+SQL before pagination. Tile totals cover the complete active-search population.
+The URL retains the selected state and page when navigating to a decision log and
+back. Detail links bind the canonical job and opportunity version; ambiguous
+portal job IDs fail closed rather than selecting an unrelated role.
+
+`/scraped/$jobHash` is a read-only view of that version's recorded attention gate,
+current-context evaluation, role requirements, screening classification, candidate
+mapping, gaps and decision hinges. Feed and detail use the same lifecycle SQL.
+READY requires the current reviewed rich presentation bound to the serving
+fingerprint; draft/preparing publications remain PREPARING. Explicit intake
+exclusions and advisory designation uncertainty are explained separately.
+
+Evidence quotations are read only from the evaluation's matching frozen input,
+validated with its existing fingerprint/provenance contract. Role and candidate
+claims retain separate planes and EXPLICIT/INFERRED cues. Missing or invalid frozen
+inputs cannot produce invented quotations. The capture timestamp belongs to the
+selected opportunity version. This view does not generate new evaluations or
+compose PASS dossiers; persisted verdicts and source identities remain unchanged.
+
+Implementation: `src/acquisition/feed-read-model.ts`, `pipeline-state.ts`,
+`detail-read-model.ts`, authenticated `feed.ts`/`detail-server.ts`, and the two
+Scraped routes. Decision-log regressions are included in release certification.

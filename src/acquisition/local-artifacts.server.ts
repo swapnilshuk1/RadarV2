@@ -56,7 +56,7 @@ export function buildCanonicalRunData(runId: string, enrichmentCompleted?: numbe
       opportunitiesFound,
       locallyCapturedCount: manifest.cards?.filter((card: { handoffStatus?: string }) => card.handoffStatus).length || 0,
       pendingUploadCount: manifest.cards?.filter((card: { handoffStatus?: string }) => card.handoffStatus && card.handoffStatus !== "acknowledged").length || 0,
-      admittedCount: manifest.telemetry?.canonicalIngestSuccess || 0,
+      admittedCount: manifest.cards?.some((card: { handoffStatus?: string }) => card.handoffStatus) ? manifest.cards.filter((card: { handoffStatus?: string }) => card.handoffStatus === "acknowledged").length : manifest.telemetry?.canonicalIngestSuccess || 0,
       evaluatedCount,
       remainingCount,
       sources,

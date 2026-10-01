@@ -73,6 +73,7 @@ export const certificationManifest = [
       "tests/editorial/shortlist-badge-resolution.test.ts",
       "tests/editorial/memo-cockpit-skins.test.ts",
       "tests/serving/current-serving-boundary.test.ts",
+      "tests/serving/scraped-job-detail.test.ts",
       "tests/serving/sql_metrics_aggregation.test.ts",
       "tests/persistence/deployment-determinism.test.ts",
     ],

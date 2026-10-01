@@ -1,79 +1,91 @@
-import type { DatabaseAdapter } from '@/data/database';
-import { RICH_DOSSIER_FAILURE_VERSION } from '@/data/sqlite/repositories/SqliteRichDossierStore';
+import type { DatabaseAdapter } from "@/data/database";
+import { acquisitionPipelineStateSql } from "./pipeline-state";
+import { validateSnapshot } from "@/data/sqlite/repositories/SqliteStagedInputStore";
+import { RICH_DOSSIER_FAILURE_VERSION } from "@/data/sqlite/repositories/SqliteRichDossierStore";
 import type {
   AcquisitionFeedState,
   AttentionGateExplanation,
   ScrapedJobDetail,
   ScreeningDriverDetail,
-} from './contracts';
+} from "./contracts";
 
 const REASON_EXPLANATIONS: Record<
   string,
-  { title: string; description: string; impact: 'match' | 'review' | 'exclude' }
+  { title: string; description: string; impact: "match" | "review" | "exclude" }
 > = {
   ROLE_FAMILY_MATCH: {
-    title: 'Target Role Family Match',
-    description: 'The job title matches one of the target role families defined in your career search plan.',
-    impact: 'match',
+    title: "Target Role Family Match",
+    description:
+      "The captured role evidence contains a target role-family or function signal. This is indicative; the intelligence evaluation assesses the actual mandate.",
+    impact: "match",
   },
   ADJACENT_ROLE_FAMILY: {
-    title: 'Adjacent Role Family',
-    description: 'The job title is closely related to your target executive roles.',
-    impact: 'match',
+    title: "Adjacent Role Family",
+    description: "The job title is closely related to your target executive roles.",
+    impact: "match",
   },
   ROLE_UNKNOWN: {
-    title: 'Role Designation Advisory',
-    description: 'The title does not match an explicit role family in the search plan, but was admitted for review without contradiction.',
-    impact: 'review',
+    title: "Role Designation Advisory",
+    description:
+      "The title does not match an explicit role family in the search plan, but was admitted for review without contradiction.",
+    impact: "review",
   },
   EXCLUDED_COMPANY: {
-    title: 'Excluded Company',
-    description: 'The employer is included on your company exclusion list.',
-    impact: 'exclude',
+    title: "Excluded Company",
+    description: "The employer is included on your company exclusion list.",
+    impact: "exclude",
   },
   FUNCTION_CONTRADICTION: {
-    title: 'Function Contradiction',
-    description: 'The business domain or function contradicts your specified target career areas.',
-    impact: 'exclude',
+    title: "Function Contradiction",
+    description: "The business domain or function contradicts your specified target career areas.",
+    impact: "exclude",
   },
   FUNCTION_REVIEW: {
-    title: 'Function Requires Review',
-    description: 'The job function is in an adjacent domain and requires review.',
-    impact: 'review',
+    title: "Function Requires Review",
+    description:
+      "The designation suggests a different function. This is advisory and remains admitted for mandate evaluation.",
+    impact: "review",
   },
   SENIORITY_CONTRADICTION: {
-    title: 'Seniority Level Contradiction',
-    description: 'The seniority level indicated in the title or posting is outside the executive scope of your search.',
-    impact: 'exclude',
+    title: "Seniority Level Contradiction",
+    description:
+      "The JD explicitly caps experience below the configured executive experience range. Title wording alone does not trigger this exclusion.",
+    impact: "exclude",
   },
   SENIORITY_REVIEW: {
-    title: 'Seniority Level Review',
-    description: 'The seniority level requires review against executive leadership criteria.',
-    impact: 'review',
+    title: "Seniority Level Review",
+    description:
+      "The designation suggests a different seniority level. This is advisory and remains admitted for mandate evaluation.",
+    impact: "review",
   },
   EMPLOYMENT_CONTRADICTION: {
-    title: 'Employment Type Contradiction',
-    description: 'The employment type is outside your executive search scope.',
-    impact: 'exclude',
+    title: "Employment Type Contradiction",
+    description: "The employment type is outside your executive search scope.",
+    impact: "exclude",
   },
   LOCATION_CONTRADICTION: {
-    title: 'Location Outside Target Scope',
-    description: 'The job location is outside target geographies without compatible remote/hybrid flexibility.',
-    impact: 'exclude',
+    title: "Location Outside Target Scope",
+    description:
+      "The job location is outside target geographies without compatible remote/hybrid flexibility.",
+    impact: "exclude",
   },
   LOCATION_REVIEW: {
-    title: 'Location Requires Review',
-    description: 'The location policy indicates cross-market or remote potential that requires editorial verification.',
-    impact: 'review',
+    title: "Location Requires Review",
+    description:
+      "The location policy indicates cross-market or remote potential that requires editorial verification.",
+    impact: "review",
   },
   UNUSABLE_PROJECTION: {
-    title: 'Unusable Job Projection',
-    description: 'The captured content lacked sufficient structured detail to form a complete job projection.',
-    impact: 'exclude',
+    title: "Unusable Job Projection",
+    description:
+      "The captured content lacked sufficient structured detail to form a complete job projection.",
+    impact: "exclude",
   },
 };
 
 interface CandidateDetailRow {
+  pipeline_state: AcquisitionFeedState;
+  frozen_input_json: string | null;
   canonical_job_id: string;
   opportunity_version: string;
   job_hash: string;
@@ -87,7 +99,7 @@ interface CandidateDetailRow {
   lifecycle_state: string;
   acquisition_status: string | null;
   captured_at: string | null;
-  attention_decision: 'CANDIDATE' | 'NOT_CANDIDATE';
+  attention_decision: "CANDIDATE" | "NOT_CANDIDATE";
   eligibility: string | null;
   eligibility_reason_codes_json: string | null;
   location_policy: string | null;
@@ -118,10 +130,28 @@ export async function readScrapedJobDetail(
   db: DatabaseAdapter,
   scope: { tenantId: string; personId: string },
   activeContext: { contextFingerprint: string; searchPlanId: string },
-  jobHash: string
+  jobHash: string,
+  identity?: { canonicalJobId?: string; version?: string },
 ): Promise<ScrapedJobDetail | null> {
-  const row = await db.one<CandidateDetailRow>(
+  if (!identity?.canonicalJobId) {
+    const identities = await db.many<{ id: string }>(
+      `SELECT DISTINCT co.id FROM canonical_opportunities co
+       JOIN search_plan_candidates spc ON spc.canonical_job_id=co.id
+       JOIN opportunity_versions ov ON ov.id=spc.opportunity_version AND ov.canonical_job_id=co.id
+       WHERE co.source_job_id=? AND spc.tenant_id=? AND spc.person_id=?
+         AND spc.search_plan_id=? AND ov.lifecycle_state='ACTIVE' LIMIT 2`,
+      [jobHash, scope.tenantId, scope.personId, activeContext.searchPlanId],
+    );
+    if (identities.length !== 1) return null;
+  }
+  const rows = await db.many<CandidateDetailRow>(
     `SELECT
+       ${acquisitionPipelineStateSql} AS pipeline_state,
+       (SELECT fi.input_json FROM staged_frozen_inputs fi WHERE fi.tenant_id=se.tenant_id AND fi.person_id=se.person_id
+         AND fi.canonical_job_id=se.canonical_job_id AND fi.opportunity_version=se.opportunity_version
+         AND fi.evaluation_context_fingerprint=se.evaluation_context_fingerprint AND fi.input_fingerprint=se.input_fingerprint
+         AND fi.model_id=se.model_id AND fi.model_version=se.model_version
+         AND fi.model_configuration_fingerprint=se.model_configuration_fingerprint) AS frozen_input_json,
        co.id AS canonical_job_id,
        ov.id AS opportunity_version,
        co.source_job_id AS job_hash,
@@ -134,7 +164,7 @@ export async function readScrapedJobDetail(
        ov.raw_content,
        ov.lifecycle_state,
        ov.acquisition_status,
-       co.created_at AS captured_at,
+       ov.created_at AS captured_at,
        spc.attention_decision,
        spc.eligibility,
        spc.eligibility_reason_codes_json,
@@ -202,7 +232,9 @@ export async function readScrapedJobDetail(
        AND spc.person_id = ?
        AND spc.search_plan_id = ?
        AND ov.lifecycle_state = 'ACTIVE'
-     LIMIT 1`,
+       AND (? IS NULL OR co.id=?) AND (? IS NULL OR ov.id=?)
+     ORDER BY ov.created_at DESC, ov.id DESC
+     LIMIT 2`,
     [
       activeContext.contextFingerprint,
       activeContext.contextFingerprint,
@@ -213,42 +245,24 @@ export async function readScrapedJobDetail(
       scope.tenantId,
       scope.personId,
       activeContext.searchPlanId,
-    ]
+      identity?.canonicalJobId ?? null,
+      identity?.canonicalJobId ?? null,
+      identity?.version ?? null,
+      identity?.version ?? null,
+    ],
   );
 
-  if (!row) {
+  const row = rows[0];
+  // A source job ID can collide across portals. Never silently show another role.
+  if (
+    !row ||
+    (!identity?.canonicalJobId &&
+      rows.some((candidate) => candidate.canonical_job_id !== row.canonical_job_id))
+  ) {
     return null;
   }
 
-  // Derive canonical pipeline state
-  let state: AcquisitionFeedState = 'WAITING';
-  if (row.rq_reason === 'SOURCE_NOT_JOB_DESCRIPTION') {
-    state = 'NEEDS_ATTENTION';
-  } else if (row.se_evaluation_state === 'COMPLETED' && row.se_decision === 'PASS') {
-    state = 'NOT_PURSUED';
-  } else if (
-    row.me_evaluation_state === 'STAGED_EVALUATED' &&
-    ['PURSUE', 'CONSIDER', 'PASS'].includes(row.me_decision || '') &&
-    (row.me_evaluation_fingerprint?.trim().length ?? 0) > 0 &&
-    row.me_quality_score === null
-  ) {
-    state = 'READY';
-  } else if (
-    row.er_status === 'FAILED' ||
-    row.ej_status === 'staged_dead_letter' ||
-    ['CAPTURE_FAILED', 'RECOVERY_FAILED'].includes(row.acquisition_status || '') ||
-    row.has_failure_presentation === 1
-  ) {
-    state = 'NEEDS_ATTENTION';
-  } else if (row.attention_decision === 'NOT_CANDIDATE') {
-    state = 'OUTSIDE_SEARCH';
-  } else if (row.ej_status === 'staged_processing') {
-    state = 'PROCESSING';
-  } else if (row.ej_status === 'staged_completed') {
-    state = 'PREPARING';
-  } else {
-    state = 'WAITING';
-  }
+  const state = row.pipeline_state;
 
   const decision = row.me_decision || row.se_decision || null;
 
@@ -258,7 +272,7 @@ export async function readScrapedJobDetail(
     if (row.eligibility_reason_codes_json) {
       const parsed = JSON.parse(row.eligibility_reason_codes_json);
       if (Array.isArray(parsed)) {
-        reasonCodes = parsed.filter((c): c is string => typeof c === 'string');
+        reasonCodes = parsed.filter((c): c is string => typeof c === "string");
       }
     }
   } catch {
@@ -269,46 +283,100 @@ export async function readScrapedJobDetail(
     const meta = REASON_EXPLANATIONS[code];
     return {
       code,
-      title: meta ? meta.title : code.replace(/_/g, ' '),
-      description:
-        meta
-          ? meta.description
-          : `Determined by attention gate criterion ${code}.`,
-      impact: meta ? meta.impact : 'review',
+      title: meta ? meta.title : code.replace(/_/g, " "),
+      description: meta ? meta.description : `Determined by attention gate criterion ${code}.`,
+      impact: meta ? meta.impact : "review",
     };
   });
 
   // Parse staged evaluation drivers if available
   let screeningDrivers: ScreeningDriverDetail[] = [];
   let decisionHinges: Array<{ requirementIds: string[]; resolutionFields?: string[] }> | undefined;
+  let screeningConstraint: string | undefined;
+  let decisionConditions: Array<{ subject: string; detail: string }> = [];
+  let evidenceIssue: string | null = null;
+  let evidence: ReturnType<typeof validateSnapshot>["evidence"] = [];
+  if (row.frozen_input_json) {
+    try {
+      evidence = validateSnapshot(JSON.parse(row.frozen_input_json)).evidence;
+    } catch {
+      evidenceIssue =
+        "The bound frozen evidence snapshot could not be validated; no source quotations are shown.";
+    }
+  }
   if (row.se_evaluation_json) {
     try {
       const evalData = JSON.parse(row.se_evaluation_json);
       const evalPayload =
-        evalData && typeof evalData === 'object' && 'evaluation' in evalData && evalData.evaluation
+        evalData && typeof evalData === "object" && "evaluation" in evalData && evalData.evaluation
           ? evalData.evaluation
           : evalData;
       const drivers =
+        evalData.trace?.requirements ||
         evalData.trace?.eligibleScreeningDrivers ||
         evalPayload.eligibleScreeningDrivers ||
         evalData.eligibleScreeningDrivers;
       if (Array.isArray(drivers)) {
-        screeningDrivers = drivers.map((d: any) => ({
-          id: String(d.id || ''),
-          requirement: String(d.requirement || ''),
-          strength: String(d.strength || 'REQUIRED'),
-          status: String(d.status || 'UNKNOWN'),
-          reasoning: d.reasoning ? String(d.reasoning) : undefined,
-          screeningReasoning: d.screeningReasoning ? String(d.screeningReasoning) : undefined,
-          mappingReasoning: d.mappingReasoning ? String(d.mappingReasoning) : undefined,
-          gapNature: d.gapNature ? String(d.gapNature) : undefined,
-          gapReasoning: d.gapReasoning ? String(d.gapReasoning) : undefined,
-        }));
+        const gateDetails = new Map<string, any>(
+          (evalData.trace?.eligibleScreeningDrivers || []).map((driver: any) => [
+            driver.id,
+            driver,
+          ]),
+        );
+        screeningDrivers = drivers.map((value: any) => {
+          const d = { ...value, ...(gateDetails.get(value.id) || {}) };
+          return {
+            id: String(d.id || ""),
+            requirement: String(d.requirement || ""),
+            strength: String(d.strength || "REQUIRED"),
+            status: String(d.status || "UNKNOWN"),
+            screeningGate: d.screeningGate === true || gateDetails.has(d.id),
+            roleImportance: typeof d.roleImportance === "string" ? d.roleImportance : undefined,
+            roleEvidence: evidence.filter(
+              (claim) => claim.plane === "JD" && d.roleClaimIds?.includes(claim.id),
+            ),
+            candidateEvidence: evidence.filter(
+              (claim) => claim.plane === "CANDIDATE" && d.candidateClaimIds?.includes(claim.id),
+            ),
+            reasoning: d.reasoning ? String(d.reasoning) : undefined,
+            screeningReasoning: d.screeningReasoning ? String(d.screeningReasoning) : undefined,
+            mappingReasoning: d.mappingReasoning ? String(d.mappingReasoning) : undefined,
+            gapNature: d.gapNature ? String(d.gapNature) : undefined,
+            gapReasoning: d.gapReasoning ? String(d.gapReasoning) : undefined,
+          };
+        });
       }
       const decisionNode = evalData.decision || evalPayload.decision || evalData.trace?.decision;
       if (Array.isArray(decisionNode?.decisionHinges)) {
         decisionHinges = decisionNode.decisionHinges;
+        decisionConditions = (decisionHinges || []).flatMap((hinge) => [
+          ...hinge.requirementIds.map((id) => {
+            const requirement = screeningDrivers.find((driver) => driver.id === id);
+            return {
+              subject: requirement?.requirement || id,
+              detail:
+                requirement?.gapReasoning ||
+                requirement?.mappingReasoning ||
+                "Referenced in the recorded decision hinge.",
+            };
+          }),
+          ...(hinge.resolutionFields || []).map((field) => {
+            const resolution = evalData.trace?.resolutions?.find(
+              (item: any) => item.field === field,
+            );
+            return {
+              subject: field,
+              detail:
+                [resolution?.question, resolution?.consequence].filter(Boolean).join(" ") ||
+                "Referenced in the recorded decision hinge.",
+            };
+          }),
+        ]);
       }
+      screeningConstraint =
+        typeof evalData.trace?.screeningConstraint === "string"
+          ? evalData.trace.screeningConstraint
+          : undefined;
     } catch {
       screeningDrivers = [];
     }
@@ -327,46 +395,51 @@ export async function readScrapedJobDetail(
           rationale: row.me_rationale || null,
           screeningDrivers,
           decisionHinges,
+          screeningConstraint,
+          decisionConditions,
         }
       : null;
 
   // Diagnostics breakdown
-  let diagStage = 'Intake';
-  let diagStatus = 'Admitted to Search';
-  let diagDetails = 'Job capture admitted and awaiting processing.';
-  if (state === 'OUTSIDE_SEARCH') {
-    diagStage = 'Attention Gate';
-    diagStatus = 'Outside Target Search Criteria';
+  let diagStage = "Intake";
+  let diagStatus = "Admitted to Search";
+  let diagDetails = "Job capture admitted and awaiting processing.";
+  if (state === "OUTSIDE_SEARCH") {
+    diagStage = "Attention Gate";
+    diagStatus = "Outside Target Search Criteria";
     diagDetails = reasonCodes.length
-      ? `Excluded due to: ${reasonCodes.join(', ')}.`
-      : 'Excluded from evaluation by search plan attention gate.';
-  } else if (state === 'NOT_PURSUED') {
-    diagStage = 'Staged Evaluation';
-    diagStatus = 'Evaluated — PASS (Not Shortlisted)';
+      ? `Excluded due to: ${reasonCodes.join(", ")}.`
+      : "Excluded from evaluation by search plan attention gate.";
+  } else if (state === "NOT_PURSUED") {
+    diagStage = "Staged Evaluation";
+    diagStatus = "Evaluated — PASS (Not Shortlisted)";
     diagDetails = row.se_blocked_reason
       ? `Evaluation concluded PASS: ${row.se_blocked_reason}`
-      : 'Role was evaluated and determined PASS based on screening requirements and role fit.';
-  } else if (state === 'READY') {
-    diagStage = 'Dossier Delivery';
-    diagStatus = `Executive Dossier Ready (${decision || 'Reviewed'})`;
-    diagDetails = 'Evaluation and executive memo dossier are complete and ready for executive review.';
-  } else if (state === 'PREPARING') {
-    diagStage = 'Dossier Composition';
-    diagStatus = 'Composing Executive Memo';
-    diagDetails = 'Evaluation is complete; detailed memo presentation is being drafted and verified.';
-  } else if (state === 'PROCESSING') {
-    diagStage = 'Intelligence Worker';
-    diagStatus = 'Analysis In Progress';
-    diagDetails = 'Worker is actively analyzing role requirements, candidate evidence, and context.';
-  } else if (state === 'NEEDS_ATTENTION') {
-    diagStage = 'Recovery / Attention';
-    diagStatus = 'Attention Required';
+      : "Role was evaluated and determined PASS based on screening requirements and role fit.";
+  } else if (state === "READY") {
+    diagStage = "Dossier Delivery";
+    diagStatus = `Executive Dossier Ready (${decision || "Reviewed"})`;
     diagDetails =
-      row.rq_reason === 'SOURCE_NOT_JOB_DESCRIPTION'
-        ? 'Captured payload was flagged as non-job-description content.'
+      "Evaluation and executive memo dossier are complete and ready for executive review.";
+  } else if (state === "PREPARING") {
+    diagStage = "Dossier Composition";
+    diagStatus = "Composing Executive Memo";
+    diagDetails =
+      "Evaluation is complete; detailed memo presentation is being drafted and verified.";
+  } else if (state === "PROCESSING") {
+    diagStage = "Intelligence Worker";
+    diagStatus = "Analysis In Progress";
+    diagDetails =
+      "Worker is actively analyzing role requirements, candidate evidence, and context.";
+  } else if (state === "NEEDS_ATTENTION") {
+    diagStage = "Recovery / Attention";
+    diagStatus = "Attention Required";
+    diagDetails =
+      row.rq_reason === "SOURCE_NOT_JOB_DESCRIPTION"
+        ? "Captured payload was flagged as non-job-description content."
         : row.ej_error
           ? `Worker error: ${row.ej_error}`
-          : 'Processing encountered an unrecoverable state or validation failure.';
+          : "Processing encountered an unrecoverable state or validation failure.";
   }
 
   return {
@@ -381,7 +454,7 @@ export async function readScrapedJobDetail(
     applyUrl: row.canonical_url,
     postedAt: row.posted_at,
     capturedAt: row.captured_at,
-    description: row.raw_content || '',
+    description: row.raw_content || "",
     state,
     decision,
     attentionGate: {
@@ -399,7 +472,7 @@ export async function readScrapedJobDetail(
       status: diagStatus,
       details: diagDetails,
       recoveryReason: row.rq_reason,
-      error: row.ej_error,
+      error: row.ej_error || evidenceIssue,
     },
   };
 }

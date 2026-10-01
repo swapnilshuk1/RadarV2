@@ -26,11 +26,22 @@ export interface AttentionGateExplanation {
   readonly impact: "match" | "review" | "exclude";
 }
 
+export interface DecisionLedgerEvidence {
+  readonly id: string;
+  readonly text: string;
+  readonly state: "EXPLICIT" | "INFERRED";
+  readonly citations: Array<{ sourceId: string; quote: string }>;
+}
+
 export interface ScreeningDriverDetail {
   readonly id: string;
   readonly requirement: string;
   readonly strength: string;
   readonly status: string;
+  readonly screeningGate?: boolean;
+  readonly roleImportance?: string;
+  readonly roleEvidence?: DecisionLedgerEvidence[];
+  readonly candidateEvidence?: DecisionLedgerEvidence[];
   readonly reasoning?: string;
   readonly screeningReasoning?: string;
   readonly mappingReasoning?: string;
@@ -75,6 +86,8 @@ export interface ScrapedJobDetail {
     readonly rationale: string | null;
     readonly screeningDrivers: ScreeningDriverDetail[];
     readonly decisionHinges?: Array<{ requirementIds: string[]; resolutionFields?: string[] }>;
+    readonly screeningConstraint?: string;
+    readonly decisionConditions?: Array<{ subject: string; detail: string }>;
   } | null;
 
   readonly diagnostics: {

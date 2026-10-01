@@ -48,7 +48,7 @@ async function claimAndRun(): Promise<boolean> {
           updatedAt: manifest.updatedAt, recentActivities: manifest.recentActivities || [],
           locallyCapturedCount: manifest.cards?.filter((card: { handoffStatus?: string }) => card.handoffStatus).length || 0,
           pendingUploadCount: manifest.cards?.filter((card: { handoffStatus?: string }) => card.handoffStatus && card.handoffStatus !== "acknowledged").length || 0,
-          admittedCount: manifest.telemetry?.canonicalIngestSuccess || 0,
+          admittedCount: manifest.cards?.some((card: { handoffStatus?: string }) => card.handoffStatus) ? manifest.cards.filter((card: { handoffStatus?: string }) => card.handoffStatus === "acknowledged").length : manifest.telemetry?.canonicalIngestSuccess || 0,
           sources: manifest.sources || {}, portalHealth: manifest.portalHealth || {} } });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") console.error("Scrape telemetry publication failed");

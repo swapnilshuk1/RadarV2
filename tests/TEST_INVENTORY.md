@@ -387,6 +387,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/serving/sql_feed_parity.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 7 | 21 |
 | `tests/serving/sql_metrics_aggregation.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 8 | 58 |
 | `tests/serving/staged-rich-serving.test.ts` | Serving & Pagination | **KEEP** | Stage 3 | 17 | 89 |
+| `tests/serving/scraped-job-detail.test.ts` | Serving & Pagination | **KEEP** | Stage 3 | 11 | 65 |
 
 ## 4. Script Category Registry
 
