@@ -14,6 +14,10 @@
 
 import path from "path";
 import fs from "fs";
+import { assertAcquisitionHost } from "../src/acquisition/execution-role";
+import { ingestCapturedOpportunity } from "../src/acquisition/captured-ingestion";
+import { remoteAcquisitionOutbox } from "../src/acquisition/outbox";
+import { getBlobStore } from "../src/lib/storage/blob-store";
 import {
   CONFIG,
   DEFAULT_KEYWORDS,
@@ -89,7 +93,6 @@ import crypto from "crypto";
 import type { AuthContext } from "../src/lib/security/auth";
 import type { AuthorizedPersonScope } from "../src/lib/security/auth";
 import {
-  CanonicalIngestionService,
   type CanonicalIngestionResult,
   AcquisitionIntegrityError,
 } from "@/acquisition/ingestion-service";
@@ -401,6 +404,7 @@ function installSignalHandlers(): void {
 installSignalHandlers();
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
+  assertAcquisitionHost();
   if (opts.scope && opts.authContext && opts.scope.tenantId !== opts.authContext.tenantId) {
     throw new Error("SCRAPER_ACTOR_SCOPE_TENANT_MISMATCH");
   }
@@ -1049,6 +1053,9 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       // Phase 3: Execution
+      if (process.env.RADAR_ACQUISITION_INGRESS_URL && runScope && opts.scrapeLease) {
+        await remoteAcquisitionOutbox(getBlobStore({ enforceDistributed: true })).replayRun(mgr.runId, opts.scrapeLease);
+      }
       const persistenceState: PersistenceRunState = { unavailable: false };
       const failPendingUnitsForPersistence = () => {
         const reason = persistenceState.error || "Persistence retry budget exhausted";
@@ -1143,6 +1150,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             runtime.pageManagers.get(unit.portal),
             runtime.authSessions.get(unit.portal),
             persistenceState,
+            opts.scrapeLease,
           );
           if (outcome) {
             portalIngested += outcome.opportunities;
@@ -1606,6 +1614,7 @@ export async function processUnit(
   pageManager?: PageManager,
   authSession?: PortalAuthSession,
   persistenceState?: PersistenceRunState,
+  scrapeLease?: { owner: string; token: string },
 ): Promise<ProcessOutcome> {
   const outcome: ProcessOutcome = {
     status: "failed",
@@ -2698,8 +2707,7 @@ export async function processUnit(
             log(`[LocalOnly] Skipping CanonicalIngestionService for card ${feedCard.cardHash} (canonicalPersistenceEnabled=false)`, "info");
           } else {
             try {
-              const canonicalIngest = new CanonicalIngestionService();
-              const ingestRes = await withPersistenceBoundary("canonical ingestion", () => canonicalIngest.ingestOpportunity({
+              const ingestRes = await withPersistenceBoundary("canonical ingestion", () => ingestCapturedOpportunity({
                 sourcePortal: unit.portal,
                 sourceJobId: resolvedIdentity.sourceJobId,
                 canonicalUrl: resolvedIdentity.canonicalUrl,
@@ -2739,7 +2747,7 @@ export async function processUnit(
                 runId: mgr.runId,
               } : {
                 mode: "GLOBAL_MARKET" as const,
-              }));
+              }, scrapeLease));
               canonicalIngestionResult = ingestRes;
               detailedCard = bindEvaluationEvidence(detailedCard, {
                 canonicalJobId: ingestRes.canonicalJobId,

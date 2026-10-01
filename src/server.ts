@@ -67,6 +67,10 @@ export default {
     if (url.pathname === "/health/system") {
       return systemReadyResponse();
     }
+    if (url.pathname === "/api/acquisition/submit") {
+      const { acquisitionIngress } = await import("./acquisition/ingress");
+      return acquisitionIngress(request);
+    }
 
     // Invariant: Privileged webhooks are completely eliminated from the runtime.
     if (url.pathname.startsWith("/api/webhooks")) {

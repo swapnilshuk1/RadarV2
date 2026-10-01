@@ -7,6 +7,10 @@ import { getRepositories } from "../src/data/sqlite/provider";
 import { startRun } from "./scrape";
 import type { PortalName } from "./scraper/types";
 import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
+import { assertAcquisitionHost } from "../src/acquisition/execution-role";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { ARTIFACTS_DIR } from "./scraper/config";
 
 const WORKER_ID = `scrape-worker-${process.pid}-${randomUUID()}`;
 const LEASE_MS = 120_000;
@@ -28,6 +32,14 @@ async function claimAndRun(): Promise<boolean> {
   const heartbeat = async () => {
     if (heartbeatFailure) throw heartbeatFailure;
     await repos.scrapeRuns.heartbeatWorkerLease(claimedRun.id, WORKER_ID, leaseToken, LEASE_MS);
+    try {
+      const manifest = JSON.parse(await readFile(path.join(ARTIFACTS_DIR,"runs",claimedRun.id,"manifest.json"), "utf8"));
+      await repos.scrapeRuns.recordEvent(scope, claimedRun.id, { stage: manifest.status || "running", eventType: "run_progress",
+        payload: { opportunitiesFound: manifest.opportunitiesFound ?? manifest.cards?.length ?? 0,
+          sources: manifest.sources || {}, portalHealth: manifest.portalHealth || {} } });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") console.error("Scrape telemetry publication failed");
+    }
   };
   const timer = setInterval(() => {
     void heartbeat().catch((error) => {
@@ -75,6 +87,7 @@ async function claimAndRun(): Promise<boolean> {
 }
 
 async function run() {
+  assertAcquisitionHost();
   await startWorkerHeartbeat("scrape");
   let idleMs = 1_000;
   while (!stopping) {

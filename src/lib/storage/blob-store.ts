@@ -12,6 +12,8 @@
 
 import fs from "fs";
 import path from "path";
+import { randomUUID } from "node:crypto";
+import { OciObjectBlobStore, ociOptionsFromEnv } from "./oci-blob-store";
 
 export interface BlobMetadata {
   key: string;
@@ -21,6 +23,8 @@ export interface BlobMetadata {
 }
 
 export interface BlobStore {
+  readonly shared?: boolean;
+  readonly retainProcessingPayloads?: boolean;
   put(key: string, data: Buffer | Uint8Array | string, contentType?: string): Promise<string>;
   get(key: string): Promise<Buffer | null>;
   exists(key: string): Promise<boolean>;
@@ -138,7 +142,12 @@ export class LocalFsBlobStore implements BlobStore {
         `Artifact store capacity exceeded (projected ${projectedBytes}/${this.limits.maxBytes} bytes, ${projectedFiles}/${this.limits.maxFiles} files). Canonical Turso writes are unaffected.`
       );
     }
-    fs.writeFileSync(targetPath, buf);
+    const temporary = `${targetPath}.${randomUUID()}.tmp`;
+    try {
+      const fd = fs.openSync(temporary, "wx");
+      try { fs.writeFileSync(fd, buf); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+      fs.renameSync(temporary, targetPath);
+    } finally { if (fs.existsSync(temporary)) fs.unlinkSync(temporary); }
     return key;
   }
 
@@ -225,6 +234,7 @@ export class MemoryBlobStore implements BlobStore {
  * Lightweight S3 / R2 / MinIO compatible Blob Store using native fetch over standard REST API.
  */
 export class S3CompatibleBlobStore implements BlobStore {
+  readonly shared = true;
   private endpoint: string;
   private bucket: string;
 
@@ -329,10 +339,17 @@ export function resolveDeploymentMode(env: NodeJS.ProcessEnv = process.env): Dep
 
 export function describeBlobStoreConfiguration(env: NodeJS.ProcessEnv = process.env): {
   mode: DeploymentMode;
-  artifactBackend: "local_filesystem" | "s3_compatible";
+  artifactBackend: "local_filesystem" | "s3_compatible" | "oci_object_storage";
   artifactLimits: ArtifactStoreLimits | null;
 } {
   const mode = resolveDeploymentMode(env);
+  if (env.BLOB_STORAGE_PROVIDER && env.BLOB_STORAGE_PROVIDER !== "oci" && env.BLOB_STORAGE_PROVIDER !== "s3") {
+    throw new BlobStoreConfigurationError("Unsupported BLOB_STORAGE_PROVIDER");
+  }
+  if (env.BLOB_STORAGE_PROVIDER === "oci") {
+    ociOptionsFromEnv(env);
+    return { mode, artifactBackend: "oci_object_storage", artifactLimits: null };
+  }
   const hasRemoteConfiguration = Boolean(env.BLOB_STORAGE_ENDPOINT && env.BLOB_STORAGE_BUCKET);
   if (mode === "distributed" && !hasRemoteConfiguration) {
     throw new BlobStoreConfigurationError(
@@ -353,18 +370,27 @@ export function describeBlobStoreConfiguration(env: NodeJS.ProcessEnv = process.
  * queue is durable and globally visible.
  */
 export function supportsCrossHostEnrichment(env: NodeJS.ProcessEnv = process.env): boolean {
-  return describeBlobStoreConfiguration(env).artifactBackend === "s3_compatible";
+  return describeBlobStoreConfiguration(env).artifactBackend !== "local_filesystem";
 }
 
 let _globalBlobStore: BlobStore | null = null;
 
 export function getBlobStore(options?: { enforceDistributed?: boolean }): BlobStore {
+  if (options?.enforceDistributed) {
+    const config = describeBlobStoreConfiguration();
+    if (config.mode !== "distributed" || config.artifactBackend === "local_filesystem" ||
+        (_globalBlobStore && _globalBlobStore.shared !== true)) {
+      throw new BlobStoreConfigurationError("This caller requires a shared BlobStore in distributed mode.");
+    }
+  }
   if (!_globalBlobStore) {
     const config = describeBlobStoreConfiguration();
     if (options?.enforceDistributed && config.mode !== "distributed") {
       throw new BlobStoreConfigurationError("This caller requires distributed BlobStore mode, but RADAR_DEPLOYMENT_MODE is not 'distributed'.");
     }
-    if (config.artifactBackend === "s3_compatible") {
+    if (config.artifactBackend === "oci_object_storage") {
+      _globalBlobStore = new OciObjectBlobStore(ociOptionsFromEnv());
+    } else if (config.artifactBackend === "s3_compatible") {
       _globalBlobStore = new S3CompatibleBlobStore();
     } else {
       _globalBlobStore = new LocalFsBlobStore(undefined, config.artifactLimits || resolveArtifactStoreLimits());

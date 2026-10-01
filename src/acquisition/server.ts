@@ -183,8 +183,18 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
       const { TenantIsolationError } = await import("@/lib/security/auth");
       throw new TenantIsolationError(`Scrape run '${runId}' not found or unauthorized for current tenant/person.`);
     }
-    const { readLocalRunEvents } = await import("./local-artifacts.server");
-    const { events, nextIndex, manifest, summary } = readLocalRunEvents(runId, afterIndex);
+    const remote = process.env.RADAR_RUNTIME_ROLE === "processing";
+    const durableEvents = remote ? await getRepositories().scrapeRuns.listEvents(scope,runId) : [];
+    const latestTelemetry = [...durableEvents].reverse().find(e => e.eventType === "run_progress");
+    const telemetry = latestTelemetry ? JSON.parse(latestTelemetry.payloadJson) : {};
+    const local = remote ? {
+      events: durableEvents.filter(e => e.id > afterIndex).map(e => ({ ...JSON.parse(e.payloadJson), type: e.eventType, ts: e.createdAt })),
+      nextIndex: durableEvents.at(-1)?.id || afterIndex,
+      manifest: { status: scopedRun.status, portalHealth: telemetry.portalHealth || {} },
+      summary: { portalsCompleted: Object.values(telemetry.sources || {}).filter(s => s === "completed").length,
+        cardsFound: Math.max(scopedRun.totalDiscovered, telemetry.opportunitiesFound || 0), extracted: 0 },
+    } : (await import("./local-artifacts.server")).readLocalRunEvents(runId, afterIndex);
+    const { events, nextIndex, manifest, summary } = local;
 
     // Load active enrichment stats from canonical Turso operational queue
     let enrichmentStats: any = null;
@@ -193,7 +203,7 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
       const { EnrichmentQueue } = await import("../../scripts/scraper/persist/queue");
       const queue = new EnrichmentQueue();
       enrichmentStats = await queue.getRunStats(runId);
-      if (enrichmentStats && enrichmentStats.total > 0 && (enrichmentStats.pending + enrichmentStats.processing > 0)) {
+      if (enrichmentStats && enrichmentStats.total > 0 && (enrichmentStats.pending + enrichmentStats.leased + enrichmentStats.enriching + enrichmentStats.retry > 0)) {
         isEnriching = true;
       }
     } catch (err: any) {
@@ -217,7 +227,11 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
 
 async function canonicalProgress(run: import("@/data/sqlite/repositories/SqliteScrapeRunStore").ScrapeRun) {
   const { buildCanonicalRunData } = await import("./local-artifacts.server");
-  const disk = buildCanonicalRunData(run.id);
+  const durableEvents = process.env.RADAR_RUNTIME_ROLE === "processing"
+    ? await getRepositories().scrapeRuns.listEvents({ tenantId: run.tenantId, personId: run.personId },run.id) : [];
+  const latestTelemetry = [...durableEvents].reverse().find(e => e.eventType === "run_progress");
+  const disk = process.env.RADAR_RUNTIME_ROLE === "processing"
+    ? (latestTelemetry ? JSON.parse(latestTelemetry.payloadJson) : null) : buildCanonicalRunData(run.id);
   const db = getDatabaseAdapter();
   const { EnrichmentQueue } = await import("../../scripts/scraper/persist/queue");
   const enrichment = await new EnrichmentQueue().getRunStats(run.id);
@@ -318,6 +332,8 @@ export const confirmScrapeFn = createServerFn({ method: "POST" })
 
     await repos.scrapeRuns.updateRunStatus(scope, data.runId, "running");
 
+    if (process.env.RADAR_RUNTIME_ROLE === "processing") return { success: true };
+
     const { confirmLocalScrapeState } = await import("./local-artifacts.server");
     return confirmLocalScrapeState(data.runId);
   });
@@ -342,6 +358,7 @@ export const abortScrapeFn = createServerFn({ method: "POST" })
     const cancel = dbRun.status === "queued" || dbRun.status === "stopping";
     const changed = await repos.scrapeRuns.updateRunStatus(scope, data.runId, cancel ? "aborted" : "stopping");
     if (!changed) return { success: true, status: dbRun.status };
+    if (process.env.RADAR_RUNTIME_ROLE === "processing") return { success: true, status: cancel ? "aborted" : "stopping" };
     const { abortScrapeState } = await import("./local-artifacts.server");
     return abortScrapeState(data.runId, cancel);
   });

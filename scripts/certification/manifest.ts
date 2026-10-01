@@ -33,6 +33,8 @@ export const certificationManifest = [
       "tests/persistence/cross-instance-payload-retrieval.test.ts",
       "tests/persistence/distributed-lease-contention.test.ts",
       "tests/persistence/blob-store-connectivity.test.ts",
+      "tests/persistence/oci-blob-store.test.ts",
+      "tests/acquisition/oci-handoff.test.ts",
       "tests/scraper/acquisition-variant-contract.test.ts",
     ],
   },

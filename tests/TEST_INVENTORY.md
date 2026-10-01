@@ -1,5 +1,6 @@
 # RADAR v2 — Permanent Test Architecture Map & Inventory
 
+
 This document defines the authoritative test domains, invariant contracts, certification stage mappings, and full mechanical test registry for the RADAR v2 Executive Intelligence Engine.
 
 ---
@@ -210,6 +211,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/acquisition/post-gate3-acquisition-integrity.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 72 | 220 |
 | `tests/acquisition/reset-corpus-fail-closed.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 14 |
 | `tests/acquisition/scoped-ingestion.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 6 | 30 |
+| `tests/acquisition/oci-handoff.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 7 | 20 |
 | `tests/acquisition/source-payload-provenance.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 9 | 42 |
 | `tests/certification/certification-gate-integrity.test.ts` | Certification Integrity | **KEEP** | Full Suite | 7 | 26 |
 | `tests/certification/journey_c_decision_persistence_to_dto.test.ts` | Certification Integrity | **KEEP** | Full Suite | 1 | 9 |
@@ -272,6 +274,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/persistence/active_pointer_precedence.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 1 | 3 |
 | `tests/persistence/adapter-contracts.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 10 |
 | `tests/persistence/blob-store-connectivity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 7 | 32 |
+| `tests/persistence/oci-blob-store.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 9 | 20 |
 | `tests/persistence/cross-instance-payload-retrieval.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 2 | 15 |
 | `tests/persistence/database-safety.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 9 | 15 |
 | `tests/persistence/deployment-determinism.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 9 | 35 |

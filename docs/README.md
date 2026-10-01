@@ -7,6 +7,7 @@ This directory contains current guidance only.
 | [Product mission](PRODUCT_MISSION.md)                                  | Executive dossier outcome and non-negotiable product requirements             |
 | [Architecture](ARCHITECTURE.md)                                        | Code map, evidence, identities, semantic stages, persistence and serving      |
 | [Production integration](PRODUCTION_INTEGRATION.md)                    | Current versions, worker commands, Pursuit model configuration and compatibility limits |
+| [OCI storage](OCI_STORAGE.md) | Native provider, authenticated acquisition handoff, verification and transfer procedures |
 | [Backfill runbook](operations/CONTEXT_REEVALUATION_DOSSIER_RUNBOOK.md) | Population accounting, recovery, reviewed dossiers and activation             |
 | [Verification and release](VERIFICATION_AND_RELEASE.md)                | Incremental verification, final certification and pre-production deployment   |
 | [Deployment guide](../DEPLOYMENT.md)                                   | Target-specific deployment and activation verification                        |
