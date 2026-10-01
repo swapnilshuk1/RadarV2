@@ -11,6 +11,7 @@ import { assertAcquisitionHost } from "../src/acquisition/execution-role";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ARTIFACTS_DIR } from "./scraper/config";
+import { getBlobStore } from "../src/lib/storage/blob-store";
 
 const WORKER_ID = `scrape-worker-${process.pid}-${randomUUID()}`;
 const LEASE_MS = 120_000;
@@ -88,6 +89,11 @@ async function claimAndRun(): Promise<boolean> {
 
 async function run() {
   assertAcquisitionHost();
+  if (process.env.RADAR_DEPLOYMENT_MODE === "distributed") {
+    const health = await getBlobStore({enforceDistributed:true}).healthCheck();
+    if (!health.ok) throw new Error(`ACQUISITION_STORAGE_UNAVAILABLE: ${health.error}`);
+    console.info(`[scrape-worker] Shared storage verified (${health.backend})`);
+  }
   await startWorkerHeartbeat("scrape");
   let idleMs = 1_000;
   while (!stopping) {
