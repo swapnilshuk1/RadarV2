@@ -16,7 +16,8 @@ const missing: Array<{ key: string; categories: string[] }> = [];
 const unbackedVersions = Number((await database.one<{n:number}>("SELECT COUNT(*) AS n FROM opportunity_versions WHERE source_payload_key IS NULL OR source_payload_key=''"))?.n || 0);
 let verified = 0;
 try {
- await store.healthCheck();
+ const health=await store.healthCheck();
+ if(!health.ok) throw new Error(`OCI readiness probe failed: ${health.error}`);
  for (const [key, categories] of keys) {
   // GET validates persisted checksums, not merely the existence of a named object.
   if (await store.get(key) === null) missing.push({ key, categories });

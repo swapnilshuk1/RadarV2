@@ -36,7 +36,7 @@ and deletion only for the reserved `_health*` names. It grants no object overwri
 canonical object deletion or bucket administration. The policy follows Oracle's
 [object-level IAM conditions](https://docs.oracle.com/en-us/iaas/Content/Identity/Reference/objectstoragepolicyreference.htm).
 
-Enrichment checks storage health before claiming work. A processing host requires
+Acquisition and enrichment check storage health before claiming work. A processing host requires
 a shared store even if a prior caller already initialized the singleton. Startup
 health uses a unique synthetic object and needs create/read/delete rights in its
 health prefix; those rights should not imply permission to delete canonical sources.
@@ -58,33 +58,52 @@ membership revocation or person authorization. Configure the exact owner explici
 Use one designated local acquisition device; this release does not implement
 portal-account scheduling across multiple acquisition devices.
 
-## Rollout evidence — 1 October 2026
+## Current rollout — 2 October 2026
 
-All nine repository certification stages passed (616 tests passed, one skipped),
-including the production SSR bundle and strict release TypeScript check. The
-additional scraper TypeScript configuration still reports five existing type
-errors in `tests/fixtures/staged-rich-dossier.ts`; it must not be described as
-passing. The new operational scripts passed ESLint.
+The owner-authorized reset discarded 380 opportunity versions, 12 saved decisions
+and their disposable lineage. All 52 protected tables retained identical content;
+foreign-key checks and source-immutability triggers passed. The 97 missing legacy
+snapshots are recorded in the private discarded-version audit, rather than bound
+to synthetic replacements. Candidate documents/source text, profile configuration,
+search intent and canonical portal identities remain available.
 
-The laptop's private-bucket upload and Oracle byte-hash readback passed. The exact
-Oracle VM has a provisioned instance-principal dynamic group/policy; its own
-identity successfully created, read and deleted a unique synthetic health object.
-No local API private key was installed on Oracle.
+The laptop and Oracle now use distributed OCI storage and authenticated ingress.
+Oracle reads with the exact VM's instance principal; the laptop API private key
+was not installed on Oracle. Laptop development starts web/acquisition only;
+Oracle starts processing/serving and no portal scraper.
 
-Four referenced local payloads were copied with original keys and exact-byte
-readback verification; originals and database references were retained. The
-current database has 99 distinct canonical-source/active-processing references:
-two are verified in OCI, and 97 canonical source snapshots are missing. No active
-processing payload is missing from OCI. The older Oracle deployment's 47 blobs
-contained none of those missing canonical keys.
+The deployed application release is `fc978794664103fde9f91a3f88313f21432e1553`.
+Its full certification passed all nine stages (618 tests passed, one skipped),
+including the production SSR build and strict release TypeScript verification.
+The reset utility's additional nine focused tests passed. The separate scraper
+TypeScript configuration retains five existing fixture type errors. A supplemental
+acquisition/scraper run passed 113 tests and failed one attention-gate fixture
+expectation; that supplemental suite is not a clean pass.
 
-Run `scripts/storage/check-oci-readiness.ts` with the OCI configuration to verify
-the current database's complete required set. It returns a failure status while
-required objects are absent. Inventing replacement bytes under old immutable
-source keys would corrupt provenance; recover original artifacts or explicitly
-record source unavailability before a coordinated cutover. The live application
-has not been switched to distributed mode. Authenticated ingress deployment,
-device-owner binding and a real portal-to-reviewed-memo proof remain outstanding.
+Real LinkedIn captures crossed authenticated ingress automatically. Oracle
+enriched and evaluated them using the preserved candidate and acquired company
+context. The Head of Marketing opportunity at IAM Institute of Hotel Management
+completed composition and Gemini factual review, and its rich CONSIDER Template B
+memo was inspected in the Oracle UI, including candidate evidence links and
+explicit/inferred cues. PASS evaluations retained their decisions without dossiers.
+Model invocation records contain actual provider token usage for evaluation,
+composition and factual review.
+
+Worker restart automatically replayed retained outbox entries after an ingress
+deployment failure. Oracle's stop control stopped the laptop at a safe checkpoint;
+the corrected path persisted terminal `aborted` status and discovery metrics.
+Historical failed-capture observations remain auditable; a terminal run's remaining
+unadmitted entries are retained and cannot bypass its expired/stopped lease.
+
+Run `scripts/storage/check-oci-readiness.ts` to check every current source and active
+processing reference. NULL source keys, missing objects, failed health probes and
+checksum errors fail readiness. Usable text versions bind the verified JSON source
+snapshot at admission; unusable text is rejected before canonical admission.
+
+The OCI SDK uses its own Node HTTPS transport and loads its CommonJS modules at
+runtime. This avoids the scraper's Undici/native-Fetch header incompatibility and
+the SSR bundler's callable `node-fetch` export conversion. Deployment verification
+must exercise the built server's BlobStore as well as worker/source CLI probes.
 
 ## Owner-authorized pre-production corpus reset
 
