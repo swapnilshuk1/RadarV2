@@ -656,8 +656,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     }>(
       `SELECT 
          COUNT(*) AS total_screened,
-         COUNT(CASE WHEN spc.eligibility = 'ELIGIBLE' AND me.evaluation_state = 'STAGED_EVALUATED' AND me.decision = 'PURSUE' AND me.quality_score IS NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_pursue,
-         COUNT(CASE WHEN spc.eligibility = 'ELIGIBLE' AND me.evaluation_state = 'STAGED_EVALUATED' AND me.decision = 'CONSIDER' AND me.quality_score IS NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_consider,
+         COUNT(CASE WHEN me.evaluation_state = 'STAGED_EVALUATED' AND me.decision = 'PURSUE' AND me.quality_score IS NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_pursue,
+         COUNT(CASE WHEN me.evaluation_state = 'STAGED_EVALUATED' AND me.decision = 'CONSIDER' AND me.quality_score IS NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_consider,
          COUNT(CASE WHEN me.evaluation_state = 'SPARSE_SPEC' THEN 1 END) AS engine_sparse,
          COUNT(CASE WHEN me.evaluation_state = 'STAGED_EVALUATED' AND me.decision = 'PASS' AND me.quality_score IS NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_pass,
          COUNT(CASE WHEN me.evaluation_state = 'STAGED_EVALUATED' AND me.decision IN ('PURSUE', 'CONSIDER', 'PASS') AND me.quality_score IS NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS evaluated,
