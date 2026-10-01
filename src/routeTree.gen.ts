@@ -17,6 +17,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DecisionsRouteImport } from './routes/decisions'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ScrapedJobHashRouteImport } from './routes/scraped_.$jobHash'
 import { Route as PursuitJobHashRouteImport } from './routes/pursuit.$jobHash'
 import { Route as OpportunityJobHashRouteImport } from './routes/opportunity.$jobHash'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
@@ -63,6 +64,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScrapedJobHashRoute = ScrapedJobHashRouteImport.update({
+  id: '/scraped_/$jobHash',
+  path: '/scraped/$jobHash',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PursuitJobHashRoute = PursuitJobHashRouteImport.update({
   id: '/pursuit/$jobHash',
   path: '/pursuit/$jobHash',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/welcome': typeof WelcomeRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/pursuit/$jobHash': typeof PursuitJobHashRoute
+  '/scraped/$jobHash': typeof ScrapedJobHashRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/welcome': typeof WelcomeRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/pursuit/$jobHash': typeof PursuitJobHashRoute
+  '/scraped/$jobHash': typeof ScrapedJobHashRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/welcome': typeof WelcomeRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/pursuit/$jobHash': typeof PursuitJobHashRoute
+  '/scraped_/$jobHash': typeof ScrapedJobHashRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/opportunity/$jobHash'
     | '/pursuit/$jobHash'
+    | '/scraped/$jobHash'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/opportunity/$jobHash'
     | '/pursuit/$jobHash'
+    | '/scraped/$jobHash'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/opportunity/$jobHash'
     | '/pursuit/$jobHash'
+    | '/scraped_/$jobHash'
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
@@ -194,6 +206,7 @@ export interface RootRouteChildren {
   WelcomeRoute: typeof WelcomeRoute
   OpportunityJobHashRoute: typeof OpportunityJobHashRoute
   PursuitJobHashRoute: typeof PursuitJobHashRoute
+  ScrapedJobHashRoute: typeof ScrapedJobHashRoute
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
   ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
@@ -257,6 +270,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scraped_/$jobHash': {
+      id: '/scraped_/$jobHash'
+      path: '/scraped/$jobHash'
+      fullPath: '/scraped/$jobHash'
+      preLoaderRoute: typeof ScrapedJobHashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pursuit/$jobHash': {
       id: '/pursuit/$jobHash'
       path: '/pursuit/$jobHash'
@@ -306,6 +326,7 @@ const rootRouteChildren: RootRouteChildren = {
   WelcomeRoute: WelcomeRoute,
   OpportunityJobHashRoute: OpportunityJobHashRoute,
   PursuitJobHashRoute: PursuitJobHashRoute,
+  ScrapedJobHashRoute: ScrapedJobHashRoute,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
   ApiAuthGoogleRoute: ApiAuthGoogleRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
