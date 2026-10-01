@@ -10,6 +10,10 @@ Start with the [documentation index](docs/README.md),
 [first-scrape runbook](docs/operations/CONTEXT_REEVALUATION_DOSSIER_RUNBOOK.md) and
 [deployment guide](DEPLOYMENT.md) for implementation and operational details.
 
+Successful CI for a push to `main` automatically deploys the certified commit to
+Oracle. Failed CI keeps the current release running; manual certified-SHA retry
+and rollback remain available in **Actions → Deploy Oracle**.
+
 ## Workspace
 
 Use `main` as the integration baseline. Create short-lived branches or worktrees for

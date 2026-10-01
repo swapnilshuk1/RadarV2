@@ -1,6 +1,6 @@
 # RADAR deployment and release verification
 
-Current guide as of 19 September 2026. The primary checkout is
+Current guide as of 2 October 2026. The primary checkout is
 `C:\Users\swapn\Downloads\Radar V2` on `main`. See the
 [architecture](docs/ARCHITECTURE.md) and [backfill runbook](docs/operations/CONTEXT_REEVALUATION_DOSSIER_RUNBOOK.md).
 Use this guide for release preparation and verification. RADAR is currently
@@ -48,15 +48,32 @@ During development, validate only the behavior invalidated by the change. Do not
 run TypeScript/build/full certification as a ritual after each correction. On the
 final release candidate, run the authoritative certification once; it already
 contains TypeScript and the production build. CI packages `.output` for its exact
-commit SHA. Pushing `main` runs CI; it does not deploy or activate serving.
+commit SHA. Pushing `main` runs CI and automatically deploys that exact artifact
+to Oracle when CI succeeds. Failed CI leaves the deployed release unchanged.
+
+## Automatic main deployment
+
+The CI completion event triggers **Deploy Oracle** for successful `push` runs on
+`main` in this repository. It uses the triggering run's SHA and retained artifact,
+not a newly rebuilt checkout. PRs, forks, failed CI and other branches cannot
+deploy. Deployment is serialized; superseded main commits are skipped before
+activation so a late CI completion does not deploy an older main revision.
+If a newer main push fails CI, the last healthy deployed release remains running.
+
+No Oracle webhook endpoint, inbound port or server-side Git checkout is needed.
+GitHub Actions uses the existing Oracle environment's SSH credentials and host
+key verification. After migration and process replacement, exact-SHA readiness
+and smoke checks run; failed activation attempts restore the previous verified
+release. Runtime secrets and the laptop's browser profiles remain external.
+The automatic trigger must be on GitHub's default `main` branch to be active.
 
 ## Deploy a selected certified commit to Oracle
 
 In GitHub, open **Actions → Deploy Oracle → Run workflow** on `main` and click
 **Run workflow**. Leave SHA blank to deploy the latest green `main` CI run, or
 enter a full 40-character SHA when selecting an older certified release. This is
-the normal deployment procedure: no local SSH, terminal preflight, rebuild or
-recertification is needed. The workflow has no push trigger. It accepts only a
+the manual retry/rollback path: no local SSH, terminal preflight, rebuild or
+recertification is needed. It accepts only a
 commit on `main` with a successful CI run and an unexpired release artifact. The
 equivalent CLI commands are:
 
@@ -138,9 +155,11 @@ locally do not establish production access or quota. Keep credentials outside Gi
 and release archives.
 
 `scripts/deploy.ts` and older deployment helpers can perform live writes and
-restarts. Their presence is not authorization to execute them. Production server,
-database and process changes require explicit approval after local proof. Do not
-deploy simply to complete a code cleanup or documentation update.
+restarts. The owner-authorized automatic main workflow is the normal release path:
+a successful certified main push authorizes its deployment to the configured
+Oracle target. Manual certified-SHA workflow dispatch remains available for
+retries and rollback. This does not authorize deploying to another server or
+database, rewriting immutable data, or running unrelated destructive helpers.
 
 ## Verify before activation
 
