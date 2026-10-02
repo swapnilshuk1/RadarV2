@@ -49,6 +49,7 @@
     "worker:documents": "tsx scripts/process-document-jobs.ts",
     "worker:scrape": "tsx scripts/run-scrape-worker.ts",
     "worker:corpus": "tsx scripts/run-corpus-regeneration-worker.ts",
+    "worker:admin-bench": "tsx scripts/run-admin-bench-worker.ts",
     "worker:pursuit": "tsx scripts/run-pursuit-preparation-worker.ts",
     "worker:enrichment": "tsx scripts/enrich.ts",
     "worker:evaluations": "tsx scripts/run-evaluation-worker.ts",

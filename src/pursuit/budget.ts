@@ -81,6 +81,7 @@ export class PursuitTokenLedger {
  * two pursuits may derive concurrently in the same worker process.
  */
 export interface PursuitModelContext {
+  configuredModels?: import("./model").PursuitModel[];
   /** Records each provider call for cost and latency observability. */
   invocationSink?: ModelInvocationSink;
   /** Enforces the per-package token ceiling. */

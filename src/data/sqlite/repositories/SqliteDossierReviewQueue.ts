@@ -1,3 +1,4 @@
+import { pinJobConfig } from "../../../admin/config-store";
 import { randomUUID } from "node:crypto";
 import { reserveClaim, deferralFilter, renewReservation } from "../../../admin/protection";
 import type { DatabaseAdapter } from "@/data/database";
@@ -118,19 +119,22 @@ export class SqliteDossierReviewQueue {
     const draft = validateDraft(value, identity, fp),
       key = params(identity, fp),
       now = this.now();
-    await this.db.execute(
-      `INSERT INTO dossier_review_jobs(id,tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,evaluation_fingerprint,recipe,profile_version,draft_json,draft_fingerprint,status,next_attempt_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,'pending',?,?,?) ON CONFLICT DO NOTHING`,
-      [
-        reviewFingerprint(key),
-        ...key,
-        identity.profileVersion,
-        JSON.stringify(draft),
-        reviewFingerprint(draft),
-        now,
-        now,
-        now,
-      ],
-    );
+    await this.db.transaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO dossier_review_jobs(id,tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,evaluation_fingerprint,recipe,profile_version,draft_json,draft_fingerprint,status,next_attempt_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,'pending',?,?,?) ON CONFLICT DO NOTHING`,
+        [
+          reviewFingerprint(key),
+          ...key,
+          identity.profileVersion,
+          JSON.stringify(draft),
+          reviewFingerprint(draft),
+          now,
+          now,
+          now,
+        ],
+      );
+      await pinJobConfig(tx, "factual_review", reviewFingerprint(key), identity.tenantId);
+    });
   }
   async claim(): Promise<ReviewJob | null> {
     const now = this.now(),

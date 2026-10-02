@@ -63,7 +63,23 @@ export class TursoAdapter implements DatabaseAdapter {
   async transaction<T>(fn: (tx: DatabaseAdapter) => Promise<T>): Promise<T> {
     await this.ready;
     return this.serialized(async () => {
-      const tx = await this.client.transaction("write");
+      // The local libSQL transaction API detaches its connection on every
+      // claim, leaving native handles for GC. Keep one local connection instead;
+      // file-level serialization permits an explicit transaction on that client.
+      // Remote clients retain their normal transaction/stream lifecycle.
+      if (this.localKey) await this.client.execute("BEGIN IMMEDIATE");
+      const tx = this.localKey
+        ? {
+            execute: this.client.execute.bind(this.client),
+            commit: async () => {
+              await this.client.execute("COMMIT");
+            },
+            rollback: async () => {
+              await this.client.execute("ROLLBACK");
+            },
+            close: () => {},
+          }
+        : await this.client.transaction("write");
       const adapterTx: DatabaseAdapter = {
         one: async <R>(sql: string, params: QueryParams = []): Promise<R | null> => {
           const res = await tx.execute({ sql, args: params as any[] });

@@ -325,7 +325,7 @@ Scraped routes. Decision-log regressions are included in release certification.
 
 ## Administration foundations
 
-`src/admin` and `/admin` provide the Phase 1 visibility and Phase 2 protection console.
+`src/admin` and `/admin` provide Phase 1 visibility, Phase 2 protection and Phase 3 narrow configuration writes.
 Migration 072 separates platform roles and append-only audit from tenant
 memberships, and adds idempotent usage rollups. See
 [Administration](ADMINISTRATION.md). Migration 073 adds tenant quotas, expiring
@@ -340,3 +340,23 @@ measured usage after completion. No policy is activated automatically. Deferrals
 are operational state, not opportunity verdicts; existing source identity, engine
 semantics and memo publication rules are preserved. See the administration runbook
 for activation boundaries, conservative input admission and unknown usage.
+
+Migration 075 pins an immutable effective engine revision to each model-backed
+queue job at enqueue. `config-store` owns draft, publish and revert-as-new-draft
+behavior; `model-gateway` resolves the two configured lanes from the pinned row.
+The baseline keeps existing host factories. Explicit Mantle assignments bind
+model and request configuration with no vendor fallback. Candidate intent, stage
+order and source integrity stay in their current domain implementations.
+
+`BenchWorker` processes scoped, leased synthetic fixture runs independently of
+acquisition. It invokes the real evaluator and reviewed Template B composer,
+without canonical or serving writes. Per-dispatch admission reservations retain
+unknown spend. Invocation receipts tagged BENCH are excluded from tenant usage
+and quota accounting. Exact draft/active matching and result validation prevent
+stale or unsafe publish. See Administration for operating limits and exclusions.
+
+Local libSQL transactions use BEGIN IMMEDIATE/COMMIT on the retained client
+connection under the per-file coordinator. The upstream local transaction API
+detaches its native connection per transaction; avoiding that churn prevents the
+observed Windows shutdown access violation and keeps connection PRAGMAs effective.
+Remote Turso transactions continue to use the provider transaction API.

@@ -191,18 +191,23 @@ describe("Administration protection", () => {
     import {reserveClaim} from ${JSON.stringify(pathToFileURL(join(process.cwd(), "src/admin/protection.ts")).href)};
     const a=new TursoAdapter(process.argv[2],''),b=new TursoAdapter(process.argv[2],'');
     await Promise.all([a.one('SELECT 1'),b.one('SELECT 1')]);
-    const results=await Promise.allSettled(Array.from({length:32},(_,i)=>[a,b][i%2].transaction(tx=>reserveClaim(tx,{pipeline:'evaluation',id:String(i),tenant:'tenant_A',token:'lease',leaseUntil:Date.now()+60000}))));
+    const results=[];
+    for(let round=0;round<8;round++)results.push(...await Promise.allSettled(Array.from({length:32},(_,i)=>[a,b][i%2].transaction(tx=>reserveClaim(tx,{pipeline:'evaluation',id:String(round*32+i),tenant:'tenant_A',token:'lease',leaseUntil:Date.now()+60000})))));
     console.log(JSON.stringify({accepted:results.filter(r=>r.status==='fulfilled'&&r.value).length,rejected:results.filter(r=>r.status==='rejected').length}));
     await a.close();await b.close();`,
     );
-    const output = await promisify(execFile)(process.execPath, ["--import", "tsx", helper, url], {
-      cwd: process.cwd(),
-      timeout: 60000,
-    }).catch((error) => {
-      throw new Error(`Local stress child failed: ${error.code}\n${error.stderr}\n${error.stdout}`);
-    });
-    expect(JSON.parse(output.stdout.trim())).toEqual({ accepted: 3, rejected: 0 });
-  });
+    for (let cycle = 0; cycle < 3; cycle++) {
+      const output = await promisify(execFile)(process.execPath, ["--import", "tsx", helper, url], {
+        cwd: process.cwd(),
+        timeout: 60000,
+      }).catch((error) => {
+        throw new Error(
+          `Local stress child failed: ${error.code}\n${error.stderr}\n${error.stdout}`,
+        );
+      });
+      expect(JSON.parse(output.stdout.trim())).toEqual({ accepted: 3, rejected: 0 });
+    }
+  }, 60000);
   it("rejects unproved legacy calls when a quota policy exists", async () => {
     const db = await fixture();
     await setQuota(db);

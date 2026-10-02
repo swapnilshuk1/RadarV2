@@ -1,10 +1,10 @@
-# Administration — Phases 1 and 2
+# Administration — Phases 1–3
 
 The `/admin` console is isolated on `codex/admin-phase-1`. It is not deployed on
 main. The console provides platform authorization, visibility and opt-in protection.
-Gate meaning, model assignments, acquisition evidence and memo content are preserved.
+Gate meaning, acquisition evidence and existing memo content are preserved. Phase 3 adds explicit model assignments for future work.
 
-Apply migrations 072–074 through the normal migration runner before using this branch.
+Apply migrations 072–075 through the normal migration runner before using this branch.
 Platform access comes from `platform_roles`, never tenant memberships. An existing
 user can be granted `operator` or read-only `viewer` access by a trusted host
 operator. No user receives platform access automatically. Revocation takes effect
@@ -30,14 +30,14 @@ Repeated runs do not double count. This branch does not install a scheduler or
 start additional workers. The UI flags rollups older than two hours as stale.
 Windows are UTC calendar days, not rolling hours. Unknown token measurements
 remain unavailable. Recorded invalid outputs measure invocation status, not the
-semantic quality of the resulting decision. No bench runs exist yet.
+semantic quality of the resulting decision. BENCH invocations are retained but excluded from tenant usage rollups.
 
-Overview, Models (observed usage) and Audit are read-only. Operations and
-Tenants & Quotas expose operator-only protection writes.
+Overview and Audit are read-only. Operations and Tenants & Quotas expose
+operator-only protection writes; Engine and Models expose configuration drafts
+and fixture benches.
 Engine shows the fixed stage order and each stage's inputs, decisions, continuation
-and stop conditions. REVIEW continues to evaluation. Model assignments,
-config revisions, test benches and taxonomy edits are future phases; no disabled
-control implies they are implemented. DAU/WAU/MAU, p95 latency and active config
+and stop conditions. REVIEW continues to evaluation. Configuration revisions and fixture benches are implemented below. Taxonomy
+edits remain Phase 4; no disabled control implies they are implemented. DAU/WAU/MAU, p95 latency and active config
 revision are unavailable until the necessary instrumentation exists. Membership
 counts are not active-user counts. Worker observations are global, so a selected
 tenant view omits them instead of falsely attributing hosts to that tenant.
@@ -131,7 +131,10 @@ operator activation are separate release steps.
 
 
 Local SQLite/libSQL operations sharing an event loop are serialized per connection
-or file; cross-process file locks still enforce atomicity. Remote Turso retains
+or file; local libSQL keeps a retained connection with explicit BEGIN IMMEDIATE,
+COMMIT and ROLLBACK rather than detaching a native connection for each claim.
+This preserves its busy-timeout setting and avoids native handle churn on Windows
+shutdown. Cross-process file locks still enforce atomicity. Remote Turso retains
 its normal transaction behavior. This prevents a synchronous busy wait from
 blocking the async commit that would release its own lock. Transaction callbacks
 must use their supplied transaction adapter. Reservations shown in the console
@@ -144,7 +147,8 @@ existing lease, wrong-job receipts, duplicate settlement, unknown/malformed
 usage, invalid-output holds within a running lease, reviewed retry counts,
 month boundaries, quota edits preserving holds and tenant isolation. Stress
 cases race 32 claims on a shared SQLite connection and across two local libSQL
-adapters, race independent worker processes, and compete for model-call
+adapters over three connection-open/close cycles (768 total local libSQL claim
+attempts), race independent worker processes, and compete for model-call
 capacity over 256 attempts. The console test verifies that lease tokens are
 absent from viewer responses. These use real local databases and simulated
 provider receipts; they do not constitute an Oracle or live-provider load test.
@@ -152,3 +156,93 @@ provider receipts; they do not constitute an Oracle or live-provider load test.
 Run the focused suite with `npx vitest run tests/security/admin-protection.test.ts`
 and the release candidate with `npm run certify`. Migration 074 is additive;
 previously applied migration 073 remains unchanged.
+
+## Phase 3: narrow engine changes
+
+Migration 075 adds immutable `config_revisions`, active and draft pointers,
+bench runs and pinned revision columns on evaluation, composition, review and
+pursuit jobs. Migration-time work retains `engine-baseline-v1`. New jobs pin
+the effective revision in the enqueue transaction; retries cannot change it.
+Claim-time pinning handles jobs inserted by an older enqueuer after migration.
+The baseline preserves existing host model settings, including the current
+separate writer/reviewer assignments and declared pursuit fallback chain.
+Host environment changes remain outside that legacy snapshot; keep those
+settings stable while baseline jobs are outstanding. Explicit assignments bind
+exact model IDs, adapter configuration and the fixed credential reference.
+
+The editable surface is eight tunables: concurrency, timeout and output ceiling
+for each of the two lanes, plus pursuit package input/output budgets. Model
+choices start with the existing Mantle adapters for `zai.glm-5` and
+`deepseek.v3.2`, not untested provider integrations. Reasoning serves evidence
+and evaluation; Writing serves composition, factual review and model-assisted
+pursuit. Explicit assignments have no vendor fallback. Existing host assignments
+keep their host limits; select an explicit model before editing lane limits.
+Credentials stay on the worker host in its existing
+`BEDROCK_MANTLE_API_KEY` reference. The console never receives a secret value.
+Connection health is not inferred from usage or model selection.
+
+Lane concurrency ranges from 1–8 provider calls per process/configuration,
+timeouts from 30–180 seconds and output ceilings from 4,096–16,384 tokens per
+call. Stage-specific ceilings may be smaller. Pursuit package budgets range
+from 10,000–100,000 input and 3,000–20,000 output tokens. Package accounting
+uses the existing per-attempt pursuit ledger; persistent pre-dispatch enforcement
+remains the tenant job quota guard. These settings never raise a tenant quota.
+Candidate search intent, attention semantics, stage order and integrity rules
+are not editable in Phase 3.
+
+Platform defaults apply unless a tenant has its own active revision. Tenant
+overrides are whole configuration snapshots: publishing new platform defaults
+does not silently edit an existing tenant snapshot. Neither layer overwrites
+explicit candidate search intent. Select a tenant before editing its override.
+
+The workflow is **Edit → Save draft → Run shadow bench → review the field diff
+→ Publish tested draft**, with a reason on every action and before/after values
+in Audit. Publishing opens a review dialog and requires a fresh publication
+reason, rather than reusing the draft/test reason. A passing result must match the exact draft, effective active revision
+and scope. Editing, discarding or a concurrent publish invalidates stale results.
+Restore history creates a new draft revision and needs a new bench; it never
+rewrites history. Publishing leaves already queued/running work and existing
+reviewed memos alone. No automatic corpus re-evaluation or memo regeneration
+is implemented by this publish action.
+
+### Bench operation
+
+The test button queues durable fixture work. Start `npm run worker:admin-bench`
+on the intended worker host, with the **same database target** and credential
+configuration as that host's other workers; `-- --once` handles a single poll.
+This worker is opt-in and is not added to the existing deployment supervisor.
+The console can show queued work until the worker starts; Refresh shows results.
+It checks operator access both at claim and before every paid dispatch.
+Only one queued/running bench per scope is allowed. Superseded/discarded queued
+benches are cancelled; a running bench stops before another call when its draft
+or active revision changes. Expired leases fail without an automatic paid retry.
+
+Three code-defined synthetic fixtures cover direct leadership fit, adjacent
+mandate fit and a mandatory license contradiction. Both revisions run through
+the real staged evaluator and Template B composition/factual-review validators.
+PASS skips composition. Results compare verdict, screening viability, claim
+additions/removals/changes and changed memo sections. No fixture result is saved
+to canonical evaluations, serving tables or the shortlist. Invocations carry
+`purpose='BENCH'` and a bench run ID; they are excluded from tenant rollups and
+tenant quota accounting, while remaining visible as invocation evidence.
+
+Each run has a 50,000–1,000,000 token admission cap, default 500,000. Input byte
+bounds plus output allowances reserve capacity before each call; bounds are
+retained rather than refunded. This may defer a long bench before all fixtures
+finish. It is an admission cap, not an exact tokenizer or provider billing limit.
+Any PASS-to-PURSUE flip, invalid transport output, validation repair, source
+integrity failure, incomplete fixture suite or provider failure blocks publish.
+A failed run retains its reservation and a classified error; it cannot become a
+passing result through a retry. Running it again is an explicit new bench.
+
+Fixture success is a narrow prerequisite, not a corpus-wide impact claim.
+Real-opportunity benches, rolling seven-day corpus shadows, arbitrary provider
+connections, per-stage model routing, rendered memo comparison, structural
+taxonomy edits and automatic regeneration are not included in this phase.
+
+Focused verification: `npx vitest run tests/security/admin-config.test.ts`.
+The suite covers all configuration write authorization, stale/cross-scope
+publication, immutable queued pins, revert behavior, competing bench workers,
+preflight caps, revocation, expiry, fixture provenance and BENCH usage exclusion.
+Provider requests are simulated in automated tests; a successful worker-host
+bench is still required before activating a specific assignment.

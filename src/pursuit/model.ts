@@ -150,6 +150,7 @@ async function geminiModel(context?: PursuitModelContext): Promise<PursuitModel 
 
 /** Ordered provider chain. Empty means deterministic derivation only. */
 export async function pursuitModelChain(context?: PursuitModelContext): Promise<PursuitModel[]> {
+  if (context?.configuredModels) return context.configuredModels;
   const [mantle, gemini] = await Promise.all([mantleModels(context), geminiModel(context)]);
   return [...mantle, ...(gemini ? [gemini] : [])];
 }

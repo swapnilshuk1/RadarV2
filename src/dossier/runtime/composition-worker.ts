@@ -1,3 +1,4 @@
+import { createJobModel } from "../../admin/model-gateway";
 import type { DatabaseAdapter } from "@/data/database";
 import { releaseReservation } from "../../admin/protection";
 import type { ReasoningModel } from "@/dossier/contracts";
@@ -18,16 +19,24 @@ import { createDossierWriterModel } from "@/lib/model/dossier-writer-model";
 import { ProductionStagedDossierService } from "@/dossier/runtime/service";
 import { StagedServingPublisher } from "@/dossier/runtime/serving-publisher";
 
-export type DossierWriterFactory = (context: ModelInvocationContext) => ReasoningModel;
+export type DossierWriterFactory = (
+  context: ModelInvocationContext,
+) => ReasoningModel | Promise<ReasoningModel>;
 
 /** Independent durable draft-composition stage. Evaluation completion never waits here. */
 export class DossierCompositionWorker {
   constructor(
     private readonly db: DatabaseAdapter,
     private readonly writerFactory: DossierWriterFactory = (context) =>
-      createDossierWriterModel({
-        invocationSink: createSqliteModelInvocationSink(db, context),
-      }),
+      createJobModel(
+        db,
+        context,
+        () =>
+          createDossierWriterModel({
+            invocationSink: createSqliteModelInvocationSink(db, context),
+          }),
+        createSqliteModelInvocationSink(db, context),
+      ),
   ) {}
 
   async pollOnce() {
@@ -69,7 +78,7 @@ export class DossierCompositionWorker {
         opportunityVersion: job.opportunity_version,
         evaluationContextFingerprint: job.evaluation_context_fingerprint,
       };
-      const writer = this.writerFactory(context);
+      const writer = await this.writerFactory(context);
       await new ProductionStagedDossierService(this.db, writer).compose(identity, () => {}, {
         draftOnly: true,
       });

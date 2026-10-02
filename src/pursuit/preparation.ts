@@ -1,3 +1,5 @@
+import { jobConfig } from "../admin/config-store";
+import { laneModel } from "../admin/model-gateway";
 /**
  * src/pursuit/preparation.ts
  *
@@ -146,8 +148,12 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
 
   // One token ledger and one telemetry sink for the whole package, so pursuit
   // cost is visible alongside the other model lanes and is capped per pursuit.
+  const pinned = await jobConfig(getDatabaseAdapter(), "pursuit", job.id);
   const model: PursuitModelContext = {
-    ledger: new PursuitTokenLedger(),
+    ledger: new PursuitTokenLedger({
+      inputTokens: pinned.config.pursuitInputTokens,
+      outputTokens: pinned.config.pursuitOutputTokens,
+    }),
     invocationSink: createSqliteModelInvocationSink(getDatabaseAdapter(), {
       leaseToken: job.leaseToken,
       pipeline: "pursuit",
@@ -160,6 +166,26 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
       pursuitPreparationJobId: job.id,
     }),
   };
+
+  if (pinned.config.writing.model !== "legacy") {
+    const selected = laneModel(
+      pinned.config,
+      "writing",
+      () => {
+        throw new Error("UNEXPECTED_LEGACY_MODEL");
+      },
+      model.invocationSink,
+    );
+    model.configuredModels = [
+      {
+        id: `${selected.id}:${selected.version}`,
+        generate: selected.generate.bind(selected),
+        usage: () =>
+          (selected as { lastUsage?: import("../lib/model/model-invocation").ModelUsage })
+            .lastUsage,
+      },
+    ];
+  }
 
   // Stage checkpoints: a retried job reuses every stage already paid for.
   // The persisted thesis row is checkpointed too, so a retry never inserts a

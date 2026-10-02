@@ -16,7 +16,9 @@ import type { ModelInvocationContext } from "@/lib/model/model-invocation";
 import { ProductionStagedDossierService } from "@/dossier/runtime/service";
 import { StagedServingPublisher } from "@/dossier/runtime/serving-publisher";
 
-export type ReviewModelFactory = (context: ModelInvocationContext) => ReasoningModel;
+export type ReviewModelFactory = (
+  context: ModelInvocationContext,
+) => ReasoningModel | Promise<ReasoningModel>;
 
 /** Provider-neutral review lane. Scraping/evaluation never wait for this worker. */
 export class DossierReviewWorker {
@@ -65,8 +67,8 @@ export class DossierReviewWorker {
       };
       const dossier = await new ProductionStagedDossierService(
         this.db,
-        this.writer(invocationContext),
-        this.reviewer(invocationContext),
+        await this.writer(invocationContext),
+        await this.reviewer(invocationContext),
       ).compose(identity, () => {}, {
         initialDraft: draft,
         onDefect: () => queue.withhold(job),

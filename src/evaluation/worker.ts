@@ -1,3 +1,4 @@
+import { createJobModel } from "../admin/model-gateway";
 import crypto from "crypto";
 import {
   reserveClaim,
@@ -327,17 +328,23 @@ export class EvaluationWorker {
       }
 
       try {
-        const invocationSink = createSqliteModelInvocationSink(this.db, {
+        const invocationContext = {
           leaseToken: job.leaseToken,
-          pipeline: "evaluation",
+          pipeline: "evaluation" as const,
           evaluationJobId: job.id,
           tenantId: job.tenantId,
           personId: job.personId,
           canonicalJobId: job.canonicalJobId,
           opportunityVersion: job.opportunityVersion,
           evaluationContextFingerprint: job.evaluationContextFingerprint,
-        });
-        const evaluationModel = createBedrockGlmResearchModel({ invocationSink });
+        };
+        const invocationSink = createSqliteModelInvocationSink(this.db, invocationContext);
+        const evaluationModel = await createJobModel(
+          this.db,
+          invocationContext,
+          () => createBedrockGlmResearchModel({ invocationSink }),
+          invocationSink,
+        );
         const evaluated = await new ProductionStagedEvaluationService(
           this.db,
           evaluationModel,

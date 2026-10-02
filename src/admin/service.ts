@@ -43,6 +43,11 @@ export async function rollupUsage(db: DatabaseAdapter, firstDay: string, lastDay
     new Date(day).toISOString().slice(0, 10) === day;
   if (!validDay(firstDay) || !validDay(lastDay) || firstDay > lastDay)
     throw new Error("INVALID_ROLLUP_WINDOW");
+  const benchFilter = (await db.one(
+    "SELECT name FROM sqlite_master WHERE name='admin_bench_runs' AND type='table'",
+  ))
+    ? " AND purpose='LIVE'"
+    : "";
   await db.transaction(async (tx) => {
     await tx.execute("DELETE FROM usage_daily WHERE day BETWEEN ? AND ?", [firstDay, lastDay]);
     await tx.execute(
@@ -51,7 +56,7 @@ export async function rollupUsage(db: DatabaseAdapter, firstDay: string, lastDay
       COUNT(*),SUM(status='completed'),SUM(status IN ('provider_error','transport_error','invalid_output')),
       SUM(status='invalid_output'),SUM(input_tokens IS NOT NULL AND output_tokens IS NOT NULL),
       SUM(COALESCE(input_tokens,0)),SUM(MAX(COALESCE(output_tokens,0)+CASE WHEN provider='vertex-gemini' THEN COALESCE(reasoning_tokens,0) ELSE 0 END, COALESCE(total_tokens,0)-COALESCE(input_tokens,0)))
-      FROM model_invocations WHERE date(started_at/1000,'unixepoch') BETWEEN ? AND ?
+      FROM model_invocations WHERE date(started_at/1000,'unixepoch') BETWEEN ? AND ? ${benchFilter}
       GROUP BY date(started_at/1000,'unixepoch'),tenant_id,pipeline,provider,model_id`,
       [firstDay, lastDay],
     );

@@ -1,3 +1,4 @@
+import { pinJobConfig } from "./config-store";
 import { createHash } from "node:crypto";
 import type { DatabaseAdapter } from "../data/database/adapter";
 import type { ModelInvocationContext, ModelInvocationEvent } from "../lib/model/model-invocation";
@@ -103,11 +104,16 @@ async function monthlyReserved(
   const start = Date.parse(`${month}-01T00:00:00Z`);
   const end = new Date(start);
   end.setUTCMonth(end.getUTCMonth() + 1);
+  const benchFilter = (await db.one(
+    "SELECT name FROM sqlite_master WHERE name='admin_bench_runs' AND type='table'",
+  ))
+    ? " AND purpose='LIVE'"
+    : "";
   const legacy = await db.one<{ n: number; unknown: number }>(
     `SELECT
     COALESCE(SUM(MAX(COALESCE(total_tokens,0), COALESCE(input_tokens,0)+COALESCE(output_tokens,0)+CASE WHEN provider='vertex-gemini' THEN COALESCE(reasoning_tokens,0) ELSE 0 END)),0) n,
     COALESCE(SUM(input_tokens IS NULL OR output_tokens IS NULL),0) unknown
-    FROM model_invocations m WHERE tenant_id=? AND started_at>=? AND started_at<?
+    FROM model_invocations m WHERE tenant_id=? AND started_at>=? AND started_at<? ${benchFilter}
     AND ${lane === "reasoning" ? "pipeline='evaluation'" : "pipeline IN ('dossier','factual_review','pursuit')"}
     AND NOT EXISTS(SELECT 1 FROM quota_calls c WHERE c.id=m.id)`,
     [tenant, start, end.getTime()],
@@ -170,6 +176,7 @@ export async function reserveClaim(
   },
   now = Date.now(),
 ) {
+  if (job.pipeline !== "scrape") await pinJobConfig(db, job.pipeline, job.id, job.tenant);
   if (!(await protectionInstalled(db))) return true; // Older schemas are explicitly unconfigured.
   const controls = await db.one(
     `SELECT scope_key FROM pipeline_controls WHERE paused=1

@@ -1,3 +1,4 @@
+import { pinJobConfig } from "../../../admin/config-store";
 import { createHash, randomUUID } from "node:crypto";
 import { reserveClaim, deferralFilter, renewReservation } from "../../../admin/protection";
 import type { DatabaseAdapter } from "@/data/database";
@@ -82,8 +83,9 @@ export class SqliteDossierCompositionQueue {
   ): Promise<string> {
     const id = identityKey(identity, evaluationFingerprint);
     const now = this.now();
-    await this.db.execute(
-      `INSERT INTO dossier_composition_jobs(
+    await this.db.transaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO dossier_composition_jobs(
         id,tenant_id,person_id,canonical_job_id,opportunity_version,
         evaluation_context_fingerprint,evaluation_fingerprint,profile_version,recipe,
         status,next_attempt_at,created_at,updated_at
@@ -92,21 +94,23 @@ export class SqliteDossierCompositionQueue {
         tenant_id,person_id,canonical_job_id,opportunity_version,
         evaluation_context_fingerprint,evaluation_fingerprint,recipe
       ) DO NOTHING`,
-      [
-        id,
-        identity.tenantId,
-        identity.personId,
-        identity.canonicalJobId,
-        identity.opportunityVersion,
-        identity.evaluationContextFingerprint,
-        evaluationFingerprint,
-        identity.profileVersion,
-        DOSSIER_COMPOSITION_RECIPE,
-        now,
-        now,
-        now,
-      ],
-    );
+        [
+          id,
+          identity.tenantId,
+          identity.personId,
+          identity.canonicalJobId,
+          identity.opportunityVersion,
+          identity.evaluationContextFingerprint,
+          evaluationFingerprint,
+          identity.profileVersion,
+          DOSSIER_COMPOSITION_RECIPE,
+          now,
+          now,
+          now,
+        ],
+      );
+      await pinJobConfig(tx, "dossier", id, identity.tenantId);
+    });
     return id;
   }
 

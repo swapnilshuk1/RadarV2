@@ -1,3 +1,5 @@
+import { getConfigSnapshotFn } from "../admin/config-server";
+import { ConfigControls } from "../admin/ConfigControls";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { getAdminSnapshotFn } from "../admin/server";
@@ -25,7 +27,13 @@ export const Route = createFileRoute("/admin")({
     days: [1, 7, 30].includes(Number(s.days)) ? Number(s.days) : 7,
   }),
   loaderDeps: ({ search }) => ({ tenantId: search.tenantId, days: search.days }),
-  loader: ({ deps }) => getAdminSnapshotFn({ data: deps }),
+  loader: async ({ deps }) => {
+    const [snapshot, configuration] = await Promise.all([
+      getAdminSnapshotFn({ data: deps }),
+      getConfigSnapshotFn({ data: { tenantId: deps.tenantId } }),
+    ]);
+    return { ...snapshot, configuration };
+  },
   component: AdminShell,
   errorComponent: () => (
     <main className="mx-auto max-w-3xl p-12">
@@ -119,7 +127,7 @@ function AdminShell() {
               : [];
   const stale = !data.rollupAt || Date.now() - data.rollupAt > 2 * 3600000;
   return (
-    <main className="mx-auto min-h-screen max-w-[1500px] text-foreground">
+    <main className="mx-auto min-h-screen max-w-[1500px] pt-28 text-foreground">
       <div className="grid min-h-screen md:grid-cols-[238px_minmax(0,1fr)]">
         <aside className="border-b border-border bg-card py-7 md:border-b-0 md:border-r">
           <p className="px-6 font-mono text-[.62rem] uppercase tracking-[.28em] text-muted-foreground">
@@ -152,7 +160,7 @@ function AdminShell() {
           <header className="flex flex-wrap items-center justify-between gap-5 border-b border-border px-6 py-8 lg:px-10">
             <div>
               <p className="mb-3 font-mono text-[.62rem] uppercase tracking-[.2em] text-muted-foreground">
-                Platform operations · Phase 2
+                Platform operations · Phase 3
               </p>
               <h1 className="font-serif text-4xl sm:text-5xl">
                 {search.view === "Overview"
@@ -232,6 +240,13 @@ function AdminShell() {
             </button>
           </div>
           <div className="px-6 py-7 lg:px-10">
+            {(search.view === "Engine" || search.view === "Models") && (
+              <ConfigControls
+                key={search.tenantId ?? "platform"}
+                data={data.configuration}
+                tenantId={search.tenantId}
+              />
+            )}
             {search.view === "Engine" && (
               <>
                 <p className="mb-5 text-sm text-muted-foreground">
@@ -273,9 +288,8 @@ function AdminShell() {
             )}
             {search.view === "Models" && (
               <p className="mb-5 text-sm text-muted-foreground">
-                Observed provider/model usage only. These rows do not declare active lane
-                assignments or connection health. Model editing and fixture benches belong to Phase
-                3.
+                The usage ledger records actual provider calls. Active assignments and fixture bench
+                results appear above. Usage alone does not establish connection health.
               </p>
             )}
             {search.view === "Tenants & Quotas" && (

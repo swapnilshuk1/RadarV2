@@ -1,3 +1,4 @@
+import { pinJobConfig } from "../admin/config-store";
 import { reserveClaim, deferralFilter, renewReservation } from "../admin/protection";
 /**
  * src/pursuit/store.ts
@@ -586,21 +587,14 @@ async function enqueueInitialPreparation(
   );
   if (live) return;
   const timestamp = now();
+  const id = `pprep-${randomUUID()}`;
   await tx.execute(
     `INSERT INTO pursuit_preparation_jobs
      (id,tenant_id,person_id,pursuit_id,job_hash,requested_by,status,created_at,updated_at)
      VALUES (?,?,?,?,?,?,'queued',?,?)`,
-    [
-      `pprep-${randomUUID()}`,
-      scope.tenantId,
-      scope.personId,
-      pursuitId,
-      jobHash,
-      requestedBy,
-      timestamp,
-      timestamp,
-    ],
+    [id, scope.tenantId, scope.personId, pursuitId, jobHash, requestedBy, timestamp, timestamp],
   );
+  await pinJobConfig(tx, "pursuit", id, scope.tenantId);
 }
 
 export async function updatePursuit(
@@ -1233,24 +1227,28 @@ export async function enqueuePreparation(
   }
   const id = `pprep-${randomUUID()}`;
   const ts = now();
-  const inserted = await db().execute(
-    `INSERT INTO pursuit_preparation_jobs
+  const inserted = await db().transaction(async (tx) => {
+    const result = await tx.execute(
+      `INSERT INTO pursuit_preparation_jobs
        (id, tenant_id, person_id, pursuit_id, job_hash, requested_by, preferred_archetype_id,
         status, created_at, updated_at)
      VALUES (?,?,?,?,?,?,?,'queued',?,?)
      ON CONFLICT DO NOTHING`,
-    [
-      id,
-      scope.tenantId,
-      scope.personId,
-      input.pursuitId,
-      input.jobHash,
-      input.requestedBy,
-      input.preferredArchetypeId,
-      ts,
-      ts,
-    ],
-  );
+      [
+        id,
+        scope.tenantId,
+        scope.personId,
+        input.pursuitId,
+        input.jobHash,
+        input.requestedBy,
+        input.preferredArchetypeId,
+        ts,
+        ts,
+      ],
+    );
+    await pinJobConfig(tx, "pursuit", id, scope.tenantId);
+    return result;
+  });
   if (inserted.rowsAffected === 0) {
     // A concurrent enqueue won the race: return the actual persisted live job
     // rather than a phantom ID that was never inserted.
