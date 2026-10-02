@@ -86,6 +86,9 @@ export async function startWorkerHeartbeat(
   const identity = getDatabaseTargetIdentity();
   const releaseSha = process.env.RADAR_RELEASE_SHA ?? "development";
   const instanceId = `${workerName}-${process.pid}-${randomUUID()}`;
+  const startedAt = Date.now();
+  const connections = await import("../../admin/search-connections");
+  connections.registerConnectionWorker(workerName, instanceId, identity.fingerprint);
   const beat = async () => {
     await db.execute(
       `INSERT INTO worker_heartbeats (worker_name,instance_id,release_sha,database_fingerprint,last_seen_at)
@@ -96,13 +99,78 @@ export async function startWorkerHeartbeat(
          last_seen_at=excluded.last_seen_at`,
       [workerName, instanceId, releaseSha, identity.fingerprint, new Date().toISOString()],
     );
+    await connections.refreshSearchWorkerReceipt(db);
+    await connections.pollSearchConnectionCheck(db);
+    const operations = await import("../../admin/operations-runtime");
+    if (await operations.operationsInstalled(db)) {
+      const hostChecks = await import("../../admin/host-provider-checks");
+      await hostChecks.pollHostProviderCheck(db, {
+        name: workerName,
+        instance: instanceId,
+        database: identity.fingerprint,
+      });
+      if (workerName === "evaluation") {
+        const now = Date.now();
+        await db.transaction(async (tx) => {
+          await tx.execute(
+            `UPDATE provider_credential_lifecycle SET retired_at=? WHERE retired_at IS NULL
+            AND credential_id IN (SELECT id FROM admin_search_credentials WHERE created_at<=?)
+            AND credential_id NOT IN (SELECT COALESCE(active_id,'') FROM admin_search_connection UNION SELECT COALESCE(candidate_id,'') FROM admin_search_connection UNION SELECT COALESCE(previous_id,'') FROM admin_search_connection)`,
+            [now, now - 30 * 86400000],
+          );
+          await tx.execute(
+            `UPDATE admin_search_credentials SET envelope_json='{"retired":true}'
+            WHERE id IN (SELECT credential_id FROM provider_credential_lifecycle WHERE retired_at<=? AND secret_purged_at IS NULL)
+            AND id NOT IN (SELECT COALESCE(active_id,'') FROM admin_search_connection UNION SELECT COALESCE(candidate_id,'') FROM admin_search_connection UNION SELECT COALESCE(previous_id,'') FROM admin_search_connection)`,
+            [now - 30 * 86400000],
+          );
+          await tx.execute(
+            `UPDATE provider_credential_lifecycle SET secret_purged_at=? WHERE secret_purged_at IS NULL AND credential_id IN (SELECT id FROM admin_search_credentials WHERE envelope_json='{"retired":true}')`,
+            [now],
+          );
+        });
+      }
+      const loaded = operations.effectiveOperationalRevision();
+      await operations.writeRuntimeReceipt(db, {
+        workerName,
+        instanceId,
+        runtimeRole: process.env.RADAR_RUNTIME_ROLE ?? "single-host",
+        releaseSha,
+        databaseFingerprint: identity.fingerprint,
+        configRevision: loaded === undefined ? "not-loaded" : `operational:${loaded}`,
+        connectionId: "runtime",
+        generation: loaded ?? 0,
+        credentialVersion: null,
+        credentialSource: "host",
+        reloadMode: "hot",
+        reloadStatus: loaded === undefined ? "pending" : "loaded",
+        errorCode: null,
+        startedAt,
+        loadedAt: Date.now(),
+        lastSeenAt: Date.now(),
+        effectiveSettings: operations.effectiveOperationalSettings(),
+      });
+      if (workerName === "evaluation") {
+        const recovery = await import("../../admin/operations-recovery");
+        await recovery.reconcileProviderIncidents(db);
+        const notifications = await import("../../admin/notification-worker");
+        await notifications.pollNotificationDelivery(db);
+      }
+    }
   };
   await db.execute("DELETE FROM worker_heartbeats WHERE last_seen_at < ?", [
     new Date(Date.now() - 86_400_000).toISOString(),
   ]);
   await beat();
+  let inFlight = false;
   const timer = setInterval(() => {
-    void beat().catch(() => undefined);
+    if (inFlight) return;
+    inFlight = true;
+    void beat()
+      .catch(() => undefined)
+      .finally(() => {
+        inFlight = false;
+      });
   }, intervalMs);
   timer.unref();
   return { instanceId, stop: () => clearInterval(timer) };

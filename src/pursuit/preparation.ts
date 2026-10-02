@@ -1,5 +1,5 @@
 import { jobConfig } from "../admin/config-store";
-import { laneModel } from "../admin/model-gateway";
+import { laneModel, operationalModel } from "../admin/model-gateway";
 /**
  * src/pursuit/preparation.ts
  *
@@ -150,6 +150,28 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
   // cost is visible alongside the other model lanes and is capped per pursuit.
   const pinned = await jobConfig(getDatabaseAdapter(), "pursuit", job.id);
   const model: PursuitModelContext = {
+    wrapModel: (selected) => {
+      const controlled = operationalModel(
+        getDatabaseAdapter(),
+        {
+          id: selected.id,
+          version: selected.id,
+          generate: (instruction, input, schema, metadata) =>
+            selected.generate(instruction, input, schema ?? {}, metadata),
+        },
+        {
+          pipeline: "pursuit",
+          tenantId: scope.tenantId,
+          personId: scope.personId,
+          canonicalJobId: lineage.canonicalJobId ?? job.jobHash,
+          opportunityVersion: lineage.opportunityVersion ?? "unknown",
+          evaluationContextFingerprint: lineage.evaluationContextFingerprint ?? "unbound",
+          pursuitPreparationJobId: job.id,
+        },
+        pinned.id,
+      );
+      return { ...selected, generate: controlled.generate.bind(controlled) };
+    },
     strictBudget:
       pinned.config.writing.model !== "legacy" ||
       pinned.config.pursuitInputTokens !== 20000 ||

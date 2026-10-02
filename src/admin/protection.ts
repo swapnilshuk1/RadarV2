@@ -1,4 +1,5 @@
 import { pinJobConfig } from "./config-store";
+import { operationsInstalled } from "./operations-runtime";
 import { measuredUsageSql } from "./usage-accounting";
 import { createHash } from "node:crypto";
 import type { DatabaseAdapter } from "../data/database/adapter";
@@ -37,7 +38,16 @@ export async function deferralFilter(
 ) {
   if (!/^[a-z_]+(?:\.[a-z_]+)?$/.test(jobExpression)) throw new Error("INVALID_JOB_EXPRESSION");
   if (!(await protectionInstalled(db))) return "";
-  return ` AND NOT EXISTS(SELECT 1 FROM quota_deferrals qd WHERE qd.pipeline='${pipeline}' AND qd.job_id=${jobExpression} AND qd.retry_at>${Date.now()}) `;
+  const incidentFilter =
+    pipeline !== "scrape" && (await operationsInstalled(db))
+      ? ` AND NOT EXISTS(
+    SELECT 1 FROM provider_incident_jobs ij JOIN provider_incidents i ON i.id=ij.incident_id
+    WHERE ij.pipeline='${pipeline}' AND ij.job_id=${jobExpression} AND i.state!='resolved'
+    AND i.failure_class IN ('credential','quota_exhausted','vault')
+    AND NOT EXISTS(SELECT 1 FROM recovery_action_jobs rj JOIN recovery_actions ra ON ra.id=rj.action_id
+      WHERE ra.incident_id=i.id AND rj.pipeline=ij.pipeline AND rj.job_id=ij.job_id AND rj.outcome='resumed')) `
+      : "";
+  return ` AND NOT EXISTS(SELECT 1 FROM quota_deferrals qd WHERE qd.pipeline='${pipeline}' AND qd.job_id=${jobExpression} AND qd.retry_at>${Date.now()}) ${incidentFilter}`;
 }
 export async function releaseReservation(
   db: DatabaseAdapter,

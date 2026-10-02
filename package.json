@@ -36,6 +36,7 @@
     "certify:affected": "tsx scripts/certification/affected.ts",
     "certify:radar": "npm run certify",
     "smoke": "tsx --env-file=.env scripts/smoke_production.ts",
+    "acceptance:operations": "tsx scripts/acceptance/browser-acceptance.ts --operations",
     "acceptance:browser": "tsx scripts/acceptance/browser-acceptance.ts",
     "diagnose": "tsx --env-file=.env scripts/diagnose.ts",
     "repair:canonical-urls": "tsx scripts/repair-canonical-apply-urls.ts",

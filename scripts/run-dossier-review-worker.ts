@@ -7,6 +7,7 @@ import { DossierReviewWorker } from "../src/dossier/runtime/review-worker";
 import { createSqliteModelInvocationSink } from "../src/lib/model/model-invocation";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
+import { jobConcurrency } from "../src/admin/operations-runtime";
 
 const BASE_IDLE_POLL_MS = 5_000;
 const MAX_IDLE_POLL_MS = 30_000;
@@ -21,23 +22,31 @@ if (
 if ((process.env.RADAR_DOSSIER_WRITER_PROVIDER ?? "glm").trim().toLowerCase() === "glm") {
   loadMantleCredentials();
 }
-const worker = new DossierReviewWorker(
-  db,
-  (context) =>
-    createJobModel(
+const workers = Array.from(
+  { length: 8 },
+  () =>
+    new DossierReviewWorker(
       db,
-      context,
-      () =>
-        createDossierWriterModel({ invocationSink: createSqliteModelInvocationSink(db, context) }),
-      createSqliteModelInvocationSink(db, context),
-    ),
-  (context) =>
-    createJobModel(
-      db,
-      context,
-      () =>
-        createFactualReviewModel({ invocationSink: createSqliteModelInvocationSink(db, context) }),
-      createSqliteModelInvocationSink(db, context),
+      (context) =>
+        createJobModel(
+          db,
+          context,
+          () =>
+            createDossierWriterModel({
+              invocationSink: createSqliteModelInvocationSink(db, context),
+            }),
+          createSqliteModelInvocationSink(db, context),
+        ),
+      (context) =>
+        createJobModel(
+          db,
+          context,
+          () =>
+            createFactualReviewModel({
+              invocationSink: createSqliteModelInvocationSink(db, context),
+            }),
+          createSqliteModelInvocationSink(db, context),
+        ),
     ),
 );
 await startWorkerHeartbeat("dossier-review");
@@ -52,15 +61,19 @@ process.on("SIGTERM", () => {
 do {
   let processed = false;
   try {
-    const result = await worker.pollOnce();
-    if (result) {
-      processed = true;
-      idlePolls = 0;
-      runtimeLog("info", "dossier_review_processed", { status: result.status });
-      // The transition itself is the authoritative time to surface attention.
-      if (result.status === "needs_attention")
-        runtimeLog("warn", "dossier_review_needs_attention", { status: result.status });
-    }
+    const activeConcurrency = await jobConcurrency(db, "factual_review", 1);
+    const results = await Promise.all(
+      workers.slice(0, activeConcurrency).map((worker) => worker.pollOnce()),
+    );
+    for (const result of results)
+      if (result) {
+        processed = true;
+        idlePolls = 0;
+        runtimeLog("info", "dossier_review_processed", { status: result.status });
+        // The transition itself is the authoritative time to surface attention.
+        if (result.status === "needs_attention")
+          runtimeLog("warn", "dossier_review_needs_attention", { status: result.status });
+      }
     if (process.argv.includes("--once")) break;
   } catch {
     runtimeLog("error", "dossier_review_poll_error");

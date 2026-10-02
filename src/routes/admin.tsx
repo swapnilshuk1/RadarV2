@@ -1,4 +1,6 @@
 import { IntelligenceTaxonomyControls } from "../admin/IntelligenceTaxonomyControls";
+import { OperationsControls } from "../admin/OperationsControls";
+import { getOperationsFn } from "../admin/operations-server";
 import { getConfigSnapshotFn } from "../admin/config-server";
 import { ConfigControls } from "../admin/ConfigControls";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
@@ -13,6 +15,7 @@ import type { AdminSection } from "../admin/service";
 
 const views = [
   "Overview",
+  "Connections",
   "Engine",
   "Models",
   "Taxonomy",
@@ -31,12 +34,13 @@ export const Route = createFileRoute("/admin")({
   }),
   loaderDeps: ({ search }) => ({ tenantId: search.tenantId, days: search.days }),
   loader: async ({ deps }) => {
-    const [snapshot, configuration, taxonomy] = await Promise.all([
+    const [snapshot, configuration, taxonomy, operations] = await Promise.all([
       getAdminSnapshotFn({ data: deps }),
       getConfigSnapshotFn({ data: { tenantId: deps.tenantId } }),
       getTaxonomySnapshotFn(),
+      getOperationsFn(),
     ]);
-    return { ...snapshot, configuration, taxonomy };
+    return { ...snapshot, configuration, taxonomy, operations };
   },
   component: AdminShell,
   errorComponent: () => (
@@ -168,7 +172,7 @@ function AdminShell() {
           <header className="flex flex-wrap items-center justify-between gap-5 border-b border-border px-6 py-8 lg:px-10">
             <div>
               <p className="mb-3 font-mono text-[.62rem] uppercase tracking-[.2em] text-muted-foreground">
-                Platform operations · Phase 4
+                Platform operations
               </p>
               <h1 className="font-serif text-4xl sm:text-5xl">
                 {search.view === "Overview"
@@ -254,6 +258,9 @@ function AdminShell() {
                 data={data.configuration}
                 tenantId={search.tenantId}
               />
+            )}
+            {(search.view === "Overview" || search.view === "Connections") && (
+              <OperationsControls data={data.operations} overview={search.view === "Overview"} />
             )}
             {search.view === "Engine" && (
               <>

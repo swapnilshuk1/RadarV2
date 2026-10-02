@@ -152,15 +152,17 @@ async function geminiModel(context?: PursuitModelContext): Promise<PursuitModel 
 export async function pursuitModelChain(context?: PursuitModelContext): Promise<PursuitModel[]> {
   const [mantle, gemini] = await Promise.all([mantleModels(context), geminiModel(context)]);
   const normal = [...mantle, ...(gemini ? [gemini] : [])];
-  if (!context?.configuredModels) return normal;
+  if (!context?.configuredModels)
+    return context?.wrapModel ? normal.map(context.wrapModel) : normal;
   // An explicit writing-lane choice controls the first attempt, but should not
   // turn a transient provider/model failure into an unnecessary deterministic
   // package. Preserve the established provider chain behind that choice.
   const configured = context.configuredModels;
-  return [
+  const models = [
     ...configured,
     ...normal.filter((candidate) => !configured.some((selected) => selected.id === candidate.id)),
   ];
+  return context?.wrapModel ? models.map(context.wrapModel) : models;
 }
 
 /**

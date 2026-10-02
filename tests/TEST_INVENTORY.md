@@ -1,5 +1,10 @@
 # RADAR v2 — Permanent Test Architecture Map & Inventory
 
+Operations & Recovery: `tests/security/admin-operations.test.ts` belongs to
+`tenant-security`. It verifies role boundaries, encrypted connection
+activation, incident deduplication, cooldown/capacity fencing, exact recovery
+cohorts, pause/expiry precedence and asynchronous signed notification delivery.
+
 
 This document defines the authoritative test domains, invariant contracts, certification stage mappings, and full mechanical test registry for the RADAR v2 Executive Intelligence Engine.
 
@@ -370,6 +375,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/security/scraper-auth-permission-non-escalation.test.ts` | Security & Tenant Isolation | **KEEP** | Gate 0 Safety | 1 | 5 |
 | `tests/security/admin-foundations.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 4 | 20 |
 | `tests/security/admin-config.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 21 | 59 |
+| `tests/security/admin-operations.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 3 (tenant-security) | 15 | 76 |
 | `tests/security/admin-taxonomy.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 23 | 30 |
 | `tests/security/admin-protection.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 21 | 74 |
 | `tests/security/tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 16 | 43 |

@@ -3,6 +3,7 @@ import { loadMantleCredentials } from "../src/lib/model/bedrock-credentials";
 import { DossierCompositionWorker } from "../src/dossier/runtime/composition-worker";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
+import { jobConcurrency } from "../src/admin/operations-runtime";
 
 const db = getDatabaseAdapter();
 if (
@@ -18,14 +19,12 @@ if ((process.env.RADAR_DOSSIER_WRITER_PROVIDER ?? "glm").trim().toLowerCase() ==
 
 const arg = process.argv.find((value) => value.startsWith("--concurrency="));
 const concurrency = Number(
-  arg?.slice("--concurrency=".length) ||
-    process.env.RADAR_DOSSIER_JOB_CONCURRENCY ||
-    "2",
+  arg?.slice("--concurrency=".length) || process.env.RADAR_DOSSIER_JOB_CONCURRENCY || "2",
 );
 if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 8)
   throw new Error("DOSSIER_JOB_CONCURRENCY_INVALID");
 
-const workers = Array.from({ length: concurrency }, () => new DossierCompositionWorker(db));
+const workers = Array.from({ length: 8 }, () => new DossierCompositionWorker(db));
 await startWorkerHeartbeat("dossier-composition");
 const BASE_IDLE_POLL_MS = 3_000;
 const MAX_IDLE_POLL_MS = 30_000;
@@ -39,8 +38,12 @@ process.on("SIGTERM", () => {
 });
 
 do {
-  const results = await Promise.all(workers.map((worker) => worker.pollOnce()));
-  for (const result of results) if (result) runtimeLog("info", "dossier_composition_processed", { status: result.status });
+  const activeConcurrency = await jobConcurrency(db, "dossier", concurrency);
+  const results = await Promise.all(
+    workers.slice(0, activeConcurrency).map((worker) => worker.pollOnce()),
+  );
+  for (const result of results)
+    if (result) runtimeLog("info", "dossier_composition_processed", { status: result.status });
   if (process.argv.includes("--once")) break;
   if (results.some((result) => result !== null)) {
     idlePolls = 0;

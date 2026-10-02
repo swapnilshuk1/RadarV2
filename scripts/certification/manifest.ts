@@ -57,6 +57,7 @@ export const certificationManifest = [
       "tests/security/admin-foundations.test.ts",
       "tests/security/admin-protection.test.ts",
       "tests/security/admin-config.test.ts",
+      "tests/security/admin-operations.test.ts",
       "tests/security/admin-taxonomy.test.ts",
       "tests/security/oauth-scope-provisioning.test.ts",
       "tests/security/m62-credential-vault.test.ts",

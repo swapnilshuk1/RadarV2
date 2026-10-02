@@ -324,6 +324,14 @@ Scraped routes. Decision-log regressions are included in release certification.
 
 ## Administration foundations
 
+Migrations 085–086 add the Connections and operational recovery slice. Tavily
+versions are encrypted and validated on evaluation workers; incident-linked exact
+work resumes through queue-owned operations. Durable capacity leases, cooldowns,
+runtime receipts, per-stage job limits and signed asynchronous notifications share
+the existing database. Bedrock/ADC remain host-managed health. See the single
+[Operations & Recovery entry point](operations/OPERATIONS_RECOVERY.md) for the
+authoritative checkout, contracts, runbook and verification evidence.
+
 `src/admin` and `/admin` provide Phase 1 visibility, Phase 2 protection and Phase 3 narrow configuration writes.
 Migration 072 separates platform roles and append-only audit from tenant
 memberships, and adds idempotent usage rollups. See
