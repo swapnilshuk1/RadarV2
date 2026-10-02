@@ -40,6 +40,31 @@ export async function runOperationsBrowserJourney(
     profileVersion: fixture.profileA,
   };
   const work = await seedOperationalEvaluation(db, identity, fixture.planA);
+  const terminalVersion = "operations-terminal-version";
+  const terminalCanonical = "operations-terminal-canonical";
+  await db.execute(
+    "INSERT INTO canonical_opportunities(id,source,source_job_id,canonical_url) VALUES(?,'fixture',?,'https://example.com/terminal-job')",
+    [terminalCanonical, terminalCanonical],
+  );
+  await db.execute(
+    "INSERT INTO opportunity_versions(id,canonical_job_id,content_hash,job_title,raw_content) VALUES(?,?,'operations-terminal-hash','Head of Growth','Lead growth')",
+    [terminalVersion, terminalCanonical],
+  );
+  await db.execute(
+    "INSERT INTO search_plan_candidates(tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,attention_decision,eligibility) VALUES(?,?,?,?,?,'CANDIDATE','ELIGIBLE')",
+    [identity.tenantId, identity.personId, fixture.planA, terminalCanonical, terminalVersion],
+  );
+  await db.execute(
+    "INSERT INTO evaluation_jobs(id,tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,status) VALUES('operations-terminal-job',?,?,?,?,?,?,'staged_dead_letter')",
+    [
+      identity.tenantId,
+      identity.personId,
+      fixture.planA,
+      terminalCanonical,
+      terminalVersion,
+      identity.evaluationContextFingerprint,
+    ],
+  );
   const instance = "operations-acceptance-worker";
   await db.execute("INSERT INTO worker_heartbeats VALUES('evaluation',?,'development',?,?)", [
     instance,
@@ -92,7 +117,31 @@ export async function runOperationsBrowserJourney(
       sameSite: "Lax",
     },
   ]);
-  await page.goto(`${baseUrl}/admin?view=Connections`, { waitUntil: "networkidle" });
+  await db.execute("DELETE FROM worker_heartbeats WHERE worker_name='evaluation'");
+  await page.goto(`${baseUrl}/admin`, { waitUntil: "networkidle" });
+  const terminalLink = page.getByRole("link", {
+    name: /High: evaluation: 1 dead-letter, 0 failed, 0 needs-attention/,
+  });
+  await terminalLink.waitFor();
+  await page
+    .getByRole("link", { name: /High: Evaluation maintenance worker unavailable/ })
+    .waitFor();
+  await page.screenshot({ path: ".radar/acceptance/operations-attention.png", fullPage: true });
+  await terminalLink.click();
+  await page
+    .locator("#queue-evaluation")
+    .getByText("operations-terminal-job", { exact: true })
+    .waitFor();
+  await page
+    .locator("#queue-evaluation")
+    .getByText("Domain recovery policy required; Operations resume unavailable", { exact: true })
+    .waitFor();
+  await db.execute("INSERT INTO worker_heartbeats VALUES('evaluation',?,'development',?,?)", [
+    instance,
+    fingerprint,
+    new Date().toISOString(),
+  ]);
+  await page.getByRole("button", { name: "Refresh operations", exact: true }).click();
   await page.getByRole("heading", { name: "Tavily connection", exact: true }).waitFor();
   await page.getByLabel("Operational change reason").fill("Recover isolated credential incident");
   const candidateKey = "tvly-" + "z".repeat(30);

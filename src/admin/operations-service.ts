@@ -16,18 +16,49 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
   const configuration = await operationalSettings(db);
   const identity = getDatabaseTargetIdentity();
   const queues = [];
+  const terminalJobs: Record<string, string | number | null>[] = [];
   for (const [pipeline, table] of Object.entries(configJobTables)) {
     const row = await db.one<{
       waiting: number;
       active: number;
       terminal: number;
+      dead_letter: number;
+      failed: number;
+      needs_attention: number;
       oldest: string | number | null;
     }>(`SELECT
       SUM(status IN ('pending','retry','queued','staged_pending')) waiting,
       SUM(status IN ('processing','staged_processing')) active,
-      SUM(status IN ('failed','needs_attention','staged_dead_letter')) terminal,
+      SUM(status IN ('failed','needs_attention','staged_dead_letter','dead_letter')) terminal,
+      SUM(status IN ('staged_dead_letter','dead_letter')) dead_letter,
+      SUM(status='failed') failed,
+      SUM(status='needs_attention') needs_attention,
       MIN(CASE WHEN status IN ('pending','retry','queued','staged_pending') THEN created_at END) oldest FROM ${table}`);
     queues.push({ pipeline, ...row });
+    // Pursuit derives immutable opportunity identity through its owning pursuit.
+    const owner = pipeline === "pursuit" ? "p" : "j";
+    const join =
+      pipeline === "pursuit"
+        ? "LEFT JOIN opportunity_pursuits p ON p.id=j.pursuit_id AND p.tenant_id=j.tenant_id AND p.person_id=j.person_id"
+        : "";
+    const jobs = await db.many<Record<string, string | number | null>>(`SELECT
+      j.id job_id,j.tenant_id,j.person_id,j.status,j.created_at,
+      ${owner}.canonical_job_id,${owner}.opportunity_version,
+      ${owner}.evaluation_context_fingerprint context_fingerprint
+      FROM ${table} j ${join}
+      WHERE j.status IN ('failed','needs_attention','staged_dead_letter','dead_letter')
+      ORDER BY j.created_at DESC,j.id LIMIT 100`);
+    terminalJobs.push(
+      ...jobs.map((job) => ({
+        pipeline,
+        ...job,
+        recovery:
+          job.status === "needs_attention" &&
+          (pipeline === "dossier" || pipeline === "factual_review")
+            ? "Domain retry entry point available; active scope and fingerprint must validate"
+            : "Domain recovery policy required; Operations resume unavailable",
+      })),
+    );
   }
   let callbackValid = false;
   try {
@@ -64,22 +95,58 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
     factual_review: "dossier-review",
     pursuit: "pursuit-preparation",
   };
-  for (const queue of queues) {
-    const workerName = workerNames[queue.pipeline as keyof typeof workerNames];
-    const online = workers.some(
+  const workerOnline = (name: string) =>
+    workers.some(
       (w) =>
-        w.worker_name === workerName &&
+        w.worker_name === name &&
         Date.parse(String(w.last_seen_at)) > Date.now() - 150000 &&
         w.release_sha === (process.env.RADAR_RELEASE_SHA ?? "development") &&
         w.database_fingerprint === identity.fingerprint,
     );
+  for (const queue of queues) {
+    const workerName = workerNames[queue.pipeline as keyof typeof workerNames];
+    const online = workerOnline(workerName);
     if ((queue.waiting ?? 0) > 0 && !online)
       attention.push({
         severity: "High",
         message: `${queue.pipeline}: required worker offline or deployment identity mismatched; ${queue.waiting} waiting`,
         target: "runtime",
       });
+    if ((queue.terminal ?? 0) > 0)
+      attention.push({
+        severity: "High",
+        message: `${queue.pipeline}: ${queue.dead_letter ?? 0} dead-letter, ${queue.failed ?? 0} failed, ${queue.needs_attention ?? 0} needs-attention jobs; inspect domain recovery`,
+        target: `queue-${queue.pipeline}`,
+      });
   }
+  const maintenancePending = (await db.one<{
+    validation: number;
+    host_probes: number;
+    reconciliation: number;
+    notifications: number;
+    retirement: number;
+    purge: number;
+  }>(
+    `SELECT
+    (SELECT COUNT(*) FROM admin_search_checks WHERE status IN ('queued','running')) validation,
+    (SELECT COUNT(*) FROM provider_host_checks WHERE provider='bedrock' AND status IN ('queued','running')) host_probes,
+    (SELECT COUNT(*) FROM provider_incidents WHERE connection_id='tavily:platform' AND state='recovering') reconciliation,
+    (SELECT COUNT(*) FROM notification_deliveries WHERE status IN ('queued','retry','sending')) notifications,
+    (SELECT COUNT(*) FROM provider_credential_lifecycle l JOIN admin_search_credentials c ON c.id=l.credential_id
+      WHERE l.retired_at IS NULL AND c.created_at<=? AND NOT EXISTS
+      (SELECT 1 FROM admin_search_connection s WHERE s.active_id=c.id OR s.candidate_id=c.id OR s.previous_id=c.id)) retirement,
+    (SELECT COUNT(*) FROM provider_credential_lifecycle l WHERE l.retired_at<=? AND l.secret_purged_at IS NULL AND NOT EXISTS
+      (SELECT 1 FROM admin_search_connection s WHERE s.active_id=l.credential_id OR s.candidate_id=l.credential_id OR s.previous_id=l.credential_id)) purge`,
+    [Date.now() - 30 * 86400000, Date.now() - 30 * 86400000],
+  ))!;
+  const maintenance = { online: workerOnline("evaluation"), pending: maintenancePending };
+  if (!maintenance.online && Object.values(maintenance.pending).some((count) => count > 0))
+    attention.push({
+      severity: "High",
+      message:
+        "Evaluation maintenance worker unavailable: pending validation, retention, reconciliation or notification delivery cannot progress",
+      target: "maintenance",
+    });
   for (const receipt of receipts)
     if (
       Number(receipt.last_seen_at) > Date.now() - 150000 &&
@@ -120,6 +187,8 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
     role,
     configuration,
     queues,
+    terminalJobs,
+    maintenance,
     attention,
     deployment: {
       releaseSha: process.env.RADAR_RELEASE_SHA ?? "development",

@@ -1,5 +1,6 @@
 import { pollHostProviderCheck } from "../../src/admin/host-provider-checks";
 import { readOperations } from "../../src/admin/operations-service";
+import { getDatabaseTargetIdentity } from "../../src/data/database";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
@@ -77,6 +78,172 @@ async function fixture() {
   return db;
 }
 describe("Operations & Recovery", () => {
+  it("highlights 114 staged dead letters and legacy/failed/domain terminal cohorts without replay or provider bodies", async () => {
+    const db = await fixture();
+    for (let i = 0; i < 116; i++) {
+      const job = `terminal-${i}`;
+      await db.execute(
+        "INSERT INTO canonical_opportunities(id,source,source_job_id,canonical_url) VALUES(?,'fixture',?,?)",
+        [job, job, `https://example.com/${job}`],
+      );
+      await db.execute(
+        "INSERT INTO opportunity_versions(id,canonical_job_id,content_hash,job_title,raw_content) VALUES(?,?,?,'Role','Role')",
+        [job, job, job],
+      );
+      await db.execute(
+        "INSERT INTO search_plan_candidates(tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,attention_decision,eligibility) VALUES('tenant_A','person_A','plan_A',?,?,'CANDIDATE','ELIGIBLE')",
+        [job, job],
+      );
+      await db.execute(
+        "INSERT INTO evaluation_jobs(id,tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,status,last_error) VALUES(?,'tenant_A','person_A','plan_A',?,?,'fingerprint_A',?,'provider-body-secret')",
+        [job, job, job, i < 114 ? "staged_dead_letter" : i === 114 ? "dead_letter" : "failed"],
+      );
+    }
+    await db.execute(
+      "INSERT INTO dossier_composition_jobs(id,tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,evaluation_fingerprint,profile_version,recipe,status,next_attempt_at,created_at,updated_at) VALUES('composition-terminal','tenant_A','person_A','terminal-0','terminal-0','fingerprint_A','evaluation','profile','recipe','needs_attention',0,0,0)",
+    );
+    await db.execute(
+      "INSERT INTO dossier_review_jobs(id,tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,evaluation_fingerprint,profile_version,recipe,draft_json,draft_fingerprint,status,next_attempt_at,created_at,updated_at) VALUES('review-terminal','tenant_A','person_A','terminal-0','terminal-0','fingerprint_A','evaluation','profile','recipe','{}','draft','needs_attention',0,0,0)",
+    );
+    await db.execute(
+      "INSERT INTO opportunity_pursuits(id,tenant_id,person_id,job_hash,canonical_job_id,opportunity_version,evaluation_context_fingerprint,created_at,updated_at) VALUES('pursuit','tenant_A','person_A','terminal-0','terminal-0','terminal-0','fingerprint_A','2026-10-01','2026-10-01')",
+    );
+    await db.execute(
+      "INSERT INTO pursuit_preparation_jobs(id,tenant_id,person_id,pursuit_id,job_hash,requested_by,status,created_at,updated_at) VALUES('pursuit-terminal','tenant_A','person_A','pursuit','terminal-0','op','failed','2026-10-01','2026-10-01')",
+    );
+    const before = await db.many("SELECT id,status,last_error FROM evaluation_jobs ORDER BY id");
+    const snapshot = await readOperations(db, "viewer");
+    if (!snapshot.installed) throw new Error("operations required");
+    expect(snapshot.queues.find((q) => q.pipeline === "evaluation")).toMatchObject({
+      waiting: 0,
+      active: 0,
+      dead_letter: 115,
+      failed: 1,
+      needs_attention: 0,
+      terminal: 116,
+    });
+    expect(snapshot.attention.find((a) => a.target === "queue-evaluation")).toMatchObject({
+      severity: "High",
+      message: expect.stringContaining("115 dead-letter, 1 failed, 0 needs-attention"),
+    });
+    expect(snapshot.attention.filter((a) => a.target.startsWith("queue-"))).toHaveLength(4);
+    expect(snapshot.terminalJobs.filter((j) => j.pipeline === "evaluation")).toHaveLength(100);
+    expect(
+      snapshot.terminalJobs.filter((j) => j.pipeline !== "evaluation").map((j) => j.recovery),
+    ).toEqual([
+      expect.stringContaining("Domain retry entry point available"),
+      expect.stringContaining("Domain retry entry point available"),
+      expect.stringContaining("Domain recovery policy required"),
+    ]);
+    expect(snapshot.terminalJobs.find((j) => j.job_id === "pursuit-terminal")).toMatchObject({
+      tenant_id: "tenant_A",
+      person_id: "person_A",
+      canonical_job_id: "terminal-0",
+      opportunity_version: "terminal-0",
+      context_fingerprint: "fingerprint_A",
+    });
+    expect(JSON.stringify(snapshot)).not.toContain("provider-body-secret");
+    expect(await db.many("SELECT id,status,last_error FROM evaluation_jobs ORDER BY id")).toEqual(
+      before,
+    );
+    await expect(readOperations(db, "person_A")).rejects.toThrow();
+  });
+  it.each([
+    "validation",
+    "host_probes",
+    "reconciliation",
+    "notifications",
+    "retirement",
+    "purge",
+  ] as const)(
+    "highlights unavailable evaluation maintenance with empty business queues and pending %s",
+    async (kind) => {
+      const db = await fixture();
+      await db.execute("DELETE FROM worker_heartbeats");
+      const old = Date.now() - 31 * 86400000;
+      if (["validation", "retirement", "purge"].includes(kind)) {
+        await db.execute(
+          "INSERT INTO admin_search_credentials VALUES('maintenance-credential','{}','suffix',?,'op')",
+          [kind === "validation" ? Date.now() : old],
+        );
+        await db.execute(
+          "INSERT INTO provider_credential_lifecycle(credential_id,key_version,retired_at) VALUES('maintenance-credential','fixture',?)",
+          [kind === "purge" ? old : null],
+        );
+      }
+      if (kind === "validation")
+        await db.execute(
+          "INSERT INTO admin_search_checks(id,credential_id,status,created_at,created_by) VALUES('check','maintenance-credential','queued',0,'op')",
+        );
+      if (kind === "host_probes")
+        await db.execute(
+          "INSERT INTO provider_host_checks(id,provider,status,created_at,created_by) VALUES('check','bedrock','queued',0,'op')",
+        );
+      if (kind === "reconciliation" || kind === "notifications") {
+        const incident = await observeProviderFailure(db, {
+          connectionId: TAVILY_CONNECTION,
+          provider: "tavily",
+          generation: 0,
+          failure: "credential",
+          deployment: "test",
+        });
+        if (kind === "reconciliation")
+          await db.execute("UPDATE provider_incidents SET state='recovering' WHERE id=?", [
+            incident,
+          ]);
+        else
+          await db.execute(
+            "INSERT INTO notification_deliveries(id,incident_id,event,destination_url,secret_envelope,payload_json,next_attempt_at) VALUES('delivery',?,'opened','https://alerts.example.com','{}','{}',0)",
+            [incident],
+          );
+      }
+      const snapshot = await readOperations(db, "op");
+      if (!snapshot.installed) throw new Error("operations required");
+      expect(snapshot.queues.every((q) => !q.waiting && !q.active && !q.terminal)).toBe(true);
+      expect(snapshot.maintenance).toMatchObject({ online: false, pending: { [kind]: 1 } });
+      expect(snapshot.attention.find((a) => a.target === "maintenance")).toMatchObject({
+        severity: "High",
+        message: expect.stringContaining("Evaluation maintenance worker unavailable"),
+      });
+    },
+  );
+  it("requires fresh matching release/database maintenance heartbeats and protects referenced retention versions", async () => {
+    const db = await fixture();
+    const old = Date.now() - 31 * 86400000;
+    await db.execute(
+      "INSERT INTO admin_search_credentials VALUES('protected','{}','suffix',?,'op')",
+      [old],
+    );
+    await db.execute(
+      "INSERT INTO provider_credential_lifecycle(credential_id,key_version) VALUES('protected','fixture')",
+    );
+    await db.execute("UPDATE admin_search_connection SET previous_id='protected'");
+    await db.execute(
+      "INSERT INTO provider_host_checks(id,provider,status,created_at,created_by) VALUES('check','bedrock','queued',0,'op')",
+    );
+    const fingerprint = getDatabaseTargetIdentity().fingerprint;
+    for (const [release, database, seen, online] of [
+      ["older-release", fingerprint, new Date().toISOString(), false],
+      ["development", "other-database", new Date().toISOString(), false],
+      ["development", fingerprint, new Date(Date.now() - 151000).toISOString(), false],
+      ["development", fingerprint, new Date().toISOString(), true],
+    ] as const) {
+      await db.execute(
+        "UPDATE worker_heartbeats SET release_sha=?,database_fingerprint=?,last_seen_at=?",
+        [release, database, seen],
+      );
+      const snapshot = await readOperations(db, "op");
+      if (!snapshot.installed) throw new Error("operations required");
+      expect(snapshot.maintenance.online).toBe(online);
+      expect(snapshot.maintenance.pending.retirement).toBe(0);
+      expect(snapshot.attention.some((a) => a.target === "maintenance")).toBe(!online);
+    }
+    await db.execute("DELETE FROM provider_host_checks");
+    await db.execute("DELETE FROM worker_heartbeats");
+    const snapshot = await readOperations(db, "op");
+    if (!snapshot.installed) throw new Error("operations required");
+    expect(snapshot.attention.some((a) => a.target === "maintenance")).toBe(false);
+  });
   it("upgrades populated migration 084 while preserving host fallback and existing data", async () => {
     const temporary = mkdtempSync(join(tmpdir(), "radar-ops-migration-"));
     const db = new SqliteAdapter(new Database(":memory:"));

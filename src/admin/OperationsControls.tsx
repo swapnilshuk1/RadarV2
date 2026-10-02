@@ -401,6 +401,32 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
           <Records rows={ops.actionJobs} />
         </details>
       </section>
+      <section id="terminal-work" className="space-y-4">
+        <h2 className="font-serif text-2xl">Terminal jobs & domain recovery</h2>
+        <p className="text-sm">
+          Terminal jobs require domain validation. For dossier or review jobs needing attention, the
+          tenant administrator can request a detailed dossier from the opportunity; current scope
+          and evaluation fingerprint are checked there. Other terminal states need a domain recovery
+          policy. Operations resume applies to eligible nonterminal incident work.
+        </p>
+        {ops.queues.map((q) => (
+          <article
+            id={`queue-${q.pipeline}`}
+            key={q.pipeline}
+            className="space-y-3 border border-border p-5"
+          >
+            <h3 className="text-lg">{q.pipeline}</h3>
+            <p>
+              {q.dead_letter ?? 0} dead-letter · {q.failed ?? 0} failed · {q.needs_attention ?? 0}{" "}
+              needs-attention
+            </p>
+            <p className="text-xs">
+              Most recent 100 terminal jobs for this stage. Counts cover the entire queue.
+            </p>
+            <Records rows={ops.terminalJobs.filter((j) => j.pipeline === q.pipeline)} />
+          </article>
+        ))}
+      </section>
       <section id="runtime" className="space-y-4">
         <h2 className="font-serif text-2xl">Runtime & deployment health</h2>
         <Records
@@ -409,9 +435,26 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
             waiting: q.waiting ?? 0,
             active: q.active ?? 0,
             terminal: q.terminal ?? 0,
+            dead_letter: q.dead_letter ?? 0,
+            failed: q.failed ?? 0,
+            needs_attention: q.needs_attention ?? 0,
             oldest: q.oldest ?? null,
           }))}
         />
+        <div id="maintenance" className="space-y-3 border border-border p-4">
+          <h3 className="text-lg">Evaluation maintenance worker</h3>
+          <p>
+            {ops.maintenance.online
+              ? "Matching evaluation worker online"
+              : "Evaluation maintenance worker unavailable"}
+          </p>
+          <p className="text-sm">
+            The evaluation heartbeat owns Tavily validation, credential retirement and purge,
+            incident reconciliation and webhook delivery. These stop when that worker is
+            unavailable, even with empty business queues. Check its release, database and heartbeat.
+          </p>
+          <Records rows={[ops.maintenance.pending]} />
+        </div>
         <Records rows={ops.workers} />
         <Records rows={ops.receipts} />
         <p>
@@ -430,6 +473,10 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
             ? "host credential configured"
             : "host credential missing"}{" "}
           · {ops.deployment.bedrock.version} · rotation is deployment-managed.
+        </p>
+        <p className="text-sm">
+          Gateway-managed model calls participate in shared operational capacity and cooldown.
+          Direct Bedrock consumers, including evidence extraction, remain outside those controls.
         </p>
         <p>
           Google ADC: {ops.deployment.adc.status} · Project:{" "}

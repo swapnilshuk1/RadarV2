@@ -92,10 +92,16 @@ No secrets or secret-derived hashes. Activation observes required fresh consumer
 new consumers load the active generation before dispatch. Irrelevant workers do
 not block uptake.
 
-Recovery states: previewed -> requested -> executing -> completed,
-partially_completed, cancelled or failed. Previews have expiry and exact identities;
-execution revalidates pause/scope/lease/state. Resume is queue-owned, never a broad
-Admin SQL rewrite of terminal statuses. Partial progress persists.
+Recovery execution is synchronous and transactional: previewed -> executing ->
+completed | partially_completed. `executing` occurs inside the same bounded
+transaction as queue-owned resume and outcome/audit persistence. An exception or
+process death before commit rolls the action and dispatch changes back to
+`previewed`; retry still requires an unexpired preview and current eligibility.
+The schema reserves requested/cancelled/failed states, but this release has no
+request, cancel or durable failed transition and no asynchronous recovery executor.
+Previews retain exact identities and expire after five minutes; execution
+revalidates pause/scope/lease/state. Resume never rewrites terminal statuses.
+Successful dispatch persists every resumed, skipped or blocked per-job outcome.
 
 Resolution requires a validated active connection, no cooldown, fresh required
 worker uptake and a health probe; every affected job must be completed, legitimately
@@ -123,9 +129,12 @@ Current code: migration 085 retains prototype storage; additive migration 086
 adds incidents, capacity, receipts, recovery, settings and deliveries. Active
 generation is distinct from optimistic mutation revision. Tavily traffic resolves
 the active version per acquisition. Validation/maintenance runs in evaluation
-heartbeat; ordinary UI reads never start workers or provider calls. Model gateways
-use shared capacity/cooldown; stage job limits apply per worker process. Bedrock
-rotation remains read-only and ADC remains host-managed.
+heartbeat; ordinary UI reads never start workers or provider calls. Gateway-managed
+model calls flowing through `operationalModel()` participate in shared operational
+capacity/cooldown; stage job limits apply per worker process. Direct Bedrock
+consumers, including `src/lib/intelligence/extraction/EvidenceExtractionService.ts`,
+remain outside those controls. Bedrock rotation remains read-only until all consumers
+converge on the resolver; ADC remains host-managed.
 
 Verification so far: initial 17 tests passed (operations + existing context input);
 then 80 passed across operations/config/protection/context/review queues. A later
@@ -140,7 +149,7 @@ retryable while credential/quota incidents retain explicit recovery holds;
 resolution validates the reviewed memo and matching publication rather than
 trusting a presentation row's existence. Existing user pauses remain authoritative.
 
-Latest verification: 77 focused tests passed across Operations, configuration,
+Verification of the original `e47b5406` candidate: 77 focused tests passed across Operations, configuration,
 protection and review queues. Operations includes populated-schema upgrade,
 cross-process capacity/restart cooldown, rollback, retention boundary, worker-host
 probes, exact recovery and reviewed publication. Receipt schema refinement passed
@@ -148,7 +157,31 @@ probes, exact recovery and reviewed publication. Receipt schema refinement passe
 Final `npm run certify` passed all nine stages in 176.52 seconds: lint, formatting,
 TypeScript, production SSR build, and 78 manifest suites with 783 passed and one
 skipped test. The initial inventory failure was corrected and narrowly verified
-before final certification. Subsequent edits are documentation-only.
+before final certification. These results predate the review corrections below.
+
+Review correction cycle (3 October 2026): terminal counts now distinguish legacy
+and staged dead letters, failed jobs and domain needs-attention; all four stages
+produce Needs attention links and bounded exact identity cohorts. Pending maintenance
+produces its own worker-unavailable signal independently of queue depth. Recovery
+states, gateway-only model coverage, creation-age retirement and deployment order
+now describe the implementation. No terminal retry, maintenance daemon, migration
+or live configuration change was added. Self-review checked role boundaries,
+arbitrary-error exclusion, cohort bounds, pursuit-owned identity and maintenance
+release/database/freshness matching, including protected previous credentials.
+
+All 23 focused Operations tests passed, including a 114 staged dead-letter fixture,
+legacy dead letters, unchanged terminal rows, domain retry classification and six
+maintenance backlog categories with empty business queues. Authenticated browser
+acceptance passed the new Overview links and exact terminal cohort, then completed
+the existing validated activation/uptake/recovery/reviewed memo/signed-delivery
+journey. The first browser fixture introduced a second version of the golden
+opportunity and correctly failed exact claim; moving the terminal fixture to its
+own opportunity restored the independent journey. Final `npm run certify` passed
+all nine stages in 218.51 seconds, including TypeScript, SSR build and all 78
+manifest suites: 791 tests passed and one skipped. `git diff --check` passed.
+Only this verification record changed after certification. Engineering review
+corrections are complete locally; push/PR, exact-SHA CI and live rollout/proof
+remain unperformed by this cycle.
 
 Later self-review fixes: rejected stale review failures, preserved independent
 review concurrency with shared cooldown, fixed browser date hydration with ISO
@@ -185,9 +218,13 @@ through this document and its runbook, preserving unrelated original-checkout wo
    previews expire; execution rechecks generation, pause, lease, scope and
    dependencies. Valid checkpoints remain. Resolution requires reviewed canonical
    publication (PASS requires its evaluation only) or manual pause.
-6. Revalidate the retained previous version before rollback. Unreferenced versions
-   retire after 30 days; ciphertext purges 30 days after retirement. Active,
-   candidate and previous versions are protected. Metadata/history remains.
+6. Revalidate the retained previous version before rollback. Automatic retirement
+   requires an unreferenced credential whose **creation time** is at least 30 days
+   old. An older version can retire on the next maintenance beat immediately after
+   it stops being active/candidate/previous; there is no 30-day grace period measured
+   from becoming unreferenced. Ciphertext becomes eligible for purge 30 days after
+   `retired_at`. Active, candidate and previous versions remain protected from both
+   operations. Metadata/history remains; unavailable maintenance delays cleanup.
 7. Configure a signed HTTPS webhook with a 32+ character signing secret. Severity
    routing and snooze are supported. Delivery has five bounded attempts and cannot
    undo incident recovery.
@@ -196,6 +233,46 @@ Recovery action completion means resume dispatch finished. Per-job outcomes
 progress from resumed to completed when reconciliation verifies work. Incident
 resolution is separate. Probe the active connection again if its 15-minute health
 proof expires before a long recovery finishes.
+
+Admin Overview shows separate dead-letter, failed and needs-attention counts for
+each stage even without an open provider incident. Its links open exact terminal
+cohorts in Connections (most recent 100 per stage; totals cover the full queue).
+Both legacy `dead_letter` and staged `staged_dead_letter` count as dead letters.
+The cohort exposes identities and recovery classification, without retaining or
+displaying arbitrary provider error bodies. Dossier/review `needs_attention` jobs
+have a domain retry entry point through the tenant administrator's detailed-dossier
+request; that entry point revalidates active scope and evaluation fingerprint.
+Other terminal work requires a separate domain recovery policy. This release adds
+visibility, not terminal replay or a dead-letter drain worker.
+
+The **evaluation maintenance worker is a control-plane dependency**: if no fresh
+evaluation heartbeat matches the web release and database, Tavily validation,
+Bedrock host probes, credential retirement/purge, incident reconciliation and
+webhook delivery cannot progress. Admin shows this status and pending counts under
+Runtime, with a High Needs attention link whenever maintenance work is pending,
+including when all business queues are empty. Counts include queued/running checks,
+recovering Tavily incidents, queued/retrying/sending deliveries and eligible
+retirement/purge work. A fresh heartbeat proves worker presence, not that each
+maintenance task succeeded; inspect check, incident and delivery outcomes too.
+There is no separate maintenance daemon in this release, so an unavailable worker
+also prevents outbound notifications about its own failure.
+
+## Deployment sequence
+
+1. Push the candidate and open its PR; require CI on the exact candidate SHA.
+2. Verify database backup and recovery before applying migrations 085/086.
+3. Deploy web and exercised workers on that same SHA and database target. Verify
+   migrations/readiness, required matching heartbeats and loaded receipts.
+4. Run host Bedrock/ADC probes and a bounded Tavily acquisition using the existing
+   host credential. Initial deployment smoke must preserve host fallback; do not
+   activate an Admin-managed candidate as part of that smoke.
+5. After deployment smoke passes, separately validate a candidate, activate it and
+   verify required uptake. Run one bounded real recovery or live context acquisition,
+   then confirm its reviewed downstream result (PASS needs evaluation only).
+
+Local certification is not deployed evidence. Record the exact deployed SHA and
+these results before calling the operational journey deployment-proven. Deployment
+and credential activation remain separate events with distinct rollback paths.
 
 Stage limits apply per worker process; provider slots apply across processes per
 connection. Lower limits drain running work. Explicit lane concurrency still limits
@@ -219,7 +296,7 @@ checkout had no Tavily/Mantle key; using original-project provider files, Tavily
 usage and Mantle catalog endpoints returned HTTP 200. This proves local read-only
 authentication/connectivity, not deployed-worker model inference.
 
-Ignored `.radar/acceptance/` retains `operations.png`, `browser.sqlite`,
+Ignored `.radar/acceptance/` retains `operations.png`, `operations-attention.png`, `browser.sqlite`,
 `operations-connectivity.json` and `operations-connectivity-configured.json`.
 No credentials, tokens or provider bodies appear in reports. Normal candidate
 acceptance remains `npm run acceptance:browser`; the operations flag is separate.
