@@ -73,12 +73,16 @@ export async function releaseReservation(
   );
 }
 async function policy(db: DatabaseAdapter, tenant: string, now: number) {
-  const row = await db.one<TenantQuota>("SELECT * FROM tenant_quotas WHERE tenant_id=?", [tenant]);
+  const row = await db.one<TenantQuota & { updated_by: string }>(
+    "SELECT * FROM tenant_quotas WHERE tenant_id=?",
+    [tenant],
+  );
   if (!row) return null;
   const overrides = await db.many<{ dimension: QuotaDimension; limit_value: number }>(
     "SELECT dimension,limit_value FROM tenant_quota_overrides WHERE tenant_id=? AND expires_at>?",
     [tenant, now],
   );
+  if (row.updated_by === "migration-compatibility" && !overrides.length) return null;
   for (const override of overrides)
     if (quotaDimensions.includes(override.dimension))
       row[override.dimension] = override.limit_value;
@@ -98,7 +102,7 @@ async function monthlyReserved(
   );
   const held = await db.one<{ n: number }>(
     `SELECT COALESCE(SUM(MAX(0,input_limit-input_used)+MAX(0,output_limit-output_used)),0) n
- FROM quota_jobs WHERE tenant_id=? AND month=? AND lane=? AND closed=0 ${exclude ? "AND NOT(pipeline=? AND job_id=?)" : ""}`,
+ FROM quota_jobs WHERE tenant_id=? AND month=? AND lane=? AND closed=0 ${exclude ? "AND pipeline<>'scrape' AND NOT(pipeline=? AND job_id=?)" : ""}`,
     [tenant, month, lane, ...(exclude ? [exclude.pipeline, exclude.id] : [])],
   );
   // Legacy invocations are not in quota_calls. Unknown usage cannot become free capacity.
@@ -187,6 +191,11 @@ export async function reserveClaim(
   if (controls) return deferClaim(db, job.pipeline, job.id, job.tenant, "PAUSED", now);
   const limits = await policy(db, job.tenant, now);
   if (!limits) {
+    if (
+      (await db.one("SELECT name FROM sqlite_master WHERE name='admin_quota_defaults'")) &&
+      !(await db.one("SELECT tenant_id FROM tenant_quotas WHERE tenant_id=?", [job.tenant]))
+    )
+      return deferClaim(db, job.pipeline, job.id, job.tenant, "QUOTA_POLICY_REQUIRED", now);
     if (job.pipeline !== "scrape")
       await db.execute(
         `INSERT INTO quota_legacy_leases VALUES(?,?,?,?,?)
@@ -250,10 +259,14 @@ export async function reserveClaim(
   if ((storm?.n ?? 0) - (existing?.invalid_reviewed_count ?? 0) >= 5)
     return deferClaim(db, job.pipeline, job.id, job.tenant, "INVALID_OUTPUT_RETRY_STORM", now);
   const active = await db.one<{ n: number }>(
-    `SELECT COUNT(*) n FROM quota_jobs WHERE tenant_id=? AND lease_until>? AND closed=0 AND NOT(pipeline=? AND job_id=?)`,
+    `SELECT COUNT(*) n FROM quota_jobs WHERE tenant_id=? AND lease_until>? AND closed=0 AND pipeline<>'scrape' AND NOT(pipeline=? AND job_id=?)`,
     [job.tenant, now, job.pipeline, job.id],
   );
-  if (limits.concurrent_jobs !== null && (active?.n ?? 0) >= limits.concurrent_jobs)
+  if (
+    job.pipeline !== "scrape" &&
+    limits.concurrent_jobs !== null &&
+    (active?.n ?? 0) >= limits.concurrent_jobs
+  )
     return deferClaim(db, job.pipeline, job.id, job.tenant, "CONCURRENT_JOBS", now);
   const countDimension =
     job.pipeline === "evaluation"
@@ -388,7 +401,14 @@ export async function reserveModelCall(
 ) {
   if (!(await protectionInstalled(db))) return;
   const limits = await policy(db, context.tenantId, Date.now());
-  if (!limits) return;
+  if (!limits) {
+    if (
+      (await db.one("SELECT name FROM sqlite_master WHERE name='admin_quota_defaults'")) &&
+      !(await db.one("SELECT tenant_id FROM tenant_quotas WHERE tenant_id=?", [context.tenantId]))
+    )
+      throw new QuotaDeferredError("QUOTA_POLICY_REQUIRED");
+    return;
+  }
   const id = jobIdentity(context);
   if (!id || !context.leaseToken) throw new QuotaDeferredError("UNSCOPED_MODEL_JOB");
   if (!Number.isSafeInteger(call.maxOutput) || call.maxOutput < 1)
@@ -543,7 +563,7 @@ export async function settleModelCall(
         tx,
         context.tenantId,
         "PROVIDER_USAGE_OVERRUN",
-        event.invocationId,
+        `${context.pipeline}:${call.job_id}`,
         "Provider reported usage above the preflight reservation. Further calls require remaining budget.",
       );
   });

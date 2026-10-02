@@ -47,9 +47,42 @@ export class PursuitTokenLedger {
   private inputTokens = 0;
   private outputTokens = 0;
   private calls = 0;
+  private inputHeld = 0;
+  private outputHeld = 0;
 
   constructor(private readonly budget: PursuitTokenBudget = PURSUIT_TOKEN_BUDGET) {}
 
+  /** Synchronous reservations protect the package's parallel artifact calls. */
+  reserve(inputBound: number): { input: number; output: number } | null {
+    const inputFree = this.budget.inputTokens - this.inputTokens - this.inputHeld;
+    const outputFree = this.budget.outputTokens - this.outputTokens - this.outputHeld;
+    if (inputBound > inputFree || outputFree < 128) return null;
+    const output = Math.min(outputFree, Math.floor(this.budget.outputTokens / 4));
+    this.inputHeld += inputBound;
+    this.outputHeld += output;
+    return { input: inputBound, output };
+  }
+  settle(reservation: { input: number; output: number }, usage: ModelUsage | undefined) {
+    this.inputHeld -= reservation.input;
+    this.outputHeld -= reservation.output;
+    const valid =
+      usage &&
+      Number.isSafeInteger(usage.inputTokens) &&
+      Number.isSafeInteger(usage.outputTokens) &&
+      usage.inputTokens! >= 0 &&
+      usage.outputTokens! >= 0;
+    this.record(
+      valid
+        ? {
+            inputTokens: usage.inputTokens,
+            outputTokens: Math.max(
+              usage.outputTokens!,
+              (usage.totalTokens ?? 0) - usage.inputTokens!,
+            ),
+          }
+        : { inputTokens: reservation.input, outputTokens: reservation.output },
+    );
+  }
   record(usage: ModelUsage | undefined): void {
     this.calls += 1;
     if (!usage) return;
@@ -81,6 +114,7 @@ export class PursuitTokenLedger {
  * two pursuits may derive concurrently in the same worker process.
  */
 export interface PursuitModelContext {
+  strictBudget?: boolean;
   configuredModels?: import("./model").PursuitModel[];
   /** Records each provider call for cost and latency observability. */
   invocationSink?: ModelInvocationSink;

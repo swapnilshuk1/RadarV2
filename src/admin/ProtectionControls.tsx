@@ -5,6 +5,7 @@ import {
   pipelines,
   quotaDimensions,
   type QuotaDimension,
+  type ProtectionAction,
   type ProtectedPipeline,
 } from "./protection-contracts";
 import type { AdminSnapshot } from "./service";
@@ -15,7 +16,7 @@ const labels: Record<string, string> = {
   memos_daily: "Memos / UTC day",
   pursuits_monthly: "Pursuit packages / UTC month",
   scrapes_daily: "Scrape runs / UTC day",
-  concurrent_jobs: "Concurrent jobs",
+  concurrent_jobs: "Concurrent model jobs (scraping independent)",
   job_input_tokens: "Per-job input admission budget",
   job_output_tokens: "Per-job output budget",
 };
@@ -37,6 +38,7 @@ export function ProtectionControls({
     [error, setError] = useState("");
   const [jobKey, setJobKey] = useState(""),
     [alertId, setAlertId] = useState("");
+  const [editorState, setEditorState] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [pipeline, setPipeline] = useState<ProtectedPipeline | "*">("*");
   const [dimension, setDimension] = useState<QuotaDimension>("reasoning_monthly"),
@@ -48,16 +50,21 @@ export function ProtectionControls({
         Viewer access. Only platform operators can change protection.
       </p>
     );
-  const submit = async (action: Parameters<typeof changeProtectionFn>[0]["data"]) => {
+  const submit = async (action: ProtectionAction) => {
     setBusy(true);
     setError("");
     try {
-      await changeProtectionFn({ data: action });
+      await changeProtectionFn({
+        data: {
+          ...action,
+          expectedState: action.kind === "quota" ? editorState! : data.protectionState!,
+        } as Parameters<typeof changeProtectionFn>[0]["data"],
+      });
       setEdit(false);
       setReason("");
       await router.invalidate();
-    } catch {
-      setError("Change was not saved. Check values, the reason and platform access.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Change was not saved; refresh and retry.");
     } finally {
       setBusy(false);
     }
@@ -77,6 +84,7 @@ export function ProtectionControls({
             disabled={!data.tenantId || busy}
             className="border border-border px-3 py-2 text-sm disabled:opacity-40"
             onClick={() => {
+              setEditorState(data.protectionState);
               setValues(
                 Object.fromEntries(
                   keys.map((k) => [

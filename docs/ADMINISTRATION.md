@@ -55,7 +55,6 @@ Tables support compact/comfortable spacing. Measurement links explain each data
 source. Empty data and unavailable measurements are visibly different.
 The supplied RADAR administration mockups guide the numbered rail, typography and ruled ledger hierarchy. Sample metrics, health labels and configuration revisions from those mockups are not runtime facts. Role audit entries identify the trusted host and OS user. Table headings sort the ledger.
 
-
 ## Protection setup and behavior
 
 No tenant receives a quota policy by default. Apply migrations 073–074 to the same
@@ -131,7 +130,6 @@ The console remains on the admin branch; applying migrations to a fixture does
 not apply them to Oracle or the live acquisition database. Merge/deploy and
 operator activation are separate release steps.
 
-
 Local SQLite/libSQL operations sharing an event loop are serialized per connection
 or file; local libSQL keeps a retained connection with explicit BEGIN IMMEDIATE,
 COMMIT and ROLLBACK rather than detaching a native connection for each claim.
@@ -183,6 +181,11 @@ Credentials stay on the worker host in its existing
 `BEDROCK_MANTLE_API_KEY` reference. The console never receives a secret value.
 Connection health is not inferred from usage or model selection.
 
+For Pursuit alone, the selected writing model is tried first and the established
+Mantle chain remains as a resilience fallback. This keeps a transient configured
+model failure from discarding a whole package while retaining the selected model
+as the recorded primary attempt.
+
 Lane concurrency ranges from 1–8 provider calls per process/configuration,
 timeouts from 30–180 seconds and output ceilings from 4,096–16,384 tokens per
 call. Stage-specific ceilings may be smaller. Pursuit package budgets range
@@ -196,6 +199,9 @@ Platform defaults apply unless a tenant has its own active revision. Tenant
 overrides are whole configuration snapshots: publishing new platform defaults
 does not silently edit an existing tenant snapshot. Neither layer overwrites
 explicit candidate search intent. Select a tenant before editing its override.
+**Return to platform defaults** creates a tenant-scoped, bench-tested inheritance
+revision and removes the tenant pointer only when it is published. It never
+rewrites the tenant's prior revisions.
 
 The workflow is **Edit → Save draft → Run shadow bench → review the field diff
 → Publish tested draft**, with a reason on every action and before/after values
@@ -209,10 +215,16 @@ is implemented by this publish action.
 
 ### Bench operation
 
-The test button queues durable fixture work. Start `npm run worker:admin-bench`
-on the intended worker host, with the **same database target** and credential
+The test button queues durable fixture work only when the web host can declare
+`RADAR_ADMIN_BENCH_TARGET`, a 40-character `RADAR_RELEASE_SHA`, and a comma-separated
+`RADAR_ADMIN_BENCH_HOSTS` allow-list. Start `npm run worker:admin-bench` on one
+of those intended worker hosts, with the **same database target** and credential
 configuration as that host's other workers; `-- --once` handles a single poll.
-This worker is opt-in and is not added to the existing deployment supervisor.
+The run stores the declared target/release/provider-configuration fingerprint,
+and the worker stores a host/runtime attestation. A changed release, target,
+host allow-list or provider configuration fails the run and blocks publication.
+Set `RADAR_ADMIN_BENCH_ENABLED=true` to supervise it through PM2 and include it
+in readiness; leaving it unset keeps the paid bench worker opt-in.
 The console can show queued work until the worker starts; Refresh shows results.
 It checks operator access both at claim and before every paid dispatch.
 Only one queued/running bench per scope is allowed. Superseded/discarded queued
@@ -221,7 +233,9 @@ or active revision changes. Expired leases fail without an automatic paid retry.
 
 Three code-defined synthetic fixtures cover direct leadership fit, adjacent
 mandate fit and a mandatory license contradiction. Both revisions run through
-the real staged evaluator and Template B composition/factual-review validators.
+the real staged evaluator and Template B composition/factual-review validators,
+then a bounded synthetic Pursuit-lane request using the draft writing assignment
+and the same package token ledger as durable Pursuit preparation.
 PASS skips composition. Results compare verdict, screening viability, claim
 additions/removals/changes and changed memo sections. No fixture result is saved
 to canonical evaluations, serving tables or the shortlist. Invocations carry
@@ -249,11 +263,10 @@ preflight caps, revocation, expiry, fixture provenance and BENCH usage exclusion
 Provider requests are simulated in automated tests; a successful worker-host
 bench is still required before activating a specific assignment.
 
-
 ## Self-audit corrections after Phase 3
 
 The self-audit is recorded in [ADMIN_SELF_AUDIT.md](ADMIN_SELF_AUDIT.md).
-Bench acceptance is now `executive-fixtures-v2`. Results must cover each fixture
+Bench acceptance is now `executive-fixtures-v3`. Results must cover each fixture
 exactly once with valid verdict/viability fields. The direct-fit fixture must
 remain viable with PURSUE or CONSIDER; the explicit missing-license fixture must
 remain PASS/BLOCKED. These are synthetic fixture expectations, not new gates on
@@ -278,16 +291,17 @@ disabled. Save or cancel first so the displayed values correspond to the draft
 being tested or published. Queue revision ledgers show pins, not a claim that a
 particular host has acknowledged a revision.
 
-
 ## Secondary audit corrections and remaining prerequisites
 
 Migration 076 protects completed bench rows from update/deletion, freezes run
-identity and restricts legal state transitions. Apply it to the same database
-as the web and bench worker; existing migrations 072–075 are unchanged.
+identity and restricts legal state transitions. Migration 077 extends the same
+database with bench deployment identity, protection epochs and quota defaults;
+apply both to the web and bench worker database.
 Repair detection consumes typed evaluator/composer events rather than progress
 messages. Every configuration mutation includes the active/draft state hash;
-stale editors receive `ADMIN_STATE_CHANGED` and must refresh. This protects
-configuration writes; quota and pause controls still need their own version checks.
+stale editors receive `ADMIN_STATE_CHANGED` and must refresh. Quota, override,
+pause, resume and acknowledgement writes use the separate protection epoch and
+receive the same refresh-required outcome on a stale request.
 
 The publication dialog lists changed fields and the matching bench summary.
 Operators can cancel a queued/running bench with a reason; cancellation clears
@@ -301,13 +315,27 @@ Callers must still exclude source payloads and credentials from prose. Unavailab
 sections emit a structured server diagnostic without SQL arguments or raw errors.
 CLI role grants require an explicit `--role operator|viewer`.
 
-**Do not activate these phases as production-complete yet.** Host/release-bound
-bench attestation, Pursuit fixture coverage, quota/pause optimistic concurrency,
-explicit production quota provisioning and tenant return-to-platform inheritance
-are still required. A disposable remote-Turso contention proof and authoritative
-GitHub CI on the final SHA are also outstanding. Legacy baseline pins do not freeze
+Migration 077 closes the release-control implementation gaps: host/release-bound
+bench attestation, protection-write state epochs, explicit quota provisioning and
+tenant return-to-platform inheritance. Existing tenants receive an explicit
+`migration-compatibility` profile that preserves their pre-activation behavior;
+new tenants receive bounded platform defaults. The compatibility profile is
+visible data, not an absent-policy bypass. Scrape claims do not consume the
+model-worker concurrency limit, so acquisition remains independent of enrichment,
+evaluation and writing throughput. A disposable remote-Turso proof and exact-SHA
+GitHub CI remain operational validation steps. Legacy baseline pins do not freeze
 host environment variables. See [ADMIN_SELF_AUDIT.md](ADMIN_SELF_AUDIT.md) for the
-finding-by-finding disposition.
+current disposition.
+
+### Remote Turso foreign-key validation
+
+Use only a disposable remote database. Set its URL/token in
+`RADAR_REMOTE_VALIDATION_URL` and `RADAR_REMOTE_VALIDATION_TOKEN`, set
+`RADAR_ADMIN_REMOTE_VALIDATION_CONFIRM=DISPOSABLE`, then run
+`npm run verify:remote-turso-fk`. The probe creates two uniquely named temporary
+tables, confirms `PRAGMA foreign_keys=1` on the normal client and write
+transaction, confirms an orphan insert is rejected, then drops its tables. It
+never defaults to the application database or reads RADAR tables.
 
 Merging/pushing to main can automatically deploy Oracle and run migrations.
 Keep this branch isolated until deployment prerequisites are actually satisfied.

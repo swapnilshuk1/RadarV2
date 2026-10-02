@@ -150,6 +150,10 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
   // cost is visible alongside the other model lanes and is capped per pursuit.
   const pinned = await jobConfig(getDatabaseAdapter(), "pursuit", job.id);
   const model: PursuitModelContext = {
+    strictBudget:
+      pinned.config.writing.model !== "legacy" ||
+      pinned.config.pursuitInputTokens !== 20000 ||
+      pinned.config.pursuitOutputTokens !== 5000,
     ledger: new PursuitTokenLedger({
       inputTokens: pinned.config.pursuitInputTokens,
       outputTokens: pinned.config.pursuitOutputTokens,

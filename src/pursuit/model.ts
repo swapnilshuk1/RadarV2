@@ -150,9 +150,17 @@ async function geminiModel(context?: PursuitModelContext): Promise<PursuitModel 
 
 /** Ordered provider chain. Empty means deterministic derivation only. */
 export async function pursuitModelChain(context?: PursuitModelContext): Promise<PursuitModel[]> {
-  if (context?.configuredModels) return context.configuredModels;
   const [mantle, gemini] = await Promise.all([mantleModels(context), geminiModel(context)]);
-  return [...mantle, ...(gemini ? [gemini] : [])];
+  const normal = [...mantle, ...(gemini ? [gemini] : [])];
+  if (!context?.configuredModels) return normal;
+  // An explicit writing-lane choice controls the first attempt, but should not
+  // turn a transient provider/model failure into an unnecessary deterministic
+  // package. Preserve the established provider chain behind that choice.
+  const configured = context.configuredModels;
+  return [
+    ...configured,
+    ...normal.filter((candidate) => !configured.some((selected) => selected.id === candidate.id)),
+  ];
 }
 
 /**
@@ -175,13 +183,29 @@ export async function generateWithFallback<T>(
   }
   const failures: string[] = [];
   for (const model of await pursuitModelChain(context)) {
+    const reservation =
+      context?.strictBudget && context.ledger
+        ? context.ledger.reserve(
+            new TextEncoder().encode(JSON.stringify({ instruction, input, schema })).length + 2048,
+          )
+        : undefined;
+    if (reservation === null) return null;
+    let settled = false;
     try {
-      const raw = await model.generate(instruction, input, schema, { stage });
-      context?.ledger?.record(model.usage());
+      const raw = await model.generate(instruction, input, schema, {
+        stage,
+        ...(reservation ? { maxOutputTokens: reservation.output } : {}),
+      });
+      if (reservation) context!.ledger!.settle(reservation, model.usage());
+      else context?.ledger?.record(model.usage());
+      settled = true;
       return { value: parse(raw), modelId: model.id };
     } catch (error) {
       if (error instanceof Error && error.name === "QuotaDeferredError") throw error;
-      context?.ledger?.record(model.usage());
+      if (!settled) {
+        if (reservation) context!.ledger!.settle(reservation, model.usage());
+        else context?.ledger?.record(model.usage());
+      }
       failures.push(`${model.id}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }

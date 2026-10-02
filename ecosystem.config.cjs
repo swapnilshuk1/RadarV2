@@ -47,6 +47,9 @@ module.exports = {
       ["radar-reviews", "scripts/run-dossier-review-worker.ts"],
       ["radar-corpus", "scripts/run-corpus-regeneration-worker.ts"],
       ["radar-pursuit", "scripts/run-pursuit-preparation-worker.ts"],
+      ...(process.env.RADAR_ADMIN_BENCH_ENABLED === "true"
+        ? [["radar-admin-bench", "scripts/run-admin-bench-worker.ts"]]
+        : []),
     ].map(([name, args]) => ({
       name,
       script: "node_modules/tsx/dist/cli.mjs",

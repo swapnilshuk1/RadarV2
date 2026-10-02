@@ -36,7 +36,7 @@ export function validateQuota(value: unknown): TenantQuota {
   }
   return result as TenantQuota;
 }
-export type ProtectionMutation =
+export type ProtectionAction =
   | { kind: "quota"; tenant: string; quota: unknown; reason: string }
   | {
       kind: "override";
@@ -61,6 +61,7 @@ export type ProtectionMutation =
       reason: string;
     }
   | { kind: "acknowledge"; alertId: string; reason: string };
+export type ProtectionMutation = ProtectionAction & { expectedState: string };
 
 export const validateProtectionMutation = (input: ProtectionMutation) => {
   if (
@@ -95,6 +96,7 @@ export const validateProtectionMutation = (input: ProtectionMutation) => {
     (typeof input.alertId !== "string" || !input.alertId || input.alertId.length > 256)
   )
     throw new Error("INVALID_ALERT");
+  if (typeof input.expectedState !== "string") throw new Error("ADMIN_STATE_REQUIRED");
   if (input.kind === "quota") return { ...input, quota: validateQuota(input.quota) };
   if (
     input.kind === "override" &&

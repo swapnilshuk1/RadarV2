@@ -16,7 +16,9 @@ export const REQUIRED_WORKERS = [
   "corpus",
   "pursuit-preparation",
 ] as const;
-export type RequiredWorkerName = (typeof REQUIRED_WORKERS)[number];
+export const OPTIONAL_WORKERS = ["admin-bench"] as const;
+export type RequiredWorkerName =
+  (typeof REQUIRED_WORKERS)[number] | (typeof OPTIONAL_WORKERS)[number];
 export const WORKER_HEARTBEAT_STALE_MS = 150_000;
 
 export function assertWorkerPlacement(
@@ -65,9 +67,11 @@ export function requiredWorkersForEnvironment(
   env: NodeJS.ProcessEnv = process.env,
 ): readonly RequiredWorkerName[] {
   describeBlobStoreConfiguration(env);
-  return env.RADAR_SERVER_SCRAPER_ENABLED === "true"
-    ? REQUIRED_WORKERS
-    : REQUIRED_WORKERS.filter((name) => name !== "scrape");
+  const required =
+    env.RADAR_SERVER_SCRAPER_ENABLED === "true"
+      ? REQUIRED_WORKERS
+      : REQUIRED_WORKERS.filter((name) => name !== "scrape");
+  return env.RADAR_ADMIN_BENCH_ENABLED === "true" ? [...required, "admin-bench"] : required;
 }
 
 export async function startWorkerHeartbeat(

@@ -10,7 +10,8 @@ import { SqliteAdapter } from "../../src/data/database/sqlite";
 import type { DatabaseAdapter } from "../../src/data/database/adapter";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { SqliteScrapeRunStore } from "../../src/data/sqlite/repositories/SqliteScrapeRunStore";
-import { applyProtectionMutation } from "../../src/admin/protection-mutations";
+import { applyProtectionMutation as rawApplyProtectionMutation } from "../../src/admin/protection-mutations";
+import { protectionState } from "../../src/admin/protection-state";
 import {
   reserveClaim,
   reserveModelCall,
@@ -53,6 +54,16 @@ async function fixture(db: DatabaseAdapter = new SqliteAdapter(new Database(":me
     "INSERT INTO platform_roles VALUES('op','operator',0,'fixture','test',NULL),('viewer','viewer',0,'fixture','test',NULL)",
   );
   return db;
+}
+async function applyProtectionMutation(
+  db: DatabaseAdapter,
+  actor: string,
+  input: Record<string, unknown>,
+) {
+  return rawApplyProtectionMutation(db, actor, {
+    ...input,
+    expectedState: input.expectedState ?? (await protectionState(db)),
+  } as import("../../src/admin/protection-contracts").ProtectionMutation);
 }
 const setQuota = (db: DatabaseAdapter, extra: Partial<TenantQuota> = {}) =>
   applyProtectionMutation(db, "op", {
@@ -360,6 +371,52 @@ describe("Administration protection", () => {
     expect(
       (await db.one<TenantQuota>("SELECT * FROM tenant_quotas"))?.evaluations_daily,
     ).toBeNull();
+  });
+  it("rejects a protection write made from an obsolete console state", async () => {
+    const db = await fixture();
+    const state = await protectionState(db);
+    await rawApplyProtectionMutation(db, "op", {
+      kind: "quota",
+      tenant: "tenant_A",
+      quota: quota(),
+      reason: "first edit",
+      expectedState: state!,
+    });
+    await expect(
+      rawApplyProtectionMutation(db, "op", {
+        kind: "pause",
+        pipeline: "evaluation",
+        paused: true,
+        reason: "obsolete edit",
+        expectedState: state!,
+      }),
+    ).rejects.toThrow("ADMIN_STATE_CHANGED");
+  });
+  it("provisions bounded defaults for new tenants and fails closed for a missing policy row", async () => {
+    const db = await fixture();
+    await db.execute("INSERT INTO tenants(id,status) VALUES('tenant_C','active')");
+    expect(
+      await db.one(
+        "SELECT evaluations_daily,concurrent_jobs FROM tenant_quotas WHERE tenant_id='tenant_C'",
+      ),
+    ).toEqual({
+      evaluations_daily: 50,
+      concurrent_jobs: 4,
+    });
+    await db.execute("DELETE FROM tenant_quotas WHERE tenant_id='tenant_C'");
+    const admitted = await db.transaction((tx) =>
+      reserveClaim(tx, {
+        pipeline: "evaluation",
+        id: "missing-policy",
+        tenant: "tenant_C",
+        token: "lease",
+        leaseUntil: Date.now() + 60000,
+      }),
+    );
+    expect(admitted).toBe(false);
+    expect(await db.one("SELECT reason FROM quota_deferrals WHERE tenant_id='tenant_C'")).toEqual({
+      reason: "QUOTA_POLICY_REQUIRED",
+    });
   });
   it("defers a paused tenant without starving another tenant or altering acquisition evidence", async () => {
     const db = await fixture(),

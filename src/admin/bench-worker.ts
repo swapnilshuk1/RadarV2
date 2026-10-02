@@ -1,8 +1,13 @@
+import { assertBenchEnvironment, workerEnvironment } from "./bench-environment";
 import { randomUUID } from "node:crypto";
 import type { StageObserver } from "../lib/model/stage-observer";
 import type { DatabaseAdapter } from "../data/database/adapter";
 import type { ReasoningModel, Dossier } from "../dossier/contracts";
-import type { ModelInvocationSink, ModelCallMetadata } from "../lib/model/model-invocation";
+import type {
+  ModelInvocationSink,
+  ModelCallMetadata,
+  ModelUsage,
+} from "../lib/model/model-invocation";
 import {
   createBedrockGlmResearchModel,
   GLM_STAGE_OUTPUT_TOKENS,
@@ -16,6 +21,8 @@ import { activeRevision, revision } from "./config-store";
 import type { EngineConfig, ModelLane } from "./config-contracts";
 import { requirePlatformRole } from "./service";
 import { benchFixtures, BENCH_FIXTURE_VERSION } from "./bench-fixtures";
+import { PursuitTokenLedger } from "../pursuit/budget";
+import { generateWithFallback } from "../pursuit/model";
 /** Reserve the adapter's actual stage allowance, not a larger lane-wide maximum. */
 export function benchOutputAllowance(
   model: { id: string },
@@ -40,6 +47,7 @@ export type BenchRow = {
   active_revision_id: string;
   token_cap: number;
   created_by: string;
+  expected_environment_json: string | null;
 };
 export type BenchResult = {
   fixtureVersion: string;
@@ -50,6 +58,8 @@ export type BenchResult = {
   screeningRelaxations?: number;
   invalidOutputs: number;
   validationRepairs?: number;
+  /** Actual bounded writing-lane smoke of the model-backed Pursuit path. */
+  pursuitFixture?: { modelId: string; inputTokens: number; outputTokens: number };
   cases: Record<string, unknown>[];
 };
 export function compareBenchCase(
@@ -136,9 +146,24 @@ export class BenchWorker {
         );
         return null;
       }
+      let attestation;
+      try {
+        assertBenchEnvironment(next.expected_environment_json);
+        attestation = workerEnvironment();
+      } catch (error) {
+        await tx.execute(
+          "UPDATE admin_bench_runs SET status='failed',error=?,completed_at=? WHERE id=? AND status='queued'",
+          [
+            error instanceof Error ? error.message : "BENCH_ENVIRONMENT_INVALID",
+            Date.now(),
+            next.id,
+          ],
+        );
+        return null;
+      }
       await tx.execute(
-        "UPDATE admin_bench_runs SET status='running',lease_token=?,lease_until=? WHERE id=? AND status='queued'",
-        [token, Date.now() + 600000, next.id],
+        "UPDATE admin_bench_runs SET status='running',worker_environment_json=?,lease_token=?,lease_until=? WHERE id=? AND status='queued'",
+        [JSON.stringify(attestation), token, Date.now() + 600000, next.id],
       );
       return next;
     });
@@ -181,6 +206,7 @@ export class BenchWorker {
         result.screeningRelaxations === 0 &&
         result.invalidOutputs === 0 &&
         (result.validationRepairs ?? 0) === 0 &&
+        (this.runCases !== undefined || result.pursuitFixture !== undefined) &&
         result.cases.length === benchFixtures().length &&
         result.fixtureVersion === BENCH_FIXTURE_VERSION &&
         benchFixtures().every((fixture) => {
@@ -245,6 +271,13 @@ export class BenchWorker {
   }
   private async assertCurrent(db: DatabaseAdapter, row: BenchRow, token: string) {
     await requirePlatformRole(db, row.created_by, true);
+    assertBenchEnvironment(row.expected_environment_json);
+    const desired = await revision(db, row.revision_id);
+    if (
+      desired.inherit_revision_id &&
+      (await activeRevision(db)).id !== desired.inherit_revision_id
+    )
+      throw new Error("BENCH_PLATFORM_CHANGED");
     const active = await activeRevision(
       db,
       row.scope === "platform" ? undefined : row.scope.slice(7),
@@ -270,6 +303,7 @@ export class BenchWorker {
     lane: ModelLane,
     side: string,
     review = false,
+    pipeline: "dossier" | "pursuit" = "dossier",
   ): ReasoningModel {
     const sink: ModelInvocationSink = async (event) => {
       await this.db.execute(
@@ -281,7 +315,7 @@ export class BenchWorker {
           `bench:${row.id}`,
           "fixture",
           side === "active" ? row.active_revision_id : row.revision_id,
-          lane === "reasoning" ? "evaluation" : review ? "factual_review" : "dossier",
+          lane === "reasoning" ? "evaluation" : review ? "factual_review" : pipeline,
           event.stage,
           event.attempt,
           event.provider,
@@ -410,6 +444,47 @@ export class BenchWorker {
         ),
       );
     }
+    // This does not create a pursuit, artifact or candidate record. It verifies
+    // that the chosen writing lane can service the model-assisted Pursuit route
+    // under the same bounded package ledger used by durable preparation.
+    const ledger = new PursuitTokenLedger({
+      inputTokens: draft.config.pursuitInputTokens,
+      outputTokens: draft.config.pursuitOutputTokens,
+    });
+    const pursuitModel = this.model(row, token, draft.config, "writing", "draft", false, "pursuit");
+    const pursuit = await generateWithFallback<{ fixture: string }>(
+      "pursuit-bench",
+      "Return exactly the JSON object required by the schema. This is a synthetic RADAR configuration check.",
+      { fixture: "pursuit-lane" },
+      {
+        type: "object",
+        additionalProperties: false,
+        required: ["fixture"],
+        properties: { fixture: { const: "pursuit-lane" } },
+      },
+      (raw) => {
+        if (
+          !raw ||
+          typeof raw !== "object" ||
+          (raw as { fixture?: unknown }).fixture !== "pursuit-lane"
+        )
+          throw new Error("BENCH_PURSUIT_INVALID_OUTPUT");
+        return raw as { fixture: string };
+      },
+      {
+        configuredModels: [
+          {
+            id: `${pursuitModel.id}:${pursuitModel.version}`,
+            generate: pursuitModel.generate.bind(pursuitModel),
+            usage: () => (pursuitModel as { lastUsage?: ModelUsage }).lastUsage,
+          },
+        ],
+        ledger,
+        strictBudget: true,
+      },
+    );
+    if (!pursuit) throw new Error("BENCH_PURSUIT_PROVIDER_UNAVAILABLE");
+    const pursuitSpend = ledger.snapshot();
     return {
       fixtureVersion: BENCH_FIXTURE_VERSION,
       safeToPublish: true,
@@ -417,6 +492,11 @@ export class BenchWorker {
       passToPursue: 0,
       invalidOutputs: 0,
       validationRepairs,
+      pursuitFixture: {
+        modelId: pursuit.modelId,
+        inputTokens: pursuitSpend.inputTokens,
+        outputTokens: pursuitSpend.outputTokens,
+      },
       cases,
     };
   }

@@ -50,6 +50,7 @@ export const configMutationSchema = z
       benchId: z.string().min(1),
     }),
     z.object({ kind: z.literal("revert"), revisionId: z.string().min(1) }),
+    z.object({ kind: z.literal("inherit_platform") }),
     z.object({ kind: z.literal("cancel_bench"), benchId: z.string().min(1) }),
     z.object({
       kind: z.literal("bench"),

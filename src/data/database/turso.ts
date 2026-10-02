@@ -17,14 +17,19 @@ export class TursoAdapter implements DatabaseAdapter {
       this.localKey = process.platform === "win32" ? file.toLowerCase() : file;
     }
     this.client = createClient({ url, authToken });
-    this.ready = url.startsWith("file:") ? this.configureLocalFile() : Promise.resolve();
+    this.ready = this.configure();
   }
 
   private serialized<T>(run: () => Promise<T>): Promise<T> {
     return this.localKey ? serializeLocal(this.localKey, run) : run();
   }
-  private async configureLocalFile(): Promise<void> {
+  private async configure(): Promise<void> {
     return this.serialized(async () => {
+      // SQLite foreign-key enforcement is connection scoped. Enable it for both
+      // local libSQL and remote Turso clients, then fail closed in transactions
+      // if a provider connection does not retain the setting.
+      await this.client.execute("PRAGMA foreign_keys=ON");
+      if (!this.localKey) return;
       // Acceptance/dev may run evaluator, dossier, and review workers as separate
       // processes against one local libSQL file. WAL permits readers alongside a
       // writer; the explicit timeout lets short concurrent writes serialize
@@ -104,6 +109,9 @@ export class TursoAdapter implements DatabaseAdapter {
       };
 
       try {
+        const foreignKeys = await adapterTx.one<{ foreign_keys: number }>("PRAGMA foreign_keys");
+        if (Number(foreignKeys?.foreign_keys) !== 1)
+          throw new Error("FOREIGN_KEY_ENFORCEMENT_REQUIRED");
         const result = await fn(adapterTx);
         await tx.commit();
         return result;

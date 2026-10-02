@@ -3,6 +3,7 @@ import type { ReasoningModel } from "../../src/dossier/contracts";
 import type { BenchRow } from "../../src/admin/bench-worker";
 import type { EngineConfig, ModelLane } from "../../src/admin/config-contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { hostname } from "node:os";
 import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
@@ -47,6 +48,11 @@ async function mutateConfig(
   } as import("../../src/admin/config-contracts").ConfigMutation);
 }
 async function fixture() {
+  // Publication benches must bind to a real, declared deployment identity. The
+  // fixture supplies a stable test deployment rather than weakening that rule.
+  vi.stubEnv("RADAR_ADMIN_BENCH_TARGET", "test-control-plane");
+  vi.stubEnv("RADAR_RELEASE_SHA", "a".repeat(40));
+  vi.stubEnv("RADAR_ADMIN_BENCH_HOSTS", hostname());
   const db = new SqliteAdapter(new Database(":memory:"));
   cleanup.push(db);
   await setupLineageTestFixture(db);
@@ -219,6 +225,21 @@ describe("Phase 3 configuration and bench boundaries", () => {
     expect((await activeRevision(db, "tenant_B")).id).toBe(platform);
     expect((await readConfigSnapshot(db, "op", "tenant_B"))?.history).toHaveLength(0);
   });
+  it("returns a tenant override to its current platform revision through the same bench path", async () => {
+    const db = await fixture();
+    const platform = await draft(db);
+    await publish(db, platform);
+    const tenant = await draft(db, "tenant_A");
+    await publish(db, tenant, "tenant_A");
+    const inherited = await mutateConfig(db, "op", {
+      kind: "inherit_platform",
+      tenantId: "tenant_A",
+      reason: "return to current platform defaults",
+    });
+    await publish(db, inherited.id, "tenant_A");
+    expect((await activeRevision(db, "tenant_A")).id).toBe(platform);
+    expect((await revision(db, inherited.id)).inherit_revision_id).toBe(platform);
+  });
   it("restores history as a new draft with a new parent and requires another bench", async () => {
     const db = await fixture();
     const id = await draft(db);
@@ -367,6 +388,23 @@ describe("Phase 3 configuration and bench boundaries", () => {
     expect((await db.one<{ status: string }>("SELECT status FROM admin_bench_runs"))?.status).toBe(
       "failed",
     );
+  });
+  it("refuses a queued bench when its declared deployment identity changes", async () => {
+    const db = await fixture(),
+      id = await draft(db);
+    await mutateConfig(db, "op", {
+      kind: "bench",
+      revisionId: id,
+      tokenCap: 500000,
+      reason: "deployment identity fence",
+    });
+    vi.stubEnv("RADAR_RELEASE_SHA", "b".repeat(40));
+    const runner = vi.fn(async () => goodResult());
+    expect(await new BenchWorker(db, runner).pollOnce()).toBeNull();
+    expect(runner).not.toHaveBeenCalled();
+    expect(await db.one("SELECT error FROM admin_bench_runs")).toEqual({
+      error: "BENCH_RELEASE_OR_ENVIRONMENT_CHANGED",
+    });
   });
   it("caps actual model request output despite oversized stage metadata and uses no fallback", async () => {
     const request = vi.spyOn(globalThis, "fetch").mockResolvedValue(

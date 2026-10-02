@@ -1,3 +1,4 @@
+import { benchEnvironment, assertBenchEnvironment } from "./bench-environment";
 import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseAdapter } from "../data/database/adapter";
 import {
@@ -32,6 +33,7 @@ export type ConfigRevision = {
   fingerprint: string;
   created_at: number;
   created_by: string;
+  inherit_revision_id: string | null;
 };
 export async function revision(db: DatabaseAdapter, id: string) {
   const row = await db.one<ConfigRevision>("SELECT * FROM config_revisions WHERE id=?", [id]);
@@ -61,7 +63,7 @@ export async function readConfigSnapshot(db: DatabaseAdapter, user: string, tena
     [scope],
   );
   const benches = await db.many<Record<string, string | number | null>>(
-    "SELECT id,revision_id,active_revision_id,status,token_cap,tokens_reserved,result_json,error,created_at,completed_at FROM admin_bench_runs WHERE scope=? ORDER BY created_at DESC LIMIT 20",
+    "SELECT id,revision_id,active_revision_id,status,token_cap,tokens_reserved,result_json,error,created_at,completed_at,expected_environment_json,worker_environment_json FROM admin_bench_runs WHERE scope=? ORDER BY created_at DESC LIMIT 20",
     [scope],
   );
   return {
@@ -70,6 +72,13 @@ export async function readConfigSnapshot(db: DatabaseAdapter, user: string, tena
     state: configState(active.id, draft?.revision_id),
     draft: draft ? await revision(db, draft.revision_id) : null,
     history,
+    benchDeploymentReady: (() => {
+      try {
+        return benchEnvironment();
+      } catch {
+        return null;
+      }
+    })(),
     benches,
   };
 }
@@ -79,18 +88,23 @@ async function makeRevision(
   parent: string,
   config: EngineConfig,
   user: string,
+  inheritRevision?: string,
 ) {
   const id = randomUUID();
   const parsed = engineConfigSchema.parse(config);
-  await db.execute("INSERT INTO config_revisions VALUES(?,?,?,?,?,?,?)", [
-    id,
-    scope,
-    parent,
-    JSON.stringify(parsed),
-    configFingerprint(parsed),
-    Date.now(),
-    user,
-  ]);
+  await db.execute(
+    "INSERT INTO config_revisions(id,scope,parent_id,config_json,fingerprint,created_at,created_by,inherit_revision_id) VALUES(?,?,?,?,?,?,?,?)",
+    [
+      id,
+      scope,
+      parent,
+      JSON.stringify(parsed),
+      configFingerprint(parsed),
+      Date.now(),
+      user,
+      inheritRevision ?? null,
+    ],
+  );
   await db.execute(
     "INSERT INTO config_drafts VALUES(?,?) ON CONFLICT(scope) DO UPDATE SET revision_id=excluded.revision_id",
     [scope, id],
@@ -132,7 +146,12 @@ export async function mutateConfig(db: DatabaseAdapter, user: string, input: Con
       });
       return { id: data.benchId };
     }
-    if (data.kind === "draft") id = await makeRevision(tx, scope, active.id, data.config, user);
+    if (data.kind === "inherit_platform") {
+      if (!data.tenantId) throw new Error("TENANT_SCOPE_REQUIRED");
+      const platform = await activeRevision(tx);
+      id = await makeRevision(tx, scope, active.id, platform.config, user, platform.id);
+    } else if (data.kind === "draft")
+      id = await makeRevision(tx, scope, active.id, data.config, user);
     else if (data.kind === "revert") {
       const target = await revision(tx, data.revisionId);
       if (target.scope !== scope) throw new Error("CONFIG_SCOPE_MISMATCH");
@@ -163,12 +182,26 @@ export async function mutateConfig(db: DatabaseAdapter, user: string, input: Con
           throw new Error("BENCH_ALREADY_QUEUED_OR_RUNNING");
         id = randomUUID();
         await tx.execute(
-          "INSERT INTO admin_bench_runs(id,scope,revision_id,active_revision_id,status,token_cap,created_at,created_by) VALUES(?,?,?,?,'queued',?,?,?)",
-          [id, scope, target.id, active.id, data.tokenCap, Date.now(), user],
+          "INSERT INTO admin_bench_runs(id,scope,revision_id,active_revision_id,status,token_cap,created_at,created_by,expected_environment_json) VALUES(?,?,?,?,'queued',?,?,?,?)",
+          [
+            id,
+            scope,
+            target.id,
+            active.id,
+            data.tokenCap,
+            Date.now(),
+            user,
+            JSON.stringify(benchEnvironment()),
+          ],
         );
       } else {
-        const bench = await tx.one<{ status: string; result_json: string | null }>(
-          "SELECT status,result_json FROM admin_bench_runs WHERE id=? AND scope=? AND revision_id=? AND active_revision_id=?",
+        const bench = await tx.one<{
+          status: string;
+          result_json: string | null;
+          expected_environment_json: string | null;
+          worker_environment_json: string | null;
+        }>(
+          "SELECT status,result_json,expected_environment_json,worker_environment_json FROM admin_bench_runs WHERE id=? AND scope=? AND revision_id=? AND active_revision_id=?",
           [data.benchId, scope, target.id, active.id],
         );
         if (
@@ -179,10 +212,16 @@ export async function mutateConfig(db: DatabaseAdapter, user: string, input: Con
           JSON.parse(bench.result_json).fixtureVersion !== BENCH_FIXTURE_VERSION
         )
           throw new Error("CONFIG_BENCH_REQUIRED");
-        await tx.execute(
-          "INSERT INTO config_active_pointers VALUES(?,?) ON CONFLICT(scope) DO UPDATE SET revision_id=excluded.revision_id",
-          [scope, target.id],
-        );
+        assertBenchEnvironment(bench.expected_environment_json, bench.worker_environment_json);
+        if (target.inherit_revision_id) {
+          if (!data.tenantId || (await activeRevision(tx)).id !== target.inherit_revision_id)
+            throw new Error("CONFIG_PLATFORM_CHANGED");
+          await tx.execute("DELETE FROM config_active_pointers WHERE scope=?", [scope]);
+        } else
+          await tx.execute(
+            "INSERT INTO config_active_pointers VALUES(?,?) ON CONFLICT(scope) DO UPDATE SET revision_id=excluded.revision_id",
+            [scope, target.id],
+          );
         await tx.execute("DELETE FROM config_drafts WHERE scope=?", [scope]);
       }
     }

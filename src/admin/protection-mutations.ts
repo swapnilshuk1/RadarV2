@@ -1,3 +1,4 @@
+import { protectionState } from "./protection-state";
 import type { DatabaseAdapter } from "../data/database/adapter";
 import { appendAdminAudit, requirePlatformRole } from "./service";
 import {
@@ -12,9 +13,14 @@ export async function applyProtectionMutation(
   actor: string,
   input: ProtectionMutation,
 ) {
-  const data = validateProtectionMutation(input);
   return db.transaction(async (tx) => {
     await requirePlatformRole(tx, actor, true);
+    const data = validateProtectionMutation(input);
+    if (data.expectedState !== (await protectionState(tx)))
+      throw new Error("ADMIN_STATE_CHANGED; refresh before retrying");
+    await tx.execute(
+      "INSERT INTO admin_protection_versions(scope,version) VALUES('platform',1) ON CONFLICT(scope) DO UPDATE SET version=version+1",
+    );
     const tenant = "tenant" in data ? data.tenant : undefined;
     if (tenant && !(await tx.one("SELECT id FROM tenants WHERE id=?", [tenant])))
       throw new Error("UNKNOWN_TENANT");

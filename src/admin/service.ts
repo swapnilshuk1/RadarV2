@@ -1,3 +1,4 @@
+import { protectionState } from "./protection-state";
 import { randomUUID } from "node:crypto";
 import type { DatabaseAdapter } from "../data/database/adapter";
 import { measuredUsageSql } from "./usage-accounting";
@@ -82,6 +83,7 @@ export type LedgerRow = Record<string, string | number | null>;
 export type AdminSection = { title: string; source: string; rows: LedgerRow[] | null };
 export type AdminSnapshot = {
   role: string;
+  protectionState: string | null;
   tenantId?: string;
   firstDay: string;
   lastDay: string;
@@ -212,6 +214,7 @@ export async function readAdminSnapshot(
   );
   return {
     role,
+    protectionState: await protectionState(db),
     tenantId,
     firstDay,
     lastDay,

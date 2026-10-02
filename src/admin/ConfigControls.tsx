@@ -67,15 +67,26 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
           </p>
         </div>
         {operator && !editing && (
-          <button
-            className={button}
-            onClick={() => {
-              setForm(structuredClone(shown.config));
-              setEditing(true);
-            }}
-          >
-            Edit configuration
-          </button>
+          <div className="flex gap-2">
+            {tenantId && (
+              <button
+                className={button}
+                disabled={busy || reason.trim().length < 3}
+                onClick={() => void perform({ kind: "inherit_platform" } as ConfigMutation)}
+              >
+                Return to platform defaults
+              </button>
+            )}
+            <button
+              className={button}
+              onClick={() => {
+                setForm(structuredClone(shown.config));
+                setEditing(true);
+              }}
+            >
+              Edit configuration
+            </button>
+          </div>
         )}
       </div>
       {data.draft && (
@@ -376,6 +387,12 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
       </dialog>
       <div className="mt-6">
         <h3 className="font-serif text-xl">Shadow benches</h3>
+        {!data.benchDeploymentReady && (
+          <p role="status" className="mt-2 text-sm text-destructive">
+            Bench deployment identity is not configured on this host. Set the target, release SHA
+            and allowed bench-worker hosts before queuing a paid bench.
+          </p>
+        )}
         <p className="my-2 text-xs text-muted-foreground">
           Three synthetic fixtures exercise direct fit, adjacent fit and an explicit license
           contradiction through the real evaluator and reviewed memo path. A bench worker on the
@@ -424,7 +441,7 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
             {operator && r.id !== data.active.id && (
               <button
                 className={button}
-                disabled={busy || editing || reason.trim().length < 3}
+                disabled={busy || editing || reason.trim().length < 3 || !data.benchDeploymentReady}
                 onClick={() => void perform({ kind: "revert", revisionId: r.id } as ConfigMutation)}
               >
                 Restore as a new draft
