@@ -1,12 +1,12 @@
 # Administration — Phases 1–4
 
-The `/admin` console is isolated on `codex/admin-phase-1`. It is not deployed on
-main. The console provides platform authorization, visibility and opt-in protection.
+The `/admin` console provides platform authorization, visibility and opt-in protection.
+It uses the existing RADAR login; platform access is granted separately below.
 Gate meaning, acquisition evidence and existing memo content are preserved. The console
 adds explicit model assignments, revisioned discovery and intelligence taxonomies, and
 bounded decision-comparison controls for future work.
 
-Apply migrations 072–084 through the normal migration runner before using this branch.
+Apply migrations 072–084 through the normal migration runner before activating the console.
 Platform access comes from `platform_roles`, never tenant memberships. An existing
 user can be granted `operator` or read-only `viewer` access by a trusted host
 operator. No user receives platform access automatically. Revocation takes effect
@@ -28,8 +28,11 @@ Usage comes only from `usage_daily`, rebuilt transactionally from invocation
 telemetry. Run `rollup --apply` hourly with the existing host scheduler, plus a
 nightly reconciliation using `--from YYYY-MM-DD --to YYYY-MM-DD --apply` for older
 late completions. The default refresh reconciles the last 30 UTC calendar days.
-Repeated runs do not double count. This branch does not install a scheduler or
-start additional workers. The UI flags rollups older than two hours as stale.
+Repeated runs do not double count. The release does not install a scheduler automatically. On Oracle, the host
+scheduler runs `/home/ubuntu/radar-sqlite-candidate/admin-usage-rollup.sh` hourly;
+the wrapper resolves `CURRENT_SHA`, loads the deployment environment and uses
+`flock` to prevent overlap. Its default 30-day reconciliation also covers late completions.
+The opt-in bench process is supervised by PM2 when enabled. The UI flags rollups older than two hours as stale.
 Windows are UTC calendar days, not rolling hours. Unknown token measurements
 remain unavailable. Negative, fractional or inconsistent token telemetry is also
 unknown; it cannot provide quota capacity. Recorded invalid outputs measure invocation status, not the
