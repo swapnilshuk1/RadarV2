@@ -376,3 +376,14 @@ work. Repair evidence is typed and publication shows a field-level diff. The
 optional `admin-bench` worker appears in readiness only when explicitly enabled.
 Remote-Turso validation and exact-SHA CI are operational release evidence, not
 claims made by the code path.
+
+Migration 078 adds an immutable, platform-owned discovery-taxonomy revision
+stream. It covers the portal-query concepts in `config/ontologies/taxonomy.json`
+and `lexicon.json`, not attention eligibility or executive evaluation taxonomy.
+When a future career intent activates a search plan, the active revision produces
+and pins the exact generated query list, revision ID and fingerprint in that
+plan’s criteria snapshot. `ScraperPlanResolver` uses those saved queries; it only
+uses the legacy file compiler for historical plans without them. This preserves
+active acquisition behavior while allowing operators to revise a future plan’s
+discovery wording. Structural graph edits are intentionally deferred until their
+corpus impact can be measured.

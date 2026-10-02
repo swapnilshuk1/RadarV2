@@ -37,8 +37,7 @@ Overview and Audit are read-only. Operations and Tenants & Quotas expose
 operator-only protection writes; Engine and Models expose configuration drafts
 and fixture benches.
 Engine shows the fixed stage order and each stage's inputs, decisions, continuation
-and stop conditions. REVIEW continues to evaluation. Configuration revisions and fixture benches are implemented below. Taxonomy
-edits remain Phase 4; no disabled control implies they are implemented. DAU/WAU/MAU and p95 latency are unavailable until the necessary instrumentation exists.
+and stop conditions. REVIEW continues to evaluation. Configuration revisions and fixture benches are implemented below. Phase 4 now includes the bounded discovery-taxonomy editor described below. DAU/WAU/MAU and p95 latency are unavailable until the necessary instrumentation exists.
 Active revisions appear in Engine/Models; Operations groups queue pins by revision.
 Per-worker last-claimed revision is unavailable because jobs do not record a host identity. Membership
 counts are not active-user counts. Worker observations are global, so a selected
@@ -253,8 +252,8 @@ passing result through a retry. Running it again is an explicit new bench.
 
 Fixture success is a narrow prerequisite, not a corpus-wide impact claim.
 Real-opportunity benches, rolling seven-day corpus shadows, arbitrary provider
-connections, per-stage model routing, rendered memo comparison, structural
-taxonomy edits and automatic regeneration are not included in this phase.
+connections, per-stage model routing, rendered memo comparison and automatic
+regeneration are not included in this phase.
 
 Focused verification: `npx vitest run tests/security/admin-config.test.ts`.
 The suite covers all configuration write authorization, stale/cross-scope
@@ -339,3 +338,34 @@ never defaults to the application database or reads RADAR tables.
 
 Merging/pushing to main can automatically deploy Oracle and run migrations.
 Keep this branch isolated until deployment prerequisites are actually satisfied.
+
+## Discovery taxonomy (Phase 4, Tier 1)
+
+**Taxonomy** provides a dense, platform-operator view of the portal-query
+concepts used when a new career search plan is activated. Each record shows its
+dimension, concept, description and aliases. An operator can revise a concept
+description and its portal-query aliases. Every change creates an immutable
+draft revision, needs an audit reason and can be discarded, published or restored
+as a new draft. Publication is safe without a paid model bench because it only
+changes future discovery phrasing.
+
+The active revision is resolved when the profile intent is activated. Its exact
+query list, revision ID and fingerprint are then saved in the immutable search
+plan criteria. The scraper uses those stored queries, so a later taxonomy
+publication cannot change a running scrape or an already active plan. Activate a
+new plan to use the new revision.
+
+Aliases are discovery vocabulary only. They do **not** change the attention gate,
+role eligibility, seniority interpretation, evaluation verdict or a candidate's
+explicit search intent. New aliases require a functional word; a generic
+seniority-only phrase such as `VP` is rejected. Normalized aliases must be unique
+across concepts, preventing ambiguous portal searches.
+
+Adding/retiring concepts, moving a concept between primary/adjacent/excluded
+rings, re-parenting and changes to the executive evaluation taxonomy are not
+enabled by this editor. They remain structural Phase 4 work because they require
+a corpus impact diff before activation. The console deliberately names that
+boundary instead of presenting a nonfunctional control as configuration.
+
+Focused verification: `npx vitest run tests/security/admin-taxonomy.test.ts
+tests/scraper/scraper-correctness-contract.test.ts`.

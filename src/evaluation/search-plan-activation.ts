@@ -18,11 +18,16 @@ interface EvaluationVersionManifest {
 
 function loadEvaluationVersionManifest(): EvaluationVersionManifest {
   const manifestPath = path.join(process.cwd(), "config", "calibration_manifest.json");
-  const parsed = JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as Partial<EvaluationVersionManifest>;
+  const parsed = JSON.parse(
+    fs.readFileSync(manifestPath, "utf-8"),
+  ) as Partial<EvaluationVersionManifest>;
   if (
-    typeof parsed.policyVersion !== "string" || !parsed.policyVersion ||
-    typeof parsed.ontologyVersion !== "string" || !parsed.ontologyVersion ||
-    typeof parsed.ontologyHash !== "string" || !parsed.ontologyHash
+    typeof parsed.policyVersion !== "string" ||
+    !parsed.policyVersion ||
+    typeof parsed.ontologyVersion !== "string" ||
+    !parsed.ontologyVersion ||
+    typeof parsed.ontologyHash !== "string" ||
+    !parsed.ontologyHash
   ) {
     throw new Error("Calibration manifest is missing the required policy or ontology identity.");
   }
@@ -45,24 +50,35 @@ export async function activateSearchPlanForIntent(
     industries?: string[];
     activatedBy?: string;
     scope?: AuthorizedPersonScope;
-  }
+  },
 ) {
   const preconditions = await validateIntentActivationPreconditions(input);
-  const { effectiveFunctions, effectiveTitles, effectiveLocations, targetLevels, scope, profileVersion } = preconditions;
+  const {
+    effectiveFunctions,
+    effectiveTitles,
+    effectiveLocations,
+    targetLevels,
+    scope,
+    profileVersion,
+  } = preconditions;
 
-  const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
-  const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
   const { SearchPlanner } = await import("../../scripts/scraper/run/search-planner");
-  const searchPlan = SearchPlanner.plan({
-    targetLevel: Array.from(targetLevels),
-    functions: effectiveFunctions,
-    operatingModels: [],
-    ownership: [],
-    industries: input.industries || [],
-    exclusions: [],
-    targetTitles: effectiveTitles,
-    preferredLocations: effectiveLocations,
-  }, taxonomyPath, lexiconPath);
+  const { activeSearchTaxonomy } = await import("../admin/taxonomy-store");
+  const taxonomy = await activeSearchTaxonomy(getDatabaseAdapter());
+  const searchPlan = SearchPlanner.plan(
+    {
+      targetLevel: Array.from(targetLevels),
+      functions: effectiveFunctions,
+      operatingModels: [],
+      ownership: [],
+      industries: input.industries || [],
+      exclusions: [],
+      targetTitles: effectiveTitles,
+      preferredLocations: effectiveLocations,
+    },
+    taxonomy.definition.taxonomy,
+    taxonomy.definition.lexicon,
+  );
 
   const criteria: SearchCriteriaPayload = {
     targetSeniority: Array.from(targetLevels),
@@ -78,6 +94,10 @@ export async function activateSearchPlanForIntent(
       operatingModels: [],
       ownership: [],
       generatedQueries: searchPlan.rankedQueries.map((q) => q.query),
+      // A saved search plan is a durable acquisition contract. Future taxonomy
+      // edits apply only after a new plan activation, never mid-run.
+      taxonomyRevisionId: taxonomy.id,
+      taxonomyFingerprint: taxonomy.fingerprint,
       // Decision intent is frozen into the same immutable snapshot as the
       // search criteria so queued evaluations cannot accidentally consume a
       // newer profile preference than the context they were created for.
@@ -113,20 +133,27 @@ export async function activateSearchPlanForIntent(
   };
   const activation = await repos.evaluationContexts.prepareSearchPlan(scope, activationInput);
   const coverage = predecessor
-    ? await materializeExistingCanonicalPool(scope, activation, { sourceSearchPlanId: predecessor.planId })
+    ? await materializeExistingCanonicalPool(scope, activation, {
+        sourceSearchPlanId: predecessor.planId,
+      })
     : { examined: 0, candidates: 0, materialized: 0 };
   if (coverage.candidates > 0 && coverage.materialized < coverage.candidates) {
     throw new Error(
-      `Search-plan activation was not committed: evaluation coverage is incomplete (${coverage.materialized}/${coverage.candidates} eligible canonical opportunities).`
+      `Search-plan activation was not committed: evaluation coverage is incomplete (${coverage.materialized}/${coverage.candidates} eligible canonical opportunities).`,
     );
   }
   await repos.evaluationContexts.activatePreparedSearchPlan(
     scope,
     activation.plan.id,
     activation.context.contextFingerprint,
-    activationInput.activatedBy
+    activationInput.activatedBy,
   );
-  return { activation: { ...activation, plan: { ...activation.plan, status: "active" as const } }, searchPlan, criteria, coverage };
+  return {
+    activation: { ...activation, plan: { ...activation.plan, status: "active" as const } },
+    searchPlan,
+    criteria,
+    coverage,
+  };
 }
 
 /**
@@ -138,7 +165,7 @@ export async function validateIntentActivationPreconditions(
     functions?: string[];
     industries?: string[];
     scope?: AuthorizedPersonScope;
-  }
+  },
 ): Promise<{
   effectiveFunctions: string[];
   effectiveTitles: string[];
@@ -151,26 +178,43 @@ export async function validateIntentActivationPreconditions(
   const effectiveTitles = input.targetTitles || [];
   const effectiveLocations = input.preferredLocations || [];
   if (effectiveTitles.length === 0 || effectiveLocations.length === 0) {
-    throw new Error("PROFILE_INTENT_REQUIRED: Search-plan activation requires explicitly saved target titles and locations.");
+    throw new Error(
+      "PROFILE_INTENT_REQUIRED: Search-plan activation requires explicitly saved target titles and locations.",
+    );
   }
 
   const targetLevels = new Set<string>();
   for (const title of effectiveTitles) {
     const lower = title.toLowerCase();
-    if (lower.includes("cmo") || lower.includes("chief") || lower.includes("cco")) targetLevels.add("Chief");
+    if (lower.includes("cmo") || lower.includes("chief") || lower.includes("cco"))
+      targetLevels.add("Chief");
     if (lower.includes("vp") || lower.includes("vice president")) targetLevels.add("VP");
     if (lower.includes("director")) targetLevels.add("Director");
     if (lower.includes("svp") || lower.includes("senior vice president")) targetLevels.add("SVP");
     if (lower.includes("head") || lower.includes("lead")) targetLevels.add("Head");
   }
   if (targetLevels.size === 0) {
-    throw new Error("PROFILE_INTENT_REQUIRED: Target titles must contain an explicit recognized seniority level.");
+    throw new Error(
+      "PROFILE_INTENT_REQUIRED: Target titles must contain an explicit recognized seniority level.",
+    );
   }
 
   const scope = input.scope || (await resolveServingScope(input.personId)).scope;
-  const projection = await new TenantScopedPersonStore(getDatabaseAdapter(), scope).getLatestProjection(scope.personId);
+  const projection = await new TenantScopedPersonStore(
+    getDatabaseAdapter(),
+    scope,
+  ).getLatestProjection(scope.personId);
   if (!projection?.profileVersion) {
-    throw new Error("PROFILE_REQUIRED: Search-plan activation requires an authoritative candidate projection version.");
+    throw new Error(
+      "PROFILE_REQUIRED: Search-plan activation requires an authoritative candidate projection version.",
+    );
   }
-  return { effectiveFunctions, effectiveTitles, effectiveLocations, targetLevels, scope, profileVersion: projection.profileVersion };
+  return {
+    effectiveFunctions,
+    effectiveTitles,
+    effectiveLocations,
+    targetLevels,
+    scope,
+    profileVersion: projection.profileVersion,
+  };
 }

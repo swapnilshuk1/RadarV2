@@ -6,6 +6,8 @@ import { getAdminSnapshotFn } from "../admin/server";
 import { engineStages } from "../admin/stages";
 import { quotaDimensions, type QuotaDimension } from "../admin/protection-contracts";
 import { ProtectionControls } from "../admin/ProtectionControls";
+import { TaxonomyControls } from "../admin/TaxonomyControls";
+import { getTaxonomySnapshotFn } from "../admin/taxonomy-server";
 import type { AdminSection } from "../admin/service";
 
 const views = [
@@ -28,11 +30,12 @@ export const Route = createFileRoute("/admin")({
   }),
   loaderDeps: ({ search }) => ({ tenantId: search.tenantId, days: search.days }),
   loader: async ({ deps }) => {
-    const [snapshot, configuration] = await Promise.all([
+    const [snapshot, configuration, taxonomy] = await Promise.all([
       getAdminSnapshotFn({ data: deps }),
       getConfigSnapshotFn({ data: { tenantId: deps.tenantId } }),
+      getTaxonomySnapshotFn(),
     ]);
-    return { ...snapshot, configuration };
+    return { ...snapshot, configuration, taxonomy };
   },
   component: AdminShell,
   errorComponent: () => (
@@ -163,7 +166,7 @@ function AdminShell() {
           <header className="flex flex-wrap items-center justify-between gap-5 border-b border-border px-6 py-8 lg:px-10">
             <div>
               <p className="mb-3 font-mono text-[.62rem] uppercase tracking-[.2em] text-muted-foreground">
-                Platform operations · Phase 3
+                Platform operations · Phase 4
               </p>
               <h1 className="font-serif text-4xl sm:text-5xl">
                 {search.view === "Overview"
@@ -283,12 +286,7 @@ function AdminShell() {
                   ))}
               </>
             )}
-            {search.view === "Taxonomy" && (
-              <p className="text-sm">
-                Intelligence taxonomy remains code-defined. Taxonomy browsing and revision editing
-                are scheduled for Phase 4. No taxonomy changes are available here.
-              </p>
-            )}
+            {search.view === "Taxonomy" && <TaxonomyControls data={data.taxonomy} />}
             {search.view === "Models" && (
               <p className="mb-5 text-sm text-muted-foreground">
                 The usage ledger records actual provider calls. Active assignments and fixture bench
