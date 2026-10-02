@@ -156,7 +156,7 @@ inventory/taxonomy checks then passed. Final gate result is recorded below.
 
 - Phase 4 now includes revisioned intelligence classification/reparenting/retirement and bounded admission/verdict comparisons. Discovery and intelligence proofs remain distinct; combined structural edits require both. Ring/classification metadata never becomes an exclusion rule.
 - Remote Turso foreign-key and contention checks passed on radar-admin-disposable-20261002: one mutation winner, five stale writers rejected, one shadow claim and immutable terminal evidence. Injected decisions prove concurrency/publication, not live model quality.
-- Before Oracle activation, apply 072-083, confirm matching web/worker release
+- Before Oracle activation, apply 072-084, confirm matching web/worker release
   and database identity, provision explicit operators and exercise enabled workers.
   Existing controls-disabled acquisition-to-reviewed-memo-to-Pursuit operational
   proof remains outstanding; acquisition was deliberately left running untouched.
@@ -171,7 +171,22 @@ Final verification: `npm run certify` passed all nine stages (182.72 seconds),
 including lint (zero errors; 21 existing warnings), formatting, TypeScript,
 production SSR build and the certification test manifest. Final authenticated
 browser acceptance passed after the modal/text correction; screenshots are under
-`.radar/acceptance/admin`. These checks describe the earlier discovery-only candidate; the expanded Phase 4 candidate requires its own final verification.
+`.radar/acceptance/admin`. The expanded Phase 4 candidate at aa0e1512 passed
+certification (766 tests, one skipped), browser acceptance and disposable Turso
+contention validation. Subsequent cache/UI/migration corrections require the
+focused checks listed below; their final verification is delegated to the owner.
+
+Follow-up audit reconciliation: taxonomy fingerprints now bind staged cache identity;
+golden evidence alone satisfies UI publication readiness; tenant evidence has a
+separate status and queue control; the runner fences duplicate legacy live shadows
+before 083; migration 084 protects scope identity. A regression test exercises
+duplicate predecessor rows and the immutable scope trigger. Run:
+
+```powershell
+npx vitest run tests/intelligence/staged-decision.test.ts tests/security/admin-taxonomy.test.ts tests/persistence/migration-runner.test.ts
+node --import tsx scripts/acceptance/admin-browser-acceptance.ts
+npm run certify
+```
 
 ### Intelligence-taxonomy completion review
 

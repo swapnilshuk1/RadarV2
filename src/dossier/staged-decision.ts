@@ -596,7 +596,7 @@ export async function runStagedFrozenDecisionDetailed(
       ...original,
       id: original.id,
       version: original.version,
-      configurationFingerprint: original.configurationFingerprint,
+      configurationFingerprint: `${original.configurationFingerprint ?? ''}:intelligence:${taxonomyFingerprint}`,
       schemaFormat: original.schemaFormat,
       discardResponse: original.discardResponse?.bind(original),
       generate: (instruction, input, schema, metadata) =>

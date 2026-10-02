@@ -70,11 +70,16 @@ export function TaxonomyControls({
     (run) =>
       run.revision_id === data.draft?.id &&
       run.active_revision_id === data.active.id &&
+      run.scope_kind === "golden" &&
       run.status === "passed",
   );
-  const latestIntelligence = data.intelligenceShadows.find(
-    (run) => run.revision_id === data.draft?.id,
+  const latestGolden = data.intelligenceShadows.find(
+    (run) => run.revision_id === data.draft?.id && run.scope_kind === "golden",
   );
+  const latestTenantSample = data.intelligenceShadows.find(
+    (run) => run.revision_id === data.draft?.id && run.scope_kind === "tenant_sample",
+  );
+  const latestIntelligence = realSample && tenantId ? latestTenantSample : latestGolden;
   const operator = data.role === "operator";
   const [selected, setSelected] = useState<{ dimension: string; concept: string } | null>(null);
   const [phrases, setPhrases] = useState("");
@@ -471,6 +476,8 @@ export function TaxonomyControls({
         </ul>
         {structuralDraft && discoveryDraft && (
           <div className="mt-3 border border-border p-3 text-sm">
+            <p>Required golden proof: {latestGolden?.status ?? "not run"}</p>
+            <p>Supplementary tenant sample: {latestTenantSample?.status ?? "not run"}</p>
             {shadow ? (
               <>
                 Discovery shadow passed (admissions and verdicts are not tested):{" "}
@@ -533,7 +540,7 @@ export function TaxonomyControls({
             </label>
             <p className="mt-2 text-xs">
               The admin bench worker runs this bounded job. Invalid output, source-integrity
-              failure, PASS-to-PURSUE or relaxed screening blocks publication. This is a scoped
+              failure, PASS-to-PURSUE, PASS-to-CONSIDER or relaxed screening blocks publication. This is a scoped
               comparison, not a promise of identical future model outputs.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">

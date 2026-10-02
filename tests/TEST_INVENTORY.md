@@ -269,7 +269,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 13 |
 | `tests/intelligence/staged-composition.test.ts` | Editorial / Verdict | **KEEP** | Stage 3 | 45 | 145 |
 | `tests/intelligence/staged-context-input.test.ts` | Context / Source Provenance | **KEEP** | Stage 3 | 10 | 37 |
-| `tests/intelligence/staged-decision.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 37 | 66 |
+| `tests/intelligence/staged-decision.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 38 | 66 |
 | `tests/intelligence/staged-production-integration.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 7 | 25 |
 | `tests/intelligence/staged-queue-lifecycle.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 9 | 43 |
 | `tests/intelligence/staged-screening-authority.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 2 | 4 |
@@ -289,7 +289,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/persistence/m41-canonical-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 6 |
 | `tests/persistence/m51-queue-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 7 | 26 |
 | `tests/persistence/m61-credential-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 54 |
-| `tests/persistence/migration-runner.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 10 | 45 |
+| `tests/persistence/migration-runner.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 11 | 45 |
 | `tests/persistence/populated-migration.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 1 | 33 |
 | `tests/persistence/queue-crash-restart.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 10 | 51 |
 | `tests/persistence/scrape-run-state-machine.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 6 | 41 |

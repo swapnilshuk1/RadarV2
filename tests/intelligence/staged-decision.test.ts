@@ -451,6 +451,24 @@ describe('staged production decision boundary', () => {
     expect(JSON.stringify(frozen)).toBe(original);
   });
 
+  it('keys cached role interpretation by pinned taxonomy and reuses the same pin', async () => {
+    let roleCalls = 0;
+    const model: ReasoningModel = { id: 'taxonomy-cache-regression', version: '1', configurationFingerprint: 'same-config', generate: async (instruction, input, _schema, metadata) => {
+      if (metadata?.stage === 'role-interpretation') roleCalls++;
+      return new ScriptedModel().generate(instruction, input);
+    }};
+    const first = pinIntelligence('revision-a', baselineIntelligenceTaxonomy);
+    const graph = structuredClone(baselineIntelligenceTaxonomy);
+    graph.nodes[0].name += ' revised';
+    const second = pinIntelligence('revision-b', graph);
+    await runStagedFrozenDecisionDetailed({ ...frozen, intelligenceTaxonomy: first }, model);
+    expect(roleCalls).toBe(1);
+    await runStagedFrozenDecisionDetailed({ ...frozen, intelligenceTaxonomy: second }, model);
+    expect(roleCalls).toBe(2);
+    await runStagedFrozenDecisionDetailed({ ...frozen, intelligenceTaxonomy: second }, model);
+    expect(roleCalls).toBe(2);
+  });
+
   it('caps staged batch repair blast radius at ten requirements', () => {
     const items=Array.from({length:23},(_,index)=>index+1);
     const chunks=chunkStagedDecisionItems(items);

@@ -408,6 +408,14 @@ export async function runMigrations(
     } else {
       // Apply statements within a transaction
       await db.transaction(async (tx) => {
+        // 083 is already checksummed in deployed ledgers. Fence legacy paid work
+        // before its unique index without rewriting the historical SQL file.
+        if (file === "083_intelligence_taxonomy_shadow_scope.sql") {
+          await tx.execute(
+            "UPDATE intelligence_taxonomy_shadows SET status='failed',error='MIGRATION_SCOPE_IDENTITY_REQUIRED; explicit retry required',completed_at=?,lease_token=NULL,lease_until=NULL WHERE status IN ('queued','running')",
+            [Date.now()],
+          );
+        }
         for (const stmt of statements) {
           try {
             await tx.execute(stmt);

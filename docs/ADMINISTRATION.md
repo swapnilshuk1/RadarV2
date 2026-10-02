@@ -6,7 +6,7 @@ Gate meaning, acquisition evidence and existing memo content are preserved. The 
 adds explicit model assignments, revisioned discovery and intelligence taxonomies, and
 bounded decision-comparison controls for future work.
 
-Apply migrations 072–083 through the normal migration runner before using this branch.
+Apply migrations 072–084 through the normal migration runner before using this branch.
 Platform access comes from `platform_roles`, never tenant memberships. An existing
 user can be granted `operator` or read-only `viewer` access by a trusted host
 operator. No user receives platform access automatically. Revocation takes effect
@@ -453,6 +453,12 @@ mutations, exclusive shadow claims, publication and immutable results. Set
 injected synthetic decisions and does not prove live provider output quality.
 Both remote proofs passed against `radar-admin-disposable-20261002`.
 
-For Oracle activation, apply migrations through 083 to the shared target, deploy
+For Oracle activation, apply migrations through 084 to the shared target, deploy
 matching web/worker revisions, provision operators and exercise the enabled bench
 worker. This branch remains isolated from main and Oracle until release.
+
+The migration runner marks pre-083 live shadows failed before creating the live-scope
+unique index. Their error requests an explicit retry; no paid work is automatically
+restarted. Migration 084 makes scope kind immutable. Staged cache identity includes
+the pinned intelligence fingerprint, so a newly activated taxonomy cannot reuse a
+role interpretation from an earlier graph.
