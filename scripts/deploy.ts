@@ -120,7 +120,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
   // managed processes so every process uses the newly extracted release.
   // PM2's multi-name delete stops at a missing name (e.g. disabled radar-scrape).
   // Delete independently so every existing writer actually leaves the old cwd.
-  const replaceManagedProcesses = ["radar-v2", ...allManagedWorkers]
+  const replaceManagedProcesses = ["radar-v2", ...allManagedWorkers, "radar-admin-bench"]
     .map((name) => `(pm2 delete ${shellQuote(name)} >/dev/null 2>&1 || true)`)
     .join(" && ");
   const enforceProcessTopology = runServerScraper
