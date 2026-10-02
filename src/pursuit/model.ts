@@ -18,7 +18,6 @@
 import type { ModelCallMetadata, ModelUsage } from "../lib/model/model-invocation";
 import type { PursuitModelContext } from "./budget";
 
-
 /**
  * Mantle bearer keys are base64 and are sometimes stored with the trailing
  * padding clipped. Pure string work, kept local so this module stays portable:
@@ -33,7 +32,6 @@ function normalizeMantleKey(value: string): string {
   if (remainder === 0) return key;
   return key.padEnd(key.length + (4 - remainder), "=");
 }
-
 
 export interface PursuitModel {
   id: string;
@@ -76,21 +74,20 @@ async function mantleModels(context?: PursuitModelContext): Promise<PursuitModel
   const apiKey = normalizeMantleKey(raw);
   const { BedrockMantleJsonModel } = await import("../lib/model/bedrock-mantle-model");
   return pursuitMantleModelIds().map((modelId) => {
-    const model = new BedrockMantleJsonModel(
-      modelId,
-      async () => apiKey,
-      fetch,
-      {
-        region: env("AWS_REGION") || "us-east-1",
-        maxOutputTokens: 10_240,
-        timeoutMs: 120_000,
-        ...(context?.invocationSink ? { invocationSink: context.invocationSink } : {}),
-      },
-    );
+    const model = new BedrockMantleJsonModel(modelId, async () => apiKey, fetch, {
+      region: env("AWS_REGION") || "us-east-1",
+      maxOutputTokens: 10_240,
+      timeoutMs: 120_000,
+      ...(context?.invocationSink ? { invocationSink: context.invocationSink } : {}),
+    });
     return {
       id: `bedrock-mantle:${model.version}`,
-      generate: (instruction: string, input: unknown, schema: Record<string, unknown>, metadata?: ModelCallMetadata) =>
-        model.generate(instruction, input, schema, metadata),
+      generate: (
+        instruction: string,
+        input: unknown,
+        schema: Record<string, unknown>,
+        metadata?: ModelCallMetadata,
+      ) => model.generate(instruction, input, schema, metadata),
       usage: () => model.lastUsage,
     };
   });
@@ -177,12 +174,12 @@ export async function generateWithFallback<T>(
   }
   const failures: string[] = [];
   for (const model of await pursuitModelChain(context)) {
-
     try {
       const raw = await model.generate(instruction, input, schema, { stage });
       context?.ledger?.record(model.usage());
       return { value: parse(raw), modelId: model.id };
     } catch (error) {
+      if (error instanceof Error && error.name === "QuotaDeferredError") throw error;
       context?.ledger?.record(model.usage());
       failures.push(`${model.id}: ${error instanceof Error ? error.message : String(error)}`);
     }

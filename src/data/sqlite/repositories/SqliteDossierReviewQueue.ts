@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { reserveClaim, deferralFilter, renewReservation } from "../../../admin/protection";
 import type { DatabaseAdapter } from "@/data/database";
 import { dossierSchema, type Dossier } from "@/dossier/contracts";
 import { DOSSIER_COMPOSITION_RECIPE, reviewFingerprint } from "@/dossier/factual-review-integrity";
@@ -134,6 +135,7 @@ export class SqliteDossierReviewQueue {
   async claim(): Promise<ReviewJob | null> {
     const now = this.now(),
       token = randomUUID();
+    const filter = await deferralFilter(this.db, "factual_review", "drj.id");
     return this.db.transaction(async (tx) => {
       const lane = await tx.execute(
         `UPDATE dossier_review_lane SET lease_token=?,lease_until=? WHERE id='factual-review' AND next_attempt_at<=? AND (lease_until IS NULL OR lease_until<=?)`,
@@ -143,6 +145,7 @@ export class SqliteDossierReviewQueue {
       const row = await tx.one<ReviewJob>(
         `SELECT * FROM dossier_review_jobs AS drj
          WHERE recipe=?
+           ${filter}
            AND EXISTS (
              SELECT 1 FROM active_evaluation_contexts aec
              WHERE aec.tenant_id=drj.tenant_id
@@ -156,6 +159,25 @@ export class SqliteDossierReviewQueue {
       if (!row) {
         await tx.execute(
           `UPDATE dossier_review_lane SET lease_token=NULL,lease_until=NULL WHERE lease_token=?`,
+          [token],
+        );
+        return null;
+      }
+      if (
+        !(await reserveClaim(
+          tx,
+          {
+            pipeline: "factual_review",
+            id: row.id,
+            tenant: row.tenant_id,
+            token,
+            leaseUntil: now + 180_000,
+          },
+          now,
+        ))
+      ) {
+        await tx.execute(
+          "UPDATE dossier_review_lane SET lease_token=NULL,lease_until=NULL WHERE lease_token=?",
           [token],
         );
         return null;
@@ -174,6 +196,7 @@ export class SqliteDossierReviewQueue {
       [now + 180_000, job.lease_token, now],
     );
     if (!result.rowsAffected) throw new Error("REVIEW_LEASE_LOST");
+    await renewReservation(this.db, "factual_review", job.id, job.lease_token!, now + 180_000);
     await this.db.execute(
       `UPDATE dossier_review_jobs SET lease_until=?,updated_at=? WHERE id=? AND lease_token=?`,
       [now + 180_000, now, job.id, job.lease_token],
@@ -210,14 +233,15 @@ export class SqliteDossierReviewQueue {
         `SELECT failures FROM dossier_review_lane WHERE id='factual-review' AND lease_token=?`,
         [job.lease_token],
       );
-      if (!lane) return 'lease_lost';
+      if (!lane) return "lease_lost";
       const delay = Math.max(
         error.delay ?? 0,
         Math.min(300_000, 30_000 * 2 ** Math.min(lane.failures, 4)) * (0.8 + random() * 0.2),
       );
-      const terminal = !error.provider || this.now() - job.created_at > 24 * 3600_000;
+      const quota = error.code.startsWith("QUOTA_DEFERRED:");
+      const terminal = !quota && (!error.provider || this.now() - job.created_at > 24 * 3600_000);
       await tx.execute(
-        `UPDATE dossier_review_jobs SET status=?,attempts=attempts+1,next_attempt_at=?,lease_token=NULL,lease_until=NULL,last_error=?,updated_at=? WHERE id=? AND lease_token=?`,
+        `UPDATE dossier_review_jobs SET status=?,attempts=attempts+${quota ? 0 : 1},next_attempt_at=?,lease_token=NULL,lease_until=NULL,last_error=?,updated_at=? WHERE id=? AND lease_token=?`,
         [
           terminal ? "needs_attention" : "retry",
           this.now() + delay,
@@ -230,12 +254,12 @@ export class SqliteDossierReviewQueue {
       await tx.execute(
         `UPDATE dossier_review_lane SET lease_token=NULL,lease_until=NULL,failures=?,next_attempt_at=? WHERE id='factual-review' AND lease_token=?`,
         [
-          error.provider ? lane.failures + 1 : 0,
-          error.provider ? this.now() + delay : 0,
+          error.provider && !quota ? lane.failures + 1 : 0,
+          error.provider && !quota ? this.now() + delay : 0,
           job.lease_token,
         ],
       );
-      return terminal ? 'needs_attention' : 'retry';
+      return terminal ? "needs_attention" : "retry";
     });
   }
 }

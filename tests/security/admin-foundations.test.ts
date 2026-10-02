@@ -14,7 +14,7 @@ function fixture() {
   raw.exec(`CREATE TABLE users(id TEXT PRIMARY KEY);
     CREATE TABLE tenants(id TEXT,status TEXT);
     CREATE TABLE memberships(user_id TEXT,tenant_id TEXT,status TEXT,role TEXT);
-    CREATE TABLE model_invocations(tenant_id TEXT,pipeline TEXT,provider TEXT,model_id TEXT,started_at INTEGER,status TEXT,input_tokens INTEGER,output_tokens INTEGER);
+    CREATE TABLE model_invocations(tenant_id TEXT,pipeline TEXT,provider TEXT,model_id TEXT,started_at INTEGER,status TEXT,input_tokens INTEGER,output_tokens INTEGER,reasoning_tokens INTEGER,total_tokens INTEGER);
     INSERT INTO users VALUES('owner'),('operator'),('viewer');
     INSERT INTO tenants VALUES('a','active'),('b','active');
     INSERT INTO memberships VALUES('owner','a','active','admin');`);
@@ -41,7 +41,9 @@ describe("Administration foundations", () => {
     const day = new Date().toISOString().slice(0, 10);
     const ts = Date.parse(day);
     raw
-      .prepare("INSERT INTO model_invocations VALUES(?,?,?,?,?,?,?,?)")
+      .prepare(
+        "INSERT INTO model_invocations(tenant_id,pipeline,provider,model_id,started_at,status,input_tokens,output_tokens) VALUES(?,?,?,?,?,?,?,?)",
+      )
       .run("a", "evaluation", "bedrock", "model", ts, "running", null, null);
     await rollupUsage(db, day, day);
     await rollupUsage(db, day, day);
@@ -65,7 +67,9 @@ describe("Administration foundations", () => {
     const { raw, db } = fixture();
     const day = new Date().toISOString().slice(0, 10);
     raw
-      .prepare("INSERT INTO model_invocations VALUES(?,?,?,?,?,?,?,?)")
+      .prepare(
+        "INSERT INTO model_invocations(tenant_id,pipeline,provider,model_id,started_at,status,input_tokens,output_tokens) VALUES(?,?,?,?,?,?,?,?)",
+      )
       .run("b", "evaluation", "provider", "foreign-model", Date.parse(day), "completed", 99, 9);
     await rollupUsage(db, day, day);
     await appendAdminAudit(db, {

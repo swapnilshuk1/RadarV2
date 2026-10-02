@@ -53,15 +53,11 @@ export class BedrockMantleJsonModel implements JsonModel {
           region: options.region ?? "us-east-1",
           timeoutMs: options.timeoutMs ?? 120_000,
           stageTimeoutMs: Object.fromEntries(
-            Object.entries(options.stageTimeoutMs ?? {}).sort(([a], [b]) =>
-              a.localeCompare(b),
-            ),
+            Object.entries(options.stageTimeoutMs ?? {}).sort(([a], [b]) => a.localeCompare(b)),
           ),
           maxOutputTokens: options.maxOutputTokens ?? 12288,
           stageOutputTokens: Object.fromEntries(
-            Object.entries(options.stageOutputTokens ?? {}).sort(([a], [b]) =>
-              a.localeCompare(b),
-            ),
+            Object.entries(options.stageOutputTokens ?? {}).sort(([a], [b]) => a.localeCompare(b)),
           ),
           structuredOutput: "json_schema-strict",
         }),
@@ -82,10 +78,7 @@ export class BedrockMantleJsonModel implements JsonModel {
       this.options.stageOutputTokens?.[stage] ??
       this.options.maxOutputTokens ??
       12288;
-    const timeoutMs =
-      this.options.stageTimeoutMs?.[stage] ??
-      this.options.timeoutMs ??
-      120_000;
+    const timeoutMs = this.options.stageTimeoutMs?.[stage] ?? this.options.timeoutMs ?? 120_000;
     const backoffKey = `bedrock-mantle:${this.configurationFingerprint}`;
     const invocationId = randomUUID();
     const startedAt = Date.now();
@@ -120,6 +113,13 @@ export class BedrockMantleJsonModel implements JsonModel {
       });
     };
 
+    await this.options.invocationSink?.beforeCall?.({
+      id: invocationId,
+      instruction,
+      input,
+      schema: responseSchema,
+      maxOutput: maxOutputTokens,
+    });
     await record("running");
 
     try {
@@ -167,9 +167,7 @@ export class BedrockMantleJsonModel implements JsonModel {
         throw new ModelProviderUnavailableError(
           `Bedrock Mantle provider HTTP ${response.status}`,
           response.status,
-          transient
-            ? nextTransientProviderBackoff(backoffKey, retry, this.options.random)
-            : retry,
+          transient ? nextTransientProviderBackoff(backoffKey, retry, this.options.random) : retry,
         );
       }
 
@@ -237,17 +235,14 @@ export class BedrockMantleJsonModel implements JsonModel {
         await record("provider_error", error.message);
         throw error;
       }
-      const credential =
-        error instanceof Error && error.message.startsWith("BEDROCK_MANTLE_");
+      const credential = error instanceof Error && error.message.startsWith("BEDROCK_MANTLE_");
       await record(
         "transport_error",
         credential ? "BEDROCK_MANTLE_CREDENTIAL_UNAVAILABLE" : "BEDROCK_MANTLE_TRANSPORT_FAILURE",
       );
       if (credential) {
         clearTransientProviderBackoff(backoffKey);
-        throw new ModelProviderUnavailableError(
-          "Bedrock Mantle credential unavailable",
-        );
+        throw new ModelProviderUnavailableError("Bedrock Mantle credential unavailable");
       }
       throw new ModelProviderUnavailableError(
         "Bedrock Mantle transport failure",

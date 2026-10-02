@@ -325,7 +325,15 @@ Scraped routes. Decision-log regressions are included in release certification.
 
 ## Administration foundations
 
-`src/admin` and `/admin` provide the additive Phase 1 operator console.
+`src/admin` and `/admin` provide the Phase 1 visibility and Phase 2 protection console.
 Migration 072 separates platform roles and append-only audit from tenant
 memberships, and adds idempotent usage rollups. See
-[Administration](ADMINISTRATION.md). Engine and worker execution are unchanged.
+[Administration](ADMINISTRATION.md). Migration 073 adds tenant quotas, expiring
+quota overrides, scoped claim controls, persistent job/call reservations, deferrals
+and console alerts. Evaluation, composition, factual review, pursuit and scrape
+claims reserve in the same database transaction as their fenced queue claim.
+The invocation sink uses `JobTokenLedger` before Mantle/Gemini dispatch and reconciles
+measured usage after completion. No policy is activated automatically. Deferrals
+are operational state, not opportunity verdicts; existing source identity, engine
+semantics and memo publication rules are preserved. See the administration runbook
+for activation boundaries, conservative input admission and unknown usage.

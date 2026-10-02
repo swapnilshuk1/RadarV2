@@ -2,6 +2,8 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { getAdminSnapshotFn } from "../admin/server";
 import { engineStages } from "../admin/stages";
+import { quotaDimensions, type QuotaDimension } from "../admin/protection-contracts";
+import { ProtectionControls } from "../admin/ProtectionControls";
 import type { AdminSection } from "../admin/service";
 
 const views = [
@@ -89,19 +91,31 @@ function AdminShell() {
     return () => window.removeEventListener("keydown", handle);
   }, [search, router]);
   const queueSections = data.sections.filter(
-    (s) => !["Usage", "Tenants", "Audit"].includes(s.title),
+    (s) => !["Usage", "Tenants", "Audit", "Quotas", "Overrides"].includes(s.title),
   );
   const selected =
     search.view === "Audit"
       ? data.sections.filter((s) => s.title === "Audit")
       : search.view === "Tenants & Quotas"
-        ? data.sections.filter((s) => s.title === "Tenants")
+        ? data.sections.filter((s) =>
+            ["Tenants", "Quotas", "Overrides", "Reservations"].includes(s.title),
+          )
         : search.view === "Operations"
           ? queueSections
           : search.view === "Models"
             ? data.sections.filter((s) => s.title === "Usage")
             : search.view === "Overview"
-              ? data.sections.filter((s) => s.title !== "Audit")
+              ? data.sections.filter(
+                  (s) =>
+                    ![
+                      "Audit",
+                      "Quotas",
+                      "Overrides",
+                      "Controls",
+                      "Deferrals",
+                      "Reservations",
+                    ].includes(s.title),
+                )
               : [];
   const stale = !data.rollupAt || Date.now() - data.rollupAt > 2 * 3600000;
   return (
@@ -129,7 +143,7 @@ function AdminShell() {
             ))}
           </nav>
           <p className="mt-7 px-6 text-xs leading-6 text-muted-foreground">
-            Read-only engine console
+            Engine control console
             <br />
             Platform {data.role}
           </p>
@@ -138,7 +152,7 @@ function AdminShell() {
           <header className="flex flex-wrap items-center justify-between gap-5 border-b border-border px-6 py-8 lg:px-10">
             <div>
               <p className="mb-3 font-mono text-[.62rem] uppercase tracking-[.2em] text-muted-foreground">
-                Platform operations · Phase 1
+                Platform operations · Phase 2
               </p>
               <h1 className="font-serif text-4xl sm:text-5xl">
                 {search.view === "Overview"
@@ -149,7 +163,7 @@ function AdminShell() {
               </h1>
             </div>
             <span className="border border-border px-3 py-2 font-mono text-xs text-muted-foreground">
-              Read only
+              {data.role === "operator" ? "Operator" : "Read only"}
             </span>
           </header>
           <p role="status" className="border-b border-border px-5 py-4 text-sm">
@@ -266,9 +280,15 @@ function AdminShell() {
             )}
             {search.view === "Tenants & Quotas" && (
               <p className="mb-5 text-sm text-muted-foreground">
-                Membership counts are recorded users, not active product users. Quotas and claim
-                protection are scheduled for Phase 2.
+                Membership counts are recorded users, not active product users. Quotas apply at
+                claim and before provider dispatch.
               </p>
+            )}
+            {search.view === "Tenants & Quotas" && (
+              <ProtectionControls key={search.tenantId ?? "all"} data={data} mode="quotas" />
+            )}
+            {search.view === "Operations" && (
+              <ProtectionControls key={search.tenantId ?? "all"} data={data} mode="operations" />
             )}
             {selected.map((section) => (
               <Ledger
@@ -421,7 +441,12 @@ function Ledger({
                           {r[c] ?? "unavailable"}
                         </button>
                       ) : r[c] === null ? (
-                        "unavailable"
+                        section.title === "Quotas" &&
+                        quotaDimensions.includes(c as QuotaDimension) ? (
+                          "unlimited"
+                        ) : (
+                          "unavailable"
+                        )
                       ) : (
                         String(r[c])
                       )}

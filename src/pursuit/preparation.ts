@@ -24,7 +24,11 @@ import { classifyClaim } from "./semantic/engine";
 import type { CandidateArchetype, PursuitLineage } from "./types";
 import { pursuitProfileVersion } from "./lineage";
 
-export async function loadBrief(userId: string, scope: store.Scope, jobHash: string): Promise<RoleBrief> {
+export async function loadBrief(
+  userId: string,
+  scope: store.Scope,
+  jobHash: string,
+): Promise<RoleBrief> {
   const details = await OpportunityService.getDetailsForUser(
     userId,
     jobHash,
@@ -41,35 +45,41 @@ export async function loadBrief(userId: string, scope: store.Scope, jobHash: str
  * canonical job, opportunity version and the evaluation context's profile
  * version. Read-only, indexed lookups on the staged evaluation tables.
  */
-export async function resolveLineage(scope: store.Scope, brief: RoleBrief): Promise<PursuitLineage> {
+export async function resolveLineage(
+  scope: store.Scope,
+  brief: RoleBrief,
+): Promise<PursuitLineage> {
   const db = getDatabaseAdapter();
   const contextFp = brief.lineage?.evaluationContextFingerprint ?? null;
-  const evaluation = await db.one<{
-    canonical_job_id: string;
-    opportunity_version: string;
-    evaluation_context_fingerprint: string;
-    profile_version: string;
-  }>(
-    // The served jobHash is the canonical opportunity's source job id.
-    `SELECT se.canonical_job_id, se.opportunity_version, se.evaluation_context_fingerprint, se.profile_version
+  const evaluation = await db
+    .one<{
+      canonical_job_id: string;
+      opportunity_version: string;
+      evaluation_context_fingerprint: string;
+      profile_version: string;
+    }>(
+      // The served jobHash is the canonical opportunity's source job id.
+      `SELECT se.canonical_job_id, se.opportunity_version, se.evaluation_context_fingerprint, se.profile_version
      FROM staged_evaluations se
      JOIN canonical_opportunities co ON co.id = se.canonical_job_id
      WHERE se.tenant_id = ? AND se.person_id = ? AND (co.source_job_id = ? OR se.job_hash = ?)
        ${contextFp ? "AND se.evaluation_context_fingerprint = ?" : ""}
        ${brief.lineage?.opportunityVersion ? "AND se.opportunity_version = ?" : ""}
      ORDER BY se.evaluated_at DESC LIMIT 1`,
-    [
-      scope.tenantId,
-      scope.personId,
-      brief.jobHash,
-      brief.jobHash,
-      ...(contextFp ? [contextFp] : []),
-      ...(brief.lineage?.opportunityVersion ? [brief.lineage.opportunityVersion] : []),
-    ],
-  ).catch(() => null);
+      [
+        scope.tenantId,
+        scope.personId,
+        brief.jobHash,
+        brief.jobHash,
+        ...(contextFp ? [contextFp] : []),
+        ...(brief.lineage?.opportunityVersion ? [brief.lineage.opportunityVersion] : []),
+      ],
+    )
+    .catch(() => null);
   return {
     canonicalJobId: evaluation?.canonical_job_id ?? null,
-    opportunityVersion: evaluation?.opportunity_version ?? brief.lineage?.opportunityVersion ?? null,
+    opportunityVersion:
+      evaluation?.opportunity_version ?? brief.lineage?.opportunityVersion ?? null,
     evaluationContextFingerprint: evaluation?.evaluation_context_fingerprint ?? contextFp,
     evaluationFingerprint: brief.lineage?.evaluationFingerprint ?? null,
     profileVersion: evaluation?.profile_version ?? null,
@@ -96,11 +106,16 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
   const scope: store.Scope = { tenantId: job.tenantId, personId: job.personId };
   const pursuit = await store.getPursuit(scope, job.jobHash);
   if (!pursuit || pursuit.id !== job.pursuitId) throw new Error("PURSUIT_NOT_FOUND");
-  await store.updatePursuit(scope, pursuit.id, { preparationState: "DERIVING", preparationError: null });
+  await store.updatePursuit(scope, pursuit.id, {
+    preparationState: "DERIVING",
+    preparationError: null,
+  });
 
   const brief = await loadBrief(job.requestedBy, scope, job.jobHash);
   const currentLineage = await resolveLineage(scope, brief);
-  const activeThesis = pursuit.activeThesisId ? await store.getThesis(pursuit.activeThesisId) : null;
+  const activeThesis = pursuit.activeThesisId
+    ? await store.getThesis(pursuit.activeThesisId)
+    : null;
   const profileVersion = pursuitProfileVersion(pursuit, activeThesis);
   const lineage = { ...currentLineage, ...pursuit.lineage, profileVersion };
   // Ledger is projected from the exact profile version the evaluation used.
@@ -113,7 +128,9 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
     candidateIdentity(scope),
   ]);
   const sourceDocumentIds = [
-    ...new Set(claims.map((claim) => claim.sourceDocumentId).filter((id): id is string => Boolean(id))),
+    ...new Set(
+      claims.map((claim) => claim.sourceDocumentId).filter((id): id is string => Boolean(id)),
+    ),
   ];
   const sourceTextByDocument = await store.loadSourceDocumentTexts(scope, sourceDocumentIds);
 
@@ -132,6 +149,7 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
   const model: PursuitModelContext = {
     ledger: new PursuitTokenLedger(),
     invocationSink: createSqliteModelInvocationSink(getDatabaseAdapter(), {
+      leaseToken: job.leaseToken,
       pipeline: "pursuit",
       tenantId: scope.tenantId,
       personId: scope.personId,
@@ -149,20 +167,25 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
   type InsertedThesis = Awaited<ReturnType<typeof store.insertThesis>>;
   let thesis = (await store.readCheckpoint(job, "thesis_row")) as InsertedThesis | null;
   if (!thesis) {
-    let enriched = (await store.readCheckpoint(job, "thesis_enriched")) as typeof deterministic | null;
+    let enriched = (await store.readCheckpoint(job, "thesis_enriched")) as
+      typeof deterministic | null;
     if (!enriched) {
       enriched = await enrichThesis(deterministic, { brief, claims, archetype, style, model });
       await store.writeCheckpoint(job, "thesis_enriched", enriched);
     }
-    thesis = await store.insertThesis(pursuit.id, {
-      ...enriched,
-      lineage: {
-        ...lineage,
-        profileVersion: ledger.profileVersion ?? lineage.profileVersion,
-        ledgerBindingFingerprint: ledger.fingerprint,
-        anchorDocumentId: archetype?.anchorDocumentIds[0] ?? null,
+    thesis = await store.insertThesis(
+      pursuit.id,
+      {
+        ...enriched,
+        lineage: {
+          ...lineage,
+          profileVersion: ledger.profileVersion ?? lineage.profileVersion,
+          ledgerBindingFingerprint: ledger.fingerprint,
+          anchorDocumentId: archetype?.anchorDocumentIds[0] ?? null,
+        },
       },
-    }, job);
+      job,
+    );
   }
 
   type Generated = Awaited<ReturnType<typeof generateArtifactSet>>;
@@ -181,11 +204,15 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
     await store.writeCheckpoint(job, "artifacts_generated", generated);
   }
   const spend = model.ledger?.snapshot();
-  await store.publishPreparation(job, thesis, generated,
-      `Pursuit strategy v${thesis.version} derived (${thesis.derivation.toLowerCase()}) with ${generated.length} artifacts` +
+  await store.publishPreparation(
+    job,
+    thesis,
+    generated,
+    `Pursuit strategy v${thesis.version} derived (${thesis.derivation.toLowerCase()}) with ${generated.length} artifacts` +
       (spend
         ? ` — ${spend.calls} model call${spend.calls === 1 ? "" : "s"}, ${spend.inputTokens} in / ${spend.outputTokens} out tokens${spend.exhausted ? " (token budget reached; remaining sections derived deterministically)" : ""}.`
-        : "."));
+        : "."),
+  );
   if (job.preferredArchetypeId && job.preferredArchetypeId !== deterministic.archetypeId) {
     await store.recordLearningSignals(scope, { pursuitId: pursuit.id }, [
       {
@@ -217,14 +244,17 @@ export class PursuitPreparationWorker {
     // work runs stops a second worker from claiming the same job and paying for
     // the same model calls twice.
     let leaseLost = false;
-    const renew = setInterval(() => {
-      void store
-        .heartbeatPreparation(job, this.leaseMs)
-        .then((held) => {
-          if (!held) leaseLost = true;
-        })
-        .catch(() => undefined);
-    }, Math.max(1_000, Math.floor(this.leaseMs / 3)));
+    const renew = setInterval(
+      () => {
+        void store
+          .heartbeatPreparation(job, this.leaseMs)
+          .then((held) => {
+            if (!held) leaseLost = true;
+          })
+          .catch(() => undefined);
+      },
+      Math.max(1_000, Math.floor(this.leaseMs / 3)),
+    );
     if (typeof renew.unref === "function") renew.unref();
 
     try {
@@ -239,7 +269,9 @@ export class PursuitPreparationWorker {
       const message = error instanceof Error ? error.message : "Preparation failed";
       if (leaseLost || message === "LEASE_LOST") return { jobId: job.id, status: "lease_lost" };
       const permanent = /NOT_FOUND|SCOPE/.test(message);
-      const retry = !permanent && job.attempts < job.maxAttempts;
+      const retry =
+        (error instanceof Error && error.name === "QuotaDeferredError") ||
+        (!permanent && job.attempts < job.maxAttempts);
       const fenced = await store.finishPreparation(job, { ok: false, error: message, retry });
       if (!fenced) return { jobId: job.id, status: "lease_lost" };
       await store.updatePursuit(scope, job.pursuitId, {
@@ -249,6 +281,8 @@ export class PursuitPreparationWorker {
       return { jobId: job.id, status: retry ? "retry" : "failed" };
     } finally {
       clearInterval(renew);
+      const { releaseReservation } = await import("../admin/protection");
+      await releaseReservation(getDatabaseAdapter(), "pursuit", job.id, job.leaseToken);
     }
   }
 }

@@ -1,3 +1,4 @@
+import { reserveClaim, deferralFilter, renewReservation } from "../admin/protection";
 /**
  * src/pursuit/store.ts
  *
@@ -108,7 +109,10 @@ export async function listClaims(scope: Scope): Promise<CandidateClaim[]> {
 }
 
 /** Pursuit reads remain pinned even after the Profile vault moves to a newer CV. */
-export async function listClaimsForProfile(scope: Scope, profileVersion: string): Promise<CandidateClaim[]> {
+export async function listClaimsForProfile(
+  scope: Scope,
+  profileVersion: string,
+): Promise<CandidateClaim[]> {
   if (!profileVersion) throw new Error("PURSUIT_PROFILE_LINEAGE_MISSING");
   const rows = await db().many<ClaimRow>(
     `SELECT c.${CLAIM_COLUMNS.replace(/,\s*/g, ", c.")} FROM candidate_claims c
@@ -147,7 +151,11 @@ export interface ClaimUpsert {
  * Reprojection of one graph is idempotent; a later immutable graph creates a
  * distinct claim even when its extractor reuses the same fact ID.
  */
-export async function upsertClaims(scope: Scope, claims: readonly ClaimUpsert[], currentProjection = true): Promise<number> {
+export async function upsertClaims(
+  scope: Scope,
+  claims: readonly ClaimUpsert[],
+  currentProjection = true,
+): Promise<number> {
   if (claims.length === 0) return 0;
   const timestamp = now();
   let written = 0;
@@ -304,7 +312,11 @@ export async function ledgerCoverageForProfile(
      )`,
     [scope.tenantId, scope.personId, profileVersion],
   );
-  return { total: row?.total ?? 0, sourceBacked: row?.source_backed ?? 0, documents: row?.documents ?? 0 };
+  return {
+    total: row?.total ?? 0,
+    sourceBacked: row?.source_backed ?? 0,
+    documents: row?.documents ?? 0,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1261,6 +1273,8 @@ export async function heartbeatPreparation(job: PreparationJob, leaseMs: number)
      WHERE id = ? AND lease_token = ? AND status = 'processing'`,
     [expires, now(), job.id, job.leaseToken],
   );
+  if (result.rowsAffected > 0)
+    await renewReservation(db(), "pursuit", job.id, job.leaseToken, Date.now() + leaseMs);
   return result.rowsAffected > 0;
 }
 
@@ -1377,53 +1391,67 @@ export async function claimPreparation(
   leaseMs: number,
 ): Promise<PreparationJob | null> {
   const ts = now();
-  const candidate = await db().one<{ id: string }>(
-    `SELECT id FROM pursuit_preparation_jobs
+  const filter = await deferralFilter(db(), "pursuit", "pursuit_preparation_jobs.id");
+  return db().transaction(async (tx) => {
+    const candidate = await tx.one<{ id: string; tenant_id: string }>(
+      `SELECT id,tenant_id FROM pursuit_preparation_jobs
      WHERE (status = 'queued' OR (status = 'processing' AND lease_expires_at < ?))
+       ${filter}
        AND attempts < max_attempts
        AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
      ORDER BY created_at ASC LIMIT 1`,
-    [ts, ts],
-  );
-  if (!candidate) return null;
-  const token = randomUUID();
-  const expires = new Date(Date.now() + leaseMs).toISOString();
-  const result = await db().execute(
-    `UPDATE pursuit_preparation_jobs
+      [ts, ts],
+    );
+    if (!candidate) return null;
+    const token = randomUUID();
+    const expires = new Date(Date.now() + leaseMs).toISOString();
+    if (
+      !(await reserveClaim(tx, {
+        pipeline: "pursuit",
+        id: candidate.id,
+        tenant: candidate.tenant_id,
+        token,
+        leaseUntil: Date.now() + leaseMs,
+      }))
+    )
+      return null;
+    const result = await tx.execute(
+      `UPDATE pursuit_preparation_jobs
      SET status = 'processing', locked_by = ?, lease_token = ?, lease_expires_at = ?,
          attempts = attempts + 1, updated_at = ?
      WHERE id = ? AND (status = 'queued' OR (status = 'processing' AND lease_expires_at < ?))`,
-    [workerId, token, expires, ts, candidate.id, ts],
-  );
-  if (result.rowsAffected === 0) return null;
-  const row = await db().one<{
-    id: string;
-    tenant_id: string;
-    person_id: string;
-    pursuit_id: string;
-    job_hash: string;
-    requested_by: string;
-    preferred_archetype_id: string | null;
-    attempts: number;
-    max_attempts: number;
-    lease_token: string;
-  }>(`SELECT * FROM pursuit_preparation_jobs WHERE id = ? AND lease_token = ?`, [
-    candidate.id,
-    token,
-  ]);
-  if (!row) return null;
-  return {
-    id: row.id,
-    tenantId: row.tenant_id,
-    personId: row.person_id,
-    pursuitId: row.pursuit_id,
-    jobHash: row.job_hash,
-    requestedBy: row.requested_by,
-    preferredArchetypeId: row.preferred_archetype_id,
-    attempts: row.attempts,
-    maxAttempts: row.max_attempts,
-    leaseToken: row.lease_token,
-  };
+      [workerId, token, expires, ts, candidate.id, ts],
+    );
+    if (result.rowsAffected === 0) return null;
+    const row = await tx.one<{
+      id: string;
+      tenant_id: string;
+      person_id: string;
+      pursuit_id: string;
+      job_hash: string;
+      requested_by: string;
+      preferred_archetype_id: string | null;
+      attempts: number;
+      max_attempts: number;
+      lease_token: string;
+    }>(`SELECT * FROM pursuit_preparation_jobs WHERE id = ? AND lease_token = ?`, [
+      candidate.id,
+      token,
+    ]);
+    if (!row) return null;
+    return {
+      id: row.id,
+      tenantId: row.tenant_id,
+      personId: row.person_id,
+      pursuitId: row.pursuit_id,
+      jobHash: row.job_hash,
+      requestedBy: row.requested_by,
+      preferredArchetypeId: row.preferred_archetype_id,
+      attempts: row.attempts,
+      maxAttempts: row.max_attempts,
+      leaseToken: row.lease_token,
+    };
+  });
 }
 
 export async function finishPreparation(
@@ -1440,6 +1468,7 @@ export async function finishPreparation(
   const result = await db().execute(
     `UPDATE pursuit_preparation_jobs
      SET status = ?, last_error = ?, completed_at = ?, locked_by = NULL, lease_expires_at = NULL,
+         attempts=attempts-${!outcome.ok && outcome.error.startsWith("QUOTA_DEFERRED:") ? 1 : 0},
          next_attempt_at = ?, updated_at = ?
      WHERE id = ? AND lease_token = ? AND status = 'processing'`,
     [

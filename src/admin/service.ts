@@ -50,7 +50,7 @@ export async function rollupUsage(db: DatabaseAdapter, firstDay: string, lastDay
       SELECT date(started_at/1000,'unixepoch'),tenant_id,pipeline,provider,model_id,
       COUNT(*),SUM(status='completed'),SUM(status IN ('provider_error','transport_error','invalid_output')),
       SUM(status='invalid_output'),SUM(input_tokens IS NOT NULL AND output_tokens IS NOT NULL),
-      SUM(COALESCE(input_tokens,0)),SUM(COALESCE(output_tokens,0))
+      SUM(COALESCE(input_tokens,0)),SUM(MAX(COALESCE(output_tokens,0)+CASE WHEN provider='vertex-gemini' THEN COALESCE(reasoning_tokens,0) ELSE 0 END, COALESCE(total_tokens,0)-COALESCE(input_tokens,0)))
       FROM model_invocations WHERE date(started_at/1000,'unixepoch') BETWEEN ? AND ?
       GROUP BY date(started_at/1000,'unixepoch'),tenant_id,pipeline,provider,model_id`,
       [firstDay, lastDay],
@@ -143,7 +143,7 @@ export async function readAdminSnapshot(
     );
   await query(
     "Tenants",
-    "tenants + active memberships; active product users and quotas are not yet measured/configured.",
+    "tenants + active memberships; members are recorded memberships, not active product users.",
     `SELECT t.id,t.status,COUNT(m.user_id) members FROM tenants t LEFT JOIN memberships m
       ON m.tenant_id=t.id AND m.status='active' ${tenantId ? "WHERE t.id=?" : ""}
       GROUP BY t.id,t.status ORDER BY t.id`,
@@ -152,6 +152,37 @@ export async function readAdminSnapshot(
     "Audit",
     "admin_audit_log; newest 100 events. Tenant scope excludes global events.",
     `SELECT occurred_at,actor_id,action,tenant_id,target,reason,detail_json FROM admin_audit_log${scope} ORDER BY occurred_at DESC,id DESC LIMIT 100`,
+  );
+  await query(
+    "Quotas",
+    "tenant_quotas; null limits are unlimited. Job ceilings apply to future claims; existing job budgets are preserved unless explicitly raised.",
+    `SELECT * FROM tenant_quotas${scope} ORDER BY tenant_id`,
+  );
+  await query(
+    "Overrides",
+    "tenant_quota_overrides; only unexpired values affect claims.",
+    `SELECT * FROM tenant_quota_overrides WHERE expires_at>? ${tenantId ? "AND tenant_id=?" : ""} ORDER BY tenant_id,dimension`,
+    [Date.now(), ...params],
+  );
+  await query(
+    "Controls",
+    "pipeline_controls; global pauses remain effective in tenant views. Running jobs finish; new claims stop at the next poll.",
+    `SELECT * FROM pipeline_controls ${tenantId ? "WHERE scope_key IN ('*',?)" : ""} ORDER BY scope_key,pipeline`,
+  );
+  await query(
+    "Deferrals",
+    "quota_deferrals; original queue rows remain queued. Reasons do not represent a candidate verdict.",
+    `SELECT * FROM quota_deferrals${scope} ORDER BY updated_at DESC LIMIT 100`,
+  );
+  await query(
+    "Reservations",
+    "quota_jobs + quota_calls; charged usage includes retained bounds for calls without measured usage. Open jobs reserve the rest of their budget.",
+    `SELECT j.*, (SELECT COUNT(*) FROM quota_calls c WHERE c.pipeline=j.pipeline AND c.job_id=j.job_id AND c.unknown_usage=1) unmeasured_calls FROM quota_jobs j ${tenantId ? "WHERE j.tenant_id=?" : ""} ORDER BY j.lease_until DESC LIMIT 100`,
+  );
+  await query(
+    "Alerts",
+    "admin_alerts; unacknowledged quota, retry-storm and provider-bound signals. No messages are sent to external destinations.",
+    `SELECT * FROM admin_alerts WHERE acknowledged_at IS NULL ${tenantId ? "AND tenant_id=?" : ""} ORDER BY last_seen DESC LIMIT 100`,
   );
   await appendAdminAudit(db, {
     actor: userId,

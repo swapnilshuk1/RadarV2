@@ -369,6 +369,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/security/scrape-tenant-identity.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 7 | 20 |
 | `tests/security/scraper-auth-permission-non-escalation.test.ts` | Security & Tenant Isolation | **KEEP** | Gate 0 Safety | 1 | 5 |
 | `tests/security/admin-foundations.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 4 | 20 |
+| `tests/security/admin-protection.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 11 | 50 |
 | `tests/security/tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 16 | 43 |
 | `tests/semantic/controlled_integration.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 12 | 35 |
 | `tests/semantic/extraction-sanitation.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 14 |

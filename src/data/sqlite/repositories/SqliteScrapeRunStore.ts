@@ -1,3 +1,9 @@
+import {
+  reserveClaim,
+  deferralFilter,
+  renewReservation,
+  releaseReservation,
+} from "../../../admin/protection";
 /**
  * src/data/sqlite/repositories/SqliteScrapeRunStore.ts
  *
@@ -46,10 +52,10 @@ export class ActiveScrapeRunExistsError extends Error {
   constructor(
     public readonly tenantId: string,
     public readonly personId: string,
-    public readonly existingRunId?: string
+    public readonly existingRunId?: string,
   ) {
     super(
-      `An active scraping run already exists for tenant '${tenantId}' and person '${personId}'.`
+      `An active scraping run already exists for tenant '${tenantId}' and person '${personId}'.`,
     );
     this.name = "ActiveScrapeRunExistsError";
   }
@@ -103,10 +109,7 @@ export class SqliteScrapeRunStore {
    * Atomically creates a new scrape run for the authorized scope.
    * Relies on the database partial unique index to reject concurrent active runs.
    */
-  async createRun(
-    scope: AuthorizedPersonScope,
-    params: CreateScrapeRunParams
-  ): Promise<ScrapeRun> {
+  async createRun(scope: AuthorizedPersonScope, params: CreateScrapeRunParams): Promise<ScrapeRun> {
     const runId = params.id || `run-${Date.now()}`;
     const now = new Date().toISOString();
     const status = params.initialStatus || "initializing";
@@ -131,7 +134,7 @@ export class SqliteScrapeRunStore {
           now,
           status === "running" || status === "initializing" ? now : null,
           now,
-        ]
+        ],
       );
     } catch (err: any) {
       if (
@@ -155,7 +158,7 @@ export class SqliteScrapeRunStore {
     const row = await this.db.one<any>(
       `SELECT * FROM scrape_runs 
        WHERE id = ? AND tenant_id = ? AND person_id = ?`,
-      [runId, scope.tenantId, scope.personId]
+      [runId, scope.tenantId, scope.personId],
     );
     if (!row) return null;
     return this.mapRunRow(row);
@@ -169,7 +172,7 @@ export class SqliteScrapeRunStore {
       `SELECT * FROM scrape_runs 
        WHERE tenant_id = ? AND person_id = ? 
        ORDER BY created_at DESC LIMIT 1`,
-      [scope.tenantId, scope.personId]
+      [scope.tenantId, scope.personId],
     );
     if (!row) return null;
     return this.mapRunRow(row);
@@ -185,7 +188,7 @@ export class SqliteScrapeRunStore {
        WHERE tenant_id = ? AND person_id = ? 
          AND status IN (${placeholders})
        LIMIT 1`,
-      [scope.tenantId, scope.personId, ...ACTIVE_SCRAPE_STATUSES]
+      [scope.tenantId, scope.personId, ...ACTIVE_SCRAPE_STATUSES],
     );
     if (!row) return null;
     return this.mapRunRow(row);
@@ -237,7 +240,7 @@ export class SqliteScrapeRunStore {
         scope.personId,
         ...TERMINAL_SCRAPE_STATUSES,
         ...(lease ? [lease.owner, lease.token, Date.now()] : []),
-      ]
+      ],
     );
 
     return res.rowsAffected > 0;
@@ -284,7 +287,7 @@ export class SqliteScrapeRunStore {
         scope.personId,
         ...expectedList,
         ...(lease ? [lease.owner, lease.token, Date.now()] : []),
-      ]
+      ],
     );
 
     return res.rowsAffected > 0;
@@ -296,37 +299,46 @@ export class SqliteScrapeRunStore {
     leaseMs = 120_000,
     staleWithoutLeaseMs = 300_000,
   ): Promise<ScrapeRun | null> {
-    const now = Date.now();
-    const expiresAt = now + leaseMs;
-    const staleCutoff = new Date(now - staleWithoutLeaseMs).toISOString();
-    const token = randomUUID();
-    const rows = await this.db.many<any>(
-      `UPDATE scrape_runs
-       SET status = CASE WHEN status = 'queued' THEN 'initializing' ELSE status END,
-           lease_owner = ?, lease_token = ?, lease_expires_at = ?,
-           started_at = CASE WHEN status = 'queued' AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = (
-         SELECT id FROM scrape_runs
-         WHERE status = 'queued'
-            OR (status IN ('initializing','running') AND (
-                 (lease_expires_at IS NOT NULL AND lease_expires_at <= ?)
-                 OR (lease_expires_at IS NULL AND datetime(updated_at) <= datetime(?))
-               ))
-         ORDER BY CASE WHEN status = 'queued' THEN 0 ELSE 1 END, created_at ASC
-         LIMIT 1
-       )
-       AND (
-         status = 'queued'
-         OR (status IN ('initializing','running') AND (
-              (lease_expires_at IS NOT NULL AND lease_expires_at <= ?)
-              OR (lease_expires_at IS NULL AND datetime(updated_at) <= datetime(?))
-            ))
-       )
-       RETURNING *`,
-      [workerId, token, expiresAt, now, staleCutoff, now, staleCutoff],
-    );
-    return rows[0] ? this.mapRunRow(rows[0]) : null;
+    const now = Date.now(),
+      expiresAt = now + leaseMs,
+      staleCutoff = new Date(now - staleWithoutLeaseMs).toISOString(),
+      token = randomUUID();
+    const filter = await deferralFilter(this.db, "scrape", "scrape_runs.id");
+    return this.db.transaction(async (tx) => {
+      const candidate = await tx.one<{ id: string; tenant_id: string }>(
+        `SELECT id,tenant_id FROM scrape_runs WHERE (status='queued'
+         OR (status IN ('initializing','running') AND ((lease_expires_at IS NOT NULL AND lease_expires_at<=?)
+         OR (lease_expires_at IS NULL AND datetime(updated_at)<=datetime(?))))) ${filter}
+         ORDER BY CASE WHEN status='queued' THEN 0 ELSE 1 END,created_at ASC LIMIT 1`,
+        [now, staleCutoff],
+      );
+      if (!candidate) return null;
+      if (
+        !(await reserveClaim(
+          tx,
+          {
+            pipeline: "scrape",
+            id: candidate.id,
+            tenant: candidate.tenant_id,
+            token,
+            leaseUntil: expiresAt,
+          },
+          now,
+        ))
+      )
+        return null;
+      const rows = await tx.many<any>(
+        `UPDATE scrape_runs
+        SET status=CASE WHEN status='queued' THEN 'initializing' ELSE status END,
+        lease_owner=?,lease_token=?,lease_expires_at=?,
+        started_at=CASE WHEN status='queued' AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END,
+        updated_at=CURRENT_TIMESTAMP WHERE id=? AND (status='queued'
+        OR (status IN ('initializing','running') AND ((lease_expires_at IS NOT NULL AND lease_expires_at<=?)
+        OR (lease_expires_at IS NULL AND datetime(updated_at)<=datetime(?))))) RETURNING *`,
+        [workerId, token, expiresAt, candidate.id, now, staleCutoff],
+      );
+      return rows[0] ? this.mapRunRow(rows[0]) : null;
+    });
   }
 
   async heartbeatWorkerLease(
@@ -343,6 +355,7 @@ export class SqliteScrapeRunStore {
       [now + leaseMs, runId, workerId, leaseToken, now],
     );
     if (result.rowsAffected !== 1) throw new Error("SCRAPE_RUN_LEASE_LOST");
+    await renewReservation(this.db, "scrape", runId, leaseToken, now + leaseMs);
   }
 
   async assertWorkerLease(runId: string, workerId: string, leaseToken: string): Promise<void> {
@@ -361,16 +374,33 @@ export class SqliteScrapeRunStore {
        WHERE id = ? AND lease_owner = ? AND lease_token = ?`,
       [runId, workerId, leaseToken],
     );
+    if (result.rowsAffected === 1) await releaseReservation(this.db, "scrape", runId, leaseToken);
     return result.rowsAffected === 1;
   }
 
   /** Retry unsent captured work without admitting a stale or foreign owner. */
-  async requeueForTransfer(scope: AuthorizedPersonScope, runId: string, owner: string, token: string, reason: string): Promise<boolean> {
+  async requeueForTransfer(
+    scope: AuthorizedPersonScope,
+    runId: string,
+    owner: string,
+    token: string,
+    reason: string,
+  ): Promise<boolean> {
     const result = await this.db.execute(
       `UPDATE scrape_runs SET status='queued', error_message=?, updated_at=?
        WHERE id=? AND tenant_id=? AND person_id=? AND lease_owner=? AND lease_token=?
          AND lease_expires_at>? AND status IN ('running','stopping')`,
-      [reason, new Date().toISOString(), runId, scope.tenantId, scope.personId, owner, token, Date.now()]);
+      [
+        reason,
+        new Date().toISOString(),
+        runId,
+        scope.tenantId,
+        scope.personId,
+        owner,
+        token,
+        Date.now(),
+      ],
+    );
     return result.rowsAffected === 1;
   }
 
@@ -431,7 +461,7 @@ export class SqliteScrapeRunStore {
        SET ${updates.join(", ")}
        WHERE id = ? AND tenant_id = ? AND person_id = ?
          ${lease ? "AND lease_owner = ? AND lease_token = ? AND lease_expires_at > ?" : ""}`,
-      values
+      values,
     );
     if (lease && result.rowsAffected !== 1) throw new Error("SCRAPE_RUN_LEASE_LOST");
   }
@@ -447,7 +477,7 @@ export class SqliteScrapeRunStore {
       portal?: string | null;
       eventType: string;
       payload?: Record<string, unknown>;
-    }
+    },
   ): Promise<void> {
     const now = new Date().toISOString();
     await this.db.execute(
@@ -463,22 +493,19 @@ export class SqliteScrapeRunStore {
         event.eventType,
         JSON.stringify(event.payload || {}),
         now,
-      ]
+      ],
     );
   }
 
   /**
    * Lists events for a run in deterministic chronological order.
    */
-  async listEvents(
-    scope: AuthorizedPersonScope,
-    runId: string
-  ): Promise<ScrapeRunEvent[]> {
+  async listEvents(scope: AuthorizedPersonScope, runId: string): Promise<ScrapeRunEvent[]> {
     const rows = await this.db.many<any>(
       `SELECT * FROM scrape_run_events 
        WHERE run_id = ? AND tenant_id = ? AND person_id = ?
        ORDER BY id ASC`,
-      [runId, scope.tenantId, scope.personId]
+      [runId, scope.tenantId, scope.personId],
     );
 
     return rows.map((r) => ({
@@ -530,7 +557,7 @@ export class SqliteScrapeRunStore {
     const placeholders = ACTIVE_SCRAPE_STATUSES.map(() => "?").join(", ");
     const rows = await this.db.many<any>(
       `SELECT * FROM scrape_runs WHERE status IN (${placeholders}) ORDER BY created_at ASC`,
-      [...ACTIVE_SCRAPE_STATUSES]
+      [...ACTIVE_SCRAPE_STATUSES],
     );
     return rows.map((r) => this.mapRunRow(r));
   }
@@ -539,10 +566,7 @@ export class SqliteScrapeRunStore {
    * System-level lookup of a single run by ID.
    */
   async systemGetRun(runId: string): Promise<ScrapeRun | null> {
-    const row = await this.db.one<any>(
-      `SELECT * FROM scrape_runs WHERE id = ?`,
-      [runId]
-    );
+    const row = await this.db.one<any>(`SELECT * FROM scrape_runs WHERE id = ?`, [runId]);
     if (!row) return null;
     return this.mapRunRow(row);
   }
@@ -553,7 +577,7 @@ export class SqliteScrapeRunStore {
   async systemUpdateRunStatus(
     runId: string,
     status: ScrapeRunStatus,
-    errorMessage?: string
+    errorMessage?: string,
   ): Promise<boolean> {
     const now = new Date().toISOString();
     const isTerminal = TERMINAL_SCRAPE_STATUSES.includes(status);
@@ -577,7 +601,7 @@ export class SqliteScrapeRunStore {
         now,
         runId,
         ...TERMINAL_SCRAPE_STATUSES,
-      ]
+      ],
     );
     return res.rowsAffected > 0;
   }
@@ -595,8 +619,12 @@ export class SqliteScrapeRunStore {
     opportunityVersion: string;
     evaluationContextFingerprint: string;
   }): Promise<{ requirementId: string; status: string }> {
-    const id = `er_${params.tenantId}_${params.personId}_${params.canonicalJobId}_${params.opportunityVersion}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-    
+    const id =
+      `er_${params.tenantId}_${params.personId}_${params.canonicalJobId}_${params.opportunityVersion}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        "_",
+      );
+
     // 1. Insert or preserve existing shared requirement
     await this.db.execute(
       `INSERT INTO evaluation_requirements (
@@ -616,7 +644,7 @@ export class SqliteScrapeRunStore {
         params.canonicalJobId,
         params.opportunityVersion,
         params.evaluationContextFingerprint,
-      ]
+      ],
     );
 
     // Retrieve authoritative requirement row
@@ -632,7 +660,7 @@ export class SqliteScrapeRunStore {
         params.canonicalJobId,
         params.opportunityVersion,
         params.evaluationContextFingerprint,
-      ]
+      ],
     );
 
     const authoritativeId = existing?.id || id;
@@ -642,7 +670,7 @@ export class SqliteScrapeRunStore {
     await this.db.execute(
       `INSERT OR IGNORE INTO scrape_run_evaluation_requirements (run_id, evaluation_requirement_id)
        VALUES (?, ?)`,
-      [params.runId, authoritativeId]
+      [params.runId, authoritativeId],
     );
 
     return { requirementId: authoritativeId, status: authoritativeStatus };
@@ -674,7 +702,7 @@ export class SqliteScrapeRunStore {
        FROM scrape_run_evaluation_requirements srer
        JOIN evaluation_requirements er ON srer.evaluation_requirement_id = er.id
        WHERE srer.run_id = ?`,
-      [runId]
+      [runId],
     );
 
     return {

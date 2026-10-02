@@ -1,11 +1,15 @@
 import type { DatabaseAdapter } from "@/data/database";
+import { releaseReservation } from "../../admin/protection";
 import type { ReasoningModel } from "@/dossier/contracts";
 import {
   SqliteDossierCompositionQueue,
   compositionJobIdentity,
   type DossierCompositionJob,
 } from "@/data/sqlite/repositories/SqliteDossierCompositionQueue";
-import { ModelInvalidOutputError, ModelProviderUnavailableError } from "@/lib/model/provider-unavailable";
+import {
+  ModelInvalidOutputError,
+  ModelProviderUnavailableError,
+} from "@/lib/model/provider-unavailable";
 import {
   createSqliteModelInvocationSink,
   type ModelInvocationContext,
@@ -14,9 +18,7 @@ import { createDossierWriterModel } from "@/lib/model/dossier-writer-model";
 import { ProductionStagedDossierService } from "@/dossier/runtime/service";
 import { StagedServingPublisher } from "@/dossier/runtime/serving-publisher";
 
-export type DossierWriterFactory = (
-  context: ModelInvocationContext,
-) => ReasoningModel;
+export type DossierWriterFactory = (context: ModelInvocationContext) => ReasoningModel;
 
 /** Independent durable draft-composition stage. Evaluation completion never waits here. */
 export class DossierCompositionWorker {
@@ -58,6 +60,7 @@ export class DossierCompositionWorker {
     try {
       const identity = compositionJobIdentity(job);
       const context: ModelInvocationContext = {
+        leaseToken: job.lease_token!,
         pipeline: "dossier",
         dossierCompositionJobId: job.id,
         tenantId: job.tenant_id,
@@ -67,11 +70,9 @@ export class DossierCompositionWorker {
         evaluationContextFingerprint: job.evaluation_context_fingerprint,
       };
       const writer = this.writerFactory(context);
-      await new ProductionStagedDossierService(this.db, writer).compose(
-        identity,
-        () => {},
-        { draftOnly: true },
-      );
+      await new ProductionStagedDossierService(this.db, writer).compose(identity, () => {}, {
+        draftOnly: true,
+      });
       await queue.markDraftPersisted(job);
       await new StagedServingPublisher(this.db).publish(identity, { allowDraft: true });
       await stopHeartbeat();
@@ -81,8 +82,7 @@ export class DossierCompositionWorker {
       clearInterval(timer);
       await heartbeat;
       const retryableModelError =
-        error instanceof ModelProviderUnavailableError ||
-        error instanceof ModelInvalidOutputError;
+        error instanceof ModelProviderUnavailableError || error instanceof ModelInvalidOutputError;
       const status = await queue.fail(job, {
         provider: retryableModelError,
         delay: retryableModelError ? error.retryAfterMs : undefined,
@@ -92,6 +92,8 @@ export class DossierCompositionWorker {
             : "DOSSIER_COMPOSITION_REQUIRES_ATTENTION",
       });
       return { id: job.id, status };
+    } finally {
+      await releaseReservation(this.db, "dossier", job.id, job.lease_token!);
     }
   }
 }

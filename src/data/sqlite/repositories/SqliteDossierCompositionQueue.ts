@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { reserveClaim, deferralFilter, renewReservation } from "../../../admin/protection";
 import type { DatabaseAdapter } from "@/data/database";
 import { DOSSIER_COMPOSITION_RECIPE } from "@/dossier/factual-review-integrity";
 import { checkpointHash } from "@/dossier/runtime/durable-model";
@@ -52,10 +53,7 @@ export function compositionCheckpointScope(
   });
 }
 
-function identityKey(
-  identity: ProductionStagedIdentity,
-  evaluationFingerprint: string,
-): string {
+function identityKey(identity: ProductionStagedIdentity, evaluationFingerprint: string): string {
   return createHash("sha256")
     .update(
       JSON.stringify([
@@ -163,10 +161,7 @@ export class SqliteDossierCompositionQueue {
         ],
       );
       if (!result.rowsAffected) return false;
-      await tx.execute(
-        `DELETE FROM dossier_model_checkpoints WHERE scope_fingerprint=?`,
-        [scope],
-      );
+      await tx.execute(`DELETE FROM dossier_model_checkpoints WHERE scope_fingerprint=?`, [scope]);
       return true;
     });
   }
@@ -174,10 +169,12 @@ export class SqliteDossierCompositionQueue {
   async claim(): Promise<DossierCompositionJob | null> {
     const now = this.now();
     const token = randomUUID();
+    const filter = await deferralFilter(this.db, "dossier", "dcj.id");
     return this.db.transaction(async (tx) => {
       const row = await tx.one<DossierCompositionJob>(
         `SELECT * FROM dossier_composition_jobs AS dcj
          WHERE recipe=?
+           ${filter}
            AND EXISTS (
              SELECT 1 FROM active_evaluation_contexts aec
              WHERE aec.tenant_id=dcj.tenant_id
@@ -193,6 +190,20 @@ export class SqliteDossierCompositionQueue {
         [DOSSIER_COMPOSITION_RECIPE, now, now, now - DOSSIER_COMPOSITION_LEASE_MS],
       );
       if (!row) return null;
+      if (
+        !(await reserveClaim(
+          tx,
+          {
+            pipeline: "dossier",
+            id: row.id,
+            tenant: row.tenant_id,
+            token,
+            leaseUntil: now + DOSSIER_COMPOSITION_LEASE_MS,
+          },
+          now,
+        ))
+      )
+        return null;
       const updated = await tx.execute(
         `UPDATE dossier_composition_jobs
          SET status='processing',lease_token=?,lease_until=?,updated_at=?
@@ -200,7 +211,15 @@ export class SqliteDossierCompositionQueue {
            (status IN ('pending','retry') AND next_attempt_at<=?)
            OR (status='processing' AND (lease_until IS NULL OR lease_until<=? OR updated_at<=?))
          )`,
-        [token, now + DOSSIER_COMPOSITION_LEASE_MS, now, row.id, now, now, now - DOSSIER_COMPOSITION_LEASE_MS],
+        [
+          token,
+          now + DOSSIER_COMPOSITION_LEASE_MS,
+          now,
+          row.id,
+          now,
+          now,
+          now - DOSSIER_COMPOSITION_LEASE_MS,
+        ],
       );
       if (!updated.rowsAffected) return null;
       return {
@@ -221,6 +240,13 @@ export class SqliteDossierCompositionQueue {
       [now + DOSSIER_COMPOSITION_LEASE_MS, now, job.id, job.lease_token, now],
     );
     if (!updated.rowsAffected) throw new Error("DOSSIER_COMPOSITION_LEASE_LOST");
+    await renewReservation(
+      this.db,
+      "dossier",
+      job.id,
+      job.lease_token!,
+      now + DOSSIER_COMPOSITION_LEASE_MS,
+    );
   }
 
   async markDraftPersisted(job: DossierCompositionJob): Promise<void> {
@@ -252,12 +278,12 @@ export class SqliteDossierCompositionQueue {
     random = Math.random,
   ): Promise<"retry" | "needs_attention" | "lease_lost"> {
     const now = this.now();
-    const attempt = job.attempts + 1;
-    const terminal = !error.provider || attempt >= job.max_attempts;
+    const quota = error.code.startsWith("QUOTA_DEFERRED:");
+    const attempt = job.attempts + (quota ? 0 : 1);
+    const terminal = !quota && (!error.provider || attempt >= job.max_attempts);
     const delay = Math.max(
       error.delay ?? 0,
-      Math.min(5 * 60_000, 15_000 * 2 ** Math.min(job.attempts, 4)) *
-        (0.8 + random() * 0.2),
+      Math.min(5 * 60_000, 15_000 * 2 ** Math.min(job.attempts, 4)) * (0.8 + random() * 0.2),
     );
     const result = await this.db.execute(
       `UPDATE dossier_composition_jobs

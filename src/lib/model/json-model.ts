@@ -122,6 +122,13 @@ export class GeminiJsonModel implements JsonModel {
       });
     };
 
+    await this.options.invocationSink?.beforeCall?.({
+      id: invocationId,
+      instruction,
+      input,
+      schema: responseSchema,
+      maxOutput: maxOutputTokens,
+    });
     await record("running");
 
     try {
