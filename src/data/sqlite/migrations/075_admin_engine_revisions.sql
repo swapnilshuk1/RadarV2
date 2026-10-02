@@ -1,0 +1,24 @@
+CREATE TABLE config_revisions(id TEXT PRIMARY KEY,scope TEXT NOT NULL,parent_id TEXT REFERENCES config_revisions(id),config_json TEXT NOT NULL,fingerprint TEXT NOT NULL,created_at INTEGER NOT NULL,created_by TEXT NOT NULL);
+CREATE TABLE config_active_pointers(scope TEXT PRIMARY KEY,revision_id TEXT NOT NULL REFERENCES config_revisions(id));
+CREATE TABLE config_drafts(scope TEXT PRIMARY KEY,revision_id TEXT NOT NULL REFERENCES config_revisions(id));
+CREATE TRIGGER config_revisions_no_update BEFORE UPDATE ON config_revisions BEGIN SELECT RAISE(ABORT,'CONFIG_REVISION_IMMUTABLE'); END;
+CREATE TRIGGER config_revisions_no_delete BEFORE DELETE ON config_revisions BEGIN SELECT RAISE(ABORT,'CONFIG_REVISION_IMMUTABLE'); END;
+CREATE TABLE admin_bench_runs(id TEXT PRIMARY KEY,scope TEXT NOT NULL,revision_id TEXT NOT NULL REFERENCES config_revisions(id),active_revision_id TEXT NOT NULL REFERENCES config_revisions(id),status TEXT NOT NULL CHECK(status IN ('queued','running','passed','failed')),token_cap INTEGER NOT NULL,tokens_reserved INTEGER NOT NULL DEFAULT 0,result_json TEXT,error TEXT,created_at INTEGER NOT NULL,created_by TEXT NOT NULL,completed_at INTEGER,lease_token TEXT,lease_until INTEGER);
+ALTER TABLE model_invocations ADD COLUMN purpose TEXT NOT NULL DEFAULT 'LIVE' CHECK(purpose IN ('LIVE','BENCH'));
+ALTER TABLE model_invocations ADD COLUMN bench_run_id TEXT REFERENCES admin_bench_runs(id);
+INSERT INTO config_revisions VALUES('engine-baseline-v1','platform',NULL,'{"reasoning":{"model":"legacy","concurrency":4,"timeoutMs":120000,"maxOutputTokens":16384},"writing":{"model":"legacy","concurrency":2,"timeoutMs":120000,"maxOutputTokens":16384},"pursuitInputTokens":20000,"pursuitOutputTokens":5000}','3141d5253190b6a96e97b64d8ea47c236f29102ee97cc008c7ef070d53a1dd17',0,'migration');
+INSERT INTO config_active_pointers VALUES('platform','engine-baseline-v1');
+ALTER TABLE evaluation_jobs ADD COLUMN config_revision_id TEXT REFERENCES config_revisions(id);
+UPDATE evaluation_jobs SET config_revision_id='engine-baseline-v1';
+CREATE TRIGGER evaluation_jobs_config_pin BEFORE UPDATE OF config_revision_id ON evaluation_jobs WHEN OLD.config_revision_id IS NOT NULL AND NEW.config_revision_id IS NOT OLD.config_revision_id BEGIN SELECT RAISE(ABORT,'CONFIG_JOB_PIN_IMMUTABLE'); END;
+ALTER TABLE dossier_composition_jobs ADD COLUMN config_revision_id TEXT REFERENCES config_revisions(id);
+UPDATE dossier_composition_jobs SET config_revision_id='engine-baseline-v1';
+CREATE TRIGGER dossier_composition_jobs_config_pin BEFORE UPDATE OF config_revision_id ON dossier_composition_jobs WHEN OLD.config_revision_id IS NOT NULL AND NEW.config_revision_id IS NOT OLD.config_revision_id BEGIN SELECT RAISE(ABORT,'CONFIG_JOB_PIN_IMMUTABLE'); END;
+ALTER TABLE dossier_review_jobs ADD COLUMN config_revision_id TEXT REFERENCES config_revisions(id);
+UPDATE dossier_review_jobs SET config_revision_id='engine-baseline-v1';
+CREATE TRIGGER dossier_review_jobs_config_pin BEFORE UPDATE OF config_revision_id ON dossier_review_jobs WHEN OLD.config_revision_id IS NOT NULL AND NEW.config_revision_id IS NOT OLD.config_revision_id BEGIN SELECT RAISE(ABORT,'CONFIG_JOB_PIN_IMMUTABLE'); END;
+ALTER TABLE pursuit_preparation_jobs ADD COLUMN config_revision_id TEXT REFERENCES config_revisions(id);
+UPDATE pursuit_preparation_jobs SET config_revision_id='engine-baseline-v1';
+CREATE TRIGGER pursuit_preparation_jobs_config_pin BEFORE UPDATE OF config_revision_id ON pursuit_preparation_jobs WHEN OLD.config_revision_id IS NOT NULL AND NEW.config_revision_id IS NOT OLD.config_revision_id BEGIN SELECT RAISE(ABORT,'CONFIG_JOB_PIN_IMMUTABLE'); END;
+
+CREATE UNIQUE INDEX admin_bench_live_scope ON admin_bench_runs(scope) WHERE status IN ('queued','running');

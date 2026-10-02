@@ -1,3 +1,4 @@
+import type { StageObserver } from "../lib/model/stage-observer";
 import { createHash } from 'node:crypto';
 import { ModelProviderUnavailableError } from '../lib/model/provider-unavailable';
 import { z } from 'zod';
@@ -68,7 +69,7 @@ async function proposeStage<T>(
   input: unknown,
   schema: z.ZodTypeAny,
   validate: (value: unknown) => T,
-  onStage: (stage: string) => void,
+  onStage: StageObserver,
   callStage = label,
 ): Promise<T> {
   const key = stageKey(model, instruction, input, schema);
@@ -79,7 +80,7 @@ async function proposeStage<T>(
   let previous: unknown;
   let issue = '';
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    onStage(attempt ? `${label} — local repair ${attempt}` : label);
+    onStage(attempt ? `${label} — local repair ${attempt}` : label, attempt ? { kind: "repair", stage: label } : undefined);
     try {
       previous = await model.generate(
         instruction,
@@ -584,8 +585,30 @@ function validateResolutions(value: unknown, frozen: StagedResearchInput) {
 export async function runStagedFrozenDecisionDetailed(
   frozen: StagedResearchInput,
   model: ReasoningModel,
-  onStage: (stage: string) => void = () => {},
+  onStage: StageObserver = () => {},
 ): Promise<StagedDecisionResult> {
+  if (frozen.intelligenceTaxonomy) {
+    const original = model,
+      taxonomyFingerprint = frozen.intelligenceTaxonomy.fingerprint;
+    const { intelligenceReference } = await import("../lib/ontology/intelligence-taxonomy");
+    const reference = intelligenceReference(frozen.intelligenceTaxonomy.definition);
+    model = {
+      ...original,
+      id: original.id,
+      version: original.version,
+      configurationFingerprint: `${original.configurationFingerprint ?? ''}:intelligence:${taxonomyFingerprint}`,
+      schemaFormat: original.schemaFormat,
+      discardResponse: original.discardResponse?.bind(original),
+      generate: (instruction, input, schema, metadata) =>
+        metadata?.stage === "role-interpretation" ? original.generate(
+          instruction +
+            "\nIntelligence taxonomy is an advisory vocabulary for interpreting the role, never a source of candidate achievements or a title allowlist. CORE/ADJACENT/CONTEXT are vocabulary metadata, never candidate-fit levels, eligibility rules, JD requirement importance or prior-experience qualifications. Aliases and parent relationships cannot introduce screening prerequisites, requirements or evidence. Derive requirements only from supplied JD claims and preserve explicit constraints.",
+          { input, intelligenceTaxonomy: { fingerprint: taxonomyFingerprint, nodes: reference } },
+          schema,
+          metadata,
+        ) : original.generate(instruction, input, schema, metadata),
+    };
+  }
   const roleClaims = frozen.evidence.filter(claim => claim.plane === 'JD');
   const candidateClaims = frozen.evidence.filter(claim => claim.plane === 'CANDIDATE');
   if (!roleClaims.length || !candidateClaims.length) {
@@ -861,7 +884,7 @@ export async function runStagedFrozenDecisionDetailed(
 export async function runStagedFrozenDecision(
   frozen: StagedResearchInput,
   model: ReasoningModel,
-  onStage: (stage: string) => void = () => {},
+  onStage: StageObserver = () => {},
 ) {
   return (await runStagedFrozenDecisionDetailed(frozen, model, onStage)).decision;
 }

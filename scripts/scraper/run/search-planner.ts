@@ -4,6 +4,14 @@ import fs from "fs";
 import type { CareerIntent } from "./career-intent";
 import type { EligibilitySpec } from "../../../src/evaluation/context-contracts";
 
+type JsonSource = string | Record<string, unknown>;
+
+function readJsonSource(source: JsonSource): Record<string, unknown> | null {
+  if (typeof source !== "string") return source;
+  if (!fs.existsSync(source)) return null;
+  return JSON.parse(fs.readFileSync(source, "utf-8")) as Record<string, unknown>;
+}
+
 export class InsufficientSearchCriteriaError extends Error {
   constructor(message: string) {
     super(message);
@@ -30,7 +38,6 @@ export interface SearchPlan {
 }
 
 export class SearchPlanner {
-
   /**
    * Dynamic Search Planner: Synthesizes portal queries strictly from Career Intent
    * and matching ontology mappings.
@@ -39,8 +46,10 @@ export class SearchPlanner {
    */
   public static plan(
     intent: CareerIntent,
-    taxonomyPath: string,
-    lexiconPath: string
+    // The taxonomy is retained in this signature for source compatibility and
+    // provenance. Query expansion uses its paired lexicon only.
+    _taxonomySource: JsonSource,
+    lexiconSource: JsonSource,
   ): SearchPlan {
     const rankedQueries: SearchPlan["rankedQueries"] = [];
     const searchHypotheses: SearchPlan["searchHypotheses"] = [];
@@ -71,24 +80,40 @@ export class SearchPlanner {
     if (primaryQueries.length > 0) {
       searchHypotheses.push({
         name: "Dynamic Executive Target Titles",
-        description: "High-priority portal search queries dynamically compiled from user profile career intent.",
+        description:
+          "High-priority portal search queries dynamically compiled from user profile career intent.",
         queries: primaryQueries,
       });
     }
 
     // Helper: Extract functional tokens excluding generic seniority tokens
     const SENIORITY_TOKENS = new Set([
-      "chief", "c-level", "cxo", "vp", "vice", "president", "svp", "evp",
-      "director", "head", "lead", "officer", "manager", "global", "executive", "senior"
+      "chief",
+      "c-level",
+      "cxo",
+      "vp",
+      "vice",
+      "president",
+      "svp",
+      "evp",
+      "director",
+      "head",
+      "lead",
+      "officer",
+      "manager",
+      "global",
+      "executive",
+      "senior",
     ]);
 
-    const STOP_WORDS = new Set([
-      "of", "and", "the", "in", "for", "to", "a", "an", "&"
-    ]);
+    const STOP_WORDS = new Set(["of", "and", "the", "in", "for", "to", "a", "an", "&"]);
 
     const extractFunctionalTokens = (text: string): Set<string> => {
       const tokens = new Set<string>();
-      const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/);
+      const words = text
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/);
       for (const w of words) {
         if (w.length > 2 && !SENIORITY_TOKENS.has(w) && !STOP_WORDS.has(w)) {
           tokens.add(w);
@@ -99,7 +124,10 @@ export class SearchPlanner {
 
     const extractSeniorityTokens = (text: string): Set<string> => {
       const tokens = new Set<string>();
-      const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/);
+      const words = text
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/);
       for (const w of words) {
         if (SENIORITY_TOKENS.has(w)) {
           tokens.add(w);
@@ -109,12 +137,20 @@ export class SearchPlanner {
     };
 
     const candidateFunctionalTokens = new Set<string>();
-    functions.forEach((f) => extractFunctionalTokens(f).forEach((t) => candidateFunctionalTokens.add(t)));
-    targetTitles.forEach((t) => extractFunctionalTokens(t).forEach((t) => candidateFunctionalTokens.add(t)));
+    functions.forEach((f) =>
+      extractFunctionalTokens(f).forEach((t) => candidateFunctionalTokens.add(t)),
+    );
+    targetTitles.forEach((t) =>
+      extractFunctionalTokens(t).forEach((t) => candidateFunctionalTokens.add(t)),
+    );
 
     const candidateSeniorityTokens = new Set<string>();
-    targetLevels.forEach((l) => extractSeniorityTokens(l).forEach((t) => candidateSeniorityTokens.add(t)));
-    targetTitles.forEach((t) => extractSeniorityTokens(t).forEach((t) => candidateSeniorityTokens.add(t)));
+    targetLevels.forEach((l) =>
+      extractSeniorityTokens(l).forEach((t) => candidateSeniorityTokens.add(t)),
+    );
+    targetTitles.forEach((t) =>
+      extractSeniorityTokens(t).forEach((t) => candidateSeniorityTokens.add(t)),
+    );
 
     const candidateDomainTerms = new Set<string>();
     operatingModels.forEach((m) => candidateDomainTerms.add(m.toLowerCase().trim()));
@@ -122,7 +158,11 @@ export class SearchPlanner {
     functions.forEach((f) => candidateDomainTerms.add(f.toLowerCase().trim()));
     targetTitles.forEach((t) => candidateDomainTerms.add(t.toLowerCase().trim()));
 
-    const matchesDimensionConcept = (dimensionKey: string, conceptName: string, phrases: string[]): boolean => {
+    const matchesDimensionConcept = (
+      dimensionKey: string,
+      conceptName: string,
+      phrases: string[],
+    ): boolean => {
       const allConceptPhrases = [conceptName, ...phrases].map((p) => p.toLowerCase());
 
       // 1. Exact full matches:
@@ -210,7 +250,9 @@ export class SearchPlanner {
 
         if (candidateSeniorityTokens.size > 0) {
           const conceptSeniorityTokens = extractSeniorityTokens(conceptName);
-          phrases.forEach((p) => extractSeniorityTokens(p).forEach((t) => conceptSeniorityTokens.add(t)));
+          phrases.forEach((p) =>
+            extractSeniorityTokens(p).forEach((t) => conceptSeniorityTokens.add(t)),
+          );
 
           let seniorityMatches = false;
           for (const s of conceptSeniorityTokens) {
@@ -247,9 +289,9 @@ export class SearchPlanner {
     };
 
     // 2. Criteria-Scoped Lexicon Enrichment
-    if (fs.existsSync(lexiconPath)) {
-      try {
-        const lexicon = JSON.parse(fs.readFileSync(lexiconPath, "utf-8"));
+    try {
+      const lexicon = readJsonSource(lexiconSource);
+      if (lexicon) {
         for (const [dimensionKey, concepts] of Object.entries(lexicon.dimensions || {})) {
           const conceptMap = concepts as Record<string, string[]>;
           const dimensionQueries: string[] = [];
@@ -282,9 +324,9 @@ export class SearchPlanner {
             });
           }
         }
-      } catch (err) {
-        console.warn("[SearchPlanner] Lexicon parse warning:", err);
       }
+    } catch (err) {
+      console.warn("[SearchPlanner] Lexicon parse warning:", err);
     }
 
     // Sort all queries by score descending
@@ -293,19 +335,32 @@ export class SearchPlanner {
     // Fail-fast if no queries could be generated from criteria
     if (rankedQueries.length === 0) {
       throw new InsufficientSearchCriteriaError(
-        "[SearchPlanner] No valid search queries could be compiled from candidate intent. Please specify target roles, titles, or functional domains."
+        "[SearchPlanner] No valid search queries could be compiled from candidate intent. Please specify target roles, titles, or functional domains.",
       );
     }
 
-    const roleFamilies = Array.from(new Set([...targetTitles, ...functions].map((value) => value.trim()).filter(Boolean)));
-    const functionTokens = Array.from(new Set(functions.map((value) => value.trim()).filter(Boolean)));
-    const adjacentFamilies = Array.from(new Set([
-      ...functionTokens.flatMap((value) => {
-        const normalized = value.toLowerCase();
-        if (/(marketing|growth|commercial)/.test(normalized)) return ["Client Services", "Client Experience", "Strategy", "Transformation", "Digital"];
-        return [];
-      }),
-    ]));
+    const roleFamilies = Array.from(
+      new Set([...targetTitles, ...functions].map((value) => value.trim()).filter(Boolean)),
+    );
+    const functionTokens = Array.from(
+      new Set(functions.map((value) => value.trim()).filter(Boolean)),
+    );
+    const adjacentFamilies = Array.from(
+      new Set([
+        ...functionTokens.flatMap((value) => {
+          const normalized = value.toLowerCase();
+          if (/(marketing|growth|commercial)/.test(normalized))
+            return [
+              "Client Services",
+              "Client Experience",
+              "Strategy",
+              "Transformation",
+              "Digital",
+            ];
+          return [];
+        }),
+      ]),
+    );
     return {
       version: "2.0.0",
       generatedAt: new Date().toISOString(),

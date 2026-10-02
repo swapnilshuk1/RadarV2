@@ -269,7 +269,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 13 |
 | `tests/intelligence/staged-composition.test.ts` | Editorial / Verdict | **KEEP** | Stage 3 | 45 | 145 |
 | `tests/intelligence/staged-context-input.test.ts` | Context / Source Provenance | **KEEP** | Stage 3 | 10 | 37 |
-| `tests/intelligence/staged-decision.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 27 | 66 |
+| `tests/intelligence/staged-decision.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 38 | 66 |
 | `tests/intelligence/staged-production-integration.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 7 | 25 |
 | `tests/intelligence/staged-queue-lifecycle.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 9 | 43 |
 | `tests/intelligence/staged-screening-authority.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 2 | 4 |
@@ -289,7 +289,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/persistence/m41-canonical-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 6 |
 | `tests/persistence/m51-queue-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 7 | 26 |
 | `tests/persistence/m61-credential-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 54 |
-| `tests/persistence/migration-runner.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 10 | 45 |
+| `tests/persistence/migration-runner.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 11 | 45 |
 | `tests/persistence/populated-migration.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 1 | 33 |
 | `tests/persistence/queue-crash-restart.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 10 | 51 |
 | `tests/persistence/scrape-run-state-machine.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 6 | 41 |
@@ -368,6 +368,10 @@ Every test file in the repository is mechanically tracked below:
 | `tests/security/scrape-run-ownership.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 4 | 18 |
 | `tests/security/scrape-tenant-identity.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 7 | 20 |
 | `tests/security/scraper-auth-permission-non-escalation.test.ts` | Security & Tenant Isolation | **KEEP** | Gate 0 Safety | 1 | 5 |
+| `tests/security/admin-foundations.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 4 | 20 |
+| `tests/security/admin-config.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 21 | 59 |
+| `tests/security/admin-taxonomy.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 23 | 30 |
+| `tests/security/admin-protection.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 21 | 74 |
 | `tests/security/tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 16 | 43 |
 | `tests/semantic/controlled_integration.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 12 | 35 |
 | `tests/semantic/extraction-sanitation.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 14 |

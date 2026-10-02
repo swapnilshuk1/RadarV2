@@ -1,3 +1,4 @@
+import { readPinnedIntelligence } from './intelligence-taxonomy';
 import { createHash } from 'node:crypto';
 import type { DatabaseAdapter } from '@/data/database';
 import { claimSchema, sourceSchema, contextFields, scopeFields, type Claim, type ContextProvider, type EvidenceSource, type ReasoningModel } from '@/dossier/contracts';
@@ -171,11 +172,13 @@ export class ProductionStagedInputAdapter {
     ]);
     if(!projection)throw new DeterministicStagedInputUnavailableError('PROFILE_PROJECTION_VERSION_MISSING');
     let intent:any=null;
+    let intelligenceTaxonomy: ReturnType<typeof readPinnedIntelligence>;
     if(contextRow?.payload_json){
       try{
         const payload=JSON.parse(contextRow.payload_json);
         intent=payload?.customParameters?.candidateDecisionIntent??null;
-      }catch{}
+        intelligenceTaxonomy=readPinnedIntelligence(payload?.customParameters?.intelligenceTaxonomy);
+      }catch(error){ throw new DeterministicStagedInputUnavailableError(error instanceof Error ? error.message : "INTELLIGENCE_SNAPSHOT_INVALID"); }
     }
     const candidateDecisionProfile={
       projection:{
@@ -193,7 +196,7 @@ export class ProductionStagedInputAdapter {
       },
       intent,
     };
-    const binding=createHash('sha256').update(JSON.stringify({profile:identity.profileVersion,sources:sourceFingerprint([jd,...candidates]),candidateDecisionProfile})).digest('hex');
+    const binding=createHash('sha256').update(JSON.stringify({profile:identity.profileVersion,sources:sourceFingerprint([jd,...candidates]),candidateDecisionProfile,...(intelligenceTaxonomy ? { intelligenceTaxonomy } : {})})).digest('hex');
     const store=new SqliteStagedInputStore(this.db);
     const existing=await store.get(identity,binding,model);if(existing)return existing;
     if(policyVersion!==STAGED_POLICY_VERSION)throw new ModelProviderUnavailableError('FRESH_CONTEXT_INPUT_REQUIRES_STAGED_V8');
@@ -284,6 +287,7 @@ export class ProductionStagedInputAdapter {
       opportunity,
       candidate:{name:person?.email||'Candidate'},
       candidateDecisionProfile,
+      ...(intelligenceTaxonomy ? { intelligenceTaxonomy } : {}),
       sources,
       evidence,
       candidateSourceRefs:candidates.map(source=>({id:source.id,title:source.title})),
