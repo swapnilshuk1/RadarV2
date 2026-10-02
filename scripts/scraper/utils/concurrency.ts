@@ -20,6 +20,10 @@ export async function pool<T, R>(
       }
     }
   });
-  await Promise.all(runners);
+  // A reporting/persistence callback can itself fail. Keep execution ownership
+  // until every other portal has settled before the caller closes shared resources.
+  const settled = await Promise.allSettled(runners);
+  const failure = settled.find((result) => result.status === "rejected");
+  if (failure?.status === "rejected") throw failure.reason;
   return results;
 }

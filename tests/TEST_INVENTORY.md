@@ -214,6 +214,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/acquisition/oci-handoff.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 10 | 20 |
 | `tests/acquisition/transfer-session.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 4 | 20 |
 | `tests/scraper/acquisition-wait-budget.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 3 | 9 |
+| `tests/scraper/atomic-progress-recovery.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 3 | 10 |
 | `tests/acquisition/retention-and-execution.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 8 | 20 |
 | `tests/acquisition/source-payload-provenance.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 9 | 42 |
 | `tests/certification/certification-gate-integrity.test.ts` | Certification Integrity | **KEEP** | Full Suite | 7 | 26 |
@@ -401,3 +402,9 @@ Scripts in `scripts/` are classified into the following authoritative categories
 | **DATABASE** | `scripts/migrate.ts`, `scripts/db-status.ts`, `scripts/db/*` | **KEEP** |
 | **EVALUATION** | `scripts/qa-eval.ts`, `scripts/canary/*`, `scripts/smoke_production.ts`, `scripts/validate-graph.ts` | **KEEP** |
 | **DIAGNOSTIC** | `scripts/diagnose.ts`, `scripts/dev.ts` | **KEEP** |
+
+# Atomic progress recovery
+
+`tests/scraper/atomic-progress-recovery.test.ts`: 3 acquisition tests, 10 assertions;
+transient Windows rename contention, preserved replacement on persistent failure,
+and portal settlement before shared-resource cleanup. Included in certification.

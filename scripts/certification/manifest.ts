@@ -37,6 +37,7 @@ export const certificationManifest = [
       "tests/acquisition/oci-handoff.test.ts",
       "tests/acquisition/transfer-session.test.ts",
       "tests/scraper/acquisition-wait-budget.test.ts",
+      "tests/scraper/atomic-progress-recovery.test.ts",
       "tests/acquisition/retention-and-execution.test.ts",
       "tests/scraper/acquisition-variant-contract.test.ts",
     ],

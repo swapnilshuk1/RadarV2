@@ -302,3 +302,16 @@ Do not start a second development process while a search is running. A durable
 run journal is available under `.scraper-artifacts/runs/<run-id>/manifest.json`
 and `journal.ndjson`; it records scraper activity, rather than all npm output.
 
+# Local manifest contention
+
+Windows can temporarily deny replacement of a local run manifest while another
+process holds a file handle. Atomic progress writes fsync a unique replacement,
+retry transient EPERM/EACCES/EBUSY errors within a bounded window without a CPU
+spin, and preserve the last good manifest and replacement if contention persists.
+Portal-pool error reporting waits for all remaining portal runners to settle
+before shared transfer/browser resources can be closed.
+
+A failed local manifest write does not invalidate acknowledged canonical sources.
+Unacknowledged captures remain in the configured durable acquisition outbox. Resume
+only the same authorized run with a fresh execution lease and a compatible manifest;
+do not clear source keys, replay another person's spool, or reset completed lineage.
