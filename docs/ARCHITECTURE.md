@@ -322,3 +322,10 @@ compose PASS dossiers; persisted verdicts and source identities remain unchanged
 Implementation: `src/acquisition/feed-read-model.ts`, `pipeline-state.ts`,
 `detail-read-model.ts`, authenticated `feed.ts`/`detail-server.ts`, and the two
 Scraped routes. Decision-log regressions are included in release certification.
+
+## Administration foundations
+
+`src/admin` and `/admin` provide the additive Phase 1 operator console.
+Migration 072 separates platform roles and append-only audit from tenant
+memberships, and adds idempotent usage rollups. See
+[Administration](ADMINISTRATION.md). Engine and worker execution are unchanged.

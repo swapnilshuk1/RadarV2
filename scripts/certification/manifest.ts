@@ -54,6 +54,7 @@ export const certificationManifest = [
       "tests/security/scrape-run-ownership.test.ts",
       "tests/security/candidate-profile-tenant-isolation.test.ts",
       "tests/security/tenant-isolation.test.ts",
+      "tests/security/admin-foundations.test.ts",
       "tests/security/oauth-scope-provisioning.test.ts",
       "tests/security/m62-credential-vault.test.ts",
       "tests/ontology/tenant-ontology-compiler.test.ts",
@@ -152,6 +153,7 @@ export const uniqueCertificationTestFiles = [...new Set(certificationTestFiles)]
 export const requiredCertificationRegressionFiles = [
   "tests/security/candidate-profile-tenant-isolation.test.ts",
   "tests/security/tenant-isolation.test.ts",
+  "tests/security/admin-foundations.test.ts",
   "tests/security/oauth-scope-provisioning.test.ts",
   "tests/security/m62-credential-vault.test.ts",
   "tests/intelligence/candidate-truth-boundary.test.ts",
