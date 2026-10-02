@@ -1,10 +1,12 @@
-# Administration — Phases 1–3
+# Administration — Phases 1–4
 
 The `/admin` console is isolated on `codex/admin-phase-1`. It is not deployed on
 main. The console provides platform authorization, visibility and opt-in protection.
-Gate meaning, acquisition evidence and existing memo content are preserved. Phase 3 adds explicit model assignments for future work.
+Gate meaning, acquisition evidence and existing memo content are preserved. The console
+adds explicit model assignments, revisioned discovery and intelligence taxonomies, and
+bounded decision-comparison controls for future work.
 
-Apply migrations 072–075 through the normal migration runner before using this branch.
+Apply migrations 072–082 through the normal migration runner before using this branch.
 Platform access comes from `platform_roles`, never tenant memberships. An existing
 user can be granted `operator` or read-only `viewer` access by a trusted host
 operator. No user receives platform access automatically. Revocation takes effect
@@ -37,7 +39,10 @@ Overview and Audit are read-only. Operations and Tenants & Quotas expose
 operator-only protection writes; Engine and Models expose configuration drafts
 and fixture benches.
 Engine shows the fixed stage order and each stage's inputs, decisions, continuation
-and stop conditions. REVIEW continues to evaluation. Configuration revisions and fixture benches are implemented below. Phase 4 now includes the bounded discovery-taxonomy editor described below. DAU/WAU/MAU and p95 latency are unavailable until the necessary instrumentation exists.
+and stop conditions. REVIEW continues to evaluation. Configuration revisions, fixture
+benches, and the bounded discovery/intelligence-taxonomy controls are implemented
+below. DAU/WAU/MAU and p95 latency are unavailable until the necessary
+instrumentation exists.
 Active revisions appear in Engine/Models; Operations groups queue pins by revision.
 Per-worker last-claimed revision is unavailable because jobs do not record a host identity. Membership
 counts are not active-user counts. Worker observations are global, so a selected

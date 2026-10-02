@@ -120,7 +120,7 @@ current operational default. Resolve and record them from the approved target.
 
 ## Administration branch readiness
 
-Administration requires migrations 072-081 on the same database used by web and
+Administration requires migrations 072-082 on the same database used by web and
 the enabled workers. Platform operators are explicit `platform_roles` grants;
 tenant-admin membership alone never grants console access. Validate operator,
 viewer and tenant-admin journeys before enabling the console. Query-shadow
