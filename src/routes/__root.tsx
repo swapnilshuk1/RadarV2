@@ -8,7 +8,8 @@ import {
   Scripts,
   redirect,
   isRedirect,
-  useLocation
+  useLocation,
+  type ErrorComponentProps
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { getSessionUserFn } from "../lib/auth/server";
@@ -47,10 +48,11 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   if (isRedirect(error)) {
     throw error;
   }
+  const normalizedError = error instanceof Error ? error : new Error(String(error));
   console.error("[Root Error Boundary]", error);
   const router = useRouter();
   const location = useLocation();
@@ -68,10 +70,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-3 text-sm text-ink-muted">
           The advisory couldn't render this brief.
         </p>
-        {error && (
+        {error != null && (
           <div className="mt-4 p-4 rounded bg-red-950/10 border border-red-500/20 text-left overflow-auto max-h-60 text-xs font-mono text-red-600">
-            <p className="font-bold">{error.name || "Error"}: {error.message || String(error)}</p>
-            {error.stack && <pre className="mt-2 text-[0.65rem] whitespace-pre-wrap">{error.stack}</pre>}
+            <p className="font-bold">{normalizedError.name || "Error"}: {normalizedError.message || String(error)}</p>
+            {normalizedError.stack && <pre className="mt-2 text-[0.65rem] whitespace-pre-wrap">{normalizedError.stack}</pre>}
           </div>
         )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -105,11 +107,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       location.pathname.startsWith("/api/auth") ||
       location.pathname.startsWith("/assets") ||
       /\.(css|js|gif|png|jpg|jpeg|ico|svg|woff|woff2|ttf|eot)$/i.test(location.pathname);
-    if (isPublicRoute) return;
+    if (isPublicRoute) return {};
 
     const user = await getSessionUserFn();
     if (!user) throw redirect({ to: "/login" });
 
+    return {};
   },
   loader: async ({ location }) => {
     try {

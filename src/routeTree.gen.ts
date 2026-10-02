@@ -9,55 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WelcomeRouteImport } from './routes/welcome'
-import { Route as SkinsRouteImport } from './routes/skins'
-import { Route as ScrapedRouteImport } from './routes/scraped'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as DecisionsRouteImport } from './routes/decisions'
-import { Route as CorpusRouteImport } from './routes/corpus'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ScrapedJobHashRouteImport } from './routes/scraped_.$jobHash'
-import { Route as PursuitJobHashRouteImport } from './routes/pursuit.$jobHash'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as CorpusRouteImport } from './routes/corpus'
+import { Route as DecisionsRouteImport } from './routes/decisions'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ScrapedRouteImport } from './routes/scraped'
+import { Route as SkinsRouteImport } from './routes/skins'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as OpportunityJobHashRouteImport } from './routes/opportunity.$jobHash'
-import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
-import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
+import { Route as PursuitJobHashRouteImport } from './routes/pursuit.$jobHash'
+import { Route as ScrapedJobHashRouteImport } from './routes/scraped_.$jobHash'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
+import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
+import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 
-const WelcomeRoute = WelcomeRouteImport.update({
-  id: '/welcome',
-  path: '/welcome',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SkinsRoute = SkinsRouteImport.update({
-  id: '/skins',
-  path: '/skins',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScrapedRoute = ScrapedRouteImport.update({
-  id: '/scraped',
-  path: '/scraped',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DecisionsRoute = DecisionsRouteImport.update({
-  id: '/decisions',
-  path: '/decisions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CorpusRoute = CorpusRouteImport.update({
-  id: '/corpus',
-  path: '/corpus',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -65,19 +35,39 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CorpusRoute = CorpusRouteImport.update({
+  id: '/corpus',
+  path: '/corpus',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ScrapedJobHashRoute = ScrapedJobHashRouteImport.update({
-  id: '/scraped_/$jobHash',
-  path: '/scraped/$jobHash',
+const DecisionsRoute = DecisionsRouteImport.update({
+  id: '/decisions',
+  path: '/decisions',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PursuitJobHashRoute = PursuitJobHashRouteImport.update({
-  id: '/pursuit/$jobHash',
-  path: '/pursuit/$jobHash',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScrapedRoute = ScrapedRouteImport.update({
+  id: '/scraped',
+  path: '/scraped',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SkinsRoute = SkinsRouteImport.update({
+  id: '/skins',
+  path: '/skins',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OpportunityJobHashRoute = OpportunityJobHashRouteImport.update({
@@ -85,9 +75,19 @@ const OpportunityJobHashRoute = OpportunityJobHashRouteImport.update({
   path: '/opportunity/$jobHash',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
-  id: '/api/auth/logout',
-  path: '/api/auth/logout',
+const PursuitJobHashRoute = PursuitJobHashRouteImport.update({
+  id: '/pursuit/$jobHash',
+  path: '/pursuit/$jobHash',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScrapedJobHashRoute = ScrapedJobHashRouteImport.update({
+  id: '/scraped_/$jobHash',
+  path: '/scraped/$jobHash',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
+  id: '/api/auth/callback',
+  path: '/api/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthGoogleRoute = ApiAuthGoogleRouteImport.update({
@@ -95,9 +95,9 @@ const ApiAuthGoogleRoute = ApiAuthGoogleRouteImport.update({
   path: '/api/auth/google',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
-  id: '/api/auth/callback',
-  path: '/api/auth/callback',
+const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
+  id: '/api/auth/logout',
+  path: '/api/auth/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -227,53 +227,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/welcome': {
-      id: '/welcome'
-      path: '/welcome'
-      fullPath: '/welcome'
-      preLoaderRoute: typeof WelcomeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/skins': {
-      id: '/skins'
-      path: '/skins'
-      fullPath: '/skins'
-      preLoaderRoute: typeof SkinsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/scraped': {
-      id: '/scraped'
-      path: '/scraped'
-      fullPath: '/scraped'
-      preLoaderRoute: typeof ScrapedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/decisions': {
-      id: '/decisions'
-      path: '/decisions'
-      fullPath: '/decisions'
-      preLoaderRoute: typeof DecisionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/corpus': {
-      id: '/corpus'
-      path: '/corpus'
-      fullPath: '/corpus'
-      preLoaderRoute: typeof CorpusRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -283,25 +241,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/corpus': {
+      id: '/corpus'
+      path: '/corpus'
+      fullPath: '/corpus'
+      preLoaderRoute: typeof CorpusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/scraped_/$jobHash': {
-      id: '/scraped_/$jobHash'
-      path: '/scraped/$jobHash'
-      fullPath: '/scraped/$jobHash'
-      preLoaderRoute: typeof ScrapedJobHashRouteImport
+    '/decisions': {
+      id: '/decisions'
+      path: '/decisions'
+      fullPath: '/decisions'
+      preLoaderRoute: typeof DecisionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/pursuit/$jobHash': {
-      id: '/pursuit/$jobHash'
-      path: '/pursuit/$jobHash'
-      fullPath: '/pursuit/$jobHash'
-      preLoaderRoute: typeof PursuitJobHashRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scraped': {
+      id: '/scraped'
+      path: '/scraped'
+      fullPath: '/scraped'
+      preLoaderRoute: typeof ScrapedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/skins': {
+      id: '/skins'
+      path: '/skins'
+      fullPath: '/skins'
+      preLoaderRoute: typeof SkinsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/opportunity/$jobHash': {
@@ -311,11 +297,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpportunityJobHashRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/logout': {
-      id: '/api/auth/logout'
-      path: '/api/auth/logout'
-      fullPath: '/api/auth/logout'
-      preLoaderRoute: typeof ApiAuthLogoutRouteImport
+    '/pursuit/$jobHash': {
+      id: '/pursuit/$jobHash'
+      path: '/pursuit/$jobHash'
+      fullPath: '/pursuit/$jobHash'
+      preLoaderRoute: typeof PursuitJobHashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scraped_/$jobHash': {
+      id: '/scraped_/$jobHash'
+      path: '/scraped/$jobHash'
+      fullPath: '/scraped/$jobHash'
+      preLoaderRoute: typeof ScrapedJobHashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/callback': {
+      id: '/api/auth/callback'
+      path: '/api/auth/callback'
+      fullPath: '/api/auth/callback'
+      preLoaderRoute: typeof ApiAuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/google': {
@@ -325,11 +325,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthGoogleRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/callback': {
-      id: '/api/auth/callback'
-      path: '/api/auth/callback'
-      fullPath: '/api/auth/callback'
-      preLoaderRoute: typeof ApiAuthCallbackRouteImport
+    '/api/auth/logout': {
+      id: '/api/auth/logout'
+      path: '/api/auth/logout'
+      fullPath: '/api/auth/logout'
+      preLoaderRoute: typeof ApiAuthLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
