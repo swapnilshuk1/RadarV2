@@ -81,3 +81,41 @@ These are not silently counted as completed phase features.
 Phase 4 and merge/deployment remain held until the open P1 work and release
 validation above are closed.** This audit document records gaps; it is not a
 certificate or a substitute for implementing the remaining controls.
+
+
+## Additional independent audit (reviewed against 950ee7cd)
+
+The supplied audit evaluates `ccc0ef47`; its line references precede the
+corrective commit. P0-1 (including the all-PASS sentinel), P1-2/4/5/6/9/10/12/16,
+and P2-1/2/3 are addressed in the current code. P1-15 is only partially closed:
+config writes compare state hashes; protection writes still need stale-write checks.
+P2-6 sanitization is implemented, but audit pagination remains deferred.
+
+P0-2 describes the intentional main-to-Oracle deployment workflow, not a new
+algorithmic defect. Preserve that workflow; do not merge before release readiness.
+P1-3 is remote concurrency validation debt; absence of a JavaScript process-local
+mutex does not demonstrate defective remote database transaction isolation.
+
+The new blanket foreign-key allegation is **not supported for the local runtime**.
+A fresh file database opened through the actual installed `TursoAdapter`, without
+running migrations or setting a foreign-key pragma in the probe, returned
+`foreign_keys=1`, rejected an orphan insert, and reported no foreign-key violations.
+The disposable probe is `.radar/admin-preview/fk-probe.mts`. This is local evidence,
+not an Oracle/remote-Turso test. Verify enforcement on fresh remote streams and
+transactions, including after migration/reconnect, before concluding that remote
+REFERENCES constraints are ignored. A startup pragma alone is not sufficient
+acceptance evidence for every remote connection.
+
+One additional confirmed P2 is provider-overrun alert cardinality: current targets
+use invocation IDs. Deduplicate the operator signal by tenant/pipeline/job while
+retaining per-call evidence in `quota_calls`/`model_invocations`.
+Bench process supervision/heartbeat and automatic rollup scheduling remain pending
+operational integration. Do not automatically supervise paid benches before
+host/release attestation and execution caps are enforced.
+
+The existing open P1 list remains the Phase 4 prerequisite list: bench host/release
+binding, Pursuit coverage, protection-write versioning, explicit production quota
+policy, tenant return to inheritance and remote contention/FK validation. Also
+verify controls-disabled scrape-to-reviewed-memo-to-Pursuit compatibility, preserve
+acquisition independence from model-worker concurrency, and obtain exact-SHA CI
+before deployment. This review did not change runtime code or live configuration.
