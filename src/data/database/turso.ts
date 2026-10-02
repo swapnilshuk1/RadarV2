@@ -28,6 +28,9 @@ export class TursoAdapter implements DatabaseAdapter {
       // SQLite foreign-key enforcement is connection scoped. Enable it for both
       // local libSQL and remote Turso clients, then fail closed in transactions
       // if a provider connection does not retain the setting.
+      // Configure lock waiting before any statement that prepares against a
+      // concurrently written local schema (including journal-mode setup).
+      if (this.localKey) await this.client.execute("PRAGMA busy_timeout=15000");
       await this.client.execute("PRAGMA foreign_keys=ON");
       if (!this.localKey) return;
       // Acceptance/dev may run evaluator, dossier, and review workers as separate
@@ -35,7 +38,6 @@ export class TursoAdapter implements DatabaseAdapter {
       // writer; the explicit timeout lets short concurrent writes serialize
       // instead of dropping telemetry/state with SQLITE_BUSY.
       await this.client.execute("PRAGMA journal_mode=WAL");
-      await this.client.execute("PRAGMA busy_timeout=15000");
     });
   }
 
