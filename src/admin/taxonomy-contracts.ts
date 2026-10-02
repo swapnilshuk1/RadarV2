@@ -14,6 +14,7 @@ export const searchTaxonomySchema = z
           excluded: z.array(text).max(100),
         }),
         descriptions: z.record(z.string().trim().min(1).max(1000)),
+        retired: z.array(text).max(100).default([]),
       })
       .strict(),
     lexicon: z
@@ -36,9 +37,23 @@ export const taxonomyMutationSchema = z
       description: z.string().trim().min(1).max(1000),
       phrases,
     }),
+    z.object({
+      kind: z.literal("add_concept"),
+      dimension: z.string().trim().min(1).max(100),
+      concept: text,
+      description: z.string().trim().min(1).max(1000),
+      phrases,
+      ring: z.enum(["primary", "adjacent", "excluded"]),
+    }),
+    z.object({
+      kind: z.literal("retire_concept"),
+      dimension: z.string().trim().min(1).max(100),
+      concept: text,
+    }),
     z.object({ kind: z.literal("discard"), revisionId: z.string().min(1) }),
     z.object({ kind: z.literal("publish"), revisionId: z.string().min(1) }),
     z.object({ kind: z.literal("revert"), revisionId: z.string().min(1) }),
+    z.object({ kind: z.literal("shadow"), revisionId: z.string().min(1) }),
   ])
   .and(
     z.object({

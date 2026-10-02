@@ -385,5 +385,8 @@ and pins the exact generated query list, revision ID and fingerprint in that
 plan’s criteria snapshot. `ScraperPlanResolver` uses those saved queries; it only
 uses the legacy file compiler for historical plans without them. This preserves
 active acquisition behavior while allowing operators to revise a future plan’s
-discovery wording. Structural graph edits are intentionally deferred until their
-corpus impact can be measured.
+discovery wording. Migration 079 adds a bounded structural discovery workflow:
+an operator can add or retire a concept and choose its ring, then must save a
+query-impact shadow against active plans before publishing. It reports only the
+discovery changes it can measure; executive-evaluation graph changes remain
+deferred until corpus-level admission and verdict impact is available.

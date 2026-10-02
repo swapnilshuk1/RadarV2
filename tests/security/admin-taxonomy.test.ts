@@ -182,4 +182,40 @@ describe("Phase 4 discovery taxonomy", () => {
     );
     expect(result.queries).toEqual(["VP Marketing", "Marketing VP"]);
   });
+
+  it("requires an exact query-impact shadow before publishing a structural change", async () => {
+    const db = await fixture();
+    const criteria = {
+      targetRoles: ["VP Marketing"],
+      targetSeniority: ["VP"],
+      targetLocations: ["Mumbai"],
+      customParameters: { functions: ["Marketing"], generatedQueries: ["VP Marketing"] },
+    };
+    await db.execute("UPDATE search_plans SET criteria_json=?", [JSON.stringify(criteria)]);
+    const draft = await mutate(db, {
+      kind: "add_concept",
+      dimension: "targetRoles",
+      concept: "Regional Growth Lead",
+      description: "Regional commercial growth leadership.",
+      phrases: ["Regional Growth Lead"],
+      ring: "adjacent",
+      reason: "add a regional growth discovery concept",
+    });
+    await expect(
+      mutate(db, { kind: "publish", revisionId: draft.id, reason: "skip required impact test" }),
+    ).rejects.toThrow("TAXONOMY_SHADOW_REQUIRED");
+    await mutate(db, { kind: "shadow", revisionId: draft.id, reason: "compare active plans" });
+    const run = await db.one<{ status: string; result_json: string }>(
+      "SELECT status,result_json FROM taxonomy_shadow_runs WHERE revision_id=?",
+      [draft.id],
+    );
+    expect(run?.status).toBe("passed");
+    expect(JSON.parse(String(run?.result_json))).toMatchObject({ plansExamined: 2 });
+    await mutate(db, { kind: "publish", revisionId: draft.id, reason: "publish measured change" });
+    const active = await activeSearchTaxonomy(db);
+    expect(active.definition.lexicon.dimensions.targetRoles["Regional Growth Lead"]).toEqual([
+      "Regional Growth Lead",
+    ]);
+    expect(active.definition.taxonomy.concentricRings.adjacent).toContain("Regional Growth Lead");
+  });
 });

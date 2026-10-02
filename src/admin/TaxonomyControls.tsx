@@ -13,7 +13,17 @@ type TaxonomyAction =
     }
   | { kind: "discard"; revisionId: string }
   | { kind: "publish"; revisionId: string }
-  | { kind: "revert"; revisionId: string };
+  | { kind: "revert"; revisionId: string }
+  | { kind: "shadow"; revisionId: string }
+  | {
+      kind: "add_concept";
+      dimension: string;
+      concept: string;
+      description: string;
+      phrases: string[];
+      ring: "primary" | "adjacent" | "excluded";
+    }
+  | { kind: "retire_concept"; dimension: string; concept: string };
 const button =
   "border border-border px-3 py-2 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -26,6 +36,11 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [newConcept, setNewConcept] = useState("");
+  const [newDimension, setNewDimension] = useState("");
+  const [newRing, setNewRing] = useState<"primary" | "adjacent" | "excluded">("adjacent");
+  const [newDescription, setNewDescription] = useState("");
+  const [newPhrases, setNewPhrases] = useState("");
   const effective = data.draft ?? data.active;
   const concepts = useMemo(
     () =>
@@ -48,7 +63,7 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
       effective.definition.taxonomy.descriptions[selected.concept] ??
         "This discovery concept has no taxonomy description.",
     );
-  }, [selected?.dimension, selected?.concept]);
+  }, [current, effective.definition.taxonomy.descriptions, selected]);
   const perform = async (mutation: TaxonomyAction, actionReason = reason) => {
     setBusy(true);
     setError(null);
@@ -71,6 +86,23 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
         .filter(Boolean),
     ),
   );
+  const newSubmittedPhrases = Array.from(
+    new Set(
+      newPhrases
+        .split("\n")
+        .map((phrase) => phrase.trim())
+        .filter(Boolean),
+    ),
+  );
+  const structuralDraft = data.draft?.requires_shadow === 1;
+  const shadow = data.draft
+    ? data.shadows.find(
+        (run) =>
+          run.revision_id === data.draft?.id &&
+          run.active_revision_id === data.active.id &&
+          run.status === "passed",
+      )
+    : undefined;
   return (
     <section className="mb-8 border-y-2 border-foreground py-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -163,21 +195,36 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
               </label>
             )}
             {operator && (
-              <button
-                className={`${button} mt-4`}
-                disabled={busy || reason.trim().length < 3 || !submittedPhrases.length}
-                onClick={() =>
-                  void perform({
-                    kind: "draft_concept",
-                    dimension: selected.dimension,
-                    concept: selected.concept,
-                    description,
-                    phrases: submittedPhrases,
-                  })
-                }
-              >
-                Save draft
-              </button>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  className={button}
+                  disabled={busy || reason.trim().length < 3 || !submittedPhrases.length}
+                  onClick={() =>
+                    void perform({
+                      kind: "draft_concept",
+                      dimension: selected.dimension,
+                      concept: selected.concept,
+                      description,
+                      phrases: submittedPhrases,
+                    })
+                  }
+                >
+                  Save draft
+                </button>
+                <button
+                  className={button}
+                  disabled={busy || reason.trim().length < 3}
+                  onClick={() =>
+                    void perform({
+                      kind: "retire_concept",
+                      dimension: selected.dimension,
+                      concept: selected.concept,
+                    })
+                  }
+                >
+                  Retire concept
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -200,17 +247,96 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
                 Discard
               </button>
               <button className={button} disabled={busy} onClick={() => setPublishOpen(true)}>
-                Publish safe edit
+                {structuralDraft ? "Review and publish structural draft" : "Publish safe edit"}
               </button>
             </>
           )}
         </div>
       )}
-      <p className="mt-4 text-xs leading-5 text-muted-foreground">
-        Structural topology changes—new or retired concepts, ring changes, re-parenting, and
-        evaluation taxonomy—remain unavailable until their impact can be measured against a corpus.
-        This control intentionally does not make those changes appear safe.
-      </p>
+      {operator && (
+        <details className="mt-5 border border-border p-4">
+          <summary className="cursor-pointer font-serif text-lg">Add discovery concept</summary>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This is a structural change. It requires a query-impact shadow before publication.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm">
+              Dimension
+              <select
+                value={newDimension}
+                onChange={(event) => setNewDimension(event.target.value)}
+                className="mt-1 block w-full border border-border bg-background p-2"
+              >
+                <option value="">Select dimension</option>
+                {Object.keys(effective.definition.lexicon.dimensions).map((dimension) => (
+                  <option key={dimension}>{dimension}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              Ring
+              <select
+                value={newRing}
+                onChange={(event) => setNewRing(event.target.value as typeof newRing)}
+                className="mt-1 block w-full border border-border bg-background p-2"
+              >
+                <option value="primary">Primary</option>
+                <option value="adjacent">Adjacent</option>
+                <option value="excluded">Excluded</option>
+              </select>
+            </label>
+          </div>
+          <label className="mt-3 block text-sm">
+            Concept
+            <input
+              value={newConcept}
+              onChange={(event) => setNewConcept(event.target.value)}
+              maxLength={160}
+              className="mt-1 block w-full border border-border bg-background p-2"
+            />
+          </label>
+          <label className="mt-3 block text-sm">
+            Description
+            <textarea
+              value={newDescription}
+              onChange={(event) => setNewDescription(event.target.value)}
+              maxLength={1000}
+              className="mt-1 min-h-20 w-full border border-border bg-background p-2"
+            />
+          </label>
+          <label className="mt-3 block text-sm">
+            Portal-query aliases <span className="text-muted-foreground">(one per line)</span>
+            <textarea
+              value={newPhrases}
+              onChange={(event) => setNewPhrases(event.target.value)}
+              className="mt-1 min-h-24 w-full border border-border bg-background p-2 font-mono text-xs"
+            />
+          </label>
+          <button
+            className={`${button} mt-3`}
+            disabled={
+              busy ||
+              reason.trim().length < 3 ||
+              !newDimension ||
+              !newConcept.trim() ||
+              !newDescription.trim() ||
+              !newSubmittedPhrases.length
+            }
+            onClick={() =>
+              void perform({
+                kind: "add_concept",
+                dimension: newDimension,
+                concept: newConcept.trim(),
+                description: newDescription,
+                phrases: newSubmittedPhrases,
+                ring: newRing,
+              })
+            }
+          >
+            Save structural draft
+          </button>
+        </details>
+      )}
       {error && !publishOpen && (
         <p role="alert" className="mt-3 text-sm text-destructive">
           {error}
@@ -221,11 +347,31 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
         onClose={() => setPublishOpen(false)}
         className="max-w-xl border border-border bg-card p-6 text-foreground backdrop:bg-black/30"
       >
-        <h3 className="font-serif text-2xl">Publish safe taxonomy edit</h3>
+        <h3 className="font-serif text-2xl">Publish taxonomy revision</h3>
         <p className="mt-3 text-sm">
           The change applies when a future search plan is activated. Existing plans and running
           scrapes keep their pinned queries.
         </p>
+        {structuralDraft && (
+          <div className="mt-3 border border-border p-3 text-sm">
+            {shadow ? (
+              <>
+                Shadow passed: {String(JSON.parse(String(shadow.result_json)).plansChanged)} plan
+                query sets change. Added{" "}
+                {String(JSON.parse(String(shadow.result_json)).queriesAdded)}; removed{" "}
+                {String(JSON.parse(String(shadow.result_json)).queriesRemoved)}.
+              </>
+            ) : (
+              <button
+                className={button}
+                disabled={busy || !data.draft}
+                onClick={() => void perform({ kind: "shadow", revisionId: data.draft!.id })}
+              >
+                Run query-impact shadow
+              </button>
+            )}
+          </div>
+        )}
         <label className="mt-4 block text-sm">
           Publication reason
           <input
@@ -244,7 +390,9 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
         <div className="mt-5 flex gap-3">
           <button
             className={button}
-            disabled={busy || reason.trim().length < 3 || !data.draft}
+            disabled={
+              busy || reason.trim().length < 3 || !data.draft || (structuralDraft && !shadow)
+            }
             onClick={() => void perform({ kind: "publish", revisionId: data.draft!.id })}
           >
             Publish revision

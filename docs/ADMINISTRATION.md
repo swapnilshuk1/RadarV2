@@ -361,11 +361,18 @@ explicit search intent. New aliases require a functional word; a generic
 seniority-only phrase such as `VP` is rejected. Normalized aliases must be unique
 across concepts, preventing ambiguous portal searches.
 
-Adding/retiring concepts, moving a concept between primary/adjacent/excluded
-rings, re-parenting and changes to the executive evaluation taxonomy are not
-enabled by this editor. They remain structural Phase 4 work because they require
-a corpus impact diff before activation. The console deliberately names that
-boundary instead of presenting a nonfunctional control as configuration.
+Operators can add a discovery concept to an existing dimension and choose its
+primary, adjacent or excluded ring; a concept can also be retired without
+rewriting any historical revision. These structural changes create a structural
+draft. Publication is blocked until **Run query-impact shadow** has compared the
+exact draft against every active plan (up to 100). The result records the number
+of plans with changed query sets and the queries added/removed. Invalid active
+criteria or a larger scope blocks the run rather than claiming no impact.
+
+This shadow is intentionally limited to the discovery topology it can actually
+measure. Re-parenting and changes to the executive evaluation taxonomy remain
+deferred: they require a corpus-level admission/evaluation diff before the
+console can safely expose them.
 
 Focused verification: `npx vitest run tests/security/admin-taxonomy.test.ts
 tests/scraper/scraper-correctness-contract.test.ts`.
