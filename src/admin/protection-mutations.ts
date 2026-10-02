@@ -5,6 +5,7 @@ import {
   validateQuota,
   validateProtectionMutation,
   type ProtectionMutation,
+  type TenantQuota,
 } from "./protection-contracts";
 export async function applyProtectionMutation(
   db: DatabaseAdapter,
@@ -12,8 +13,8 @@ export async function applyProtectionMutation(
   input: ProtectionMutation,
 ) {
   const data = validateProtectionMutation(input);
-  await requirePlatformRole(db, actor, true);
   return db.transaction(async (tx) => {
+    await requirePlatformRole(tx, actor, true);
     const tenant = "tenant" in data ? data.tenant : undefined;
     if (tenant && !(await tx.one("SELECT id FROM tenants WHERE id=?", [tenant])))
       throw new Error("UNKNOWN_TENANT");
@@ -27,7 +28,19 @@ export async function applyProtectionMutation(
         ON CONFLICT(tenant_id) DO UPDATE SET ${keys.map((k) => `${k}=excluded.${k}`).join(",")},updated_at=excluded.updated_at,updated_by=excluded.updated_by`,
         [data.tenant, ...keys.map((k) => q[k]), Date.now(), actor],
       );
-      await tx.execute("DELETE FROM quota_deferrals WHERE tenant_id=?", [data.tenant]);
+      await tx.execute(
+        "DELETE FROM quota_deferrals WHERE tenant_id=? AND reason NOT IN ('PAUSED','JOB_TOKEN_CEILING','INVALID_OUTPUT_RETRY_STORM')",
+        [data.tenant],
+      );
+      if (
+        before &&
+        (q.job_input_tokens > Number((before as TenantQuota).job_input_tokens) ||
+          q.job_output_tokens > Number((before as TenantQuota).job_output_tokens))
+      )
+        await tx.execute(
+          "DELETE FROM quota_deferrals WHERE tenant_id=? AND reason='JOB_TOKEN_CEILING'",
+          [data.tenant],
+        );
       await appendAdminAudit(tx, {
         actor: actor,
         action: "quota.set",
@@ -48,7 +61,10 @@ export async function applyProtectionMutation(
        limit_value=excluded.limit_value,expires_at=excluded.expires_at,reason=excluded.reason,actor_id=excluded.actor_id`,
         [data.tenant, data.dimension, data.limit, data.expires, data.reason, actor],
       );
-      await tx.execute("DELETE FROM quota_deferrals WHERE tenant_id=?", [data.tenant]);
+      await tx.execute(
+        "DELETE FROM quota_deferrals WHERE tenant_id=? AND reason NOT IN ('PAUSED','JOB_TOKEN_CEILING','INVALID_OUTPUT_RETRY_STORM')",
+        [data.tenant],
+      );
       await appendAdminAudit(tx, {
         actor: actor,
         action: "quota.override",
@@ -88,7 +104,7 @@ export async function applyProtectionMutation(
       );
       if (!before) throw new Error("JOB_NOT_DEFERRED");
       await tx.execute(
-        "UPDATE quota_jobs SET invalid_reviewed_at=? WHERE tenant_id=? AND pipeline=? AND job_id=?",
+        "UPDATE quota_jobs SET invalid_reviewed_at=?,invalid_reviewed_count=(SELECT COUNT(*) FROM quota_calls c WHERE c.pipeline=quota_jobs.pipeline AND c.job_id=quota_jobs.job_id AND c.status='invalid_output') WHERE tenant_id=? AND pipeline=? AND job_id=?",
         [Date.now(), data.tenant, data.pipeline, data.jobId],
       );
       await tx.execute(

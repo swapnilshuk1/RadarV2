@@ -177,7 +177,7 @@ export async function readAdminSnapshot(
   await query(
     "Reservations",
     "quota_jobs + quota_calls; charged usage includes retained bounds for calls without measured usage. Open jobs reserve the rest of their budget.",
-    `SELECT j.*, (SELECT COUNT(*) FROM quota_calls c WHERE c.pipeline=j.pipeline AND c.job_id=j.job_id AND c.unknown_usage=1) unmeasured_calls FROM quota_jobs j ${tenantId ? "WHERE j.tenant_id=?" : ""} ORDER BY j.lease_until DESC LIMIT 100`,
+    `SELECT j.pipeline,j.job_id,j.tenant_id,j.day,j.first_month,j.month,j.lane,j.input_limit,j.output_limit,j.input_used,j.output_used,j.lease_until,j.closed, (SELECT COUNT(*) FROM quota_calls c WHERE c.pipeline=j.pipeline AND c.job_id=j.job_id AND c.unknown_usage=1) unmeasured_calls FROM quota_jobs j ${tenantId ? "WHERE j.tenant_id=?" : ""} ORDER BY j.lease_until DESC LIMIT 100`,
   );
   await query(
     "Alerts",

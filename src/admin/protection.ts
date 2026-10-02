@@ -178,7 +178,15 @@ export async function reserveClaim(
   );
   if (controls) return deferClaim(db, job.pipeline, job.id, job.tenant, "PAUSED", now);
   const limits = await policy(db, job.tenant, now);
-  if (!limits) return true;
+  if (!limits) {
+    if (job.pipeline !== "scrape")
+      await db.execute(
+        `INSERT INTO quota_legacy_leases VALUES(?,?,?,?,?)
+      ON CONFLICT(pipeline,job_id) DO UPDATE SET tenant_id=excluded.tenant_id,lease_token=excluded.lease_token,lease_until=excluded.lease_until`,
+        [job.pipeline, job.id, job.tenant, job.token, job.leaseUntil],
+      );
+    return true;
+  }
   // Recover a completion committed before a worker crashed during cleanup.
   // Only terminal canonical queue state releases the unused reservation.
   for (const [pipeline, table] of Object.entries({
@@ -206,6 +214,7 @@ export async function reserveClaim(
     output_limit: number;
     closed: number;
     invalid_reviewed_at: number;
+    invalid_reviewed_count: number;
     tenant_id: string;
   }>("SELECT * FROM quota_jobs WHERE pipeline=? AND job_id=?", [job.pipeline, job.id]);
   if (existing && existing.tenant_id !== job.tenant) throw new Error("QUOTA_JOB_SCOPE_MISMATCH");
@@ -227,10 +236,10 @@ export async function reserveClaim(
   )
     return deferClaim(db, job.pipeline, job.id, job.tenant, "JOB_TOKEN_CEILING", now);
   const storm = await db.one<{ n: number }>(
-    "SELECT COUNT(*) n FROM quota_calls WHERE tenant_id=? AND pipeline=? AND job_id=? AND status='invalid_output' AND started_at>?",
-    [job.tenant, job.pipeline, job.id, existing?.invalid_reviewed_at ?? 0],
+    "SELECT COUNT(*) n FROM quota_calls WHERE tenant_id=? AND pipeline=? AND job_id=? AND status='invalid_output'",
+    [job.tenant, job.pipeline, job.id],
   );
-  if ((storm?.n ?? 0) >= 5)
+  if ((storm?.n ?? 0) - (existing?.invalid_reviewed_count ?? 0) >= 5)
     return deferClaim(db, job.pipeline, job.id, job.tenant, "INVALID_OUTPUT_RETRY_STORM", now);
   const active = await db.one<{ n: number }>(
     `SELECT COUNT(*) n FROM quota_jobs WHERE tenant_id=? AND lease_until>? AND closed=0 AND NOT(pipeline=? AND job_id=?)`,
@@ -249,7 +258,7 @@ export async function reserveClaim(
             ? "scrapes_daily"
             : null;
   if (!existing && countDimension && limits[countDimension] !== null) {
-    const period = countDimension === "pursuits_monthly" ? "month" : "day";
+    const period = countDimension === "pursuits_monthly" ? "first_month" : "day";
     const used = await db.one<{ n: number }>(
       `SELECT COUNT(*) n FROM quota_jobs WHERE tenant_id=? AND pipeline=? AND ${period}=?`,
       [job.tenant, job.pipeline, period === "day" ? day : month],
@@ -287,8 +296,8 @@ export async function reserveClaim(
       );
   }
   await db.execute(
-    `INSERT INTO quota_jobs(pipeline,job_id,tenant_id,day,month,lane,input_limit,output_limit,lease_token,lease_until)
- VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(pipeline,job_id) DO UPDATE SET lease_token=excluded.lease_token,lease_until=excluded.lease_until,month=excluded.month,
+    `INSERT INTO quota_jobs(pipeline,job_id,tenant_id,day,month,lane,input_limit,output_limit,lease_token,lease_until,first_month)
+ VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(pipeline,job_id) DO UPDATE SET lease_token=excluded.lease_token,lease_until=excluded.lease_until,month=excluded.month,
  input_limit=MAX(input_limit,excluded.input_limit),output_limit=MAX(output_limit,excluded.output_limit),closed=0`,
     [
       job.pipeline,
@@ -301,7 +310,12 @@ export async function reserveClaim(
       budgetOutput,
       job.token,
       job.leaseUntil,
+      month,
     ],
+  );
+  await db.execute(
+    "DELETE FROM quota_legacy_leases WHERE pipeline=? AND job_id=? AND tenant_id=?",
+    [job.pipeline, job.id, job.tenant],
   );
   await db.execute("DELETE FROM quota_deferrals WHERE pipeline=? AND job_id=?", [
     job.pipeline,
@@ -318,6 +332,10 @@ export async function finishReservation(
 ) {
   if (!(await protectionInstalled(db))) return;
   await db.execute(
+    "DELETE FROM quota_legacy_leases WHERE pipeline=? AND job_id=? AND lease_token=?",
+    [pipeline, jobId, token],
+  );
+  await db.execute(
     "UPDATE quota_jobs SET lease_until=0,closed=? WHERE pipeline=? AND job_id=? AND lease_token=?",
     [closed ? 1 : 0, pipeline, jobId, token],
   );
@@ -330,6 +348,10 @@ export async function renewReservation(
   leaseUntil: number,
 ) {
   if (!(await protectionInstalled(db))) return;
+  await db.execute(
+    "UPDATE quota_legacy_leases SET lease_until=? WHERE pipeline=? AND job_id=? AND lease_token=?",
+    [leaseUntil, pipeline, jobId, token],
+  );
   await db.execute(
     "UPDATE quota_jobs SET lease_until=? WHERE pipeline=? AND job_id=? AND lease_token=? AND closed=0",
     [leaseUntil, pipeline, jobId, token],
@@ -375,6 +397,7 @@ export async function reserveModelCall(
         output_used: number;
         month: string;
         lane: string;
+        invalid_reviewed_count: number;
       }>(
         "SELECT * FROM quota_jobs WHERE tenant_id=? AND pipeline=? AND job_id=? AND lease_token=? AND lease_until>? AND closed=0",
         [context.tenantId, context.pipeline, id, context.leaseToken, Date.now()],
@@ -385,9 +408,22 @@ export async function reserveModelCall(
           "SELECT job_id FROM quota_jobs WHERE tenant_id=? AND pipeline=? AND job_id=?",
           [context.tenantId, context.pipeline, id],
         );
-        if (!prior) return;
+        if (!prior) {
+          const legacy = await tx.one(
+            "SELECT job_id FROM quota_legacy_leases WHERE tenant_id=? AND pipeline=? AND job_id=? AND lease_token=? AND lease_until>?",
+            [context.tenantId, context.pipeline, id, context.leaseToken, Date.now()],
+          );
+          if (legacy) return;
+          throw new QuotaDeferredError("UNSCOPED_MODEL_JOB");
+        }
         throw new QuotaDeferredError("RESERVATION_LEASE_LOST");
       }
+      const invalid = await tx.one<{ n: number }>(
+        "SELECT COUNT(*) n FROM quota_calls WHERE tenant_id=? AND pipeline=? AND job_id=? AND status='invalid_output'",
+        [context.tenantId, context.pipeline, id],
+      );
+      if ((invalid?.n ?? 0) - job.invalid_reviewed_count >= 5)
+        throw new QuotaDeferredError("INVALID_OUTPUT_RETRY_STORM");
       if (
         inputBound + job.input_used > job.input_limit ||
         call.maxOutput + job.output_used > job.output_limit
@@ -436,9 +472,12 @@ export async function reserveModelCall(
   } catch (error) {
     if (
       error instanceof QuotaDeferredError &&
-      ["JOB_TOKEN_CEILING", "MONTHLY_TOKEN_RESERVATION", "LEGACY_USAGE_UNMEASURED"].includes(
-        error.reason,
-      )
+      [
+        "JOB_TOKEN_CEILING",
+        "MONTHLY_TOKEN_RESERVATION",
+        "LEGACY_USAGE_UNMEASURED",
+        "INVALID_OUTPUT_RETRY_STORM",
+      ].includes(error.reason)
     )
       await deferClaim(db, context.pipeline, id, context.tenantId, error.reason);
     throw error;
@@ -461,12 +500,20 @@ export async function settleModelCall(
       context.tenantId,
       context.pipeline,
     ]);
-    if (!call || call.settled) return;
+    if (!call || call.settled || call.job_id !== jobIdentity(context)) return;
     const known =
       Number.isSafeInteger(event.usage?.inputTokens) &&
       Number.isSafeInteger(event.usage?.outputTokens) &&
       event.usage!.inputTokens! >= 0 &&
-      event.usage!.outputTokens! >= 0;
+      event.usage!.outputTokens! >= 0 &&
+      [event.usage?.reasoningTokens, event.usage?.totalTokens].every(
+        (v) => v === undefined || (Number.isSafeInteger(v) && v >= 0),
+      ) &&
+      (event.usage?.totalTokens === undefined ||
+        event.usage.totalTokens >=
+          event.usage.inputTokens! +
+            event.usage.outputTokens! +
+            (event.provider === "vertex-gemini" ? (event.usage.reasoningTokens ?? 0) : 0));
     const input = known ? event.usage!.inputTokens! : call.input_reserved,
       output = known
         ? Math.max(

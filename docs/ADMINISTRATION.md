@@ -4,7 +4,7 @@ The `/admin` console is isolated on `codex/admin-phase-1`. It is not deployed on
 main. The console provides platform authorization, visibility and opt-in protection.
 Gate meaning, model assignments, acquisition evidence and memo content are preserved.
 
-Apply migrations 072–073 through the normal migration runner before using this branch.
+Apply migrations 072–074 through the normal migration runner before using this branch.
 Platform access comes from `platform_roles`, never tenant memberships. An existing
 user can be granted `operator` or read-only `viewer` access by a trusted host
 operator. No user receives platform access automatically. Revocation takes effect
@@ -56,7 +56,7 @@ The supplied RADAR administration mockups guide the numbered rail, typography an
 
 ## Protection setup and behavior
 
-No tenant receives a quota policy by default. Apply migration 073 to the same
+No tenant receives a quota policy by default. Apply migrations 073–074 to the same
 DB used by web and workers, then select a tenant in **Tenants & Quotas** and
 configure its limits. All web mutations recheck the separate platform operator
 role server-side. A reason and before/after audit entry commit with each write.
@@ -74,7 +74,8 @@ overspending the remaining monthly allowance. Each provider call reserves its
 input admission bound and requested output maximum before dispatch. Measured
 usage refunds unused call capacity; missing usage retains the full reservation.
 Budget usage persists across retries and lease recovery. Count quotas count a
-job's first claim, not every retry. Existing job caps remain pinned unless raised;
+job's first claim, not every retry; pursuit first-claim month is immutable and
+separate from the month used for token reservations. Existing job caps remain pinned unless raised;
 lowering a policy affects new jobs. Completing/terminalizing a job releases its
 unused budget, while reported or uncertain spend remains charged. The reasoning
 lane is evaluation; composition, factual review and pursuit use the writing lane.
@@ -95,7 +96,9 @@ Unknown historical usage causes `LEGACY_USAGE_UNMEASURED` deferral for a finite
 monthly limit; it is never silently treated as zero. Inspect/reconcile the source
 telemetry before enabling a finite monthly limit, or explicitly leave it unlimited.
 Already-running work that predates policy activation finishes under its previous
-configuration. At month rollover, new calls charge the new month while preserving
+configuration only with a recorded, matching live lease. Migration 074 backfills
+actual processing leases; claims made before a tenant policy exists record their
+lease explicitly. An absent reservation alone never permits a provider call. At month rollover, new calls charge the new month while preserving
 the lifetime job ceiling. Invocation telemetry and quota records remain separate:
 usage dashboards show measured tokens; Reservations shows retained bounds too.
 
@@ -109,8 +112,10 @@ the original queue record and evidence, use five-minute backoff and let later
 polls move to another tenant. Limits changing or a resume clears applicable
 backoff, then every limit is checked again. No quota action changes a verdict.
 
-Five invalid outputs on a protected job hold further claims. **Resume held job**
-records an operator review boundary and clears backoff; it preserves token spend.
+Five invalid outputs on a protected job hold further calls and claims. **Resume held job**
+records the reviewed invalid-call count and clears backoff; it preserves token spend.
+Unrelated quota edits and temporary overrides preserve job-budget, storm and pause
+holds. Raising job caps releases the corresponding budget backoff.
 Raising insufficient budgets or fixing the source error may still be necessary.
 **Acknowledge alert** only clears the console alert; it does not resume work.
 Alerts include 80% monthly reservation usage, quota/paused deferral, retry storms
@@ -123,3 +128,27 @@ their query source. An unavailable table is shown as unavailable, never as zero.
 The console remains on the admin branch; applying migrations to a fixture does
 not apply them to Oracle or the live acquisition database. Merge/deploy and
 operator activation are separate release steps.
+
+
+Local SQLite/libSQL operations sharing an event loop are serialized per connection
+or file; cross-process file locks still enforce atomicity. Remote Turso retains
+its normal transaction behavior. This prevents a synchronous busy wait from
+blocking the async commit that would release its own lock. Transaction callbacks
+must use their supplied transaction adapter. Reservations shown in the console
+omit lease tokens; those capabilities stay inside worker persistence.
+
+## Regression and stress coverage
+
+`tests/security/admin-protection.test.ts` covers policy activation during an
+existing lease, wrong-job receipts, duplicate settlement, unknown/malformed
+usage, invalid-output holds within a running lease, reviewed retry counts,
+month boundaries, quota edits preserving holds and tenant isolation. Stress
+cases race 32 claims on a shared SQLite connection and across two local libSQL
+adapters, race independent worker processes, and compete for model-call
+capacity over 256 attempts. The console test verifies that lease tokens are
+absent from viewer responses. These use real local databases and simulated
+provider receipts; they do not constitute an Oracle or live-provider load test.
+
+Run the focused suite with `npx vitest run tests/security/admin-protection.test.ts`
+and the release candidate with `npm run certify`. Migration 074 is additive;
+previously applied migration 073 remains unchanged.

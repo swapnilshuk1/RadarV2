@@ -330,7 +330,10 @@ Migration 072 separates platform roles and append-only audit from tenant
 memberships, and adds idempotent usage rollups. See
 [Administration](ADMINISTRATION.md). Migration 073 adds tenant quotas, expiring
 quota overrides, scoped claim controls, persistent job/call reservations, deferrals
-and console alerts. Evaluation, composition, factual review, pursuit and scrape
+and console alerts. Migration 074 separates first-claim month from token month,
+records legacy processing leases and adds count-based storm recovery. Local DB
+adapters serialize same-process operations to avoid async transaction contention.
+Evaluation, composition, factual review, pursuit and scrape
 claims reserve in the same database transaction as their fenced queue claim.
 The invocation sink uses `JobTokenLedger` before Mantle/Gemini dispatch and reconciles
 measured usage after completion. No policy is activated automatically. Deferrals

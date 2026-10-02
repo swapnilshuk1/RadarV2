@@ -44,7 +44,7 @@ const quota = (extra: Partial<TenantQuota> = {}): TenantQuota =>
     ...extra,
   }) as TenantQuota;
 async function fixture(db: DatabaseAdapter = new SqliteAdapter(new Database(":memory:"))) {
-  cleanup.push(() => db.close());
+  cleanup.push(() => db.close?.());
   await setupLineageTestFixture(db);
   await db.execute(
     "INSERT INTO users(id,email) VALUES('op','op@test.com'),('viewer','viewer@test.com'),('owner','owner@test.com')",
@@ -104,6 +104,181 @@ const event = (
 });
 
 describe("Administration protection", () => {
+  it("allows only a recorded live legacy lease during policy activation", async () => {
+    const db = await fixture();
+    expect(await claim(db, "legacy", "old")).toBe(true);
+    await setQuota(db);
+    await expect(
+      reserveModelCall(db, context("legacy", "old"), call("allowed")),
+    ).resolves.toBeUndefined();
+    expect(await db.many("SELECT id FROM quota_calls")).toEqual([]);
+    await expect(reserveModelCall(db, context("legacy", "wrong"), call())).rejects.toThrow(
+      "UNSCOPED_MODEL_JOB",
+    );
+    await finishReservation(db, "evaluation", "legacy", "old", false);
+    expect(await claim(db, "legacy", "new")).toBe(true);
+    await expect(reserveModelCall(db, context("legacy", "old"), call())).rejects.toThrow(
+      "RESERVATION_LEASE_LOST",
+    );
+  });
+  it("keeps concurrent call reservations and duplicate completions within the lifetime ceiling", async () => {
+    const db = await fixture();
+    await setQuota(db);
+    await claim(db);
+    for (let round = 0; round < 8; round++) {
+      const outcomes = await Promise.allSettled(
+        Array.from({ length: 32 }, (_, i) =>
+          reserveModelCall(db, context(), call(`r${round}-${i}`)),
+        ),
+      );
+      expect(
+        outcomes.some(
+          (r) =>
+            r.status === "rejected" &&
+            !(r.reason instanceof Error && r.reason.name === "QuotaDeferredError"),
+        ),
+      ).toBe(false);
+      const admitted = outcomes.flatMap((r, i) =>
+        r.status === "fulfilled" ? [`r${round}-${i}`] : [],
+      );
+      expect(admitted.length).toBeGreaterThan(0);
+      await Promise.all(
+        admitted.flatMap((id) => [
+          settleModelCall(db, context(), event(id)),
+          settleModelCall(db, context(), event(id)),
+        ]),
+      );
+      const row = await db.one<{ input_used: number; output_used: number }>(
+        "SELECT input_used,output_used FROM quota_jobs",
+      );
+      const spent = await db.one(
+        "SELECT SUM(input_charged) input_used,SUM(output_charged) output_used FROM quota_calls",
+      );
+      expect(row).toEqual(spent);
+      expect(row!.input_used).toBeLessThanOrEqual(10000);
+      expect(row!.output_used).toBeLessThanOrEqual(1000);
+    }
+  });
+  it("does not expose worker lease capabilities through the console", async () => {
+    const db = await fixture();
+    await setQuota(db);
+    await claim(db, "sensitive-job", "private-lease-token");
+    const snapshot = await readAdminSnapshot(db, "viewer", "tenant_A");
+    expect(JSON.stringify(snapshot)).not.toContain("private-lease-token");
+  });
+  it("serializes 32 asynchronous claims sharing one SQLite connection", async () => {
+    const db = await fixture();
+    await setQuota(db, { concurrent_jobs: 3 });
+    const outcomes = await Promise.allSettled(
+      Array.from({ length: 32 }, (_, i) => claim(db, `race-${i}`)),
+    );
+    expect(outcomes.filter((r) => r.status === "rejected")).toHaveLength(0);
+    expect(outcomes.filter((r) => r.status === "fulfilled" && r.value)).toHaveLength(3);
+  });
+  it("serializes local libSQL claims sharing one worker event loop", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "radar-quota-local-"));
+    cleanup.push(() =>
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }),
+    );
+    const file = join(dir, "db.sqlite"),
+      url = pathToFileURL(file).href,
+      db = await fixture(new SqliteAdapter(new Database(file)));
+    await setQuota(db, { concurrent_jobs: 3 });
+    const helper = join(dir, "local.mts");
+    writeFileSync(
+      helper,
+      `import {TursoAdapter} from ${JSON.stringify(pathToFileURL(join(process.cwd(), "src/data/database/turso.ts")).href)};
+    import {reserveClaim} from ${JSON.stringify(pathToFileURL(join(process.cwd(), "src/admin/protection.ts")).href)};
+    const a=new TursoAdapter(process.argv[2],''),b=new TursoAdapter(process.argv[2],'');
+    await Promise.all([a.one('SELECT 1'),b.one('SELECT 1')]);
+    const results=await Promise.allSettled(Array.from({length:32},(_,i)=>[a,b][i%2].transaction(tx=>reserveClaim(tx,{pipeline:'evaluation',id:String(i),tenant:'tenant_A',token:'lease',leaseUntil:Date.now()+60000}))));
+    console.log(JSON.stringify({accepted:results.filter(r=>r.status==='fulfilled'&&r.value).length,rejected:results.filter(r=>r.status==='rejected').length}));
+    await a.close();await b.close();`,
+    );
+    const output = await promisify(execFile)(process.execPath, ["--import", "tsx", helper, url], {
+      cwd: process.cwd(),
+      timeout: 60000,
+    }).catch((error) => {
+      throw new Error(`Local stress child failed: ${error.code}\n${error.stderr}\n${error.stdout}`);
+    });
+    expect(JSON.parse(output.stdout.trim())).toEqual({ accepted: 3, rejected: 0 });
+  });
+  it("rejects unproved legacy calls when a quota policy exists", async () => {
+    const db = await fixture();
+    await setQuota(db);
+    await expect(reserveModelCall(db, context("never-claimed"), call())).rejects.toThrow(
+      "UNSCOPED_MODEL_JOB",
+    );
+  });
+  it("preserves budget and storm holds when unrelated quota values change", async () => {
+    const db = await fixture();
+    await setQuota(db);
+    await claim(db);
+    await expect(
+      reserveModelCall(db, context(), { ...call(), input: "oversized".repeat(10000) }),
+    ).rejects.toThrow("JOB_TOKEN_CEILING");
+    await finishReservation(db, "evaluation", "job", "lease", false);
+    await setQuota(db, { scrapes_daily: 2 });
+    expect(await claim(db)).toBe(false);
+  });
+  it("holds the sixth invalid-output attempt within a single live lease", async () => {
+    const db = await fixture();
+    await setQuota(db);
+    await claim(db);
+    for (let i = 0; i < 5; i++) {
+      await reserveModelCall(db, context(), call(`bad-${i}`));
+      await settleModelCall(db, context(), {
+        ...event(`bad-${i}`, { inputTokens: 10, outputTokens: 5 }),
+        status: "invalid_output",
+      });
+    }
+    await expect(reserveModelCall(db, context(), call("sixth"))).rejects.toThrow(
+      "INVALID_OUTPUT_RETRY_STORM",
+    );
+  });
+  it("does not shift a pursuit first-claim count to the retry month", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-31T23:59:00Z"));
+    const db = await fixture();
+    await setQuota(db, { pursuits_monthly: 1 });
+    const pursue = (id: string) =>
+      db.transaction((tx) =>
+        reserveClaim(tx, {
+          pipeline: "pursuit",
+          id,
+          tenant: "tenant_A",
+          token: "lease",
+          leaseUntil: Date.now() + 60000,
+        }),
+      );
+    expect(await pursue("old")).toBe(true);
+    await finishReservation(db, "pursuit", "old", "lease", false);
+    vi.setSystemTime(new Date("2026-11-01T00:00:00Z"));
+    expect(await pursue("old")).toBe(true);
+    await finishReservation(db, "pursuit", "old", "lease", true);
+    expect(await pursue("new")).toBe(true);
+  });
+  it("does not settle another job receipt or refund malformed provider usage", async () => {
+    const db = await fixture();
+    await setQuota(db);
+    await claim(db);
+    await reserveModelCall(db, context(), call());
+    await settleModelCall(db, context("foreign-job"), event());
+    expect((await db.one<{ settled: number }>("SELECT settled FROM quota_calls"))?.settled).toBe(0);
+    await settleModelCall(db, context(), {
+      ...event("call", {
+        inputTokens: 50,
+        outputTokens: 20,
+        reasoningTokens: -100,
+        totalTokens: 70,
+      }),
+      provider: "vertex-gemini",
+    });
+    expect(
+      (await db.one<{ unknown_usage: number }>("SELECT unknown_usage FROM quota_calls"))
+        ?.unknown_usage,
+    ).toBe(1);
+  });
   it("recovers unused budget after canonical completion preceded worker cleanup", async () => {
     const db = await fixture();
     await setQuota(db, { concurrent_jobs: 1 });
