@@ -40,7 +40,13 @@ and a test showing that it cannot expose tenant-owned data across boundaries.
 
 ```mermaid
 flowchart TD
-  A[Portal acquisition] --> B[Preserved payload and canonical opportunity version]
+  X[Local acquisition device: database execution lease and local profile lock] --> A
+  A --> Q[Fsynced bounded local outbox]
+  Q --> Y[Independent bounded uploader: verify OCI envelope]
+  Y --> Z[Oracle ingress: scope, hash, run and execution-token validation]
+  Z --> B
+  A[Portal acquisition]
+  B[Preserved payload and canonical opportunity version]
   B --> C[Exact enrichment dependency]
   C --> D[Durable staged evaluation job]
   D --> E[Frozen JD, bound candidate evidence and acquired context]
@@ -53,6 +59,16 @@ flowchart TD
   K --> L[Serving queries and DossierView]
   M[(active_evaluation_contexts)] --> L
 ```
+
+Distributed portal execution is serialized by migration 071's database-clock
+execution lease. Run leases remain the authority for scoped run mutations. Local
+locks protect profiles, not cross-host ownership. Oracle is processing-only; every
+canonical processing source is in OCI. Shared payloads exclude browser HTML and
+duplicate full-JD fields while preserving distinct evidence. Source refresh bypasses
+local source snapshots; it does not manufacture a new canonical version for the
+same content. Acknowledged handoff staging and inactive diagnostic caches expire
+under reference-aware cleanup; canonical and pending sources do not. Exact classes,
+timing and commands are in [OCI storage](OCI_STORAGE.md).
 
 Persisting an evaluation, composing a dossier and publishing a projection do not
 switch the active context. Shadow work can therefore succeed without becoming
@@ -263,3 +279,46 @@ For active contexts the durable evaluation worker drafts and publishes only
 PURSUE/CONSIDER results. PASS remains a completed evaluation, with `passSkipped`
 reported by readiness; it is not missing dossier work. No automatic context
 activation is introduced.
+
+## Indicative titles and shortlist membership
+
+Search-plan role labels, function words and designation-derived seniority are
+advisory acquisition signals. A missing phrase match or unusual title produces
+REVIEW and continues to the existing evaluator, including context activation and
+canonical-pool materialization. Title-only function/seniority suspicions also
+produce REVIEW. Explicit company/employment/geography constraints, unusable
+capture and clear JD experience contradictions keep their blocking behavior.
+
+The canonical shortlist includes ELIGIBLE or REVIEW associations only after a
+valid current-context STAGED_EVALUATED PURSUE/CONSIDER result, with no user
+selection yet. Feed, navigation and actionable queue count share this predicate.
+REVIEW is not a shortlist recommendation by itself; PASS, invalid, unevaluated,
+explicitly ineligible and decided rows remain excluded. Acquisition uncertainty
+is retained for reasoning rather than overwritten as proven role equivalence.
+
+
+## Scraped-job decision log
+
+`/scraped` lists the scoped acquisition population and applies lifecycle filters in
+SQL before pagination. Tile totals cover the complete active-search population.
+The URL retains the selected state and page when navigating to a decision log and
+back. Detail links bind the canonical job and opportunity version; ambiguous
+portal job IDs fail closed rather than selecting an unrelated role.
+
+`/scraped/$jobHash` is a read-only view of that version's recorded attention gate,
+current-context evaluation, role requirements, screening classification, candidate
+mapping, gaps and decision hinges. Feed and detail use the same lifecycle SQL.
+READY requires the current reviewed rich presentation bound to the serving
+fingerprint; draft/preparing publications remain PREPARING. Explicit intake
+exclusions and advisory designation uncertainty are explained separately.
+
+Evidence quotations are read only from the evaluation's matching frozen input,
+validated with its existing fingerprint/provenance contract. Role and candidate
+claims retain separate planes and EXPLICIT/INFERRED cues. Missing or invalid frozen
+inputs cannot produce invented quotations. The capture timestamp belongs to the
+selected opportunity version. This view does not generate new evaluations or
+compose PASS dossiers; persisted verdicts and source identities remain unchanged.
+
+Implementation: `src/acquisition/feed-read-model.ts`, `pipeline-state.ts`,
+`detail-read-model.ts`, authenticated `feed.ts`/`detail-server.ts`, and the two
+Scraped routes. Decision-log regressions are included in release certification.

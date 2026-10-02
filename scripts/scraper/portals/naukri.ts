@@ -525,11 +525,13 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     }
   }
 
-  const t0 = Date.now();
+  let t0 = Date.now();
+  const queuedAt = t0;
   const page = ctx.detailPage || ctx.searchPage || ctx.activePage;
   const mutex = ctx.detailMutex || ctx.searchMutex;
 
   const doExtract = async (execPage?: any) => {
+    t0 = Date.now();
     const targetPage = execPage || page;
     try {
       // Let Chromium generate Sec-Fetch-* navigation headers. Manually
@@ -609,7 +611,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         if (hasSubstantiveContainer) return true;
         const body = (document.body?.innerText || "").replace(/\s+/g, " ").trim();
         return body.length >= 500 && /\bjob description\b/i.test(body);
-      }, { timeout: 10000 }).catch(() => {});
+      }, undefined, { timeout: 10000 }).catch(() => {});
 
       const parts: { name: string; text: string; html: string }[] = [];
 
@@ -749,7 +751,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       }
 
       const trimmedText = rawText.trim();
-      const titleText = ((await targetPage.locator("h1, [class*='job-header'] h1, [class*='jd-header'] h1").first().textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+      const titleText = ((await targetPage.locator("h1, [class*='job-header'] h1, [class*='jd-header'] h1").first().textContent({ timeout: CONFIG.optionalFieldTimeoutMs }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
       const extractedTitle = titleText.length > 0 ? titleText : undefined;
       if (trimmedText.length === 0) {
         ctx.logger(`[${ctx.portal}] Empty job description for ${url}`);
@@ -804,10 +806,10 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     }
   };
 
-  if (ctx.pageManager) {
-    return ctx.pageManager.executeTransaction("detail", (p: any) => doExtract(p));
-  }
-  return mutex ? mutex.runExclusive(() => doExtract()) : doExtract();
+  const result = ctx.pageManager
+    ? await ctx.pageManager.executeTransaction("detail", (p: any) => doExtract(p))
+    : await (mutex ? mutex.runExclusive(() => doExtract()) : doExtract());
+  return { ...result, queueWaitMs: t0 - queuedAt };
 }
 
 export function classifyNaukriHtml(html: string, title: string): { state: string; count?: number; marker?: string; reason?: string; title?: string } {

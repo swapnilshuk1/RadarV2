@@ -53,7 +53,9 @@
     "worker:enrichment": "tsx scripts/enrich.ts",
     "worker:evaluations": "tsx scripts/run-evaluation-worker.ts",
     "worker:dossiers": "tsx scripts/run-dossier-composition-worker.ts",
-    "worker:reviews": "tsx scripts/run-dossier-review-worker.ts"
+    "worker:reviews": "tsx scripts/run-dossier-review-worker.ts",
+    "storage:verify-oci": "tsx scripts/storage/verify-oci.ts",
+    "storage:inventory": "tsx scripts/storage/migrate-blobs.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
@@ -73,6 +75,8 @@
     "google-auth-library": "^10.0.0",
     "jsdom": "^30.0.1",
     "mammoth": "^1.12.0",
+    "oci-common": "^2.142.1",
+    "oci-objectstorage": "^2.142.1",
     "oslo": "^1.2.1",
     "pdf-parse": "^2.4.5",
     "playwright": "^1.61.1",

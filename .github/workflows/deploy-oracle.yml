@@ -1,7 +1,11 @@
 name: Deploy Oracle
-run-name: Deploy Oracle · ${{ inputs.sha || 'latest green main' }}
+run-name: Deploy Oracle · ${{ github.event.workflow_run.head_sha || inputs.sha || 'latest green main' }}
 
 on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
   workflow_dispatch:
     inputs:
       sha:
@@ -20,10 +24,17 @@ concurrency:
 
 jobs:
   resolve-release:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.release.outputs.sha }}
       run_id: ${{ steps.release.outputs.run_id }}
+      deploy: ${{ steps.release.outputs.deploy }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,6 +46,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REQUESTED_SHA: ${{ inputs.sha }}
+          TRIGGER_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
           if [[ "$GITHUB_REF" != refs/heads/main ]]; then
@@ -42,6 +55,9 @@ jobs:
             exit 1
           fi
           sha="${REQUESTED_SHA,,}"
+          if [[ "$GITHUB_EVENT_NAME" == workflow_run ]]; then
+            sha="${TRIGGER_SHA,,}"
+          fi
           if [[ -z "$sha" ]]; then
             sha="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --event push --status success --limit 1 --json headSha --jq '.[0].headSha // empty')"
           fi
@@ -50,14 +66,26 @@ jobs:
             exit 1
           fi
           git fetch --quiet origin main
+          if [[ "$GITHUB_EVENT_NAME" == workflow_run && "$sha" != "$(git rev-parse origin/main)" ]]; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping superseded CI commit $sha; a newer main push owns automatic deployment."
+            exit 0
+          fi
           git cat-file -e "${sha}^{commit}"
           if ! git merge-base --is-ancestor "$sha" origin/main; then
             echo "::error::The selected commit is not on main."
             exit 1
           fi
 
-          runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$sha" --limit 100 --json databaseId,headSha,headBranch,conclusion,event)"
-          run_id="$(jq -r --arg sha "$sha" '[.[] | select(.headSha == $sha and .headBranch == "main" and .event == "push" and .conclusion == "success")] | sort_by(.databaseId) | last | .databaseId // empty' <<< "$runs")"
+          if [[ "$GITHUB_EVENT_NAME" == workflow_run ]]; then
+            run_id="$TRIGGER_RUN_ID"
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" |
+              jq -e --arg sha "$sha" --arg repo "$GITHUB_REPOSITORY" \
+                '.head_sha == $sha and .head_branch == "main" and .event == "push" and .conclusion == "success" and .path == ".github/workflows/ci.yml" and .head_repository.full_name == $repo' >/dev/null
+          else
+            runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$sha" --limit 100 --json databaseId,headSha,headBranch,conclusion,event)"
+            run_id="$(jq -r --arg sha "$sha" '[.[] | select(.headSha == $sha and .headBranch == "main" and .event == "push" and .conclusion == "success")] | sort_by(.databaseId) | last | .databaseId // empty' <<< "$runs")"
+          fi
           if [[ -z "$run_id" ]]; then
             echo "::error::No successful main CI run exists for $sha."
             exit 1
@@ -68,10 +96,12 @@ jobs:
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
           echo "Selected certified main commit: $sha (CI run $run_id)"
 
   deploy:
     needs: resolve-release
+    if: needs.resolve-release.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: Oracle
@@ -139,13 +169,23 @@ jobs:
           RELEASE_SHA: ${{ needs.resolve-release.outputs.sha }}
         run: |
           set -euo pipefail
+          # Recheck after the concurrency wait/download: never roll back a newer
+          # main commit just because an older CI completion arrived late.
+          if [[ "$GITHUB_EVENT_NAME" == workflow_run ]]; then
+            main_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+            if [[ "$RELEASE_SHA" != "$main_sha" ]]; then
+              echo "Skipping superseded automatic release $RELEASE_SHA."
+              echo "Automatic deployment skipped: a newer main push superseded $RELEASE_SHA." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          fi
           cd "$RUNNER_TEMP/radar-runtime"
           node_modules/.bin/tsx scripts/deploy.ts "$RELEASE_SHA"
           echo "Oracle is serving certified release $RELEASE_SHA."
           {
             echo "### Oracle deployment"
-            echo "- Commit: `$RELEASE_SHA`"
-            echo "- Target: `$RADAR_DEPLOY_SSH_HOST`"
-            echo "- Database fingerprint: `$RADAR_DEPLOY_DB_FINGERPRINT`"
+            echo "- Commit: $RELEASE_SHA"
+            echo "- Target: $RADAR_DEPLOY_SSH_HOST"
+            echo "- Database fingerprint: $RADAR_DEPLOY_DB_FINGERPRINT"
             echo "- Readiness: $RADAR_DEPLOY_READINESS_URL/health/system"
           } >> "$GITHUB_STEP_SUMMARY"

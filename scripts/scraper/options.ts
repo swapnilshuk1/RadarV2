@@ -16,6 +16,8 @@ export interface ScraperRuntimeOptions {
   maxCardsPerPage?: number;
   resume?: boolean;
   fresh?: boolean;
+  freshSource?: boolean;
+  newRun?: boolean;
 }
 
 /**
@@ -38,6 +40,7 @@ export function resolveScraperRuntimeOptions(
   let cliMaxPages: number | undefined;
   let cliResume = false;
   let cliFresh = false;
+  let cliNewRun = false;
 
   for (let i = 0; i < cliArgs.length; i++) {
     const arg = cliArgs[i];
@@ -80,8 +83,10 @@ export function resolveScraperRuntimeOptions(
       cliMaxPages = parseInt(cliArgs[++i], 10);
     } else if (arg === "--resume") {
       cliResume = true;
-    } else if (arg === "--fresh") {
+    } else if (arg === "--fresh" || arg === "--fresh-source") {
       cliFresh = true;
+    } else if (arg === "--new-run") {
+      cliNewRun = true;
     }
   }
 
@@ -146,6 +151,8 @@ export function resolveScraperRuntimeOptions(
     keywords: cliKeywords,
     maxPages: cliMaxPages,
     resume: cliResume,
-    fresh: cliFresh,
+    fresh: cliFresh || env.FRESH_RUN === "true",
+    freshSource: cliFresh || env.FRESH_SOURCE === "true" || env.FRESH_RUN === "true",
+    newRun: cliNewRun || cliFresh || env.FRESH_SOURCE === "true" || env.FRESH_RUN === "true",
   };
 }

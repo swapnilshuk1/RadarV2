@@ -399,11 +399,13 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     }
   }
 
-  const t0 = Date.now();
+  let t0 = Date.now();
+  const queuedAt = t0;
   const page = ctx.detailPage || ctx.searchPage || ctx.activePage;
   const mutex = ctx.detailMutex || ctx.searchMutex;
 
   const doExtract = async () => {
+    t0 = Date.now();
     try {
       const identity = await indeedHandler.resolveListingIdentity!(ctx, url);
       if (identity.identityResolutionFailure) {
@@ -457,12 +459,12 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       // Fallback: If no single container >= 200 chars, try the first non-empty container or body
       if (!rawText) {
         const container = page.locator("#jobDescriptionText, .jobsearch-jobDescriptionText, [class*='description'], [class*='job-detail'], main, article").first();
-        rawHtml = (await container.innerHTML().catch(() => "")) || "";
-        rawText = ((await container.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+        rawHtml = (await container.innerHTML({ timeout: CONFIG.optionalFieldTimeoutMs }).catch(() => "")) || "";
+        rawText = ((await container.textContent({ timeout: CONFIG.optionalFieldTimeoutMs }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
       }
 
       const trimmedText = rawText.trim();
-      const titleText = ((await page.locator("h1.jobsearch-JobInfoHeader-title, .jobsearch-JobInfoHeader-title-container h1, h1").first().textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+      const titleText = ((await page.locator("h1.jobsearch-JobInfoHeader-title, .jobsearch-JobInfoHeader-title-container h1, h1").first().textContent({ timeout: CONFIG.optionalFieldTimeoutMs }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
       const extractedTitle = titleText.length > 0 ? titleText : undefined;
       if (trimmedText.length === 0) {
         ctx.logger?.(`[Indeed] Empty job description for ${url}`);
@@ -515,8 +517,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     }
   };
 
-  if (ctx.pageManager) {
-    return ctx.pageManager.executeTransaction("detail", () => doExtract());
-  }
-  return mutex ? mutex.runExclusive(() => doExtract()) : doExtract();
+  const result = ctx.pageManager
+    ? await ctx.pageManager.executeTransaction("detail", () => doExtract())
+    : await (mutex ? mutex.runExclusive(() => doExtract()) : doExtract());
+  return { ...result, queueWaitMs: t0 - queuedAt };
 }

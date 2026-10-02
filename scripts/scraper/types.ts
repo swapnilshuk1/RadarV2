@@ -86,6 +86,8 @@ export type CardFailureKind =
   | "NON_TERMINAL_FAILURE";
 
 export interface CardUnit {
+  /** Local capture completion is independent of canonical admission. */
+  handoffStatus?: "pending" | "acknowledged" | "failed";
   id: string;                // <parentUnit>#<cardHash>
   parentUnitId: string;
   cardHash: string;
@@ -102,6 +104,7 @@ export interface CardUnit {
 }
 
 export interface PageExecutionRecord {
+  locallyStaged?: number;
   type: "PageExecutionRecord";
   telemetrySchemaVersion: string;
   runId: string;
@@ -206,6 +209,8 @@ export interface RunManifest {
   pageExecutionRecords?: PageExecutionRecord[];
   units: WorkUnit[];
   cards: CardUnit[];
+  /** Retrying upload must not restart a stopped search. */
+  captureStopped?: boolean;
 }
 
 export type AcquisitionRoute =
@@ -263,6 +268,7 @@ export interface DetailedCard extends FeedCard {
     rawText?: string;
     fetchError?: string;
     fetchDurationMs?: number;
+    queueWaitMs?: number;
     httpStatus?: number;
     quality?: "VALID" | "SPARSE" | "EMPTY" | "ERROR";
     /** Title read from the detail page; distinct from the discovery-card title. */

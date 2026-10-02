@@ -83,7 +83,7 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(source_portal, canonical_job_id) DO UPDATE SET
-        last_seen_at = excluded.last_seen_at,
+        last_seen_at = MAX(COALESCE(last_seen_at, excluded.last_seen_at), excluded.last_seen_at),
         title = excluded.title,
         company_name = excluded.company_name,
         location = COALESCE(excluded.location, location),
@@ -158,9 +158,9 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
         );
         await tx.execute(
           `UPDATE acquisition_ledger
-             SET last_seen_at = ?, updated_at = ?
+             SET last_seen_at = MAX(COALESCE(last_seen_at, ?), ?), updated_at = ?
            WHERE id = ?`,
-          [now, now, existing.id]
+          [now, now, now, existing.id]
         );
         return this.mapLedgerRow(existing);
       }

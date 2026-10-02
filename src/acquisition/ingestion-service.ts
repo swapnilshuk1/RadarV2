@@ -39,6 +39,7 @@ import type { SearchCriteriaPayload } from "@/evaluation/context-contracts";
 import { isExternalPostingUrl } from "@/acquisition/external-posting-url";
 import { validateJobDocument } from "@/acquisition/validator";
 import { getBlobStore, type BlobStore } from "@/lib/storage/blob-store";
+import { BlobIntegrityError } from "@/lib/storage/oci-blob-store";
 import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
 import { classifyOpportunityCategories } from "@/lib/domain/category_taxonomy";
 import { parseVerifiedIndeedListingUrl } from "@/acquisition/indeed-listing-identity";
@@ -105,6 +106,12 @@ export type IngestScope =
 export interface CanonicalIngestionOptions {
   runId?: string;
   scope: IngestScope;
+  scrapeLease?: { owner: string; token: string };
+  deferPostCommitDispatch?: boolean;
+  onCanonicalCommit?: (tx: DatabaseAdapter, result: CanonicalIngestionResult, work: Array<{
+    tenantId: string; personId: string; searchPlanId: string; canonicalJobId: string;
+    opportunityVersion: string; evaluationContextFingerprint: string;
+  }>) => Promise<void>;
 }
 
 export interface CanonicalIngestionResult {
@@ -294,9 +301,8 @@ export class CanonicalIngestionService {
         throw new AcquisitionIntegrityError("MISSING_PIPELINE_VERSION: Usable canonical opportunity requires an explicit enrichment pipelineVersion.");
       }
 
-      const snapshot: any = JSON.parse(
-        JSON.stringify(payload.enrichmentDispatch.detailedCard)
-      );
+      const { compactSourceSnapshot } = await import("./source-snapshot");
+      const snapshot: any = compactSourceSnapshot(payload.enrichmentDispatch.detailedCard);
 
       const canonicalMaterial = {
         title: snapshot.canonicalMaterial?.title ?? snapshot.title ?? snapshot.jobTitle ?? "",
@@ -379,11 +385,16 @@ export class CanonicalIngestionService {
           }
           // Matching => reuse, never overwrite!
         } else {
-          await store.put(
-            enrichmentPayloadKey,
-            JSON.stringify(snapshot),
-            "application/json"
-          );
+          try {
+            await store.put(enrichmentPayloadKey, JSON.stringify(snapshot), "application/json");
+          } catch (error) {
+            if (!(error instanceof BlobIntegrityError)) throw error;
+            // A concurrent writer can publish another observation of the same JD.
+            // Preserve its bytes; semantic canonical identity determines version reuse.
+            const winner = await store.get(enrichmentPayloadKey);
+            const parsed = winner ? JSON.parse(winner.toString("utf8")) : null;
+            if (!parsed?.canonicalMaterial || computeContentHash(parsed.canonicalMaterial) !== contentHash) throw error;
+          }
         }
       } catch (err) {
         if (err instanceof AcquisitionIntegrityError) throw err;
@@ -392,6 +403,8 @@ export class CanonicalIngestionService {
           err
         );
       }
+      sourcePayloadKey = enrichmentPayloadKey;
+      sourceMediaType = "application/json";
     }
     // Binary source payloads are content-addressed before canonical admission.
     // Existing persisted keys are reused for backward-compatible replay only
@@ -657,12 +670,19 @@ export class CanonicalIngestionService {
             );
           }
         }
-        if (runRow.status !== "running") {
+        if (runRow.status !== "running" && !(runRow.status === "stopping" && options.scrapeLease)) {
           throw new AcquisitionIntegrityError(
-            `RUN_NOT_RUNNING_REJECTED: Scrape run '${effectiveScope.runId}' is in status '${runRow.status}', but canonical admission status must be 'running'.`
+            `RUN_NOT_RUNNING_REJECTED: Scrape run '${effectiveScope.runId}' is in status '${runRow.status}'; admission requires a running run or a stopping run with its current execution lease.`
           );
         }
         verifiedRunId = runRow.id;
+        if (options.scrapeLease) {
+          const fence = await tx.one<{ id: string }>(`SELECT id FROM scrape_runs
+            WHERE id=? AND tenant_id=? AND person_id=? AND lease_owner=? AND lease_token=?
+              AND lease_expires_at>? AND status IN ('running','stopping')`, [verifiedRunId, effectiveScope.tenantId,
+            effectiveScope.personId, options.scrapeLease.owner, options.scrapeLease.token, Date.now()]);
+          if (!fence) throw new AcquisitionIntegrityError("SCRAPE_RUN_LEASE_LOST");
+        }
       }
 
       enrichmentJobId = null;
@@ -892,6 +912,14 @@ export class CanonicalIngestionService {
           });
         }
       }
+      if (options.onCanonicalCommit) {
+        await options.onCanonicalCommit(tx, {
+          canonicalJobId, opportunityVersion: effectiveVersionId, versionCreatedAt: effectiveVersionCreatedAt,
+          contentHash, sourcePayloadKey, sourceMediaType, isNewOpportunity, isNewVersion,
+          plansEvaluated: activePlans.length, candidatesProjected, candidateDecisions, candidateEligibility,
+          jobsEnqueued: 0, enrichmentJobId, isNewEnrichmentJob,
+        }, evaluationWork);
+      }
     });
     } catch (err) {
       // Invariant: Do NOT delete the shared BlobStore payload on database failure.
@@ -914,6 +942,7 @@ export class CanonicalIngestionService {
     // enrichment → GLM evaluation → dossier composition → Gemini review.
     const scheduler = new EvaluationWorkScheduler(this.db);
     for (const work of evaluationWork) {
+      if (options.deferPostCommitDispatch) break;
       const scheduled = await scheduler.ensureWork(work);
       if (scheduled.queued) jobsEnqueued++;
     }

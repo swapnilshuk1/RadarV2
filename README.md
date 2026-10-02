@@ -10,6 +10,10 @@ Start with the [documentation index](docs/README.md),
 [first-scrape runbook](docs/operations/CONTEXT_REEVALUATION_DOSSIER_RUNBOOK.md) and
 [deployment guide](DEPLOYMENT.md) for implementation and operational details.
 
+Successful CI for a push to `main` automatically deploys the certified commit to
+Oracle. Failed CI keeps the current release running; manual certified-SHA retry
+and rollback remain available in **Actions → Deploy Oracle**.
+
 ## Workspace
 
 Use `main` as the integration baseline. Create short-lived branches or worktrees for
@@ -81,12 +85,20 @@ be recovered from Git history. Database migrations remain ordered and intact.
 
 ## Local development
 
+The configured OCI workspace uses `RADAR_RUNTIME_ROLE=acquisition`, limiting local
+development to web and the scrape worker regardless of full/minimal mode. Oracle
+uses `processing`, distributed OCI storage, web and seven processing workers.
+Apply migration 071 before activating acquisition/ingress. See [OCI storage](docs/OCI_STORAGE.md)
+for credentials, leases, source refresh versus a new run, retention and recovery.
+The isolated full-stack instructions below apply when no split-host role is set.
+
 Install the Node/npm versions declared in `package.json`, then `npm ci`.
 Use an explicitly selected isolated local database. `npm run dev` starts the web
-application on port 3000 plus the supervised evaluator service. The evaluator is
+application on port 3000 plus the complete supervised worker fleet, including
+scraping and enrichment, so **Run search** is picked up automatically. The evaluator is
 non-consuming until an authorized user presses **Start evaluation** in RADAR; merely
-starting development does not spend model credits. It does not start scrape,
-enrichment, dossier, document or corpus workers. Apply migrations explicitly with
+starting the evaluator does not spend model credits. Other workers consume queued
+work and may invoke model providers. Apply migrations explicitly with
 `npm run db:migrate` when the selected non-production database needs them.
 
 ```powershell
@@ -97,9 +109,10 @@ $env:TURSO_AUTH_TOKEN = 'local-only'
 npm run dev
 ```
 
-To intentionally run the web application plus the complete local worker fleet, use
-`npm run dev:full`. The evaluator still obeys the same Start/Pause/Resume/Stop control;
-other workers may consume their own queues.
+`npm run dev:full` remains an alias for the complete worker fleet. For explicit
+web-and-evaluator-only development, use `npm run dev -- --minimal`; searches will
+remain queued unless a separate scrape worker is running. The evaluator obeys the
+same Start/Pause/Resume/Stop control in both modes.
 
 Review an already generated dossier without running models:
 

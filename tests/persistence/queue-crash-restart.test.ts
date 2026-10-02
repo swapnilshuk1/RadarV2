@@ -114,6 +114,16 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
     expect(details).not.toContain("SCAN active");
   });
 
+  it("retains terminal processing payloads that are also canonical source evidence", async () => {
+    const key = "acquisition/source/snapshot.json";
+    await adapter.execute("INSERT INTO canonical_opportunities(id,source,source_job_id,canonical_url) VALUES('source-job','LinkedIn','source-id','https://www.linkedin.com/jobs/view/123')");
+    await adapter.execute("INSERT INTO opportunity_versions(id,canonical_job_id,content_hash,job_title,raw_content,source_payload_key,source_media_type) VALUES('source-version','source-job','source-hash','VP','Source text',?,'application/json')",[key]);
+    await queue.enqueue("source-processing", "source-hash", key, "1.0.0", { runId: "source-run", executionPlanId: "plan", definitionId: "def", familyId: "family", portal: "LinkedIn", page: 1, catalogVersion: "1", plannerVersion: "1", ruleVersion: "1", searchQuery: "VP" }, 0, 0, key);
+    await adapter.execute("UPDATE enrichment_jobs SET status='COMPLETE',completed_at=datetime('now','-10 days') WHERE id='source-processing'");
+    expect(await queue.isPayloadProtected(key)).toBe(true);
+    expect(await queue.getExpiredTerminalPayloadKeys(new Date().toISOString())).not.toContain(key);
+  });
+
   it("Invariant 2: Priority Ordering — Highest business + execution priority leased first", async () => {
     const baseProv = {
       runId: "run_prio",

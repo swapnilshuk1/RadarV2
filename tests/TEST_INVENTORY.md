@@ -1,5 +1,6 @@
 # RADAR v2 — Permanent Test Architecture Map & Inventory
 
+
 This document defines the authoritative test domains, invariant contracts, certification stage mappings, and full mechanical test registry for the RADAR v2 Executive Intelligence Engine.
 
 ---
@@ -195,7 +196,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (180 Total Files)
+## 3. Complete Test File Registry
 
 Every test file in the repository is mechanically tracked below:
 
@@ -210,6 +211,11 @@ Every test file in the repository is mechanically tracked below:
 | `tests/acquisition/post-gate3-acquisition-integrity.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 72 | 220 |
 | `tests/acquisition/reset-corpus-fail-closed.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 14 |
 | `tests/acquisition/scoped-ingestion.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 6 | 30 |
+| `tests/acquisition/oci-handoff.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 10 | 20 |
+| `tests/acquisition/transfer-session.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 4 | 20 |
+| `tests/scraper/acquisition-wait-budget.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 3 | 9 |
+| `tests/scraper/atomic-progress-recovery.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 3 | 10 |
+| `tests/acquisition/retention-and-execution.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 8 | 20 |
 | `tests/acquisition/source-payload-provenance.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 9 | 42 |
 | `tests/certification/certification-gate-integrity.test.ts` | Certification Integrity | **KEEP** | Full Suite | 7 | 26 |
 | `tests/certification/journey_c_decision_persistence_to_dto.test.ts` | Certification Integrity | **KEEP** | Full Suite | 1 | 9 |
@@ -218,7 +224,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/editorial/memo-cockpit-skins.test.ts` | Editorial | **KEEP** | Stage 3 | 5 | 10 |
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 7 | 25 |
 | `tests/intelligence/active-context-resolution.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 12 |
-| `tests/intelligence/attention-gate.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 1 | 1 |
+| `tests/intelligence/attention-gate.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 6 | 6 |
 | `tests/intelligence/bedrock-converse-model.test.ts` | Bedrock transport / structured output | **KEEP** | Stage 3 | 20 | 86 |
 | `tests/intelligence/bedrock-schema.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 9 |
 | `tests/intelligence/candidate-profile-scope.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 3 | 5 |
@@ -230,7 +236,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/capability-precedence.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 11 |
 | `tests/intelligence/capability.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 7 | 28 |
 | `tests/intelligence/career.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 7 |
-| `tests/intelligence/context-materialization.test.ts` | Dossier V2 Materialization | **KEEP** | Dossier V2 Merge Gate | 3 | 6 |
+| `tests/intelligence/context-materialization.test.ts` | Dossier V2 Materialization | **KEEP** | Dossier V2 Merge Gate | 4 | 6 |
 | `tests/intelligence/corpus-regeneration-worker.test.ts` | Runtime Workers | **KEEP** | Full Suite | 3 | 7 |
 | `tests/intelligence/dossier-grounding.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 30 | 72 |
 | `tests/intelligence/dossier-review-queue.test.ts` | Durable review / cooldown / leases / withholding | **KEEP** | Stage 3 | 6 | 21 |
@@ -272,6 +278,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/persistence/active_pointer_precedence.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 1 | 3 |
 | `tests/persistence/adapter-contracts.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 10 |
 | `tests/persistence/blob-store-connectivity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 7 | 32 |
+| `tests/persistence/oci-blob-store.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 9 | 20 |
 | `tests/persistence/cross-instance-payload-retrieval.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 2 | 15 |
 | `tests/persistence/database-safety.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 9 | 15 |
 | `tests/persistence/deployment-determinism.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 9 | 35 |
@@ -381,6 +388,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/serving/sql_feed_parity.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 7 | 21 |
 | `tests/serving/sql_metrics_aggregation.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 8 | 58 |
 | `tests/serving/staged-rich-serving.test.ts` | Serving & Pagination | **KEEP** | Stage 3 | 17 | 89 |
+| `tests/serving/scraped-job-detail.test.ts` | Serving & Pagination | **KEEP** | Stage 3 | 11 | 65 |
 
 ## 4. Script Category Registry
 
@@ -394,3 +402,9 @@ Scripts in `scripts/` are classified into the following authoritative categories
 | **DATABASE** | `scripts/migrate.ts`, `scripts/db-status.ts`, `scripts/db/*` | **KEEP** |
 | **EVALUATION** | `scripts/qa-eval.ts`, `scripts/canary/*`, `scripts/smoke_production.ts`, `scripts/validate-graph.ts` | **KEEP** |
 | **DIAGNOSTIC** | `scripts/diagnose.ts`, `scripts/dev.ts` | **KEEP** |
+
+# Atomic progress recovery
+
+`tests/scraper/atomic-progress-recovery.test.ts`: 3 acquisition tests, 10 assertions;
+transient Windows rename contention, preserved replacement on persistent failure,
+and portal settlement before shared-resource cleanup. Included in certification.

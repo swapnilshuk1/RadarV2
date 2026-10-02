@@ -114,6 +114,7 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
   // Format events for UI
   const formatEvent = (e: any) => {
     switch (e.type) {
+      case "run_progress": return `Scan progress: ${e.opportunitiesFound ?? 0} opportunities captured`;
       case "run_started": return `🚀 Scan initiated`;
       case "unit_started": return `⚙️ Starting ${e.unitId?.split(":")[0] ?? "portal"}`;
       case "unit_failed": return `⚠️ ${e.unitId?.split(":")[0] ?? "portal"} timed out or failed`;

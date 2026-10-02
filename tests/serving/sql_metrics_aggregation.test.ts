@@ -68,8 +68,8 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
     );
 
     await db.execute(
-      `INSERT INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision)
-       VALUES ('tenant_A', 'person_A', 'plan_A', ?, ?, 'CANDIDATE')`,
+      `INSERT INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision, eligibility)
+       VALUES ('tenant_A', 'person_A', 'plan_A', ?, ?, 'CANDIDATE', 'ELIGIBLE')`,
       [oppId, verId]
     );
 
@@ -295,6 +295,28 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
     // reclassification of a larger unreviewed population.
     expect(page.items.map((item) => item.jobHash)).toEqual(["queue-pursue", "queue-consider"]);
     expect(page.items.every((item) => item.engineVerdict === "PURSUE" || item.engineVerdict === "CONSIDER")).toBe(true);
+  });
+
+  it("counts evaluated recommendations separately from acquisition eligibility and the actionable queue", async () => {
+    await seedItem({ id: "review-consider", title: "Head of Marketing", engineVerdict: "CONSIDER" });
+    await seedItem({ id: "ineligible-pursue", title: "Out-of-scope role", engineVerdict: "PURSUE" });
+    await seedItem({ id: "eligible-consider", title: "Eligible role", engineVerdict: "CONSIDER" });
+    await seedItem({ id: "review-pass", title: "Unknown title rejected on mandate", engineVerdict: "PASS" });
+    await seedItem({ id: "review-invalid", title: "Unknown title without a valid evaluation", engineVerdict: "CONSIDER", evaluationState: "INVALID", score: 100 });
+    await db.execute("UPDATE search_plan_candidates SET eligibility='REVIEW' WHERE canonical_job_id='opp_review-consider'");
+    await db.execute("UPDATE search_plan_candidates SET eligibility='REVIEW' WHERE canonical_job_id IN ('opp_review-pass','opp_review-invalid')");
+    await db.execute("UPDATE search_plan_candidates SET eligibility='INELIGIBLE' WHERE canonical_job_id='opp_ineligible-pursue'");
+
+    const metrics = await queries.getMetrics(scope);
+    expect(metrics.evaluationPopulation.evaluated).toBe(4);
+    expect(metrics.engineBreakdown).toEqual({ pursue: 1, consider: 2, pass: 1, sparse: 0 });
+    expect(metrics.totalShortlisted).toBe(3);
+    expect(metrics.discoveryMetrics?.actionableReviewQueue).toBe(2);
+    expect(metrics.integrity.status).toBe("PASS");
+    const queue = await queries.getFeed(scope, undefined, { shortlistQueue: true });
+    expect(queue.items.map((item) => item.jobHash).sort()).toEqual(["eligible-consider", "review-consider"]);
+    expect(await queries.getNavigation(scope, "review-consider", { shortlistQueue: true })).not.toBeNull();
+    expect(await queries.getNavigation(scope, "ineligible-pursue", { shortlistQueue: true })).toBeNull();
   });
 
   it("rejects compensating state and engine-verdict bucket mismatches", async () => {

@@ -184,7 +184,10 @@ describe("deterministic release deployment", () => {
 
     deploy(config, mockRunner);
 
-    expect(capturedActivation).toContain("pm2 delete 'radar-v2' 'radar-scrape' 'radar-enrich'");
+    expect(capturedActivation).toContain("(pm2 delete 'radar-v2' >/dev/null 2>&1 || true)");
+    expect(capturedActivation).toContain(
+      "(pm2 delete 'radar-scrape' >/dev/null 2>&1 || true) && (pm2 delete 'radar-enrich'",
+    );
     expect(capturedActivation).toContain("pm2 start ecosystem.config.cjs --update-env");
     expect(capturedActivation.indexOf("pm2 delete")).toBeLessThan(
       capturedActivation.indexOf("npm run db:migrate"),
@@ -448,7 +451,18 @@ describe("deterministic release deployment", () => {
       return "";
     };
     deploy(config, mockRunner);
-    expect(activation).toContain("pm2 delete 'radar-v2' 'radar-scrape'");
+    expect(activation).toContain("(pm2 delete 'radar-v2' >/dev/null 2>&1 || true)");
+    for (const name of [
+      "radar-enrich",
+      "radar-evaluate",
+      "radar-documents",
+      "radar-dossiers",
+      "radar-reviews",
+      "radar-corpus",
+      "radar-pursuit",
+    ]) {
+      expect(activation).toContain(`(pm2 delete '${name}' >/dev/null 2>&1 || true)`);
+    }
     expect(activation).toContain("RADAR_DEPLOYMENT_MODE='single_host'");
     expect(activation).toContain("RADAR_SERVER_SCRAPER_ENABLED='false'");
     expect(activation).not.toContain('RADAR_PM2_REQUIRED=\'["radar-v2","radar-scrape"');

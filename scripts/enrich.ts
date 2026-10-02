@@ -309,7 +309,8 @@ export async function processJob(
     // The canonical evaluation and lineage have been persisted before this
     // point. The acquisition payload is no longer required for serving or a
     // successful retry, so release the bounded local/remote artifact promptly.
-    if (payloadKey) {
+    const { getBlobStore: completedPayloadStore } = await import("../src/lib/storage/blob-store");
+    if (payloadKey && !completedPayloadStore().retainProcessingPayloads && !(await queue.isPayloadProtected(payloadKey))) {
       try {
         const { getBlobStore } = await import("../src/lib/storage/blob-store");
         await getBlobStore().delete(payloadKey);
@@ -341,7 +342,7 @@ export async function processJob(
     let failureType: import("./scraper/persist/queue").FailureType = "UNKNOWN";
     if (msg.includes("429") || msg.includes("rate limit")) {
       failureType = "RATE_LIMIT";
-    } else if (msg.includes("timeout") || msg.includes("ECONNRESET") || msg.includes("fetch failed")) {
+    } else if (msg.includes("timeout") || msg.includes("ECONNRESET") || msg.includes("fetch failed") || msg.includes("OCI_BLOB_NETWORK")) {
       failureType = "NETWORK";
     } else if (msg.includes("JSON") || msg.includes("parse")) {
       failureType = "PARSE_FAILURE";
@@ -378,6 +379,7 @@ function filteredCardHash(card: DetailedCard) {
 
 async function cleanupExpiredTerminalPayloads(queue: EnrichmentQueue): Promise<void> {
   const { getBlobStore, resolveArtifactStoreLimits } = await import("../src/lib/storage/blob-store");
+  if (getBlobStore().retainProcessingPayloads) return;
   const retentionHours = resolveArtifactStoreLimits().retentionHours;
   const cutoffIso = new Date(Date.now() - retentionHours * 60 * 60 * 1000).toISOString();
   const payloadKeys = await queue.getExpiredTerminalPayloadKeys(cutoffIso);
@@ -468,6 +470,10 @@ Schema Errors:  ${workerStats.dimensions.schemaErrors}${failureStr}
 
 async function startWorker() {
   log(`Starting Enrichment Worker [${WORKER_ID}]`);
+  const { getBlobStore, resolveDeploymentMode } = await import("../src/lib/storage/blob-store");
+  const store = getBlobStore({ enforceDistributed: resolveDeploymentMode() === "distributed" || process.env.RADAR_RUNTIME_ROLE === "processing" });
+  const health = await store.healthCheck();
+  if (!health.ok) throw new Error(`ENRICHMENT_STORAGE_UNAVAILABLE: ${health.error}`);
   const queue = new EnrichmentQueue();
   await cleanupExpiredTerminalPayloads(queue);
   

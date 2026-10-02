@@ -1,10 +1,16 @@
 # Staged intelligence integration
 
-Current implementation reference as of 19 September 2026. See the
+Current implementation reference, including OCI acquisition remediation. See the
 [architecture](ARCHITECTURE.md), [backfill runbook](operations/CONTEXT_REEVALUATION_DOSSIER_RUNBOOK.md)
 and [deployment guide](../DEPLOYMENT.md).
 
 ## Current contracts
+
+The split-host contract is documented in [OCI storage](OCI_STORAGE.md). The laptop
+uses `acquisition`; Oracle uses `processing` with distributed OCI storage. Apply
+migration 071 before starting acquisition execution, ingress fencing and retention.
+Oracle runs web/seven processing workers; the laptop runs portal acquisition and
+hourly staging/debug cleanup. Development never applies migrations automatically.
 
 | Contract | Current value | Authority |
 | --- | --- | --- |

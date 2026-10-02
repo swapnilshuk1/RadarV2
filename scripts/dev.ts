@@ -59,6 +59,16 @@ function processSpecs(databaseTarget: string, fullStack: boolean): ManagedProces
     restart: true,
   };
 
+  if (process.env.RADAR_RUNTIME_ROLE === "acquisition") {
+    return [vite, {
+      name: "scrape",
+      command: process.execPath,
+      args: ["--import", "tsx", "scripts/run-scrape-worker.ts"],
+      env: workerEnv,
+      restart: true,
+    }];
+  }
+
   if (!fullStack) {
     // Normal product development keeps the evaluator service alive so the UI
     // Start/Pause/Resume/Stop controls are real. Durable control defaults to
@@ -132,7 +142,9 @@ async function main() {
     process.env.TURSO_CONNECTION_URL || process.env.TURSO_DATABASE_URL || "";
   const fullStack = process.argv.includes("--full");
   console.log(
-    fullStack
+    process.env.RADAR_RUNTIME_ROLE === "acquisition"
+      ? "[dev-supervisor] ACQUISITION mode: web + scrape worker; processing runs on Oracle."
+      : fullStack
       ? "[dev-supervisor] FULL STACK mode: all local workers are enabled; queued work may be consumed."
       : "[dev-supervisor] INTERACTIVE mode: web + evaluator service. Evaluation remains idle until the UI starts it.",
   );

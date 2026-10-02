@@ -118,7 +118,11 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
   const startAllProcesses = "pm2 start ecosystem.config.cjs --update-env";
   // PM2 restart keeps the old cwd for existing names. Recreate only RADAR's
   // managed processes so every process uses the newly extracted release.
-  const replaceManagedProcesses = `(pm2 delete ${["radar-v2", ...allManagedWorkers].map(shellQuote).join(" ")} >/dev/null 2>&1 || true)`;
+  // PM2's multi-name delete stops at a missing name (e.g. disabled radar-scrape).
+  // Delete independently so every existing writer actually leaves the old cwd.
+  const replaceManagedProcesses = ["radar-v2", ...allManagedWorkers]
+    .map((name) => `(pm2 delete ${shellQuote(name)} >/dev/null 2>&1 || true)`)
+    .join(" && ");
   const enforceProcessTopology = runServerScraper
     ? ":"
     : "pm2 stop 'radar-scrape' >/dev/null 2>&1 || true";
@@ -136,7 +140,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     "readiness_deadline=$((SECONDS + 180))",
     `while [ "$SECONDS" -lt "$readiness_deadline" ]; do if curl --max-time 5 --fail --silent ${shellQuote(systemReadinessUrl)} >/dev/null 2>&1; then system_ready=1; break; fi; sleep 2; done`,
     `[ "$system_ready" = "1" ]`,
-  ].join("; ");
+  ].join(" && ");
 
   // The recovery command is supplied by the operator's actual database
   // provider. Its non-empty result is persisted as the recovery-point ID.
@@ -210,7 +214,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     `curl --fail --silent --show-error ${shellQuote(`${config.readinessUrl.replace(/\/$/, "")}/health/ready`)}`,
     `RADAR_DEPLOY_READINESS_URL=${shellQuote(config.readinessUrl)} RADAR_RELEASE_SHA=${shellQuote(config.sha)} node_modules/.bin/tsx scripts/smoke_production.ts`,
     `printf '%s' ${shellQuote(config.sha)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}`,
-  ].join("; ");
+  ].join(" && ");
 
   function rollback(errorMessage: string): void {
     const canRestorePrior = Boolean(priorSha && priorReleaseVerified && priorReleaseDirectory);

@@ -31,7 +31,7 @@ export function buildCanonicalRunData(runId: string, enrichmentCompleted?: numbe
 
   try {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-    const opportunitiesFound = manifest.opportunitiesFound ?? manifest.cards?.length ?? 0;
+    const opportunitiesFound = Math.max(manifest.opportunitiesFound ?? 0, manifest.cards?.length ?? 0);
     let evaluatedCount = manifest.evaluatedCount ?? 0;
     if (enrichmentCompleted !== undefined) evaluatedCount = Math.max(evaluatedCount, enrichmentCompleted);
     const remainingCount = Math.max(0, opportunitiesFound - evaluatedCount);
@@ -54,6 +54,9 @@ export function buildCanonicalRunData(runId: string, enrichmentCompleted?: numbe
       isActive,
       stage,
       opportunitiesFound,
+      locallyCapturedCount: manifest.cards?.filter((card: { handoffStatus?: string }) => card.handoffStatus).length || 0,
+      pendingUploadCount: manifest.cards?.filter((card: { handoffStatus?: string }) => card.handoffStatus && card.handoffStatus !== "acknowledged").length || 0,
+      admittedCount: manifest.cards?.some((card: { handoffStatus?: string }) => card.handoffStatus) ? manifest.cards.filter((card: { handoffStatus?: string }) => card.handoffStatus === "acknowledged").length : manifest.telemetry?.canonicalIngestSuccess || 0,
       evaluatedCount,
       remainingCount,
       sources,

@@ -20,9 +20,16 @@ Scrape run -> portal capture -> preserved payload -> canonical opportunity/versi
 | Staged worker | `npm run worker:evaluations` (`scripts/run-evaluation-worker.ts`) |
 
 The configured database and canonical source/version lineage are authoritative.
-`live-scraped.json` is not the serving system of record. Local payload paths must
-be readable by the intended worker host; retaining a blob on another machine does
-not satisfy that dependency.
+`live-scraped.json` is not the serving system of record. The laptop uploads to OCI;
+Oracle verifies references and processes without access to laptop files. Migration
+071 provides a database-backed execution lease alongside run leases and local
+profile locks. Oracle portal acquisition is disabled.
+
+`--fresh-source` (alias `--fresh`) bypasses source snapshots; `--new-run` permits a
+valid cache. The acquisition worker cleans acknowledged staging after seven days,
+inactive debug caches after seven days and known terminal run files after thirty
+days. Pending uploads and canonical sources are protected. See
+[OCI storage](../../docs/OCI_STORAGE.md) for exact rules and inspection commands.
 
 Dependency matching uses canonical job, opportunity version and required
 enrichment pipeline identity. Do not force waiting rows through evaluation,

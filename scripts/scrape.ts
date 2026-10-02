@@ -14,6 +14,12 @@
 
 import path from "path";
 import fs from "fs";
+import { assertAcquisitionHost } from "../src/acquisition/execution-role";
+import { acquireExecutionLease } from "../src/acquisition/execution-lease";
+import { ingestCapturedOpportunity } from "../src/acquisition/captured-ingestion";
+import { remoteAcquisitionOutbox } from "../src/acquisition/outbox";
+import { AcquisitionTransferSession, TransferIncompleteError } from "../src/acquisition/transfer-session";
+import { getBlobStore } from "../src/lib/storage/blob-store";
 import {
   CONFIG,
   DEFAULT_KEYWORDS,
@@ -89,7 +95,6 @@ import crypto from "crypto";
 import type { AuthContext } from "../src/lib/security/auth";
 import type { AuthorizedPersonScope } from "../src/lib/security/auth";
 import {
-  CanonicalIngestionService,
   type CanonicalIngestionResult,
   AcquisitionIntegrityError,
 } from "@/acquisition/ingestion-service";
@@ -298,7 +303,11 @@ export interface RunOptions {
   /** Internal lease fence invoked at execution boundaries by the scrape worker. */
   assertWorkerLease?: () => Promise<void>;
   /** Token-fenced durable run mutations for the claiming scraper worker. */
-  scrapeLease?: { owner: string; token: string };
+  scrapeLease?: { owner: string; token: string; executionToken?: string };
+  /** Start a new run and bypass cached source snapshots. */
+  freshSource?: boolean;
+  /** Start a new orchestration run while allowing fresh cached sources. */
+  newRun?: boolean;
 }
 
 export interface RunRuntimeSession {
@@ -401,6 +410,35 @@ function installSignalHandlers(): void {
 installSignalHandlers();
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
+  assertAcquisitionHost();
+  if (process.env.RADAR_DEPLOYMENT_MODE !== "distributed") return startRunInternal(opts);
+  const lease = await acquireExecutionLease(getDatabaseAdapter());
+  let lost = false;
+  let renewal: Promise<void> | undefined;
+  const renew = async () => {
+    if (lost) throw new Error("ACQUISITION_EXECUTION_LEASE_LOST");
+    await lease.renew();
+  };
+  const timer = setInterval(() => {
+    if (!renewal) renewal = renew().catch(async () => {
+      lost = true;
+      await shutdownAllRuns("ACQUISITION_EXECUTION_LEASE_LOST");
+    }).finally(() => { renewal = undefined; });
+  }, 30_000);
+  timer.unref();
+  const release = async () => { clearInterval(timer); await renewal; await lease.release(); };
+  try {
+    const run = await startRunInternal({ ...opts,
+      ...(opts.scrapeLease ? { scrapeLease: { ...opts.scrapeLease, executionToken: lease.token } } : {}),
+      assertWorkerLease: async () => {
+      await renew();
+      await opts.assertWorkerLease?.();
+    } });
+    return { ...run, completion: run.completion.finally(release) };
+  } catch (error) { await release(); throw error; }
+}
+
+async function startRunInternal(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
   if (opts.scope && opts.authContext && opts.scope.tenantId !== opts.authContext.tenantId) {
     throw new Error("SCRAPER_ACTOR_SCOPE_TENANT_MISMATCH");
   }
@@ -455,7 +493,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     );
   }
 
-  const freshRun = runtimeOpts.fresh || process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
+  const freshSource = opts.freshSource ?? runtimeOpts.freshSource ?? false;
+  const freshRun = !opts.claimedRunId && (opts.newRun || runtimeOpts.newRun || freshSource);
 
   let keywords = opts.keywords ?? (runtimeOpts.keywords && runtimeOpts.keywords.length > 0 ? runtimeOpts.keywords : undefined);
   let portals = opts.portals ?? (runtimeOpts.portals.length > 0 ? runtimeOpts.portals : DEFAULT_PORTALS);
@@ -740,6 +779,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   const seenAtsUrls = new Set<string>();        // cross-portal ATS target URL dedup (authoritative)
   const seenHeuristicKeys = new Set<string>();  // cross-portal heuristic telemetry only
 
+  let transferSession: AcquisitionTransferSession | undefined;
   const completion = (async () => {
     try {
       // Phase 1: Initializing
@@ -747,7 +787,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         mgr.transitionTo("initializing");
       }
 
-      await pool(portals, CONFIG.portalConcurrency, async (portal) => {
+      await pool(mgr.manifest.captureStopped ? [] : portals, CONFIG.portalConcurrency, async (portal) => {
         const plog = makeLogger(`scrape:${portal}`);
         const handler = HANDLERS[portal];
         const units = mgr.pendingUnits().filter((u) => u.portal === portal);
@@ -1049,6 +1089,38 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       // Phase 3: Execution
+      transferSession = process.env.RADAR_ACQUISITION_INGRESS_URL && runScope && opts.scrapeLease
+        ? new AcquisitionTransferSession(remoteAcquisitionOutbox(getBlobStore({ enforceDistributed: true })),
+          { mode: "SCOPED", ...runScope, searchPlanId: effectiveSearchPlanId, runId: mgr.runId }, opts.scrapeLease,
+          async (entry, envelope, result) => {
+            const context = entry.localContext;
+            if (!context) return; // Older synchronous receipts have no deferred local completion.
+            const cardId = String(context.cardId);
+            const card = mgr.manifest.cards.find(c => c.id === cardId);
+            const snapshot = envelope.payload.enrichmentDispatch?.detailedCard;
+            if (!card || !snapshot || card.parentUnitId !== envelope.payload.enrichmentDispatch?.executionPlanId || card.cardHash !== snapshot.cardHash) throw new Error("TRANSFER_CARD_BINDING_MISMATCH");
+            if (card.handoffStatus === "acknowledged") return;
+            const lineage = context.lineage as Parameters<ReturnType<typeof getRepositories>["acquisition"]["recordIngestionLineage"]>[0];
+            if (lineage) await getRepositories().acquisition.recordIngestionLineage({ ...lineage,
+              tenantId: runScope.tenantId, personId: runScope.personId, scrapeRunId: mgr.runId,
+              canonicalJobId: result.canonicalJobId, opportunityVersion: result.opportunityVersion, contentHash: result.contentHash });
+            const bound = bindEvaluationEvidence(snapshot, { canonicalJobId: result.canonicalJobId,
+              opportunityVersion: result.opportunityVersion, contentHash: result.contentHash,
+              sourcePayloadKey: result.sourcePayloadKey, sourceMediaType: result.sourceMediaType });
+            const snapshotPath = writeSnapshot(bound);
+            mgr.recordTelemetry("canonicalIngestSuccess");
+            mgr.recordTelemetry(result.isNewOpportunity ? "canonicalOpportunitiesIngested" : "canonicalOpportunitiesReused");
+            mgr.recordTelemetry(result.isNewVersion ? "newVersionsCreated" : "duplicateVersionsSuppressed");
+            if (result.candidatesProjected) mgr.recordTelemetry("candidatesProjected", result.candidatesProjected);
+            if (result.jobsEnqueued) mgr.recordTelemetry("evaluationJobsEnqueued", result.jobsEnqueued);
+            mgr.updateCard(cardId, { handoffStatus: "acknowledged", isNew: result.isNewOpportunity, snapshotPath, error: undefined });
+            mgr.journal.append({ type: "capture_admitted", cardId, canonicalJobId: result.canonicalJobId, opportunityVersion: result.opportunityVersion, timings: entry.timings });
+          }, (entry, error) => {
+            const cardId = String(entry.localContext?.cardId || "");
+            if (mgr.manifest.cards.some(c => c.id === cardId)) mgr.updateCard(cardId, { handoffStatus: "failed", error: error.message });
+            mgr.recordActivity(`Transfer needs attention: ${error.message}`);
+          }, Number(process.env.RADAR_ACQUISITION_UPLOAD_CONCURRENCY || 2)) : undefined;
+      transferSession?.recover();
       const persistenceState: PersistenceRunState = { unavailable: false };
       const failPendingUnitsForPersistence = () => {
         const reason = persistenceState.error || "Persistence retry budget exhausted";
@@ -1062,7 +1134,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         }
       };
 
-      const poolResults = await pool(portals, CONFIG.portalConcurrency, async (portal) => {
+      const poolResults = await pool(mgr.manifest.captureStopped ? [] : portals, CONFIG.portalConcurrency, async (portal) => {
         const plog = makeLogger(`scrape:${portal}`);
         const handler = HANDLERS[portal];
         const browserContext = runtime.contexts.get(portal);
@@ -1143,6 +1215,9 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             runtime.pageManagers.get(unit.portal),
             runtime.authSessions.get(unit.portal),
             persistenceState,
+            opts.scrapeLease,
+            freshSource,
+            transferSession,
           );
           if (outcome) {
             portalIngested += outcome.opportunities;
@@ -1170,8 +1245,19 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           await jitter();
         }
         return { portalIngested, portalFacts };
+      }, (error, portal) => {
+        const message = error instanceof Error ? error.message : String(error);
+        log(`Portal task failed for ${portal}: ${message}`, "error");
+        mgr.updatePortalHealth(portal, { status: "error", details: message });
+        for (const unit of mgr.manifest.units.filter(u => u.portal === portal && (u.status === "running" || u.status === "pending"))) {
+          mgr.updateUnit(unit.id, { status: "failed", error: message, finishedAt: new Date().toISOString() });
+        }
+        mgr.recordActivity(`${portal} needs attention: ${message}`);
       });
 
+      // Browser scheduling has finished. Drain only durable capture handoff,
+      // never enrichment/evaluation completion; retain the leases until then.
+      await transferSession?.drain();
       let ingestedCount = 0;
       let totalFacts = 0;
       for (const res of poolResults) {
@@ -1180,11 +1266,25 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           totalFacts += res.portalFacts;
         }
       }
+      if (transferSession) ingestedCount = mgr.manifest.telemetry?.canonicalIngestSuccess || 0;
 
       if (mgr.isCancellationRequested()) {
         log(`[Scrape] Run ${mgr.runId} was aborted/stopped by user. Finalizing...`, "warn");
         mgr.recordActivity("Search stopped. Finalizing acquired opportunities...");
         mgr.finalize("aborted");
+        if (runScope) {
+          const repos = getRepositories();
+          await withPersistenceBoundary("stopped scrape run metrics", () =>
+            repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
+              totalDiscovered: mgr.manifest.cards.length,
+              totalEnqueued: ingestedCount,
+              metrics: mgr.manifest.telemetry as any,
+            }, opts.scrapeLease),
+          );
+          await withPersistenceBoundary("stopped scrape run terminalization", () =>
+            repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "aborted", undefined, opts.scrapeLease),
+          );
+        }
         try {
           const records = collectRecords();
           writeLiveScraped(records);
@@ -1329,6 +1429,22 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
 
       return { success: true, count: ingestedCount, runId: mgr.runId };
     } catch (err: any) {
+      // Never finalize/release execution ownership while queued callbacks can
+      // still publish captured work. A failed drain retains the durable spool.
+      if (transferSession) await transferSession.drain().catch(error => log(String(error), "warn"));
+      if (err instanceof TransferIncompleteError && err.retryable && runScope && opts.scrapeLease) {
+        const durable = await getRepositories().scrapeRuns.getRun(runScope, mgr.runId);
+        const stopped = mgr.isCancellationRequested() || durable?.status === "stopping";
+        mgr.manifest.captureStopped = stopped;
+        if (stopped) for (const unit of mgr.manifest.units.filter(u => u.status === "pending" || u.status === "running")) {
+          mgr.updateUnit(unit.id, { status: "aborted", finishedAt: new Date().toISOString() });
+        }
+        mgr.manifest.status = "running";
+        mgr.persistManifest();
+        if (!await getRepositories().scrapeRuns.requeueForTransfer(runScope, mgr.runId, opts.scrapeLease.owner, opts.scrapeLease.token, err.message)) throw new Error("SCRAPE_RUN_LEASE_LOST");
+        mgr.releaseForRetry();
+        return { success: false, count: mgr.manifest.telemetry?.canonicalIngestSuccess || 0, runId: mgr.runId };
+      }
       if (String(err?.message || err).includes("SCRAPE_RUN_LEASE_LOST")) {
         log(`Scrape worker lease lost for ${mgr.runId}; stale runtime is exiting without terminal writes`, "warn");
         return { success: false, count: 0, runId: mgr.runId };
@@ -1606,6 +1722,9 @@ export async function processUnit(
   pageManager?: PageManager,
   authSession?: PortalAuthSession,
   persistenceState?: PersistenceRunState,
+  scrapeLease?: { owner: string; token: string; executionToken?: string },
+  freshSource = false,
+  transferSession?: AcquisitionTransferSession,
 ): Promise<ProcessOutcome> {
   const outcome: ProcessOutcome = {
     status: "failed",
@@ -1990,7 +2109,7 @@ export async function processUnit(
         let detailedCard: import("./scraper/types").DetailedCard | null = null;
         let writtenSnapshotPath: string | null = null;
         let boundSnapshotPath: string | null = null;
-        let snapshot = readSnapshotIfFresh(feedCard.cardHash, CONFIG.snapshotFreshHours);
+        let snapshot = readSnapshotIfFresh(feedCard.cardHash, CONFIG.snapshotFreshHours, freshSource);
         let detail: import("./scraper/types").DetailedCard["detail"] = {
           fetched: false,
           rawHtml: "",
@@ -2077,7 +2196,7 @@ export async function processUnit(
                 rawHtml: "",
                 rawText: ""
               }));
-              mgr.journal.append({ type: "detail_extraction_finished", cardId: cardUnitId, durationMs: portalDetail.fetchDurationMs });
+              mgr.journal.append({ type: "detail_extraction_finished", cardId: cardUnitId, durationMs: portalDetail.fetchDurationMs, queueWaitMs: portalDetail.queueWaitMs });
 
               if (portalDetail.fetched && portalDetail.rawText && portalDetail.rawText.length >= 200) {
                 log(`[Naukri] Detail fetch successful (${portalDetail.rawText.length} chars) for ${feedCard.title} @ ${feedCard.company}`);
@@ -2338,7 +2457,7 @@ export async function processUnit(
               recordHttpSuccess: (url: string) => runHealth.recordFastPathSuccess(unit.portal),
               recordTelemetry: (event: any) => mgr.recordTelemetry(event),
             }, feedCard.detailUrl);
-            mgr.journal.append({ type: "detail_extraction_finished", cardId: cardUnitId, durationMs: detail.fetchDurationMs });
+            mgr.journal.append({ type: "detail_extraction_finished", cardId: cardUnitId, durationMs: detail.fetchDurationMs, queueWaitMs: detail.queueWaitMs });
             if (detail.fetched) {
               acquisitionAttempts.push({
                 method: "PORTAL_DETAIL",
@@ -2698,8 +2817,7 @@ export async function processUnit(
             log(`[LocalOnly] Skipping CanonicalIngestionService for card ${feedCard.cardHash} (canonicalPersistenceEnabled=false)`, "info");
           } else {
             try {
-              const canonicalIngest = new CanonicalIngestionService();
-              const ingestRes = await withPersistenceBoundary("canonical ingestion", () => canonicalIngest.ingestOpportunity({
+              const capturePayload: Parameters<typeof ingestCapturedOpportunity>[0] = {
                 sourcePortal: unit.portal,
                 sourceJobId: resolvedIdentity.sourceJobId,
                 canonicalUrl: resolvedIdentity.canonicalUrl,
@@ -2731,7 +2849,8 @@ export async function processUnit(
                   executionPriority: 0,
                   snapshotPath: writtenSnapshotPath || null,
                 },
-              }, lineageScope ? {
+              };
+              const captureScope: Parameters<typeof ingestCapturedOpportunity>[1] = lineageScope ? {
                 mode: "SCOPED" as const,
                 tenantId: lineageScope.tenantId,
                 personId: lineageScope.personId,
@@ -2739,7 +2858,21 @@ export async function processUnit(
                 runId: mgr.runId,
               } : {
                 mode: "GLOBAL_MARKET" as const,
-              }));
+              };
+              if (transferSession) {
+                transferSession.stage(capturePayload, { cardId: cardUnitId, lineage: {
+                  scrapeRunId: mgr.runId, tenantId: lineageScope!.tenantId, personId: lineageScope!.personId,
+                  acquisitionLedgerId: ledgerItem.id, cardId: cardUnitId, ingestionAttempt: cardUnit.attempts,
+                  sourcePortal: unit.portal, sourceJobId: resolvedIdentity.sourceJobId,
+                  sourceUrl: feedCard.discoveryUrl || feedCard.detailUrl, resolvedUrl: resolvedIdentity.canonicalUrl,
+                  captureState: valResult.document.transportState, documentState: valResult.document.usabilityState,
+                  failureClass: valResult.failureClass,
+                } });
+                mgr.updateCard(cardUnitId, { status: "done", handoffStatus: "pending", snapshotPath: writtenSnapshotPath || null });
+                mgr.journal.append({ type: "capture_staged", cardId: cardUnitId });
+                return null;
+              }
+              const ingestRes = await withPersistenceBoundary("canonical ingestion", () => ingestCapturedOpportunity(capturePayload, captureScope, scrapeLease));
               canonicalIngestionResult = ingestRes;
               detailedCard = bindEvaluationEvidence(detailedCard, {
                 canonicalJobId: ingestRes.canonicalJobId,
@@ -2821,6 +2954,7 @@ export async function processUnit(
               if (err instanceof AcquisitionIntegrityError) {
                 throw err;
               }
+              if (err?.code === "PERSISTENCE_UNAVAILABLE") throw err;
               throw new AcquisitionIntegrityError(
                 `Canonical acquisition failed for ${resolvedIdentity.canonicalJobId}: ${err?.message}`,
                 err
@@ -2895,6 +3029,7 @@ export async function processUnit(
     let validationFailed = 0;
     let canonicalIngestFailed = 0;
     let novelAccepted = 0;
+    let locallyStaged = 0;
     let novelAcquired = 0;
     let cancelledOrPruned = 0;
 
@@ -2934,7 +3069,9 @@ export async function processUnit(
       } else if (cu.status === "skipped_pruned" || cu.status === "skipped_gated") {
         cancelledOrPruned++;
       } else if (cu.status === "done") {
-        if (cu.isNew) {
+        if (cu.handoffStatus && cu.handoffStatus !== "acknowledged") {
+          locallyStaged++;
+        } else if (cu.isNew) {
           novelAccepted++;
           if (cu.snapshotPath && fs.existsSync(cu.snapshotPath)) {
             novelAcquired++;
@@ -2948,7 +3085,7 @@ export async function processUnit(
     }
 
     const cardsParsed = cards.length;
-    const classified = canonicalDuplicates + ledgerKnown + hardFiltered + identityFailed + integrityFailed + validationFailed + canonicalIngestFailed + novelAccepted + cancelledOrPruned;
+    const classified = canonicalDuplicates + ledgerKnown + hardFiltered + identityFailed + integrityFailed + validationFailed + canonicalIngestFailed + novelAccepted + locallyStaged + cancelledOrPruned;
 
     if (classified !== cardsParsed) {
       log(`[AccountingInvariantViolation] cardsParsed=${cardsParsed}, classified=${classified} (Duplicates=${canonicalDuplicates}, Ledger=${ledgerKnown}, HardFiltered=${hardFiltered}, IdentityFailed=${identityFailed}, IntegrityFailed=${integrityFailed}, ValidationFailed=${validationFailed}, CanonicalIngestFailed=${canonicalIngestFailed}, NovelAccepted=${novelAccepted}, CancelledPruned=${cancelledOrPruned})`, "warn");
@@ -2962,7 +3099,7 @@ export async function processUnit(
     const rejected = ledgerKnown + hardFiltered + identityFailed + integrityFailed + validationFailed + canonicalIngestFailed;
     const opportunities = novelAccepted;
 
-    outcome.detailCount = novelAcquired;
+    outcome.detailCount = novelAcquired + locallyStaged;
     outcome.opportunities = opportunities;
     outcome.factsCreated = 0; // Enriched downstream
 
@@ -3031,7 +3168,7 @@ export async function processUnit(
     if (persistenceState?.unavailable) {
       decision = "STOP";
       reason = "PersistenceUnavailable";
-    } else if (cardsParsed > 0 && novelAccepted === 0 && reason === "DiscoveryRateAboveThreshold") {
+    } else if (cardsParsed > 0 && novelAccepted === 0 && locallyStaged === 0 && reason === "DiscoveryRateAboveThreshold") {
       reason = "NoveltyRateZero";
     }
 
@@ -3061,6 +3198,7 @@ export async function processUnit(
     try {
       mgr.appendMetric({
         type: "PageExecutionRecord",
+        locallyStaged,
         telemetrySchemaVersion: TELEMETRY_SCHEMA_VERSION,
         runId: mgr.runId,
         executionPlanId: unit.executionPlanId || "unknown",

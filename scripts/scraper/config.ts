@@ -153,6 +153,7 @@ export const CONFIG = {
   llmConcurrency: Number((!isBrowser && process.env?.LLM_CONCURRENCY) || 2),
   navTimeoutMs: 60_000,
   detailTimeoutMs: 15_000,
+  optionalFieldTimeoutMs: 1_000,
   captchaGateWaitMs: 120_000,    // 2 min manual solve budget
   captchaPollMs: 5_000,          // check interval
   

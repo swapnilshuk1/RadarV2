@@ -629,6 +629,7 @@ export class EnrichmentQueue {
        WHERE terminal.status IN ('COMPLETE', 'FAILED')
          AND terminal.payload_key IS NOT NULL
          AND terminal.payload_key != ''
+         AND NOT EXISTS (SELECT 1 FROM opportunity_versions AS source WHERE source.source_payload_key=terminal.payload_key)
          AND datetime(COALESCE(terminal.completed_at, terminal.created_at)) < datetime(?)
          AND NOT EXISTS (
            SELECT 1
@@ -639,6 +640,13 @@ export class EnrichmentQueue {
       [cutoffIso],
     );
     return rows.map((row) => row.payload_key);
+  }
+
+  public async isPayloadProtected(payloadKey: string): Promise<boolean> {
+    return Boolean(await this.db.one(`SELECT 1 AS protected
+      WHERE EXISTS (SELECT 1 FROM opportunity_versions WHERE source_payload_key=?)
+      OR EXISTS (SELECT 1 FROM enrichment_jobs WHERE payload_key=? AND status NOT IN ('COMPLETE','FAILED'))`,
+      [payloadKey,payloadKey]));
   }
 
   public async logEvent(jobId: string, eventType: string, details?: string): Promise<void> {

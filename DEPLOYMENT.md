@@ -1,6 +1,6 @@
 # RADAR deployment and release verification
 
-Current guide as of 19 September 2026. The primary checkout is
+Current guide as of 2 October 2026. The primary checkout is
 `C:\Users\swapn\Downloads\Radar V2` on `main`. See the
 [architecture](docs/ARCHITECTURE.md) and [backfill runbook](docs/operations/CONTEXT_REEVALUATION_DOSSIER_RUNBOOK.md).
 Use this guide for release preparation and verification. RADAR is currently
@@ -37,24 +37,43 @@ For current pre-production use, think in three distinct targets:
 ## Prove locally and identify the release
 
 Use an isolated local database with explicit environment overrides. `npm run dev`
-starts the web application plus the supervised evaluator service; evaluation remains
+starts the web application plus the complete supervised worker fleet; evaluation remains
 STOPPED until an authorized user presses **Start evaluation** in RADAR. It never runs
 migrations. Apply migrations explicitly with `npm run db:migrate` against the selected
-non-production target. Use `npm run dev:full` only when intentionally exercising the
-complete local worker fleet.
+non-production target. `npm run dev:full` retains the same full startup. Use
+`npm run dev -- --minimal` for web and evaluator only; searches then require a
+separate scraper worker. Local payload files are not shared with workers on other
+hosts: use isolated databases or shared object storage when running multiple hosts.
 During development, validate only the behavior invalidated by the change. Do not
 run TypeScript/build/full certification as a ritual after each correction. On the
 final release candidate, run the authoritative certification once; it already
 contains TypeScript and the production build. CI packages `.output` for its exact
-commit SHA. Pushing `main` runs CI; it does not deploy or activate serving.
+commit SHA. Pushing `main` runs CI and automatically deploys that exact artifact
+to Oracle when CI succeeds. Failed CI leaves the deployed release unchanged.
+
+## Automatic main deployment
+
+The CI completion event triggers **Deploy Oracle** for successful `push` runs on
+`main` in this repository. It uses the triggering run's SHA and retained artifact,
+not a newly rebuilt checkout. PRs, forks, failed CI and other branches cannot
+deploy. Deployment is serialized; superseded main commits are skipped before
+activation so a late CI completion does not deploy an older main revision.
+If a newer main push fails CI, the last healthy deployed release remains running.
+
+No Oracle webhook endpoint, inbound port or server-side Git checkout is needed.
+GitHub Actions uses the existing Oracle environment's SSH credentials and host
+key verification. After migration and process replacement, exact-SHA readiness
+and smoke checks run; failed activation attempts restore the previous verified
+release. Runtime secrets and the laptop's browser profiles remain external.
+The automatic trigger must be on GitHub's default `main` branch to be active.
 
 ## Deploy a selected certified commit to Oracle
 
 In GitHub, open **Actions → Deploy Oracle → Run workflow** on `main` and click
 **Run workflow**. Leave SHA blank to deploy the latest green `main` CI run, or
 enter a full 40-character SHA when selecting an older certified release. This is
-the normal deployment procedure: no local SSH, terminal preflight, rebuild or
-recertification is needed. The workflow has no push trigger. It accepts only a
+the manual retry/rollback path: no local SSH, terminal preflight, rebuild or
+recertification is needed. It accepts only a
 commit on `main` with a successful CI run and an unexpired release artifact. The
 equivalent CLI commands are:
 
@@ -70,7 +89,7 @@ retry path does not upload the 151 MB release again. It is safe to retry a faile
 workflow while the deployment concurrency lock is active; the selected SHA and
 live readiness result are recorded in the workflow summary.
 
-The GitHub `Oracle` environment was configured on 30 September 2026. Its
+The GitHub `Oracle` environment was updated for OCI on 2 October 2026. Its
 non-secret settings are:
 
 | Setting                          | Verified value                                                                |
@@ -80,7 +99,15 @@ non-secret settings are:
 | Public readiness URL             | `https://161.118.175.246.sslip.io`                                            |
 | Web port behind Caddy            | `3001` (`RADAR_WEB_PORT` in the host environment)                             |
 | Database                         | Turso `radar-db-preprod-clean-20260924`, fingerprint `turso:8917b590608c33c2` |
-| Deployment mode / server scraper | `single_host` / disabled                                                      |
+| Deployment mode / server scraper | `distributed` (OCI) / disabled                                               |
+
+The designated laptop runs acquisition; Oracle uses `RADAR_RUNTIME_ROLE=processing`,
+native OCI instance-principal reads, web and seven processing workers. Apply
+migration 071 before switching ingress and acquisition together. Keep the GitHub
+`Oracle` environment's `RADAR_DEPLOYMENT_MODE=distributed`: the deployment script
+exports that setting over host configuration. Rollback must retain OCI access
+for newly admitted source keys. See [OCI storage](docs/OCI_STORAGE.md) for the
+current topology, source-refresh semantics, retention and runtime checks.
 
 The app directory's historical name does **not** describe the active database.
 The running app and workers use Turso. The host's `/home/ubuntu/radar-sqlite-candidate/.env`
@@ -128,11 +155,17 @@ locally do not establish production access or quota. Keep credentials outside Gi
 and release archives.
 
 `scripts/deploy.ts` and older deployment helpers can perform live writes and
-restarts. Their presence is not authorization to execute them. Production server,
-database and process changes require explicit approval after local proof. Do not
-deploy simply to complete a code cleanup or documentation update.
+restarts. The owner-authorized automatic main workflow is the normal release path:
+a successful certified main push authorizes its deployment to the configured
+Oracle target. Manual certified-SHA workflow dispatch remains available for
+retries and rollback. This does not authorize deploying to another server or
+database, rewriting immutable data, or running unrelated destructive helpers.
 
 ## Verify before activation
+
+Activation and rollback delete each managed PM2 process independently before
+starting the selected release. A disabled or absent scraper must not prevent
+other workers from leaving the previous release directory.
 
 After deployment, verify the actual running SHA, database target, migration state,
 the intended process set and the rendered journey being exercised. Verify provider
