@@ -360,3 +360,17 @@ connection under the per-file coordinator. The upstream local transaction API
 detaches its native connection per transaction; avoiding that churn prevents the
 observed Windows shutdown access violation and keeps connection PRAGMAs effective.
 Remote Turso transactions continue to use the provider transaction API.
+
+
+Administration self-audit corrections: fixture acceptance versions are checked at
+publication; bench completion and provider dispatch are fenced against revoked
+access, stale revisions and expired leases. Explicit model lanes have distinct
+tenant/lane process pools under the host provider ceiling. Usage reads classify
+malformed token records as unknown. See [ADMIN_SELF_AUDIT.md](ADMIN_SELF_AUDIT.md).
+
+Migration 076 freezes completed bench evidence and its identity. Configuration
+mutations compare an active/draft state hash inside the transaction; operator
+cancellation fences abandoned bench work. Repair evidence is typed and publication
+shows a field-level diff. Host/release attestation, Pursuit bench coverage, quota
+write versioning and production policy defaults remain open release prerequisites,
+recorded in the self-audit. This branch is not a production-complete control plane.

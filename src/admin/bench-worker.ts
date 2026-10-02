@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { StageObserver } from "../lib/model/stage-observer";
 import type { DatabaseAdapter } from "../data/database/adapter";
 import type { ReasoningModel, Dossier } from "../dossier/contracts";
 import type { ModelInvocationSink, ModelCallMetadata } from "../lib/model/model-invocation";
@@ -45,6 +46,8 @@ export type BenchResult = {
   safeToPublish: boolean;
   verdictsChanged: number;
   passToPursue: number;
+  passToAdmitted?: number;
+  screeningRelaxations?: number;
   invalidOutputs: number;
   validationRepairs?: number;
   cases: Record<string, unknown>[];
@@ -143,8 +146,8 @@ export class BenchWorker {
     const timer = setInterval(() => {
       void this.db
         .execute(
-          "UPDATE admin_bench_runs SET lease_until=? WHERE id=? AND lease_token=? AND status='running'",
-          [Date.now() + 600000, row.id, token],
+          "UPDATE admin_bench_runs SET lease_until=? WHERE id=? AND lease_token=? AND status='running' AND lease_until>?",
+          [Date.now() + 600000, row.id, token, Date.now()],
         )
         .catch(() => {});
     }, 30000);
@@ -162,26 +165,68 @@ export class BenchWorker {
       result.passToPursue = result.cases.filter(
         (c) => c.beforeVerdict === "PASS" && c.afterVerdict === "PURSUE",
       ).length;
+      result.passToAdmitted = result.cases.filter(
+        (c) =>
+          c.beforeVerdict === "PASS" && ["PURSUE", "CONSIDER"].includes(String(c.afterVerdict)),
+      ).length;
+      result.screeningRelaxations = result.cases.filter(
+        (c) => c.beforeViability === "BLOCKED" && c.afterViability !== "BLOCKED",
+      ).length;
       result.verdictsChanged = result.cases.filter(
         (c) => c.beforeVerdict !== c.afterVerdict,
       ).length;
       result.safeToPublish =
         result.safeToPublish &&
-        result.passToPursue === 0 &&
+        result.passToAdmitted === 0 &&
+        result.screeningRelaxations === 0 &&
         result.invalidOutputs === 0 &&
         (result.validationRepairs ?? 0) === 0 &&
         result.cases.length === benchFixtures().length &&
-        result.fixtureVersion === BENCH_FIXTURE_VERSION;
-      await this.db.execute(
-        "UPDATE admin_bench_runs SET status=?,result_json=?,completed_at=?,lease_token=NULL,lease_until=NULL WHERE id=? AND lease_token=? AND status='running'",
-        [
-          result.safeToPublish ? "passed" : "failed",
-          JSON.stringify(result),
-          Date.now(),
-          row.id,
-          token,
-        ],
-      );
+        result.fixtureVersion === BENCH_FIXTURE_VERSION &&
+        benchFixtures().every((fixture) => {
+          const matches = result.cases.filter((c) => c.fixture === fixture.opportunity.id);
+          if (matches.length !== 1) return false;
+          const c = matches[0];
+          if (
+            ![c.beforeVerdict, c.afterVerdict].every((v) =>
+              ["PURSUE", "CONSIDER", "PASS"].includes(String(v)),
+            ) ||
+            ![c.beforeViability, c.afterViability].every((v) =>
+              ["PLAUSIBLE", "BLOCKED"].includes(String(v)),
+            )
+          )
+            return false;
+          if (fixture.opportunity.id === "growth-leadership")
+            return (
+              [c.beforeVerdict, c.afterVerdict].every((v) =>
+                ["PURSUE", "CONSIDER"].includes(String(v)),
+              ) &&
+              c.beforeViability === "PLAUSIBLE" &&
+              c.afterViability === "PLAUSIBLE"
+            );
+          return (
+            fixture.opportunity.id !== "mandatory-license" ||
+            (c.beforeVerdict === "PASS" &&
+              c.afterVerdict === "PASS" &&
+              c.beforeViability === "BLOCKED" &&
+              c.afterViability === "BLOCKED")
+          );
+        });
+      await this.db.transaction(async (tx) => {
+        await this.assertCurrent(tx, row, token);
+        const completed = await tx.execute(
+          "UPDATE admin_bench_runs SET status=?,result_json=?,completed_at=?,lease_token=NULL,lease_until=NULL WHERE id=? AND lease_token=? AND status='running' AND lease_until>?",
+          [
+            result.safeToPublish ? "passed" : "failed",
+            JSON.stringify(result),
+            Date.now(),
+            row.id,
+            token,
+            Date.now(),
+          ],
+        );
+        if (!completed.rowsAffected) throw new Error("BENCH_LEASE_LOST");
+      });
       return { id: row.id, status: result.safeToPublish ? "passed" : "failed" };
     } catch (error) {
       // Provider messages may contain request details; store only a classified label.
@@ -198,6 +243,26 @@ export class BenchWorker {
       clearInterval(timer);
     }
   }
+  private async assertCurrent(db: DatabaseAdapter, row: BenchRow, token: string) {
+    await requirePlatformRole(db, row.created_by, true);
+    const active = await activeRevision(
+      db,
+      row.scope === "platform" ? undefined : row.scope.slice(7),
+    );
+    const draft = await db.one<{ revision_id: string }>(
+      "SELECT revision_id FROM config_drafts WHERE scope=?",
+      [row.scope],
+    );
+    if (active.id !== row.active_revision_id || draft?.revision_id !== row.revision_id)
+      throw new Error("BENCH_REVISION_STALE");
+    if (
+      !(await db.one(
+        "SELECT id FROM admin_bench_runs WHERE id=? AND lease_token=? AND status='running' AND lease_until>?",
+        [row.id, token, Date.now()],
+      ))
+    )
+      throw new Error("BENCH_LEASE_LOST");
+  }
   private model(
     row: BenchRow,
     token: string,
@@ -208,14 +273,14 @@ export class BenchWorker {
   ): ReasoningModel {
     const sink: ModelInvocationSink = async (event) => {
       await this.db.execute(
-        `INSERT INTO model_invocations(id,tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,pipeline,stage,attempt,provider,model_id,model_version,model_configuration_fingerprint,request_fingerprint,started_at,completed_at,input_tokens,output_tokens,total_tokens,reasoning_tokens,status,purpose,bench_run_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'BENCH',?) ON CONFLICT(id) DO UPDATE SET completed_at=excluded.completed_at,input_tokens=excluded.input_tokens,output_tokens=excluded.output_tokens,total_tokens=excluded.total_tokens,reasoning_tokens=excluded.reasoning_tokens,status=excluded.status`,
+        `INSERT INTO model_invocations(id,tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,pipeline,stage,attempt,provider,model_id,model_version,model_configuration_fingerprint,request_fingerprint,started_at,completed_at,input_tokens,output_tokens,total_tokens,reasoning_tokens,status,purpose,bench_run_id,max_output_tokens,latency_ms,finish_reason,error_code) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'BENCH',?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET completed_at=excluded.completed_at,input_tokens=excluded.input_tokens,output_tokens=excluded.output_tokens,total_tokens=excluded.total_tokens,reasoning_tokens=excluded.reasoning_tokens,status=excluded.status,latency_ms=excluded.latency_ms,finish_reason=excluded.finish_reason,error_code=excluded.error_code`,
         [
           event.invocationId,
           row.scope === "platform" ? "platform-bench" : row.scope.slice(7),
           "synthetic-fixture",
           `bench:${row.id}`,
           "fixture",
-          row.revision_id,
+          side === "active" ? row.active_revision_id : row.revision_id,
           lane === "reasoning" ? "evaluation" : review ? "factual_review" : "dossier",
           event.stage,
           event.attempt,
@@ -232,9 +297,15 @@ export class BenchWorker {
           event.usage?.reasoningTokens ?? null,
           event.status,
           row.id,
+          event.maxOutputTokens ?? null,
+          event.completedAt === undefined ? null : Math.max(0, event.completedAt - event.startedAt),
+          event.finishReason ?? null,
+          event.errorCode ? "BENCH_PROVIDER_FAILURE" : null,
         ],
       );
     };
+    // Recheck after waiting for a provider slot, immediately before dispatch.
+    sink.beforeCall = async () => this.db.transaction((tx) => this.assertCurrent(tx, row, token));
     const model = laneModel(
       config,
       lane,
@@ -245,6 +316,7 @@ export class BenchWorker {
             ? createFactualReviewModel({ invocationSink: sink })
             : createDossierWriterModel({ invocationSink: sink }),
       sink,
+      `bench:${row.scope}`,
     );
     return {
       ...model,
@@ -294,8 +366,8 @@ export class BenchWorker {
       draft = await revision(this.db, row.revision_id),
       cases: Record<string, unknown>[] = [];
     let validationRepairs = 0;
-    const onStage = (stage: string) => {
-      if (/local repair|repairing|repair attempt|Correcting/i.test(stage)) validationRepairs++;
+    const onStage: StageObserver = (_stage, event) => {
+      if (event?.kind === "repair") validationRepairs++;
     };
     for (const frozen of benchFixtures()) {
       const before = await runStagedFrozenDecisionDetailed(

@@ -114,3 +114,56 @@ describe("Administration foundations", () => {
     raw.close();
   });
 });
+it("reports malformed usage as unavailable instead of negative or invented measurements", async () => {
+  const { raw, db } = fixture();
+  const day = new Date().toISOString().slice(0, 10);
+  for (const [input, output, total] of [
+    [-10, 2, null],
+    [1.5, 2, null],
+    [10, 2, 1],
+  ]) {
+    raw
+      .prepare(
+        "INSERT INTO model_invocations(tenant_id,pipeline,provider,model_id,started_at,status,input_tokens,output_tokens,total_tokens) VALUES('a','evaluation','bedrock','bad',?,'completed',?,?,?)",
+      )
+      .run(Date.parse(day), input, output, total);
+  }
+  await rollupUsage(db, day, day);
+  const snap = await readAdminSnapshot(db, "operator", "a", 1);
+  expect(snap.sections.find((s) => s.title === "Usage")?.rows?.[0]).toMatchObject({
+    measured: 0,
+    input_tokens: null,
+    output_tokens: null,
+  });
+  raw.close();
+});
+
+it("bounds and redacts audit detail while console GETs remain read-only", async () => {
+  const { raw, db } = fixture();
+  await appendAdminAudit(db, {
+    actor: "operator",
+    action: "test",
+    target: "fixture",
+    reason: "bounded detail",
+    detail: { apiKey: "do-not-store", nested: { lease_token: "do-not-store" }, budget: 5000 },
+  });
+  const row = await db.one<{ detail_json: string }>("SELECT detail_json FROM admin_audit_log");
+  expect(JSON.parse(row!.detail_json)).toEqual({
+    apiKey: "[redacted]",
+    nested: { lease_token: "[redacted]" },
+    budget: 5000,
+  });
+  await expect(
+    appendAdminAudit(db, {
+      actor: "operator",
+      action: "test",
+      target: "fixture",
+      reason: "size bound",
+      detail: { oversized: "x".repeat(65537) },
+    }),
+  ).rejects.toThrow("AUDIT_DETAIL_TOO_LARGE");
+  const count = raw.prepare("SELECT COUNT(*) n FROM admin_audit_log").get();
+  await readAdminSnapshot(db, "operator");
+  expect(raw.prepare("SELECT COUNT(*) n FROM admin_audit_log").get()).toEqual(count);
+  raw.close();
+});

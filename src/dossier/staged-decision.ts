@@ -1,3 +1,4 @@
+import type { StageObserver } from "../lib/model/stage-observer";
 import { createHash } from 'node:crypto';
 import { ModelProviderUnavailableError } from '../lib/model/provider-unavailable';
 import { z } from 'zod';
@@ -68,7 +69,7 @@ async function proposeStage<T>(
   input: unknown,
   schema: z.ZodTypeAny,
   validate: (value: unknown) => T,
-  onStage: (stage: string) => void,
+  onStage: StageObserver,
   callStage = label,
 ): Promise<T> {
   const key = stageKey(model, instruction, input, schema);
@@ -79,7 +80,7 @@ async function proposeStage<T>(
   let previous: unknown;
   let issue = '';
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    onStage(attempt ? `${label} — local repair ${attempt}` : label);
+    onStage(attempt ? `${label} — local repair ${attempt}` : label, attempt ? { kind: "repair", stage: label } : undefined);
     try {
       previous = await model.generate(
         instruction,
@@ -584,7 +585,7 @@ function validateResolutions(value: unknown, frozen: StagedResearchInput) {
 export async function runStagedFrozenDecisionDetailed(
   frozen: StagedResearchInput,
   model: ReasoningModel,
-  onStage: (stage: string) => void = () => {},
+  onStage: StageObserver = () => {},
 ): Promise<StagedDecisionResult> {
   const roleClaims = frozen.evidence.filter(claim => claim.plane === 'JD');
   const candidateClaims = frozen.evidence.filter(claim => claim.plane === 'CANDIDATE');
@@ -861,7 +862,7 @@ export async function runStagedFrozenDecisionDetailed(
 export async function runStagedFrozenDecision(
   frozen: StagedResearchInput,
   model: ReasoningModel,
-  onStage: (stage: string) => void = () => {},
+  onStage: StageObserver = () => {},
 ) {
   return (await runStagedFrozenDecisionDetailed(frozen, model, onStage)).decision;
 }

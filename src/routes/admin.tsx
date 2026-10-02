@@ -125,7 +125,10 @@ function AdminShell() {
                     ].includes(s.title),
                 )
               : [];
-  const stale = !data.rollupAt || Date.now() - data.rollupAt > 2 * 3600000;
+  const stale =
+    !data.rollupAt ||
+    data.sections.find((s) => s.title === "Usage")?.rows === null ||
+    Date.now() - data.rollupAt > 2 * 3600000;
   return (
     <main className="mx-auto min-h-screen max-w-[1500px] pt-28 text-foreground">
       <div className="grid min-h-screen md:grid-cols-[238px_minmax(0,1fr)]">

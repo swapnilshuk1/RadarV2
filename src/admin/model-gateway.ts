@@ -11,6 +11,7 @@ export function laneModel(
   lane: ModelLane,
   legacy: () => ReasoningModel,
   sink?: ModelInvocationSink,
+  concurrencyScope = "platform",
 ): ReasoningModel {
   const settings = config[lane];
   if (settings.model === "legacy") return legacy();
@@ -35,6 +36,7 @@ export function laneModel(
       ),
       invocationSink: sink,
       providerConcurrencyLimit: settings.concurrency,
+      providerConcurrencyKey: `radar-lane:${concurrencyScope}:${lane}`,
     },
   );
   const generate = model.generate.bind(model);
@@ -68,5 +70,6 @@ export async function createJobModel(
     context.pipeline === "evaluation" ? "reasoning" : "writing",
     legacy,
     sink,
+    context.tenantId,
   );
 }

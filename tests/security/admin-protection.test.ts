@@ -616,3 +616,15 @@ describe("Administration protection", () => {
     expect(snap.sections.find((s) => s.title === "Alerts")?.rows).toEqual([]);
   });
 });
+it("does not admit quota capacity from malformed historical token usage", async () => {
+  const db = await fixture();
+  await setQuota(db, { reasoning_monthly: 100000 });
+  await db.execute(
+    `INSERT INTO model_invocations(id,tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,pipeline,stage,attempt,provider,model_id,model_version,model_configuration_fingerprint,request_fingerprint,started_at,input_tokens,output_tokens,total_tokens,status) VALUES('bad-history','tenant_A','person_A','fixture','fixture','fixture','evaluation','decision',1,'bedrock','fixture','1','fixture','fixture',?,-100,1,-99,'completed')`,
+    [Date.now()],
+  );
+  expect(await claim(db)).toBe(false);
+  expect((await db.one<{ reason: string }>("SELECT reason FROM quota_deferrals"))?.reason).toBe(
+    "LEGACY_USAGE_UNMEASURED",
+  );
+});

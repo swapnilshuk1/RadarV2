@@ -191,13 +191,15 @@ class AsyncSemaphore {
   async run<T>(fn: () => Promise<T>): Promise<T> {
     if (this.active >= this.limit) {
       await new Promise<void>((resolve) => this.waiters.push(resolve));
-    }
-    this.active += 1;
+    } else this.active += 1;
     try {
       return await fn();
     } finally {
-      this.active -= 1;
-      this.waiters.shift()?.();
+      // Transfer the occupied slot directly; a new arrival cannot steal it
+      // before the queued waiter's continuation runs.
+      const next = this.waiters.shift();
+      if (next) next();
+      else this.active -= 1;
     }
   }
 }
@@ -211,7 +213,7 @@ export function withProviderConcurrency<T>(
   limit: number,
   fn: () => Promise<T>,
 ): Promise<T> {
-  const bounded = Math.max(1, Math.floor(limit));
+  const bounded = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : 1;
   const map =
     globalLimiters.__RADAR_MODEL_PROVIDER_LIMITERS__ ??
     (globalLimiters.__RADAR_MODEL_PROVIDER_LIMITERS__ = new Map());

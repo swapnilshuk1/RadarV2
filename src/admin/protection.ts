@@ -1,4 +1,5 @@
 import { pinJobConfig } from "./config-store";
+import { measuredUsageSql } from "./usage-accounting";
 import { createHash } from "node:crypto";
 import type { DatabaseAdapter } from "../data/database/adapter";
 import type { ModelInvocationContext, ModelInvocationEvent } from "../lib/model/model-invocation";
@@ -112,7 +113,7 @@ async function monthlyReserved(
   const legacy = await db.one<{ n: number; unknown: number }>(
     `SELECT
     COALESCE(SUM(MAX(COALESCE(total_tokens,0), COALESCE(input_tokens,0)+COALESCE(output_tokens,0)+CASE WHEN provider='vertex-gemini' THEN COALESCE(reasoning_tokens,0) ELSE 0 END)),0) n,
-    COALESCE(SUM(input_tokens IS NULL OR output_tokens IS NULL),0) unknown
+    COALESCE(SUM(NOT ${measuredUsageSql}),0) unknown
     FROM model_invocations m WHERE tenant_id=? AND started_at>=? AND started_at<? ${benchFilter}
     AND ${lane === "reasoning" ? "pipeline='evaluation'" : "pipeline IN ('dossier','factual_review','pursuit')"}
     AND NOT EXISTS(SELECT 1 FROM quota_calls c WHERE c.id=m.id)`,

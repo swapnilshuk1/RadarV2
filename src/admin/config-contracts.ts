@@ -50,6 +50,7 @@ export const configMutationSchema = z
       benchId: z.string().min(1),
     }),
     z.object({ kind: z.literal("revert"), revisionId: z.string().min(1) }),
+    z.object({ kind: z.literal("cancel_bench"), benchId: z.string().min(1) }),
     z.object({
       kind: z.literal("bench"),
       revisionId: z.string().min(1),
@@ -60,6 +61,7 @@ export const configMutationSchema = z
     z.object({
       tenantId: z.string().min(1).optional(),
       reason: z.string().trim().min(3).max(1000),
+      expectedState: z.string().min(1),
     }),
   );
 export type ConfigMutation = z.infer<typeof configMutationSchema>;

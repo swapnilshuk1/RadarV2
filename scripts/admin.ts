@@ -24,10 +24,10 @@ try {
   } else if (command === "grant" || command === "revoke") {
     const user = args.includes("--user") ? value("--user") : "";
     const reason = args.includes("--reason") ? value("--reason") : "";
-    const role = args.includes("--role") ? value("--role") : "operator";
+    const role = args.includes("--role") ? value("--role") : command === "revoke" ? "viewer" : "";
     if (!user || !reason.trim() || !["operator", "viewer"].includes(role))
       throw new Error(
-        "Require --user existing-user-id, --reason and optional --role operator|viewer",
+        "Require --user existing-user-id, --reason and --role operator|viewer for grants",
       );
     if (!(await db.one("SELECT id FROM users WHERE id=?", [user]))) throw new Error("UNKNOWN_USER");
     console.log(

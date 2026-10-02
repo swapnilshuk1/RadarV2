@@ -175,6 +175,7 @@ export async function preparePursuit(job: store.PreparationJob): Promise<void> {
         throw new Error("UNEXPECTED_LEGACY_MODEL");
       },
       model.invocationSink,
+      scope.tenantId,
     );
     model.configuredModels = [
       {

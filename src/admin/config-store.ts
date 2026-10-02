@@ -8,12 +8,17 @@ import {
   type ConfigMutation,
 } from "./config-contracts";
 import { requirePlatformRole, appendAdminAudit } from "./service";
+import { BENCH_FIXTURE_VERSION } from "./bench-version";
 export const BASELINE_REVISION = "engine-baseline-v1";
 export const configFingerprint = (config: EngineConfig) =>
   createHash("sha256")
     .update(JSON.stringify(engineConfigSchema.parse(config)))
     .digest("hex");
 export const configScope = (tenant?: string) => (tenant ? `tenant:${tenant}` : "platform");
+export const configState = (activeId: string, draftId?: string | null) =>
+  createHash("sha256")
+    .update(JSON.stringify([activeId, draftId ?? null]))
+    .digest("hex");
 export async function configInstalled(db: DatabaseAdapter) {
   return Boolean(
     await db.one("SELECT name FROM sqlite_master WHERE type='table' AND name='config_revisions'"),
@@ -62,6 +67,7 @@ export async function readConfigSnapshot(db: DatabaseAdapter, user: string, tena
   return {
     role,
     active,
+    state: configState(active.id, draft?.revision_id),
     draft: draft ? await revision(db, draft.revision_id) : null,
     history,
     benches,
@@ -103,7 +109,29 @@ export async function mutateConfig(db: DatabaseAdapter, user: string, input: Con
       throw new Error("UNKNOWN_TENANT");
     const scope = configScope(data.tenantId),
       active = await activeRevision(tx, data.tenantId);
+    const currentDraft = await tx.one<{ revision_id: string }>(
+      "SELECT revision_id FROM config_drafts WHERE scope=?",
+      [scope],
+    );
+    if (data.expectedState !== configState(active.id, currentDraft?.revision_id))
+      throw new Error("ADMIN_STATE_CHANGED; refresh before retrying");
     let id: string;
+    if (data.kind === "cancel_bench") {
+      const cancelled = await tx.execute(
+        "UPDATE admin_bench_runs SET status='failed',error='BENCH_OPERATOR_CANCELLED',completed_at=?,lease_token=NULL,lease_until=NULL WHERE id=? AND scope=? AND status IN ('queued','running')",
+        [Date.now(), data.benchId, scope],
+      );
+      if (!cancelled.rowsAffected) throw new Error("BENCH_NOT_LIVE_IN_SCOPE");
+      await appendAdminAudit(tx, {
+        actor: user,
+        tenant: data.tenantId,
+        action: "config.cancel_bench",
+        target: data.benchId,
+        reason: data.reason,
+        detail: { after: "failed", revisionId: active.id },
+      });
+      return { id: data.benchId };
+    }
     if (data.kind === "draft") id = await makeRevision(tx, scope, active.id, data.config, user);
     else if (data.kind === "revert") {
       const target = await revision(tx, data.revisionId);
@@ -147,7 +175,8 @@ export async function mutateConfig(db: DatabaseAdapter, user: string, input: Con
           target.parent_id !== active.id ||
           bench?.status !== "passed" ||
           !bench.result_json ||
-          JSON.parse(bench.result_json).safeToPublish !== true
+          JSON.parse(bench.result_json).safeToPublish !== true ||
+          JSON.parse(bench.result_json).fixtureVersion !== BENCH_FIXTURE_VERSION
         )
           throw new Error("CONFIG_BENCH_REQUIRED");
         await tx.execute(

@@ -122,22 +122,23 @@ export class GeminiJsonModel implements JsonModel {
       });
     };
 
-    await this.options.invocationSink?.beforeCall?.({
-      id: invocationId,
-      instruction,
-      input,
-      schema: responseSchema,
-      maxOutput: maxOutputTokens,
-    });
-    await record("running");
-
+    let admitted = false;
     try {
       const response = await withProviderConcurrency(
         `vertex-gemini:${this.projectId}:${location}`,
         this.options.providerConcurrencyLimit ??
           Number(process.env.RADAR_MODEL_PROVIDER_CONCURRENCY || "6"),
-        async () =>
-          this.request(
+        async () => {
+          await this.options.invocationSink?.beforeCall?.({
+            id: invocationId,
+            instruction,
+            input,
+            schema: responseSchema,
+            maxOutput: maxOutputTokens,
+          });
+          admitted = true;
+          await record("running");
+          return this.request(
             `https://${host}/v1/projects/${this.projectId}/locations/${location}/publishers/google/models/${this.version}:generateContent`,
             {
               method: "POST",
@@ -168,7 +169,8 @@ export class GeminiJsonModel implements JsonModel {
                 },
               }),
             },
-          ),
+          );
+        },
       );
 
       const backoffKey = `vertex-gemini:${this.configurationFingerprint}`;
@@ -227,6 +229,7 @@ export class GeminiJsonModel implements JsonModel {
       await record("completed");
       return parsed;
     } catch (error) {
+      if (!admitted) throw error;
       if (error instanceof ModelInvalidOutputError) throw error;
       if (error instanceof ModelProviderUnavailableError) {
         await record("provider_error", error.message);

@@ -11,7 +11,7 @@ operator. No user receives platform access automatically. Revocation takes effec
 on the next request. Every server read checks the role before reading tenant data.
 
 ```powershell
-npx tsx scripts/admin.ts grant --user USER_ID --reason "Initial console operator"
+npx tsx scripts/admin.ts grant --user USER_ID --role operator --reason "Initial console operator"
 # Inspect the database target printed above, then run the same command with --apply.
 npx tsx scripts/admin.ts revoke --user USER_ID --reason "Access removed" --apply
 npx tsx scripts/admin.ts rollup --apply
@@ -29,7 +29,8 @@ late completions. The default refresh reconciles the last 30 UTC calendar days.
 Repeated runs do not double count. This branch does not install a scheduler or
 start additional workers. The UI flags rollups older than two hours as stale.
 Windows are UTC calendar days, not rolling hours. Unknown token measurements
-remain unavailable. Recorded invalid outputs measure invocation status, not the
+remain unavailable. Negative, fractional or inconsistent token telemetry is also
+unknown; it cannot provide quota capacity. Recorded invalid outputs measure invocation status, not the
 semantic quality of the resulting decision. BENCH invocations are retained but excluded from tenant usage rollups.
 
 Overview and Audit are read-only. Operations and Tenants & Quotas expose
@@ -37,8 +38,9 @@ operator-only protection writes; Engine and Models expose configuration drafts
 and fixture benches.
 Engine shows the fixed stage order and each stage's inputs, decisions, continuation
 and stop conditions. REVIEW continues to evaluation. Configuration revisions and fixture benches are implemented below. Taxonomy
-edits remain Phase 4; no disabled control implies they are implemented. DAU/WAU/MAU, p95 latency and active config
-revision are unavailable until the necessary instrumentation exists. Membership
+edits remain Phase 4; no disabled control implies they are implemented. DAU/WAU/MAU and p95 latency are unavailable until the necessary instrumentation exists.
+Active revisions appear in Engine/Models; Operations groups queue pins by revision.
+Per-worker last-claimed revision is unavailable because jobs do not record a host identity. Membership
 counts are not active-user counts. Worker observations are global, so a selected
 tenant view omits them instead of falsely attributing hosts to that tenant.
 
@@ -226,11 +228,11 @@ to canonical evaluations, serving tables or the shortlist. Invocations carry
 `purpose='BENCH'` and a bench run ID; they are excluded from tenant rollups and
 tenant quota accounting, while remaining visible as invocation evidence.
 
-Each run has a 50,000–1,000,000 token admission cap, default 500,000. Input byte
+Each run has a 50,000–1,000,000 admission-unit cap, default 500,000. Input byte
 bounds plus output allowances reserve capacity before each call; bounds are
 retained rather than refunded. This may defer a long bench before all fixtures
 finish. It is an admission cap, not an exact tokenizer or provider billing limit.
-Any PASS-to-PURSUE flip, invalid transport output, validation repair, source
+Any PASS-to-PURSUE/CONSIDER flip, BLOCKED-to-PLAUSIBLE screening relaxation, invalid transport output, validation repair, source
 integrity failure, incomplete fixture suite or provider failure blocks publish.
 A failed run retains its reservation and a classified error; it cannot become a
 passing result through a retry. Running it again is an explicit new bench.
@@ -246,3 +248,66 @@ publication, immutable queued pins, revert behavior, competing bench workers,
 preflight caps, revocation, expiry, fixture provenance and BENCH usage exclusion.
 Provider requests are simulated in automated tests; a successful worker-host
 bench is still required before activating a specific assignment.
+
+
+## Self-audit corrections after Phase 3
+
+The self-audit is recorded in [ADMIN_SELF_AUDIT.md](ADMIN_SELF_AUDIT.md).
+Bench acceptance is now `executive-fixtures-v2`. Results must cover each fixture
+exactly once with valid verdict/viability fields. The direct-fit fixture must
+remain viable with PURSUE or CONSIDER; the explicit missing-license fixture must
+remain PASS/BLOCKED. These are synthetic fixture expectations, not new gates on
+real opportunities. Older passing benches cannot authorize publication; run a
+new bench against the current fixture version.
+
+Bench completion checks current draft/active scope, operator role and live lease
+in the completion transaction. Heartbeats cannot revive expired leases. Provider
+preflight runs after waiting for a concurrency slot; bench workers recheck access
+and revision before actual dispatch. Call receipts bind the active/draft revision
+and include output allowance, latency, finish reason and a classified error.
+
+Explicit lane concurrency is per tenant/lane/limit within one process, with the
+host Mantle provider ceiling additionally enforced. Different configured limits
+use separate pools, so running old revisions retain their pool. This is not a
+cross-host lane semaphore; tenant concurrent-job quotas remain the durable
+cross-worker boundary. Pursuit uses the same tenant writing pool. Local host
+assignments retain their existing provider pool.
+
+While editing unsaved values, bench, publish, discard and restore controls are
+disabled. Save or cancel first so the displayed values correspond to the draft
+being tested or published. Queue revision ledgers show pins, not a claim that a
+particular host has acknowledged a revision.
+
+
+## Secondary audit corrections and remaining prerequisites
+
+Migration 076 protects completed bench rows from update/deletion, freezes run
+identity and restricts legal state transitions. Apply it to the same database
+as the web and bench worker; existing migrations 072–075 are unchanged.
+Repair detection consumes typed evaluator/composer events rather than progress
+messages. Every configuration mutation includes the active/draft state hash;
+stale editors receive `ADMIN_STATE_CHANGED` and must refresh. This protects
+configuration writes; quota and pause controls still need their own version checks.
+
+The publication dialog lists changed fields and the matching bench summary.
+Operators can cancel a queued/running bench with a reason; cancellation clears
+its lease and fences later dispatch/completion. Already dispatched requests may
+finish, and their measured receipts remain visible. No automatic paid retry occurs.
+The console labels byte-derived input/output reservations as admission units.
+
+Console reads no longer create durable audit events. Mutations remain audited;
+detail is capped at 64 KiB and known credential/lease keys are redacted recursively.
+Callers must still exclude source payloads and credentials from prose. Unavailable
+sections emit a structured server diagnostic without SQL arguments or raw errors.
+CLI role grants require an explicit `--role operator|viewer`.
+
+**Do not activate these phases as production-complete yet.** Host/release-bound
+bench attestation, Pursuit fixture coverage, quota/pause optimistic concurrency,
+explicit production quota provisioning and tenant return-to-platform inheritance
+are still required. A disposable remote-Turso contention proof and authoritative
+GitHub CI on the final SHA are also outstanding. Legacy baseline pins do not freeze
+host environment variables. See [ADMIN_SELF_AUDIT.md](ADMIN_SELF_AUDIT.md) for the
+finding-by-finding disposition.
+
+Merging/pushing to main can automatically deploy Oracle and run migrations.
+Keep this branch isolated until deployment prerequisites are actually satisfied.

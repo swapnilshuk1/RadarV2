@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseAdapter } from "../data/database/adapter";
+import { measuredUsageSql } from "./usage-accounting";
 
 export async function requirePlatformRole(db: DatabaseAdapter, userId: string, write = false) {
   const row = await db.one<{ role: "operator" | "viewer" }>(
@@ -23,6 +24,14 @@ export async function appendAdminAudit(
   },
 ) {
   if (!entry.reason.trim()) throw new Error("AUDIT_REASON_REQUIRED");
+  const detailJson = JSON.stringify(entry.detail ?? {}, (key, value) =>
+    /^(api_?key|authorization|password|private_?key|secret|access_?token|refresh_?token|lease_?token)$/i.test(
+      key,
+    )
+      ? "[redacted]"
+      : value,
+  );
+  if (Buffer.byteLength(detailJson, "utf8") > 65536) throw new Error("AUDIT_DETAIL_TOO_LARGE");
   await db.execute("INSERT INTO admin_audit_log VALUES(?,?,?,?,?,?,?,?)", [
     randomUUID(),
     Date.now(),
@@ -31,7 +40,7 @@ export async function appendAdminAudit(
     entry.tenant ?? null,
     entry.target,
     entry.reason,
-    JSON.stringify(entry.detail ?? {}),
+    detailJson,
   ]);
 }
 
@@ -54,7 +63,7 @@ export async function rollupUsage(db: DatabaseAdapter, firstDay: string, lastDay
       `INSERT INTO usage_daily
       SELECT date(started_at/1000,'unixepoch'),tenant_id,pipeline,provider,model_id,
       COUNT(*),SUM(status='completed'),SUM(status IN ('provider_error','transport_error','invalid_output')),
-      SUM(status='invalid_output'),SUM(input_tokens IS NOT NULL AND output_tokens IS NOT NULL),
+      SUM(status='invalid_output'),SUM(${measuredUsageSql}),
       SUM(COALESCE(input_tokens,0)),SUM(MAX(COALESCE(output_tokens,0)+CASE WHEN provider='vertex-gemini' THEN COALESCE(reasoning_tokens,0) ELSE 0 END, COALESCE(total_tokens,0)-COALESCE(input_tokens,0)))
       FROM model_invocations WHERE date(started_at/1000,'unixepoch') BETWEEN ? AND ? ${benchFilter}
       GROUP BY date(started_at/1000,'unixepoch'),tenant_id,pipeline,provider,model_id`,
@@ -106,6 +115,8 @@ export async function readAdminSnapshot(
     try {
       sections.push({ title, source, rows: await db.many<LedgerRow>(sql, args) });
     } catch {
+      // Do not log SQL, query arguments, provider errors or source payloads.
+      console.warn(JSON.stringify({ event: "admin.section_unavailable", section: title }));
       sections.push({ title, source, rows: null });
     }
   };
@@ -137,6 +148,16 @@ export async function readAdminSnapshot(
       `SELECT status,COUNT(*) jobs FROM ${table}${scope} GROUP BY status ORDER BY status`,
     );
   // Global host data must not be presented as tenant-scoped worker attribution.
+  await query(
+    "Pinned configurations",
+    "Queue records grouped by immutable config_revision_id; these are job pins, not worker heartbeat acknowledgements.",
+    `SELECT pipeline,tenant_id,status,config_revision_id,COUNT(*) jobs FROM (
+      SELECT 'evaluation' pipeline,tenant_id,status,config_revision_id FROM evaluation_jobs
+      UNION ALL SELECT 'dossier',tenant_id,status,config_revision_id FROM dossier_composition_jobs
+      UNION ALL SELECT 'factual_review',tenant_id,status,config_revision_id FROM dossier_review_jobs
+      UNION ALL SELECT 'pursuit',tenant_id,status,config_revision_id FROM pursuit_preparation_jobs
+    ) ${scope} GROUP BY pipeline,tenant_id,status,config_revision_id ORDER BY pipeline,tenant_id,status`,
+  );
   if (!tenantId)
     await query(
       "Workers",
@@ -189,14 +210,6 @@ export async function readAdminSnapshot(
     "admin_alerts; unacknowledged quota, retry-storm and provider-bound signals. No messages are sent to external destinations.",
     `SELECT * FROM admin_alerts WHERE acknowledged_at IS NULL ${tenantId ? "AND tenant_id=?" : ""} ORDER BY last_seen DESC LIMIT 100`,
   );
-  await appendAdminAudit(db, {
-    actor: userId,
-    action: "console.read",
-    tenant: tenantId,
-    target: "admin",
-    reason: "Opened or refreshed operator console",
-    detail: { days },
-  });
   return {
     role,
     tenantId,

@@ -49,7 +49,8 @@ const specimens = [
     ],
   },
 ];
-export const BENCH_FIXTURE_VERSION = "executive-fixtures-v1";
+import { BENCH_FIXTURE_VERSION } from "./bench-version";
+export { BENCH_FIXTURE_VERSION } from "./bench-version";
 export function benchFixtures(): StagedResearchInput[] {
   return specimens.map((spec) => {
     const sources: EvidenceSource[] = [

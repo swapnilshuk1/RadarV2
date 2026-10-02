@@ -38,7 +38,12 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
     setError("");
     try {
       await changeConfigFn({
-        data: { ...input, reason: actionReason, tenantId } as ConfigMutation,
+        data: {
+          ...input,
+          reason: actionReason,
+          tenantId,
+          expectedState: data.state,
+        } as ConfigMutation,
       });
       setPublishOpen(false);
       setEditing(false);
@@ -77,6 +82,11 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
         <p className="mt-3 text-sm font-medium">
           Showing unpublished draft <span className="font-mono">{data.draft.id}</span> · awaiting
           bench and publication
+        </p>
+      )}
+      {editing && (
+        <p role="status" className="mt-3 text-sm">
+          Editing unsaved changes. Save a draft before testing or publishing.
         </p>
       )}
       <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -128,7 +138,7 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
               <div className="mt-3 space-y-2">
                 {(
                   [
-                    ["concurrency", "Concurrent provider calls", 1, 8],
+                    ["concurrency", "Concurrent lane calls / process", 1, 8],
                     ["timeoutMs", "Request timeout (ms)", 30000, 180000],
                     ["maxOutputTokens", "Output ceiling / call", 4096, 16384],
                   ] as const
@@ -213,6 +223,7 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
               </button>
               <button
                 className={button}
+                disabled={busy}
                 onClick={() => {
                   setEditing(false);
                   setForm(null);
@@ -244,7 +255,7 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
               </label>
               <button
                 className={button}
-                disabled={busy || reason.trim().length < 3}
+                disabled={busy || editing || reason.trim().length < 3}
                 onClick={() =>
                   void perform({
                     kind: "bench",
@@ -257,7 +268,7 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
               </button>
               <button
                 className={button}
-                disabled={busy || !passed}
+                disabled={busy || editing || !passed}
                 onClick={() => {
                   setPublishReason("");
                   setPublishOpen(true);
@@ -267,7 +278,7 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
               </button>
               <button
                 className={button}
-                disabled={busy || reason.trim().length < 3}
+                disabled={busy || editing || reason.trim().length < 3}
                 onClick={() =>
                   void perform({ kind: "discard", revisionId: data.draft!.id } as ConfigMutation)
                 }
@@ -297,6 +308,30 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
         <p className="mt-2 text-sm font-mono">
           {data.active.id} → {data.draft?.id}
         </p>
+        <table aria-label="Configuration field changes" className="mt-3 w-full text-left text-sm">
+          <thead>
+            <tr>
+              <th>Setting</th>
+              <th>Active</th>
+              <th>Draft</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.draft &&
+              configChanges(data.active.config, data.draft.config).map((c) => (
+                <tr key={c.field} className="border-t border-border">
+                  <td className="py-2">{c.field}</td>
+                  <td className="font-mono">{String(c.before)}</td>
+                  <td className="font-mono">{String(c.after)}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+        {passed && (
+          <p className="mt-3 text-xs">
+            Bench {String(passed.id)}: {benchSummary(String(passed.result_json))}
+          </p>
+        )}
         <p className="mt-3 text-sm">
           New work will use these settings. Queued jobs retain their pinned revision and existing
           memos remain available.
@@ -354,8 +389,20 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
             <details key={String(b.id)} className="border-b border-border py-3">
               <summary className="cursor-pointer text-sm">
                 <span className="font-mono">{String(b.id).slice(0, 8)}</span> · {b.status} ·{" "}
-                {b.tokens_reserved} / {b.token_cap} tokens reserved{b.error ? ` · ${b.error}` : ""}
+                {b.tokens_reserved} / {b.token_cap} admission units reserved
+                {b.error ? ` · ${b.error}` : ""}
               </summary>
+              {operator && ["queued", "running"].includes(String(b.status)) && (
+                <button
+                  className={`${button} mt-2`}
+                  disabled={busy || editing || reason.trim().length < 3}
+                  onClick={() =>
+                    void perform({ kind: "cancel_bench", benchId: String(b.id) } as ConfigMutation)
+                  }
+                >
+                  Cancel bench
+                </button>
+              )}
               <pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs">
                 {b.result_json
                   ? JSON.stringify(JSON.parse(String(b.result_json)), null, 2)
@@ -377,7 +424,7 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
             {operator && r.id !== data.active.id && (
               <button
                 className={button}
-                disabled={busy || reason.trim().length < 3}
+                disabled={busy || editing || reason.trim().length < 3}
                 onClick={() => void perform({ kind: "revert", revisionId: r.id } as ConfigMutation)}
               >
                 Restore as a new draft
@@ -388,4 +435,25 @@ export function ConfigControls({ data, tenantId }: { data: Snapshot; tenantId?: 
       </details>
     </section>
   );
+}
+
+export function configChanges(before: EngineConfig, after: EngineConfig) {
+  return [
+    ...(["reasoning", "writing"] as const).flatMap((lane) =>
+      (Object.keys(before[lane]) as Array<keyof EngineConfig[typeof lane]>).map((key) => ({
+        field: `${lane}.${key}`,
+        before: before[lane][key],
+        after: after[lane][key],
+      })),
+    ),
+    ...(["pursuitInputTokens", "pursuitOutputTokens"] as const).map((key) => ({
+      field: key,
+      before: before[key],
+      after: after[key],
+    })),
+  ].filter((c) => c.before !== c.after);
+}
+function benchSummary(json: string) {
+  const r = JSON.parse(json);
+  return `${r.fixtureVersion}; ${r.cases?.length ?? 0} fixtures; ${r.verdictsChanged ?? 0} verdict changes; ${r.invalidOutputs ?? 0} invalid outputs; ${r.validationRepairs ?? 0} repairs`;
 }

@@ -13,7 +13,7 @@ import {
 } from "../../src/admin/config-contracts";
 import {
   activeRevision,
-  mutateConfig,
+  mutateConfig as rawMutateConfig,
   readConfigSnapshot,
   revision,
   BASELINE_REVISION,
@@ -31,6 +31,21 @@ afterEach(async () => {
   vi.restoreAllMocks();
   for (const db of cleanup.splice(0)) await db.close();
 });
+async function mutateConfig(
+  db: SqliteAdapter,
+  user: string,
+  input: import("../../src/admin/config-contracts").ConfigMutation extends infer T
+    ? T extends unknown
+      ? Omit<T, "expectedState"> & { expectedState?: string }
+      : never
+    : never,
+) {
+  const snapshot = await readConfigSnapshot(db, "op", input.tenantId);
+  return rawMutateConfig(db, user, {
+    ...input,
+    expectedState: input.expectedState ?? snapshot!.state,
+  } as import("../../src/admin/config-contracts").ConfigMutation);
+}
 async function fixture() {
   const db = new SqliteAdapter(new Database(":memory:"));
   cleanup.push(db);
@@ -62,10 +77,10 @@ const goodResult = (): BenchResult => ({
   invalidOutputs: 0,
   cases: benchFixtures().map((f) => ({
     fixture: f.opportunity.id,
-    beforeVerdict: "CONSIDER",
-    afterVerdict: "CONSIDER",
-    beforeViability: "PLAUSIBLE",
-    afterViability: "PLAUSIBLE",
+    beforeVerdict: f.opportunity.id === "mandatory-license" ? "PASS" : "CONSIDER",
+    afterVerdict: f.opportunity.id === "mandatory-license" ? "PASS" : "CONSIDER",
+    beforeViability: f.opportunity.id === "mandatory-license" ? "BLOCKED" : "PLAUSIBLE",
+    afterViability: f.opportunity.id === "mandatory-license" ? "BLOCKED" : "PLAUSIBLE",
     sectionsChanged: [],
   })),
 });
@@ -502,6 +517,22 @@ describe("Phase 3 configuration and bench boundaries", () => {
           )
         )?.n,
       ).toBe(3);
+      const receipts = await db.many<{
+        evaluation_context_fingerprint: string;
+        latency_ms: number;
+        max_output_tokens: number;
+      }>(
+        "SELECT evaluation_context_fingerprint,latency_ms,max_output_tokens FROM model_invocations WHERE bench_run_id=?",
+        [run.id],
+      );
+      expect(
+        receipts.every(
+          (r) =>
+            r.evaluation_context_fingerprint === BASELINE_REVISION &&
+            r.latency_ms >= 0 &&
+            r.max_output_tokens > 0,
+        ),
+      ).toBe(true);
       expect((await db.one<{ n: number }>("SELECT COUNT(*) n FROM staged_evaluations"))?.n).toBe(0);
       expect((await activeRevision(db)).id).toBe(BASELINE_REVISION);
     } finally {
@@ -536,4 +567,319 @@ describe("Phase 3 configuration and bench boundaries", () => {
       ),
     ).toBe(16384);
   });
+});
+import { BedrockMantleJsonModel } from "../../src/lib/model/bedrock-mantle-model";
+import { GeminiJsonModel } from "../../src/lib/model/json-model";
+import {
+  withProviderConcurrency,
+  type ModelInvocationSink,
+} from "../../src/lib/model/model-invocation";
+
+it("fences completion after operator revocation, lease expiry or a draft replacement", async () => {
+  for (const change of ["revoke", "expire", "replace"]) {
+    const db = await fixture(),
+      id = await draft(db);
+    const run = await mutateConfig(db, "op", {
+      kind: "bench",
+      revisionId: id,
+      tokenCap: 500000,
+      reason: "completion fencing",
+    });
+    const worker = new BenchWorker(db, async () => {
+      if (change === "revoke")
+        await db.execute("UPDATE platform_roles SET revoked_at=1 WHERE user_id='op'");
+      if (change === "expire")
+        await db.execute("UPDATE admin_bench_runs SET lease_until=0 WHERE id=?", [run.id]);
+      if (change === "replace") await draft(db);
+      return goodResult();
+    });
+    expect((await worker.pollOnce())?.status).toBe("failed");
+    expect(
+      (await db.one<{ status: string }>("SELECT status FROM admin_bench_runs WHERE id=?", [run.id]))
+        ?.status,
+    ).toBe("failed");
+  }
+});
+it("rejects duplicated fixture results and an admitted mandatory-license contradiction", async () => {
+  for (const invalid of ["duplicate", "license"]) {
+    const db = await fixture(),
+      id = await draft(db);
+    await mutateConfig(db, "op", {
+      kind: "bench",
+      revisionId: id,
+      tokenCap: 500000,
+      reason: "golden acceptance",
+    });
+    const result = goodResult();
+    if (invalid === "duplicate") result.cases[2] = { ...result.cases[0] };
+    else
+      result.cases[2] = {
+        ...result.cases[2],
+        afterVerdict: "CONSIDER",
+        afterViability: "PLAUSIBLE",
+      };
+    expect((await new BenchWorker(db, async () => result).pollOnce())?.status).toBe("failed");
+  }
+});
+it("requires the current fixture version and preserves completed bench evidence", async () => {
+  const db = await fixture(),
+    id = await draft(db),
+    benchId = await passBench(db, id);
+  await expect(
+    db.execute("UPDATE admin_bench_runs SET result_json='{}' WHERE id=?", [benchId]),
+  ).rejects.toThrow("BENCH_EVIDENCE_IMMUTABLE");
+  await expect(db.execute("DELETE FROM admin_bench_runs WHERE id=?", [benchId])).rejects.toThrow(
+    "BENCH_EVIDENCE_IMMUTABLE",
+  );
+  // A legacy accepted artifact is seeded directly, as an existing pre-migration row would be.
+  const result = goodResult();
+  result.fixtureVersion = "executive-fixtures-v1";
+  await db.execute(
+    "INSERT INTO admin_bench_runs(id,scope,revision_id,active_revision_id,status,token_cap,result_json,created_at,created_by) VALUES('legacy','platform',?,?,'passed',500000,?,0,'op')",
+    [id, BASELINE_REVISION, JSON.stringify(result)],
+  );
+  await expect(
+    mutateConfig(db, "op", {
+      kind: "publish",
+      revisionId: id,
+      benchId: "legacy",
+      reason: "stale fixture contract",
+    }),
+  ).rejects.toThrow("CONFIG_BENCH_REQUIRED");
+});
+it("rechecks both provider preflights after a concurrency wait without logging unmade calls", async () => {
+  for (const provider of ["mantle", "gemini"]) {
+    const name = `audit-${provider}-${Math.random().toString(36).slice(2)}`,
+      key = provider === "mantle" ? name : `vertex-gemini:${name}:us-central1`;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const occupied = withProviderConcurrency(key, 1, () => gate);
+    const request = vi.fn();
+    const sink = vi.fn(async () => {}) as unknown as ModelInvocationSink;
+    let allowed = true;
+    sink.beforeCall = vi.fn(async () => {
+      if (!allowed) throw new Error("LEASE_REVOKED");
+    });
+    const model =
+      provider === "mantle"
+        ? new BedrockMantleJsonModel("fixture", async () => "fixture", request, {
+            providerConcurrencyLimit: 1,
+            providerConcurrencyKey: key,
+            invocationSink: sink,
+          })
+        : new GeminiJsonModel(name, async () => "fixture", request, {
+            providerConcurrencyLimit: 1,
+            invocationSink: sink,
+          });
+    const pending = model.generate("fixture", {});
+    const rejected = expect(pending).rejects.toThrow("LEASE_REVOKED");
+    expect(sink.beforeCall).not.toHaveBeenCalled();
+    allowed = false;
+    release();
+    await occupied;
+    await rejected;
+    expect(request).not.toHaveBeenCalled();
+    expect(sink).not.toHaveBeenCalled();
+  }
+});
+it("does not let a new arrival steal a handed-off semaphore slot", async () => {
+  const key = `handoff-${Math.random()}`;
+  let release!: () => void;
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+  let active = 0,
+    max = 0;
+  const enter = async () => {
+    active++;
+    max = Math.max(max, active);
+    await Promise.resolve();
+    active--;
+  };
+  const first = withProviderConcurrency(key, 1, () => gate);
+  const waiting = withProviderConcurrency(key, 1, enter);
+  release();
+  await first;
+  const newcomer = withProviderConcurrency(key, 1, enter);
+  await Promise.all([waiting, newcomer]);
+  expect(max).toBe(1);
+});
+it("keeps reasoning and writing lane slots separate while enforcing the host ceiling", async () => {
+  const oldKey = process.env.BEDROCK_MANTLE_API_KEY,
+    oldLimit = process.env.RADAR_MODEL_PROVIDER_CONCURRENCY;
+  process.env.BEDROCK_MANTLE_API_KEY = "fixture";
+  process.env.RADAR_MODEL_PROVIDER_CONCURRENCY = "2";
+  let release!: () => void;
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+  const request = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+    await gate;
+    return new Response(
+      JSON.stringify({ choices: [{ finish_reason: "stop", message: { content: "{}" } }] }),
+    );
+  });
+  try {
+    const cfg = config();
+    cfg.reasoning = { model: "zai.glm-5", concurrency: 1, timeoutMs: 30000, maxOutputTokens: 4096 };
+    cfg.writing = { ...cfg.reasoning };
+    const scope = `audit-lanes-${Math.random()}`;
+    const reason = laneModel(
+      cfg,
+      "reasoning",
+      () => {
+        throw Error("fallback");
+      },
+      undefined,
+      scope,
+    );
+    const writer = laneModel(
+      cfg,
+      "writing",
+      () => {
+        throw Error("fallback");
+      },
+      undefined,
+      scope,
+    );
+    const calls = [reason.generate("first", {}), writer.generate("second", {})];
+    await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+    calls.push(reason.generate("third", {}));
+    await Promise.resolve();
+    expect(request).toHaveBeenCalledTimes(2);
+    release();
+    await Promise.all(calls);
+    expect(request).toHaveBeenCalledTimes(3);
+  } finally {
+    release();
+    if (oldKey === undefined) delete process.env.BEDROCK_MANTLE_API_KEY;
+    else process.env.BEDROCK_MANTLE_API_KEY = oldKey;
+    if (oldLimit === undefined) delete process.env.RADAR_MODEL_PROVIDER_CONCURRENCY;
+    else process.env.RADAR_MODEL_PROVIDER_CONCURRENCY = oldLimit;
+  }
+});
+it("stops a bench dispatch when its operator is revoked during the provider wait", async () => {
+  const db = await fixture(),
+    id = await draft(db);
+  const run = await mutateConfig(db, "op", {
+    kind: "bench",
+    revisionId: id,
+    tokenCap: 500000,
+    reason: "dispatch fencing",
+  });
+  await db.execute(
+    "UPDATE admin_bench_runs SET status='running',lease_token='lease',lease_until=? WHERE id=?",
+    [Date.now() + 60000, run.id],
+  );
+  const row = (await db.one<BenchRow>("SELECT * FROM admin_bench_runs WHERE id=?", [run.id]))!;
+  const cfg = config();
+  cfg.reasoning = { model: "zai.glm-5", concurrency: 1, timeoutMs: 30000, maxOutputTokens: 4096 };
+  let release!: () => void;
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+  const blocker = withProviderConcurrency("radar-lane:bench:platform:reasoning", 1, () => gate);
+  const request = vi.spyOn(globalThis, "fetch");
+  const worker = new BenchWorker(db) as unknown as {
+    model: (
+      row: BenchRow,
+      token: string,
+      cfg: EngineConfig,
+      lane: ModelLane,
+      side: string,
+    ) => ReasoningModel;
+  };
+  const pending = worker.model(row, "lease", cfg, "reasoning", "draft").generate("fixture", {});
+  const rejected = expect(pending).rejects.toThrow("PLATFORM_ACCESS_DENIED");
+  await vi.waitFor(async () =>
+    expect(
+      (
+        await db.one<{ n: number }>("SELECT tokens_reserved n FROM admin_bench_runs WHERE id=?", [
+          run.id,
+        ])
+      )?.n,
+    ).toBeGreaterThan(0),
+  );
+  await db.execute("UPDATE platform_roles SET revoked_at=1 WHERE user_id='op'");
+  release();
+  await blocker;
+  await rejected;
+  expect(request).not.toHaveBeenCalled();
+});
+
+it("blocks generic PASS-to-CONSIDER and screening relaxations", async () => {
+  for (const change of ["verdict", "screening"]) {
+    const db = await fixture(),
+      id = await draft(db);
+    await mutateConfig(db, "op", {
+      kind: "bench",
+      revisionId: id,
+      tokenCap: 500000,
+      reason: "generic regression",
+    });
+    const result = goodResult();
+    result.cases[1] = {
+      ...result.cases[1],
+      ...(change === "verdict"
+        ? { beforeVerdict: "PASS", afterVerdict: "CONSIDER" }
+        : { beforeViability: "BLOCKED", afterViability: "PLAUSIBLE" }),
+    };
+    expect((await new BenchWorker(db, async () => result).pollOnce())?.status).toBe("failed");
+  }
+});
+it("rejects stale editor state instead of overwriting the newer draft", async () => {
+  const db = await fixture(),
+    old = (await readConfigSnapshot(db, "op"))!;
+  const id = await draft(db);
+  await expect(
+    mutateConfig(db, "op", {
+      kind: "draft",
+      config: config(),
+      reason: "stale editor",
+      expectedState: old.state,
+    }),
+  ).rejects.toThrow("ADMIN_STATE_CHANGED");
+  expect((await readConfigSnapshot(db, "op"))?.draft?.id).toBe(id);
+});
+it("allows scoped operator cancellation and fences completion after cancellation", async () => {
+  const db = await fixture(),
+    id = await draft(db);
+  const run = await mutateConfig(db, "op", {
+    kind: "bench",
+    revisionId: id,
+    tokenCap: 500000,
+    reason: "cancel recovery",
+  });
+  await expect(
+    mutateConfig(db, "op", {
+      kind: "cancel_bench",
+      benchId: run.id,
+      tenantId: "tenant_A",
+      reason: "wrong scope",
+    }),
+  ).rejects.toThrow("BENCH_NOT_LIVE_IN_SCOPE");
+  await new BenchWorker(db, async () => {
+    await mutateConfig(db, "op", {
+      kind: "cancel_bench",
+      benchId: run.id,
+      reason: "stop this bench",
+    });
+    return goodResult();
+  }).pollOnce();
+  expect(await db.one("SELECT status,error FROM admin_bench_runs WHERE id=?", [run.id])).toEqual({
+    status: "failed",
+    error: "BENCH_OPERATOR_CANCELLED",
+  });
+  expect(
+    (
+      await mutateConfig(db, "op", {
+        kind: "bench",
+        revisionId: id,
+        tokenCap: 500000,
+        reason: "new explicit test",
+      })
+    ).id,
+  ).not.toBe(run.id);
 });
