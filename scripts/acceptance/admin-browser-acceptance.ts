@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { hostname } from "node:os";
 import { pathToFileURL } from "node:url";
 import { chromium } from "playwright";
 import { createClient } from "@libsql/client";
@@ -28,6 +29,9 @@ Object.assign(process.env, {
   AWS_BEARER_TOKEN_BEDROCK: "",
   TAVILY_API_KEY: "",
   GOOGLE_APPLICATION_CREDENTIALS: "",
+  RADAR_ADMIN_BENCH_TARGET: "isolated-browser-acceptance",
+  RADAR_RELEASE_SHA: "b".repeat(40),
+  RADAR_ADMIN_BENCH_HOSTS: hostname(),
 });
 delete process.env.RADAR_EXPECTED_DB_TARGET_FINGERPRINT;
 const database = await import("../../src/data/database/index");
@@ -154,6 +158,81 @@ try {
   await page.getByLabel("Structural publication confirmation").fill("PUBLISH");
   await page.getByRole("button", { name: "Publish revision", exact: true }).click();
   await dialog.waitFor({ state: "hidden" });
+  await page
+    .getByRole("region", { name: "Intelligence taxonomy", exact: true })
+    .getByRole("button", { name: "Performance Marketing", exact: true })
+    .click();
+  await page.getByLabel("Intelligence classification").selectOption("ADJACENT");
+  await page.getByLabel("Intelligence action reason").fill("Browser advisory classification");
+  await page.getByRole("button", { name: "Draft classification", exact: true }).click();
+  const reviewStructuralDraft = page.getByRole("button", {
+    name: "Review and publish structural draft",
+  });
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll("button")).some(
+        (button) =>
+          button.textContent === "Review and publish structural draft" && !button.hasAttribute("disabled"),
+      ),
+  );
+  await reviewStructuralDraft.click();
+  await page.getByLabel("Taxonomy publication reason").fill("Compare golden intelligence fixtures");
+  assert(
+    await page.getByRole("button", { name: "Publish revision", exact: true }).isDisabled(),
+    "Intelligence publication must require shadow proof",
+  );
+  await page.getByRole("button", { name: "Queue admission and verdict shadow" }).click();
+  await page
+    .getByText("Admission and verdict shadow", { exact: false })
+    .filter({ hasText: "queued" })
+    .waitFor();
+  const { TursoAdapter } = await import("../../src/data/database/turso");
+  const { IntelligenceShadowWorker } = await import("../../src/admin/intelligence-shadow-worker");
+  const { INTELLIGENCE_SHADOW_VERSION } = await import("../../src/admin/intelligence-shadow");
+  const shadowDb = new TursoAdapter(dbUrl, "local-acceptance");
+  try {
+    const outcome = await new IntelligenceShadowWorker(shadowDb, async (_row, specimens) => ({
+      version: INTELLIGENCE_SHADOW_VERSION,
+      safeToPublish: true,
+      cases: specimens.map(({ id }) => ({
+        id,
+        beforeAdmission: "CANDIDATE:REVIEW",
+        afterAdmission: "CANDIDATE:REVIEW",
+        beforeVerdict: id === "mandatory-license" ? "PASS" : "CONSIDER",
+        afterVerdict: id === "mandatory-license" ? "PASS" : "CONSIDER",
+        beforeViability: id === "mandatory-license" ? "BLOCKED" : "PLAUSIBLE",
+        afterViability: id === "mandatory-license" ? "BLOCKED" : "PLAUSIBLE",
+      })),
+      admissionsChanged: 0,
+      verdictsChanged: 0,
+      passToPursue: 0,
+      invalidOutputs: 0,
+      repairs: 0,
+    })).pollOnce();
+    assert(outcome?.status === "passed", "Fixture comparison worker must pass");
+  } finally {
+    await shadowDb.close();
+  }
+  await page.getByRole("button", { name: "Refresh shadow status" }).click();
+  await page
+    .getByText("Admission and verdict shadow", { exact: false })
+    .filter({ hasText: "passed" })
+    .waitFor();
+  await page.getByLabel("Structural publication confirmation").fill("PUBLISH");
+  await page.getByRole("button", { name: "Publish revision", exact: true }).click();
+  await dialog.waitFor({ state: "hidden" });
+  await page
+    .getByLabel("Intelligence action reason")
+    .fill("Retire advisory identity for browser proof");
+  await page.getByRole("button", { name: "Retire intelligence concept" }).click();
+  await page.getByLabel("Show retired identities").check();
+  await page.locator('input[aria-label="Intelligence concept name"]:disabled').waitFor();
+  assert(
+    await page.getByLabel("Intelligence concept name").isDisabled(),
+    "Retired identity must remain visible and read-only",
+  );
+  await page.getByLabel("Taxonomy action reason").fill("Discard retirement browser fixture");
+  await page.getByRole("button", { name: "Discard", exact: true }).click();
   await page.screenshot({ path: path.join(artifacts, "taxonomy-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: path.join(artifacts, "taxonomy-mobile.png"), fullPage: true });
@@ -171,6 +250,10 @@ try {
     "Viewer must not see mutation controls",
   );
   assert(await page.getByLabel("Taxonomy aliases").isDisabled(), "Viewer editor must be read-only");
+  assert(
+    await page.getByLabel("Intelligence aliases").isDisabled(),
+    "Viewer intelligence must be read-only",
+  );
   assert(errors.length === 0, `Browser runtime errors: ${errors.join("; ")}`);
   fs.writeFileSync(
     path.join(artifacts, "result.json"),
@@ -184,6 +267,7 @@ try {
           "alias publish",
           "modal Escape",
           "structural shadow and confirmation",
+          "intelligence classification, queued comparison, publish and retirement",
           "mobile overflow",
           "viewer read-only",
           "no page errors",

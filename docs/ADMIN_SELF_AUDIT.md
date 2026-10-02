@@ -154,12 +154,9 @@ inventory/taxonomy checks then passed. Final gate result is recorded below.
 
 ### Remaining scope and operational evidence
 
-- Full Phase 4 intelligence-taxonomy classification/reparenting and admission/
-  verdict impact diffs are not implemented. Discovery-query shadow success does
-  not certify those changes. Ring selection is metadata, not an exclusion rule.
-- Remote Turso FK/transaction contention remains unverified without a disposable
-  target. Local libSQL/SQLite fixtures do not establish remote behavior.
-- Before Oracle activation, apply 072-080, confirm matching web/worker release
+- Phase 4 now includes revisioned intelligence classification/reparenting/retirement and bounded admission/verdict comparisons. Discovery and intelligence proofs remain distinct; combined structural edits require both. Ring/classification metadata never becomes an exclusion rule.
+- Remote Turso foreign-key and contention checks passed on radar-admin-disposable-20261002: one mutation winner, five stale writers rejected, one shadow claim and immutable terminal evidence. Injected decisions prove concurrency/publication, not live model quality.
+- Before Oracle activation, apply 072-082, confirm matching web/worker release
   and database identity, provision explicit operators and exercise enabled workers.
   Existing controls-disabled acquisition-to-reviewed-memo-to-Pursuit operational
   proof remains outstanding; acquisition was deliberately left running untouched.
@@ -174,4 +171,21 @@ Final verification: `npm run certify` passed all nine stages (182.72 seconds),
 including lint (zero errors; 21 existing warnings), formatting, TypeScript,
 production SSR build and the certification test manifest. Final authenticated
 browser acceptance passed after the modal/text correction; screenshots are under
-`.radar/acceptance/admin`. No further source changes followed these checks.
+`.radar/acceptance/admin`. These checks describe the earlier discovery-only candidate; the expanded Phase 4 candidate requires its own final verification.
+
+### Intelligence-taxonomy completion review
+
+The intelligence editor adds stable concepts, advisory names/aliases, validated
+parent changes, classifications and recursive retirement. Planning, attention
+and evaluation consume pinned snapshots; legacy snapshots remain valid.
+Hardening covers new alias ambiguity, invalid/retired parentage, graph fingerprint
+corruption, implicit title veto regressions, incomplete/harmful shadow results,
+revoked operators, environment drift, pre-dispatch token caps, mixed structural
+proofs and immutable remote results. Real opportunity scope checks canonical JD
+hashes and frozen JD identity, tenant configuration and current cohort.
+
+The isolated browser journey validates classification, queue/status/publication,
+retirement, viewer restrictions and mobile layout alongside the existing seven
+views and discovery journey. Its comparison runner is injected and synthetic.
+The final certificate and exact commit identify release evidence; this review
+has not merged main, deployed Oracle, or changed live scraper state.

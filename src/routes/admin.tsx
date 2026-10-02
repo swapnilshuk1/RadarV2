@@ -1,3 +1,4 @@
+import { IntelligenceTaxonomyControls } from "../admin/IntelligenceTaxonomyControls";
 import { getConfigSnapshotFn } from "../admin/config-server";
 import { ConfigControls } from "../admin/ConfigControls";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
@@ -53,6 +54,7 @@ function AdminShell() {
   const data = Route.useLoaderData();
   const search = Route.useSearch();
   const router = useRouter();
+  const [intelligenceDirty, setIntelligenceDirty] = useState(false);
   const [filter, setFilter] = useState("");
   const [comfortable, setComfortable] = useState(false);
   const [detail, setDetail] = useState<{ title: string; body: string } | null>(null);
@@ -286,7 +288,16 @@ function AdminShell() {
                   ))}
               </>
             )}
-            {search.view === "Taxonomy" && <TaxonomyControls data={data.taxonomy} />}
+            {search.view === "Taxonomy" && (
+              <>
+                <IntelligenceTaxonomyControls data={data.taxonomy} onDirty={setIntelligenceDirty} />
+                <TaxonomyControls
+                  data={data.taxonomy}
+                  tenantId={search.tenantId}
+                  externalDirty={intelligenceDirty}
+                />
+              </>
+            )}
             {search.view === "Models" && (
               <p className="mb-5 text-sm text-muted-foreground">
                 The usage ledger records actual provider calls. Active assignments and fixture bench

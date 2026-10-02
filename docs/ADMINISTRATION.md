@@ -245,15 +245,18 @@ Each run has a 50,000–1,000,000 admission-unit cap, default 500,000. Input byt
 bounds plus output allowances reserve capacity before each call; bounds are
 retained rather than refunded. This may defer a long bench before all fixtures
 finish. It is an admission cap, not an exact tokenizer or provider billing limit.
-Any PASS-to-PURSUE/CONSIDER flip, BLOCKED-to-PLAUSIBLE screening relaxation, invalid transport output, validation repair, source
-integrity failure, incomplete fixture suite or provider failure blocks publish.
+Any PASS-to-PURSUE/CONSIDER flip, BLOCKED-to-PLAUSIBLE screening relaxation, invalid transport output, source
+integrity failure, incomplete fixture suite or provider failure blocks publish. Formatting
+repairs remain visible as diagnostics so an operator can review model quality without
+turning a valid, bounded comparison into an automatic rejection.
 A failed run retains its reservation and a classified error; it cannot become a
 passing result through a retry. Running it again is an explicit new bench.
 
 Fixture success is a narrow prerequisite, not a corpus-wide impact claim.
-Real-opportunity benches, rolling seven-day corpus shadows, arbitrary provider
-connections, per-stage model routing, rendered memo comparison and automatic
-regeneration are not included in this phase.
+An operator may explicitly select a bounded real opportunity after source-integrity
+validation; rolling seven-day corpus shadows, arbitrary provider connections,
+per-stage model routing, rendered memo comparison and automatic regeneration are
+not included in this phase.
 
 Focused verification: `npx vitest run tests/security/admin-config.test.ts`.
 The suite covers all configuration write authorization, stale/cross-scope
@@ -339,7 +342,7 @@ never defaults to the application database or reads RADAR tables.
 Merging/pushing to main can automatically deploy Oracle and run migrations.
 Keep this branch isolated until deployment prerequisites are actually satisfied.
 
-## Discovery taxonomy (Phase 4: partial implementation)
+## Taxonomy (Phase 4)
 
 **Taxonomy** provides a dense, platform-operator view of the portal-query
 concepts used when a new career search plan is activated. Each record shows its
@@ -370,10 +373,7 @@ The result records the number
 of plans with changed query sets and the queries added/removed. Invalid active
 criteria, an empty scope or a larger scope blocks the run rather than claiming no impact.
 
-This shadow is intentionally limited to the discovery topology it can actually
-measure. Re-parenting and changes to the executive evaluation taxonomy remain
-deferred: they require a corpus-level admission/evaluation diff before the
-console can safely expose them.
+Discovery shadows measure query impact only; intelligence changes use the separate comparison described below.
 
 Focused verification: `npx vitest run tests/security/admin-taxonomy.test.ts
 tests/scraper/scraper-correctness-contract.test.ts`.
@@ -393,15 +393,58 @@ requires a fresh publication reason and prevents publishing while editor changes
 are unsaved. Shadow details show added/removed queries per plan. Ring selection
 is descriptive metadata: it does not exclude a role or change query generation.
 
-**Full intelligence-taxonomy Phase 4 is not complete.** Reparenting, classification
-changes and admission/verdict shadow diffs remain outside this implementation.
-Do not interpret a passed discovery shadow as an evaluation safety proof.
+### Intelligence taxonomy and bounded decision comparisons
 
-Run `npx tsx scripts/acceptance/admin-browser-acceptance.ts` for an isolated local
-browser journey covering all seven views, tenant-admin denial, viewer read-only
-access, alias publication, structural shadow/confirmation, keyboard dialog and
-mobile layout. It uses a dedicated fixture database and does not run acquisition
-or call a model provider. Screenshots/results are under `.radar/acceptance/admin`.
-For Oracle, apply migrations through 080 to the shared target, deploy matching
-web/worker revisions and verify operator access and enabled worker readiness.
-Remote Turso FK/contention proof remains unverified without a disposable target.
+The same Taxonomy view now exposes the domain → discipline → capability graph
+from the canonical executive ontology. Operators can add concepts with stable
+identities, edit names/aliases/descriptions, reparent within that hierarchy,
+classify as CORE/ADJACENT/CONTEXT, and retire a concept plus its descendants.
+Retirement preserves historical identities. New ambiguous aliases and invalid
+parents are rejected; existing canonical shared aliases retain their mappings.
+Description-only edits to an enabled graph are display changes. The first graph publication also requires a comparison against legacy behavior without a pinned graph. Any change to the active advisory
+graph requires an admission/verdict shadow and typed `PUBLISH` confirmation.
+A combined discovery/intelligence structural draft requires both comparisons.
+
+Newly activated search plans pin the graph and its fingerprint. Planning uses
+aliases to expand explicit function intent; attention can recognize related
+mandates without creating title vetoes. The evaluation role interpreter receives the pinned graph as advisory vocabulary. Screening, candidate mapping and verdict stages receive source-grounded role judgments, without injecting classification labels into those decisions.
+Existing plans, queued evaluations and memos keep their snapshots; publication
+is not a bulk re-evaluation. Explicit exclusions and provenance checks remain hard.
+
+Migration **081** adds durable `intelligence_taxonomy_shadows` jobs and BENCH
+invocation linkage. The existing `npm run worker:admin-bench` claims these jobs.
+Web and worker require matching `RADAR_ADMIN_BENCH_TARGET`, 40-character
+`RADAR_RELEASE_SHA`, `RADAR_ADMIN_BENCH_HOSTS` and provider/version configuration.
+The UI defaults to three golden fixtures. An operator can explicitly select a
+tenant and compare up to three real opportunities with valid frozen inputs;
+the server supports a maximum of ten. This is a bounded sample, not a full
+corpus guarantee. Real runs validate canonical JD hashes and exact frozen source
+identity. They use that tenant's effective model configuration.
+
+Each run compares attention admissions and actual staged decisions for active
+and draft graphs, within a conservative reservation cap checked before dispatch.
+Invalid output, source-integrity failure, PASS-to-PURSUE, relaxation of
+BLOCKED screening, incomplete cases or violated golden sentinels block passing.
+Results retain before/after screening drivers, requirement mappings and repair-stage diagnostics. Results are immutable; changed cohort, configuration, draft, active revision,
+operator permission or release/environment invalidates publication. Lease loss
+requires an explicit new run. Telemetry is BENCH and excluded from tenant usage;
+shadow output never writes canonical evaluations, shortlist entries or memos.
+
+Run `npx tsx scripts/acceptance/admin-browser-acceptance.ts` for an isolated browser
+journey covering seven views, authorization, discovery publication, intelligence
+classification/shadow publication/retirement, modal keyboard and mobile layout.
+Its injected fixture comparison validates the workflow without provider calls.
+Screenshots/results are under `.radar/acceptance/admin`.
+
+Remote proofs use a named disposable database, never the application target:
+`npm run verify:remote-turso-fk` checks actual remote FK enforcement;
+`npm run verify:remote-admin-taxonomy` applies migrations and checks concurrent
+mutations, exclusive shadow claims, publication and immutable results. Set
+`RADAR_REMOTE_VALIDATION_URL`, `RADAR_REMOTE_VALIDATION_TOKEN` and
+`RADAR_ADMIN_REMOTE_VALIDATION_CONFIRM=DISPOSABLE`. The contention runner uses
+injected synthetic decisions and does not prove live provider output quality.
+Both remote proofs passed against `radar-admin-disposable-20261002`.
+
+For Oracle activation, apply migrations through 082 to the shared target, deploy
+matching web/worker revisions, provision operators and exercise the enabled bench
+worker. This branch remains isolated from main and Oracle until release.

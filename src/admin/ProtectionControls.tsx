@@ -308,7 +308,7 @@ export function ProtectionControls({
                       key={JSON.stringify([r.tenant_id, r.pipeline, r.job_id])}
                       value={JSON.stringify([r.tenant_id, r.pipeline, r.job_id])}
                     >
-                      {String(r.pipeline)} � {String(r.job_id)} � {String(r.reason)}
+                      {String(r.pipeline)} : {String(r.job_id)} : {String(r.reason)}
                     </option>
                   ))}
               </select>
@@ -347,7 +347,7 @@ export function ProtectionControls({
                   .find((s) => s.title === "Alerts")
                   ?.rows?.map((r) => (
                     <option key={String(r.id)} value={String(r.id)}>
-                      {String(r.kind)} � {String(r.target)}
+                      {String(r.kind)} : {String(r.target)}
                     </option>
                   ))}
               </select>

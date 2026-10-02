@@ -269,7 +269,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 13 |
 | `tests/intelligence/staged-composition.test.ts` | Editorial / Verdict | **KEEP** | Stage 3 | 45 | 145 |
 | `tests/intelligence/staged-context-input.test.ts` | Context / Source Provenance | **KEEP** | Stage 3 | 10 | 37 |
-| `tests/intelligence/staged-decision.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 27 | 66 |
+| `tests/intelligence/staged-decision.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 37 | 66 |
 | `tests/intelligence/staged-production-integration.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 7 | 25 |
 | `tests/intelligence/staged-queue-lifecycle.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 9 | 43 |
 | `tests/intelligence/staged-screening-authority.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 2 | 4 |
@@ -370,7 +370,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/security/scraper-auth-permission-non-escalation.test.ts` | Security & Tenant Isolation | **KEEP** | Gate 0 Safety | 1 | 5 |
 | `tests/security/admin-foundations.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 4 | 20 |
 | `tests/security/admin-config.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 21 | 59 |
-| `tests/security/admin-taxonomy.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 8 | 30 |
+| `tests/security/admin-taxonomy.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 22 | 30 |
 | `tests/security/admin-protection.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 21 | 74 |
 | `tests/security/tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 16 | 43 |
 | `tests/semantic/controlled_integration.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 12 | 35 |

@@ -1,3 +1,5 @@
+import { readPinnedIntelligence } from "../../evaluation/intelligence-taxonomy";
+import { matchIntelligence } from "../ontology/intelligence-taxonomy";
 /** Deterministic eligibility boundary; it schedules evaluation, never scores. */
 import type { OpportunityVersion, AttentionDecision } from "@/lib/domain/canonical_acquisition";
 import type {
@@ -169,7 +171,7 @@ function targetSeniorityFloor(seniorityRange: readonly string[]): SeniorityBand 
     .filter((band) => band !== "UNKNOWN");
   if (bands.length === 0) return null;
   return bands.reduce((floor, band) =>
-    SENIORITY_RANK[band] < SENIORITY_RANK[floor] ? band : floor
+    SENIORITY_RANK[band] < SENIORITY_RANK[floor] ? band : floor,
   );
 }
 
@@ -369,6 +371,37 @@ export function evaluateAttentionGate(
       reasonCodes: ["FUNCTION_REVIEW"],
       matchedConcepts,
     });
+  const intelligence = readPinnedIntelligence(criteria.customParameters?.intelligenceTaxonomy);
+  if (intelligence) {
+    const desired = matchIntelligence(
+      intelligence.definition,
+      [...spec.functions, ...spec.roleFamilies].join(" "),
+    );
+    const scope = new Set(desired.map((n) => n.id));
+    for (let i = 0; i < 3; i++)
+      for (const node of intelligence.definition.nodes)
+        if (node.parentId && scope.has(node.parentId)) scope.add(node.id);
+    const matches = matchIntelligence(
+      intelligence.definition,
+      `${roleText} ${version.rawContent ?? ""}`,
+    ).filter((n) => scope.has(n.id));
+    if (matches.length) {
+      matchedConcepts.push(...matches.map((n) => n.id));
+      return withLocation({
+        decision: "CANDIDATE",
+        eligibility: "REVIEW",
+        reasonCodes: [
+          matches.some((n) => n.classification === "CORE")
+            ? "ROLE_FAMILY_MATCH"
+            : "ADJACENT_ROLE_FAMILY",
+        ],
+        reasons: [
+          "Taxonomy signals are indicative; evaluate the evidenced mandate and candidate fit.",
+        ],
+        matchedConcepts,
+      });
+    }
+  }
   if (includesConcept(roleText, spec.roleFamilies) || includesConcept(roleText, spec.functions)) {
     matchedConcepts.push(
       ...[...spec.roleFamilies, ...spec.functions].filter((concept) =>

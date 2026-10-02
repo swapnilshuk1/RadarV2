@@ -387,12 +387,21 @@ uses the legacy file compiler for historical plans without them. This preserves
 active acquisition behavior while allowing operators to revise a future plan’s
 discovery wording. Migration 079 adds a bounded structural discovery workflow:
 an operator can add or retire a concept and choose its ring, then must save a
-query-impact shadow against active plans before publishing. It reports only the
-discovery changes it can measure; executive-evaluation graph changes remain
-deferred until corpus-level admission and verdict impact is available.
+query-impact shadow against active plans before publishing. It reports discovery query changes; intelligence comparisons use migration 081.
 
 Migration 080 makes taxonomy shadow records immutable. Publication verifies the
 current authoritative context/snapshot cohort fingerprint, requires explicit
 structural confirmation and preserves structural protection through draft edits
-and restores. Discovery taxonomy is a partial Phase 4 slice; ring metadata has
-no runtime filtering effect and intelligence-taxonomy edits remain deferred.
+and restores. Discovery ring metadata has no runtime filtering effect.
+
+Migration 081 adds the advisory intelligence graph and durable shadow jobs.
+Search-plan activation pins graph identity, definition and fingerprint into
+criteria; staged input snapshots carry that same graph. Planning, attention and
+staged decision interpretation consume it without treating taxonomy as evidence
+or excluding unfamiliar titles. Existing contexts remain unchanged. Structural
+changes and intelligence alias/name changes require bounded active/draft
+attention and actual staged verdict comparison in the admin bench worker. Each
+job pins effective configuration, cohort and environment, reserves tokens before
+dispatch and records BENCH telemetry. Immutable terminal results are revalidated
+at publication. Retired concepts remain in historical revisions. Combined
+structural edits require both discovery and intelligence proofs.

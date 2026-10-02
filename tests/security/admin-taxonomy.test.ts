@@ -1,5 +1,30 @@
+import { hostname } from "node:os";
+import {
+  baselineIntelligenceTaxonomy,
+  validateIntelligenceTaxonomy,
+  matchIntelligence,
+} from "../../src/lib/ontology/intelligence-taxonomy";
+import {
+  pinIntelligence,
+  readPinnedIntelligence,
+} from "../../src/evaluation/intelligence-taxonomy";
+import { evaluateAttentionGate } from "../../src/lib/intelligence/AttentionGate";
+import {
+  IntelligenceShadowWorker,
+  assessIntelligenceShadow,
+  type IntelligenceShadowResult,
+} from "../../src/admin/intelligence-shadow-worker";
+import {
+  INTELLIGENCE_SHADOW_VERSION,
+  intelligenceShadowCases,
+} from "../../src/admin/intelligence-shadow";
+import { benchFixtures } from "../../src/admin/bench-fixtures";
+import {
+  contextInputFingerprint,
+  validateSnapshot,
+} from "../../src/data/sqlite/repositories/SqliteStagedInputStore";
 import Database from "better-sqlite3";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import {
   activateLineageTestContext,
@@ -14,11 +39,35 @@ import { ScraperPlanResolver } from "../../src/acquisition/plan-resolver";
 import { SearchPlanner } from "../../scripts/scraper/run/search-planner";
 
 const cleanup: SqliteAdapter[] = [];
+function safeFixtureResult(cases: { id: string }[]): IntelligenceShadowResult {
+  return {
+    version: INTELLIGENCE_SHADOW_VERSION,
+    safeToPublish: true,
+    cases: cases.map(({ id }) => ({
+      id,
+      beforeAdmission: "CANDIDATE:REVIEW",
+      afterAdmission: "CANDIDATE:REVIEW",
+      beforeVerdict: id === "mandatory-license" ? "PASS" : "CONSIDER",
+      afterVerdict: id === "mandatory-license" ? "PASS" : "CONSIDER",
+      beforeViability: id === "mandatory-license" ? "BLOCKED" : "PLAUSIBLE",
+      afterViability: id === "mandatory-license" ? "BLOCKED" : "PLAUSIBLE",
+    })),
+    admissionsChanged: 0,
+    verdictsChanged: 0,
+    passToPursue: 0,
+    invalidOutputs: 0,
+    repairs: 0,
+  };
+}
 afterEach(async () => {
+  vi.unstubAllEnvs();
   for (const db of cleanup.splice(0)) await db.close();
 });
 
 async function fixture() {
+  vi.stubEnv("RADAR_ADMIN_BENCH_TARGET", "taxonomy-fixture");
+  vi.stubEnv("RADAR_RELEASE_SHA", "b".repeat(40));
+  vi.stubEnv("RADAR_ADMIN_BENCH_HOSTS", hostname());
   const db = new SqliteAdapter(new Database(":memory:"));
   cleanup.push(db);
   await setupLineageTestFixture(db);
@@ -48,6 +97,171 @@ async function mutate(
 }
 
 describe("Phase 4 discovery taxonomy", () => {
+  it("requires comparison when a display edit first enables the intelligence graph", async () => {
+    const db = await fixture();
+    const node = baselineIntelligenceTaxonomy.nodes.find((n) => n.id === "perf_mkt")!;
+    const draft = await mutate(db, {
+      kind: "intelligence_edit",
+      nodeId: node.id,
+      name: node.name,
+      aliases: node.aliases,
+      description: "Display description",
+      reason: "first graph activation",
+    });
+    expect((await readTaxonomySnapshot(db, "op")).draft?.requires_shadow).toBe(1);
+    await expect(
+      mutate(db, {
+        kind: "publish",
+        revisionId: draft.id,
+        confirmation: "PUBLISH",
+        reason: "activation must be tested",
+      }),
+    ).rejects.toThrow("INTELLIGENCE_SHADOW_REQUIRED");
+  });
+  it("rejects ambiguous new intelligence aliases while preserving existing baseline mappings", () => {
+    const graph = structuredClone(baselineIntelligenceTaxonomy);
+    const nodes = graph.nodes.filter((n) => n.kind === "capability");
+    nodes[0].aliases.push(nodes[1].name);
+    expect(() => validateIntelligenceTaxonomy(graph)).toThrow("INTELLIGENCE_DUPLICATE_ALIAS");
+    expect(() => validateIntelligenceTaxonomy(baselineIntelligenceTaxonomy)).not.toThrow();
+  });
+  it("stops a shadow at its reservation ceiling before provider dispatch", async () => {
+    const db = await fixture();
+    const draft = await mutate(db, {
+      kind: "intelligence_classify",
+      nodeId: "perf_mkt",
+      classification: "ADJACENT",
+      reason: "bounded model proof",
+    });
+    const queued = await mutate(db, {
+      kind: "intelligence_shadow",
+      revisionId: draft.id,
+      tokenCap: 1000,
+      limit: 3,
+      reason: "deliberately insufficient budget",
+    });
+    expect(await new IntelligenceShadowWorker(db).pollOnce()).toMatchObject({
+      id: queued.id,
+      status: "failed",
+    });
+    expect(
+      await db.one("SELECT error,tokens_reserved FROM intelligence_taxonomy_shadows WHERE id=?", [
+        queued.id,
+      ]),
+    ).toMatchObject({ error: "BENCH_TOKEN_CAP_OR_LEASE_LOST", tokens_reserved: 0 });
+    expect(
+      await db.one("SELECT COUNT(*) n FROM model_invocations WHERE taxonomy_shadow_run_id=?", [
+        queued.id,
+      ]),
+    ).toMatchObject({ n: 0 });
+  });
+  it("records a bounded provider failure without exposing provider detail", async () => {
+    const db = await fixture();
+    const draft = await mutate(db, {
+      kind: "intelligence_classify",
+      nodeId: "perf_mkt",
+      classification: "ADJACENT",
+      reason: "provider classification",
+    });
+    const queued = await mutate(db, {
+      kind: "intelligence_shadow",
+      revisionId: draft.id,
+      tokenCap: 1000000,
+      limit: 3,
+      reason: "provider failure proof",
+    });
+    await db.execute(
+      "INSERT INTO model_invocations(id,tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,pipeline,stage,attempt,provider,model_id,model_version,model_configuration_fingerprint,request_fingerprint,started_at,status,purpose,taxonomy_shadow_run_id,error_code) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      [
+        "provider-failure",
+        "tenant_A",
+        "person_A",
+        "fixture",
+        "fixture",
+        "fixture",
+        "evaluation",
+        "role-interpretation",
+        1,
+        "bedrock",
+        "fixture",
+        "fixture",
+        "fixture",
+        "fixture",
+        Date.now(),
+        "transport_error",
+        "BENCH",
+        queued.id,
+        "BENCH_PROVIDER_FAILURE",
+      ],
+    );
+    expect(
+      await new IntelligenceShadowWorker(db, async () => {
+        throw new Error("upstream detail must not be persisted");
+      }).pollOnce(),
+    ).toMatchObject({ status: "failed" });
+    expect(
+      await db.one("SELECT error FROM intelligence_taxonomy_shadows WHERE id=?", [queued.id]),
+    ).toMatchObject({ error: "BENCH_PROVIDER_FAILURE; retry creates a new bounded comparison" });
+  });
+  it("rejects a completed result when the deployment changes during its run", async () => {
+    const db = await fixture();
+    const draft = await mutate(db, {
+      kind: "intelligence_classify",
+      nodeId: "perf_mkt",
+      classification: "CONTEXT",
+      reason: "environment proof",
+    });
+    const queued = await mutate(db, {
+      kind: "intelligence_shadow",
+      revisionId: draft.id,
+      tokenCap: 1000000,
+      limit: 3,
+      reason: "environment drift",
+    });
+    const worker = new IntelligenceShadowWorker(db, async (_row, cases) => {
+      vi.stubEnv("RADAR_RELEASE_SHA", "c".repeat(40));
+      return safeFixtureResult(cases);
+    });
+    expect(await worker.pollOnce()).toMatchObject({ id: queued.id, status: "failed" });
+    expect(
+      await db.one("SELECT error FROM intelligence_taxonomy_shadows WHERE id=?", [queued.id]),
+    ).toMatchObject({ error: "BENCH_RELEASE_OR_ENVIRONMENT_CHANGED" });
+  });
+  it("requires both proofs for combined intelligence and discovery structural changes", async () => {
+    const db = await fixture();
+    await mutate(db, {
+      kind: "intelligence_classify",
+      nodeId: "perf_mkt",
+      classification: "ADJACENT",
+      reason: "combined intelligence edit",
+    });
+    const draft = await mutate(db, {
+      kind: "retire_concept",
+      dimension: "targetRoles",
+      concept: "VP Marketing",
+      reason: "combined discovery edit",
+    });
+    await mutate(db, {
+      kind: "intelligence_shadow",
+      revisionId: draft.id,
+      tokenCap: 1000000,
+      limit: 3,
+      reason: "comparison proof",
+    });
+    expect(
+      await new IntelligenceShadowWorker(db, async (_row, cases) =>
+        safeFixtureResult(cases),
+      ).pollOnce(),
+    ).toMatchObject({ status: "passed" });
+    await expect(
+      mutate(db, {
+        kind: "publish",
+        revisionId: draft.id,
+        confirmation: "PUBLISH",
+        reason: "cannot omit discovery proof",
+      }),
+    ).rejects.toThrow("TAXONOMY_SHADOW_REQUIRED");
+  });
   it("denies taxonomy reads and writes to users without a platform role", async () => {
     const db = await fixture();
     await expect(readTaxonomySnapshot(db, "viewer")).resolves.toMatchObject({ role: "viewer" });
@@ -366,5 +580,241 @@ describe("Phase 4 discovery taxonomy", () => {
         "plan_A",
       ),
     ).rejects.toThrow("PINNED_SEARCH_QUERIES_INVALID");
+  });
+  it("validates global identities, hierarchy and retired ancestors", () => {
+    expect(validateIntelligenceTaxonomy(baselineIntelligenceTaxonomy).nodes.length).toBeGreaterThan(
+      20,
+    );
+    const graph = structuredClone(baselineIntelligenceTaxonomy);
+    graph.nodes.push({ ...graph.nodes[0] });
+    expect(() => validateIntelligenceTaxonomy(graph)).toThrow("INTELLIGENCE_DUPLICATE_ID");
+    graph.nodes.pop();
+    const cap = graph.nodes.find((n) => n.kind === "capability")!;
+    cap.parentId = graph.nodes.find((n) => n.kind === "domain")!.id;
+    expect(() => validateIntelligenceTaxonomy(graph)).toThrow("INTELLIGENCE_INVALID_PARENT");
+    cap.parentId = baselineIntelligenceTaxonomy.nodes.find((n) => n.id === cap.id)!.parentId;
+    graph.nodes.find((n) => n.id === cap.parentId)!.retired = true;
+    expect(() => validateIntelligenceTaxonomy(graph)).toThrow("INTELLIGENCE_RETIRED_PARENT");
+  });
+  it("pins intelligence and rejects fingerprint corruption without changing baseline", () => {
+    const before = JSON.stringify(baselineIntelligenceTaxonomy),
+      pin = pinIntelligence("revision", baselineIntelligenceTaxonomy);
+    expect(readPinnedIntelligence(pin)?.revisionId).toBe("revision");
+    expect(() => readPinnedIntelligence({ ...pin, fingerprint: "bad" })).toThrow(
+      "INTELLIGENCE_SNAPSHOT_FINGERPRINT_MISMATCH",
+    );
+    const frozen = { ...benchFixtures()[0], intelligenceTaxonomy: pin };
+    frozen.fingerprint = contextInputFingerprint(frozen);
+    expect(validateSnapshot(frozen).intelligenceTaxonomy?.fingerprint).toBe(pin.fingerprint);
+    expect(JSON.stringify(baselineIntelligenceTaxonomy)).toBe(before);
+  });
+  it("keeps unfamiliar titles admitted and explicit company exclusions hard", async () => {
+    const db = await fixture(),
+      specimen = (await intelligenceShadowCases(db))[0];
+    const criteria = {
+      ...specimen.criteria,
+      customParameters: {
+        functions: ["Performance Marketing"],
+        intelligenceTaxonomy: pinIntelligence("pinned", baselineIntelligenceTaxonomy),
+      },
+    };
+    const op = {
+      ...specimen.version,
+      jobTitle: "Customer Momentum Steward",
+      rawContent: "Lead paid search and improve ROAS.",
+    };
+    expect(evaluateAttentionGate(op, criteria).decision).toBe("CANDIDATE");
+    expect(
+      evaluateAttentionGate(op, { ...criteria, excludedCompanies: [op.companyName!] }),
+    ).toMatchObject({ decision: "NOT_CANDIDATE", reasonCodes: ["EXCLUDED_COMPANY"] });
+    expect(evaluateAttentionGate(op, specimen.criteria).eligibility).toBe("REVIEW");
+    expect(
+      matchIntelligence(baselineIntelligenceTaxonomy, op.rawContent).some(
+        (n) => n.id === "perf_mkt",
+      ),
+    ).toBe(true);
+  });
+  it("requires model shadow for classification even after alias edits", async () => {
+    const db = await fixture();
+    await mutate(db, {
+      kind: "intelligence_classify",
+      nodeId: "perf_mkt",
+      classification: "ADJACENT",
+      reason: "advisory class",
+    });
+    const draft = await mutate(db, {
+      kind: "intelligence_edit",
+      nodeId: "perf_mkt",
+      name: "Performance Marketing",
+      description: "Paid growth",
+      aliases: ["paid search", "ROAS"],
+      reason: "adjust aliases",
+    });
+    expect((await readTaxonomySnapshot(db, "op")).draft?.requires_shadow).toBe(1);
+    await expect(
+      mutate(db, {
+        kind: "publish",
+        revisionId: draft.id,
+        confirmation: "PUBLISH",
+        reason: "skip shadow",
+      }),
+    ).rejects.toThrow("INTELLIGENCE_SHADOW_REQUIRED");
+  });
+  it("preserves identities while moving and retiring a subtree", async () => {
+    const db = await fixture(),
+      original = JSON.stringify(baselineIntelligenceTaxonomy);
+    await mutate(db, {
+      kind: "intelligence_move",
+      nodeId: "perf_mkt",
+      parentId: "brand_communications",
+      reason: "move a capability",
+    });
+    expect(
+      (await readTaxonomySnapshot(db, "op")).draft?.definition.intelligence?.nodes.find(
+        (n) => n.id === "perf_mkt",
+      )?.parentId,
+    ).toBe("brand_communications");
+    await mutate(db, {
+      kind: "intelligence_retire",
+      nodeId: "brand_communications",
+      reason: "retire grouping",
+    });
+    expect(
+      (await readTaxonomySnapshot(db, "op")).draft?.definition.intelligence?.nodes.find(
+        (n) => n.id === "perf_mkt",
+      )?.retired,
+    ).toBe(true);
+    expect(JSON.stringify(baselineIntelligenceTaxonomy)).toBe(original);
+  });
+  it("publishes a complete safe shadow without creating canonical evaluations", async () => {
+    const db = await fixture(),
+      draft = await mutate(db, {
+        kind: "intelligence_classify",
+        nodeId: "perf_mkt",
+        classification: "ADJACENT",
+        reason: "semantic draft",
+      }),
+      before = await db.one("SELECT COUNT(*) n FROM staged_evaluations");
+    const queued = await mutate(db, {
+      kind: "intelligence_shadow",
+      revisionId: draft.id,
+      tokenCap: 1000000,
+      limit: 3,
+      reason: "golden comparison",
+    });
+    const audit = await db.one<{ detail_json: string }>(
+      "SELECT detail_json FROM admin_audit_log WHERE action='taxonomy.intelligence_shadow' AND target=?",
+      [queued.id],
+    );
+    expect(JSON.parse(audit!.detail_json)).toMatchObject({
+      after: { revisionId: draft.id },
+      shadowJobId: queued.id,
+    });
+    const worker = new IntelligenceShadowWorker(db, async (_row, cases) => ({
+      version: INTELLIGENCE_SHADOW_VERSION,
+      safeToPublish: true,
+      cases: cases.map((c) => ({
+        id: c.id,
+        beforeAdmission: "CANDIDATE:REVIEW",
+        afterAdmission: "CANDIDATE:REVIEW",
+        beforeVerdict: c.id === "mandatory-license" ? "PASS" : "CONSIDER",
+        afterVerdict: c.id === "mandatory-license" ? "PASS" : "CONSIDER",
+        beforeViability: c.id === "mandatory-license" ? "BLOCKED" : "PLAUSIBLE",
+        afterViability: c.id === "mandatory-license" ? "BLOCKED" : "PLAUSIBLE",
+      })),
+      admissionsChanged: 0,
+      verdictsChanged: 0,
+      passToPursue: 0,
+      invalidOutputs: 0,
+      repairs: 0,
+    }));
+    expect(await worker.pollOnce()).toMatchObject({ id: queued.id, status: "passed" });
+    await expect(
+      db.execute("UPDATE intelligence_taxonomy_shadows SET result_json='{}' WHERE id=?", [
+        queued.id,
+      ]),
+    ).rejects.toThrow("INTELLIGENCE_SHADOW_IMMUTABLE");
+    await mutate(db, {
+      kind: "publish",
+      revisionId: draft.id,
+      confirmation: "PUBLISH",
+      reason: "publish fixture change",
+    });
+    expect(
+      (await activeSearchTaxonomy(db)).definition.intelligence?.nodes.find(
+        (n) => n.id === "perf_mkt",
+      )?.classification,
+    ).toBe("ADJACENT");
+    expect(await db.one("SELECT COUNT(*) n FROM staged_evaluations")).toEqual(before);
+  });
+  it("blocks harmful verdict flips, invalid output and relaxed screening", () => {
+    const result: IntelligenceShadowResult = {
+      version: INTELLIGENCE_SHADOW_VERSION,
+      safeToPublish: true,
+      cases: [
+        {
+          id: "case",
+          beforeAdmission: "CANDIDATE:REVIEW",
+          afterAdmission: "CANDIDATE:ELIGIBLE",
+          beforeVerdict: "PASS",
+          afterVerdict: "PURSUE",
+          beforeViability: "PLAUSIBLE",
+          afterViability: "PLAUSIBLE",
+        },
+      ],
+      admissionsChanged: 0,
+      verdictsChanged: 0,
+      passToPursue: 0,
+      invalidOutputs: 0,
+      repairs: 0,
+    };
+    expect(assessIntelligenceShadow(result, ["case"])).toMatchObject({
+      safeToPublish: false,
+      passToPursue: 1,
+      admissionsChanged: 1,
+      verdictsChanged: 1,
+    });
+    result.cases[0].afterVerdict = "PASS";
+    result.invalidOutputs = 1;
+    expect(assessIntelligenceShadow(result, ["case"]).safeToPublish).toBe(false);
+    result.invalidOutputs = 0;
+    result.repairs = 1;
+    result.cases[0].beforeViability = "PLAUSIBLE";
+    expect(assessIntelligenceShadow(result, ["case"]).safeToPublish).toBe(true);
+    result.repairs = 0;
+    result.cases[0].beforeViability = "BLOCKED";
+    expect(assessIntelligenceShadow(result, ["case"]).safeToPublish).toBe(false);
+    expect(assessIntelligenceShadow(result, ["case", "missing"]).safeToPublish).toBe(false);
+  });
+  it("fails revoked-operator jobs and rejects empty real scope", async () => {
+    const db = await fixture(),
+      draft = await mutate(db, {
+        kind: "intelligence_classify",
+        nodeId: "perf_mkt",
+        classification: "CONTEXT",
+        reason: "context vocabulary",
+      });
+    await expect(
+      mutate(db, {
+        kind: "intelligence_shadow",
+        revisionId: draft.id,
+        tokenCap: 1000000,
+        limit: 3,
+        tenantId: "tenant_A",
+        reason: "explicit real selection",
+      }),
+    ).rejects.toThrow("INTELLIGENCE_SHADOW_REAL_SCOPE_EMPTY");
+    const queued = await mutate(db, {
+      kind: "intelligence_shadow",
+      revisionId: draft.id,
+      tokenCap: 1000000,
+      limit: 3,
+      reason: "fixture shadow",
+    });
+    await db.execute("UPDATE platform_roles SET revoked_at=1 WHERE user_id='op'");
+    expect(await new IntelligenceShadowWorker(db).pollOnce()).toBeNull();
+    expect(
+      await db.one("SELECT status FROM intelligence_taxonomy_shadows WHERE id=?", [queued.id]),
+    ).toMatchObject({ status: "failed" });
   });
 });

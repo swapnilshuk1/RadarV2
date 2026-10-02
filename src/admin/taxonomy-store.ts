@@ -1,3 +1,8 @@
+import {
+  baselineIntelligenceTaxonomy,
+  validateIntelligenceTaxonomy,
+  intelligenceReference,
+} from "../lib/ontology/intelligence-taxonomy";
 import { createHash, randomUUID } from "node:crypto";
 import canonicalLexicon from "../../config/ontologies/lexicon.json";
 import canonicalTaxonomy from "../../config/ontologies/taxonomy.json";
@@ -7,6 +12,7 @@ import { appendAdminAudit, requirePlatformRole } from "./service";
 import {
   searchTaxonomySchema,
   taxonomyMutationSchema,
+  discoveryStructure,
   type SearchTaxonomy,
   type TaxonomyMutation,
 } from "./taxonomy-contracts";
@@ -127,6 +133,7 @@ function validateDefinition(definition: SearchTaxonomy) {
       conceptOwners.add(key);
     }
   }
+  if (parsedDefinition.intelligence) validateIntelligenceTaxonomy(parsedDefinition.intelligence);
   const phrasesByConcept = new Map<string, string>();
   for (const [dimension, concepts] of Object.entries(parsedDefinition.lexicon.dimensions)) {
     for (const [concept, phrases] of Object.entries(concepts)) {
@@ -165,7 +172,7 @@ function isSafeNewAlias(phrase: string) {
   return phrase.length >= 3 && functional.length > 0;
 }
 
-async function revision(db: DatabaseAdapter, id: string) {
+export async function revision(db: DatabaseAdapter, id: string) {
   const row = await db.one<TaxonomyRevision>("SELECT * FROM taxonomy_revisions WHERE id=?", [id]);
   if (!row) throw new Error("TAXONOMY_REVISION_NOT_FOUND");
   return parsed(row);
@@ -180,6 +187,7 @@ async function createDraft(
   const parsedDefinition = validateDefinition(definition);
   const active = await revision(db, activeId);
   const structural = (value: SearchTaxonomy) => ({
+    intelligence: value.intelligence ? intelligenceReference(value.intelligence) : null,
     concepts: Object.fromEntries(
       Object.entries(value.lexicon.dimensions).map(([dimension, entries]) => [
         dimension,
@@ -217,7 +225,7 @@ type ShadowPlan = {
   context_fingerprint: string;
   snapshot_id: string;
 };
-async function shadowPlans(db: DatabaseAdapter) {
+export async function shadowPlans(db: DatabaseAdapter) {
   const count = await db.one<{ n: number }>("SELECT COUNT(*) n FROM active_evaluation_contexts");
   const plans = await db.many<ShadowPlan>(
     `SELECT sp.id, sps.payload_json AS criteria_json, aec.context_fingerprint, sps.id AS snapshot_id
@@ -232,7 +240,7 @@ async function shadowPlans(db: DatabaseAdapter) {
   if (!plans.length) throw new Error("TAXONOMY_SHADOW_SCOPE_EMPTY");
   return plans;
 }
-const cohortFingerprint = (plans: ShadowPlan[]) =>
+export const cohortFingerprint = (plans: ShadowPlan[]) =>
   createHash("sha256").update(stableJson(plans)).digest("hex");
 type TaxonomyShadowResult = {
   cohortFingerprint: string;
@@ -327,6 +335,7 @@ export async function readTaxonomySnapshot(db: DatabaseAdapter, actor: string) {
       draft: null,
       history: [],
       shadows: [],
+      intelligenceShadows: [] as Record<string, string | number | null>[],
       state: taxonomyState(active.id),
       installed: false,
     };
@@ -345,6 +354,13 @@ export async function readTaxonomySnapshot(db: DatabaseAdapter, actor: string) {
     draft: draftPointer ? await revision(db, draftPointer.revision_id) : null,
     history: history.map(parsed),
     shadows,
+    intelligenceShadows: (await db.one(
+      "SELECT name FROM sqlite_master WHERE name='intelligence_taxonomy_shadows'",
+    ))
+      ? await db.many<Record<string, string | number | null>>(
+          "SELECT id,revision_id,active_revision_id,status,result_json,error,created_at,tokens_reserved,token_cap FROM intelligence_taxonomy_shadows ORDER BY created_at DESC LIMIT 20",
+        )
+      : [],
     state: taxonomyState(active.id, draftPointer?.revision_id),
     installed: true,
   };
@@ -362,7 +378,57 @@ export async function mutateTaxonomy(db: DatabaseAdapter, actor: string, input: 
     if (data.expectedState !== taxonomyState(active.id, draftPointer?.revision_id))
       throw new Error("ADMIN_STATE_CHANGED; refresh before retrying");
     let id: string;
-    if (data.kind === "draft_concept") {
+    if (
+      data.kind === "intelligence_edit" ||
+      data.kind === "intelligence_add" ||
+      data.kind === "intelligence_move" ||
+      data.kind === "intelligence_retire" ||
+      data.kind === "intelligence_classify"
+    ) {
+      const current = draftPointer ? await revision(tx, draftPointer.revision_id) : active;
+      const definition = structuredClone(current.definition),
+        graph = structuredClone(definition.intelligence ?? baselineIntelligenceTaxonomy);
+      if (!("nodeId" in data)) throw new Error("INTELLIGENCE_MUTATION_INVALID");
+      const node = graph.nodes.find((n) => n.id === data.nodeId);
+      if (data.kind === "intelligence_add") {
+        if (node) throw new Error("INTELLIGENCE_ID_ALREADY_EXISTS");
+        graph.nodes.push({
+          id: data.nodeId,
+          name: data.name,
+          kind: data.nodeKind,
+          parentId: data.parentId,
+          aliases: data.aliases,
+          description: data.description,
+          classification: data.classification,
+          retired: false,
+        });
+      } else {
+        if (!node || node.retired) throw new Error("INTELLIGENCE_NODE_UNAVAILABLE");
+        if (data.kind === "intelligence_edit")
+          Object.assign(node, {
+            name: data.name,
+            aliases: data.aliases,
+            description: data.description,
+          });
+        else if (data.kind === "intelligence_move") node.parentId = data.parentId;
+        else if (data.kind === "intelligence_classify") node.classification = data.classification;
+        else if (data.kind === "intelligence_retire") {
+          const retired = new Set([node.id]);
+          for (let i = 0; i < 3; i++)
+            for (const item of graph.nodes)
+              if (item.parentId && retired.has(item.parentId)) retired.add(item.id);
+          for (const item of graph.nodes) if (retired.has(item.id)) item.retired = true;
+        }
+      }
+      definition.intelligence = validateIntelligenceTaxonomy(graph);
+      id = await createDraft(tx, active.id, definition, actor);
+    } else if (data.kind === "intelligence_shadow") {
+      const target = await revision(tx, data.revisionId);
+      if (draftPointer?.revision_id !== target.id || target.parent_id !== active.id)
+        throw new Error("TAXONOMY_DRAFT_CHANGED");
+      const { queueIntelligenceShadow } = await import("./intelligence-shadow");
+      id = await queueIntelligenceShadow(tx, actor, active, target, data);
+    } else if (data.kind === "draft_concept") {
       const current = draftPointer ? await revision(tx, draftPointer.revision_id) : active;
       const dimension = current.definition.lexicon.dimensions[data.dimension];
       if (!dimension || !Object.hasOwn(dimension, data.concept))
@@ -430,18 +496,33 @@ export async function mutateTaxonomy(db: DatabaseAdapter, actor: string, input: 
         if (target.requires_shadow) {
           if (data.confirmation !== "PUBLISH")
             throw new Error("TAXONOMY_STRUCTURAL_CONFIRMATION_REQUIRED");
-          const shadow = await tx.one<{ id: string; result_json: string }>(
-            "SELECT id,result_json FROM taxonomy_shadow_runs WHERE revision_id=? AND active_revision_id=? AND status='passed' ORDER BY created_at DESC LIMIT 1",
-            [target.id, active.id],
-          );
-          if (!shadow) throw new Error("TAXONOMY_SHADOW_REQUIRED");
+          const beforeIntelligence = active.definition.intelligence
+            ? intelligenceReference(active.definition.intelligence)
+            : null;
+          const afterIntelligence = target.definition.intelligence
+            ? intelligenceReference(target.definition.intelligence)
+            : null;
+          if (stableJson(beforeIntelligence) !== stableJson(afterIntelligence)) {
+            const { assertIntelligenceShadow } = await import("./intelligence-shadow");
+            await assertIntelligenceShadow(tx, active, target);
+          }
           if (
-            JSON.parse(shadow.result_json).cohortFingerprint !==
-            cohortFingerprint(await shadowPlans(tx))
-          )
-            throw new Error(
-              "TAXONOMY_SHADOW_STALE; run the shadow again for the current active plans",
+            stableJson(discoveryStructure(active.definition)) !==
+            stableJson(discoveryStructure(target.definition))
+          ) {
+            const shadow = await tx.one<{ id: string; result_json: string }>(
+              "SELECT id,result_json FROM taxonomy_shadow_runs WHERE revision_id=? AND active_revision_id=? AND status='passed' ORDER BY created_at DESC LIMIT 1",
+              [target.id, active.id],
             );
+            if (!shadow) throw new Error("TAXONOMY_SHADOW_REQUIRED");
+            if (
+              JSON.parse(shadow.result_json).cohortFingerprint !==
+              cohortFingerprint(await shadowPlans(tx))
+            )
+              throw new Error(
+                "TAXONOMY_SHADOW_STALE; run the shadow again for the current active plans",
+              );
+          }
         }
         await tx.execute(
           "INSERT INTO taxonomy_active_pointer(id,revision_id) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET revision_id=excluded.revision_id",
@@ -457,7 +538,14 @@ export async function mutateTaxonomy(db: DatabaseAdapter, actor: string, input: 
       reason: data.reason,
       detail: {
         before: { revisionId: active.id, fingerprint: active.fingerprint },
-        after: { revisionId: id, fingerprint: (await revision(tx, id)).fingerprint },
+        after: {
+          revisionId: data.kind === "intelligence_shadow" ? data.revisionId : id,
+          fingerprint: (
+            await revision(tx, data.kind === "intelligence_shadow" ? data.revisionId : id)
+          ).fingerprint,
+        },
+        ...(data.kind === "intelligence_shadow" ? { shadowJobId: id } : {}),
+        ...("nodeId" in data ? { nodeId: data.nodeId } : {}),
         ...(data.kind === "draft_concept" ||
         data.kind === "add_concept" ||
         data.kind === "retire_concept"

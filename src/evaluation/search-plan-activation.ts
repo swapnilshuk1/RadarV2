@@ -1,3 +1,5 @@
+import { expandIntelligenceFunctions } from "../lib/ontology/intelligence-taxonomy";
+import { pinIntelligence } from "./intelligence-taxonomy";
 import fs from "node:fs";
 import path from "node:path";
 import { getRepositories } from "@/data/sqlite/provider";
@@ -68,7 +70,9 @@ export async function activateSearchPlanForIntent(
   const searchPlan = SearchPlanner.plan(
     {
       targetLevel: Array.from(targetLevels),
-      functions: effectiveFunctions,
+      functions: taxonomy.definition.intelligence
+        ? expandIntelligenceFunctions(taxonomy.definition.intelligence, effectiveFunctions)
+        : effectiveFunctions,
       operatingModels: [],
       ownership: [],
       industries: input.industries || [],
@@ -98,6 +102,9 @@ export async function activateSearchPlanForIntent(
       // edits apply only after a new plan activation, never mid-run.
       taxonomyRevisionId: taxonomy.id,
       taxonomyFingerprint: taxonomy.fingerprint,
+      ...(taxonomy.definition.intelligence
+        ? { intelligenceTaxonomy: pinIntelligence(taxonomy.id, taxonomy.definition.intelligence) }
+        : {}),
       // Decision intent is frozen into the same immutable snapshot as the
       // search criteria so queued evaluations cannot accidentally consume a
       // newer profile preference than the context they were created for.
@@ -125,8 +132,12 @@ export async function activateSearchPlanForIntent(
   const activationInput = {
     title: "Executive Career Search Plan",
     criteria,
-    ontologyVersion: versions.ontologyVersion,
-    ontologyFingerprint: versions.ontologyHash,
+    ontologyVersion: taxonomy.definition.intelligence
+      ? "intelligence-taxonomy/v1"
+      : versions.ontologyVersion,
+    ontologyFingerprint: taxonomy.definition.intelligence
+      ? pinIntelligence(taxonomy.id, taxonomy.definition.intelligence).fingerprint
+      : versions.ontologyHash,
     policyVersion: versions.policyVersion,
     profileVersion,
     activatedBy: input.activatedBy || "intent-update",

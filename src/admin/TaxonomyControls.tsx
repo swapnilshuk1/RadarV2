@@ -1,7 +1,12 @@
+import {
+  baselineIntelligenceTaxonomy,
+  intelligenceReference,
+} from "../lib/ontology/intelligence-taxonomy";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { changeTaxonomyFn } from "./taxonomy-server";
 import type { TaxonomyMutation } from "./taxonomy-contracts";
+import { discoveryStructure } from "./taxonomy-contracts";
 
 type Snapshot = Awaited<ReturnType<typeof import("./taxonomy-store").readTaxonomySnapshot>>;
 type TaxonomyAction =
@@ -17,6 +22,13 @@ type TaxonomyAction =
   | { kind: "revert"; revisionId: string }
   | { kind: "shadow"; revisionId: string }
   | {
+      kind: "intelligence_shadow";
+      revisionId: string;
+      tokenCap: number;
+      tenantId?: string;
+      limit: number;
+    }
+  | {
       kind: "add_concept";
       dimension: string;
       concept: string;
@@ -28,11 +40,41 @@ type TaxonomyAction =
 const button =
   "border border-border px-3 py-2 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50";
 
-export function TaxonomyControls({ data }: { data: Snapshot }) {
+export function TaxonomyControls({
+  data,
+  tenantId,
+  externalDirty = false,
+}: {
+  data: Snapshot;
+  tenantId?: string;
+  externalDirty?: boolean;
+}) {
   const router = useRouter();
   const publishDialog = useRef<HTMLDialogElement>(null);
   const [publishReason, setPublishReason] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  const [tokenCap, setTokenCap] = useState(1000000),
+    [realSample, setRealSample] = useState(false);
+  const intelligenceDraft =
+    JSON.stringify(
+      data.active.definition.intelligence
+        ? intelligenceReference(data.active.definition.intelligence)
+        : null,
+    ) !==
+    JSON.stringify(
+      (data.draft ?? data.active).definition.intelligence
+        ? intelligenceReference((data.draft ?? data.active).definition.intelligence!)
+        : null,
+    );
+  const intelligenceShadow = data.intelligenceShadows.find(
+    (run) =>
+      run.revision_id === data.draft?.id &&
+      run.active_revision_id === data.active.id &&
+      run.status === "passed",
+  );
+  const latestIntelligence = data.intelligenceShadows.find(
+    (run) => run.revision_id === data.draft?.id,
+  );
   const operator = data.role === "operator";
   const [selected, setSelected] = useState<{ dimension: string; concept: string } | null>(null);
   const [phrases, setPhrases] = useState("");
@@ -86,7 +128,8 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
       await changeTaxonomyFn({
         data: { ...mutation, reason: actionReason, expectedState: data.state } as TaxonomyMutation,
       });
-      if (mutation.kind !== "shadow") setPublishOpen(false);
+      if (mutation.kind !== "shadow" && mutation.kind !== "intelligence_shadow")
+        setPublishOpen(false);
       setReason("");
       await router.invalidate();
     } catch (cause) {
@@ -111,13 +154,15 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
         .filter(Boolean),
     ),
   );
-  const unsaved = Boolean(
-    current &&
-    (phrases !== current.join("\n") ||
-      description !==
-        (effective.definition.taxonomy.descriptions[selected!.concept] ??
-          "This discovery concept has no taxonomy description.")),
-  );
+  const unsaved =
+    externalDirty ||
+    Boolean(
+      current &&
+      (phrases !== current.join("\n") ||
+        description !==
+          (effective.definition.taxonomy.descriptions[selected!.concept] ??
+            "This discovery concept has no taxonomy description.")),
+    );
   const revisionChanges = concepts
     .filter(
       (entry) =>
@@ -132,7 +177,19 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
     for (const concept of Object.keys(entries))
       if (!effective.definition.lexicon.dimensions[dimension]?.[concept])
         revisionChanges.push(`${dimension}: ${concept} - retired`);
+  const originalIntelligence = data.active.definition.intelligence ?? baselineIntelligenceTaxonomy;
+  for (const node of effective.definition.intelligence?.nodes ?? [])
+    if (
+      JSON.stringify(originalIntelligence.nodes.find((n) => n.id === node.id)) !==
+      JSON.stringify(node)
+    )
+      revisionChanges.push(
+        `Intelligence: ${node.name} (${node.id}) - ${node.retired ? "retired" : "edited or added"}`,
+      );
   const structuralDraft = data.draft?.requires_shadow === 1;
+  const discoveryDraft =
+    JSON.stringify(discoveryStructure(data.active.definition)) !==
+    JSON.stringify(discoveryStructure(effective.definition));
   const shadow = data.draft
     ? data.shadows.find(
         (run) =>
@@ -145,7 +202,7 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
     <section className="mb-8 border-y-2 border-foreground py-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="font-serif text-2xl">Discovery taxonomy</h2>
+          <h2 className="font-serif text-2xl">Discovery vocabulary and revision publication</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
             Descriptions and portal-query aliases are versioned here. They shape only newly
             activated search plans; they never change the attention gate, eligibility, or an
@@ -412,7 +469,7 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
             <li key={change}>{change}</li>
           ))}
         </ul>
-        {structuralDraft && (
+        {structuralDraft && discoveryDraft && (
           <div className="mt-3 border border-border p-3 text-sm">
             {shadow ? (
               <>
@@ -438,6 +495,74 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
                 Run query-impact shadow
               </button>
             )}
+          </div>
+        )}
+        {intelligenceDraft && (
+          <div className="mt-3 border border-border p-3 text-sm">
+            <p>Admission and verdict shadow : {latestIntelligence?.status ?? "not run"}</p>
+            {latestIntelligence?.error && <p role="alert">{String(latestIntelligence.error)}</p>}
+            {latestIntelligence?.result_json && (
+              <details>
+                <summary>Inspect decision changes</summary>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap text-xs">
+                  {JSON.stringify(JSON.parse(String(latestIntelligence.result_json)), null, 2)}
+                </pre>
+              </details>
+            )}
+            <label className="mt-3 block">
+              Token reservation ceiling
+              <input
+                aria-label="Taxonomy shadow token cap"
+                type="number"
+                min={1000}
+                max={2000000}
+                value={tokenCap}
+                onChange={(e) => setTokenCap(Number(e.target.value))}
+                className="ml-2 w-32 border border-border bg-background p-1"
+              />
+            </label>
+            <label className="mt-3 block">
+              <input
+                type="checkbox"
+                checked={realSample}
+                disabled={!tenantId}
+                onChange={(e) => setRealSample(e.target.checked)}
+              />{" "}
+              Use up to 3 real opportunities from selected tenant{" "}
+              {tenantId ?? "(select a tenant first)"}. Otherwise use golden fixtures.
+            </label>
+            <p className="mt-2 text-xs">
+              The admin bench worker runs this bounded job. Invalid output, source-integrity
+              failure, PASS-to-PURSUE or relaxed screening blocks publication. This is a scoped
+              comparison, not a promise of identical future model outputs.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                className={button}
+                disabled={
+                  busy ||
+                  publishReason.trim().length < 3 ||
+                  ["queued", "running"].includes(String(latestIntelligence?.status))
+                }
+                onClick={() =>
+                  void perform(
+                    {
+                      kind: "intelligence_shadow",
+                      revisionId: data.draft!.id,
+                      tokenCap,
+                      limit: 3,
+                      ...(realSample && tenantId ? { tenantId } : {}),
+                    },
+                    publishReason,
+                  )
+                }
+              >
+                Queue admission and verdict shadow
+              </button>
+              <button className={button} onClick={() => void router.invalidate()}>
+                Refresh shadow status
+              </button>
+            </div>
           </div>
         )}
         <label className="mt-4 block text-sm">
@@ -473,7 +598,10 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
               busy ||
               publishReason.trim().length < 3 ||
               !data.draft ||
-              (structuralDraft && (!shadow || confirmation !== "PUBLISH"))
+              (structuralDraft &&
+                ((intelligenceDraft && !intelligenceShadow) ||
+                  (discoveryDraft && !shadow) ||
+                  confirmation !== "PUBLISH"))
             }
             onClick={() =>
               void perform(
