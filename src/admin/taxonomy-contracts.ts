@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 const text = z.string().trim().min(1).max(160);
+const key = text.refine(
+  (value) => !["__proto__", "constructor", "prototype"].includes(value.toLowerCase()),
+  "Reserved taxonomy key",
+);
 const phrases = z.array(text).min(1).max(80);
 
 export const searchTaxonomySchema = z
@@ -32,26 +36,30 @@ export const taxonomyMutationSchema = z
   .discriminatedUnion("kind", [
     z.object({
       kind: z.literal("draft_concept"),
-      dimension: z.string().trim().min(1).max(100),
-      concept: z.string().trim().min(1).max(160),
+      dimension: key,
+      concept: key,
       description: z.string().trim().min(1).max(1000),
       phrases,
     }),
     z.object({
       kind: z.literal("add_concept"),
-      dimension: z.string().trim().min(1).max(100),
-      concept: text,
+      dimension: key,
+      concept: key,
       description: z.string().trim().min(1).max(1000),
       phrases,
       ring: z.enum(["primary", "adjacent", "excluded"]),
     }),
     z.object({
       kind: z.literal("retire_concept"),
-      dimension: z.string().trim().min(1).max(100),
-      concept: text,
+      dimension: key,
+      concept: key,
     }),
     z.object({ kind: z.literal("discard"), revisionId: z.string().min(1) }),
-    z.object({ kind: z.literal("publish"), revisionId: z.string().min(1) }),
+    z.object({
+      kind: z.literal("publish"),
+      revisionId: z.string().min(1),
+      confirmation: z.literal("PUBLISH").optional(),
+    }),
     z.object({ kind: z.literal("revert"), revisionId: z.string().min(1) }),
     z.object({ kind: z.literal("shadow"), revisionId: z.string().min(1) }),
   ])

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "@tanstack/react-router";
 import { changeTaxonomyFn } from "./taxonomy-server";
 import type { TaxonomyMutation } from "./taxonomy-contracts";
 
@@ -12,7 +13,7 @@ type TaxonomyAction =
       phrases: string[];
     }
   | { kind: "discard"; revisionId: string }
-  | { kind: "publish"; revisionId: string }
+  | { kind: "publish"; revisionId: string; confirmation?: "PUBLISH" }
   | { kind: "revert"; revisionId: string }
   | { kind: "shadow"; revisionId: string }
   | {
@@ -28,6 +29,10 @@ const button =
   "border border-border px-3 py-2 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50";
 
 export function TaxonomyControls({ data }: { data: Snapshot }) {
+  const router = useRouter();
+  const publishDialog = useRef<HTMLDialogElement>(null);
+  const [publishReason, setPublishReason] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const operator = data.role === "operator";
   const [selected, setSelected] = useState<{ dimension: string; concept: string } | null>(null);
   const [phrases, setPhrases] = useState("");
@@ -36,6 +41,10 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  useEffect(() => {
+    if (publishOpen) publishDialog.current?.showModal();
+    else publishDialog.current?.close();
+  }, [publishOpen]);
   const [newConcept, setNewConcept] = useState("");
   const [newDimension, setNewDimension] = useState("");
   const [newRing, setNewRing] = useState<"primary" | "adjacent" | "excluded">("adjacent");
@@ -50,7 +59,13 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
     [effective.definition],
   );
   useEffect(() => {
-    if (!selected && concepts.length)
+    if (
+      (!selected ||
+        !concepts.some(
+          (entry) => entry.dimension === selected.dimension && entry.concept === selected.concept,
+        )) &&
+      concepts.length
+    )
       setSelected({ dimension: concepts[0].dimension, concept: concepts[0].concept });
   }, [concepts, selected]);
   const current = selected
@@ -71,7 +86,9 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
       await changeTaxonomyFn({
         data: { ...mutation, reason: actionReason, expectedState: data.state } as TaxonomyMutation,
       });
-      window.location.reload();
+      if (mutation.kind !== "shadow") setPublishOpen(false);
+      setReason("");
+      await router.invalidate();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Taxonomy update failed");
     } finally {
@@ -94,6 +111,27 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
         .filter(Boolean),
     ),
   );
+  const unsaved = Boolean(
+    current &&
+    (phrases !== current.join("\n") ||
+      description !==
+        (effective.definition.taxonomy.descriptions[selected!.concept] ??
+          "This discovery concept has no taxonomy description.")),
+  );
+  const revisionChanges = concepts
+    .filter(
+      (entry) =>
+        JSON.stringify(
+          data.active.definition.lexicon.dimensions[entry.dimension]?.[entry.concept],
+        ) !== JSON.stringify(entry.values) ||
+        data.active.definition.taxonomy.descriptions[entry.concept] !==
+          effective.definition.taxonomy.descriptions[entry.concept],
+    )
+    .map((entry) => `${entry.dimension}: ${entry.concept} - added or edited`);
+  for (const [dimension, entries] of Object.entries(data.active.definition.lexicon.dimensions))
+    for (const concept of Object.keys(entries))
+      if (!effective.definition.lexicon.dimensions[dimension]?.[concept])
+        revisionChanges.push(`${dimension}: ${concept} - retired`);
   const structuralDraft = data.draft?.requires_shadow === 1;
   const shadow = data.draft
     ? data.shadows.find(
@@ -229,6 +267,11 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
           </div>
         )}
       </div>
+      {unsaved && data.draft && (
+        <p role="status" className="mt-3 text-sm">
+          Save or undo your editor changes before reviewing the saved draft.
+        </p>
+      )}
       {data.draft && (
         <div
           className="mt-5 flex flex-wrap items-center gap-3 border border-border bg-muted/30 p-3"
@@ -246,7 +289,15 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
               >
                 Discard
               </button>
-              <button className={button} disabled={busy} onClick={() => setPublishOpen(true)}>
+              <button
+                className={button}
+                disabled={busy || unsaved}
+                onClick={() => {
+                  setPublishReason("");
+                  setConfirmation("");
+                  setPublishOpen(true);
+                }}
+              >
                 {structuralDraft ? "Review and publish structural draft" : "Publish safe edit"}
               </button>
             </>
@@ -274,7 +325,7 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
               </select>
             </label>
             <label className="text-sm">
-              Ring
+              Ring (descriptive metadata; no filtering effect)
               <select
                 value={newRing}
                 onChange={(event) => setNewRing(event.target.value as typeof newRing)}
@@ -343,29 +394,46 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
         </p>
       )}
       <dialog
-        open={publishOpen}
+        ref={publishDialog}
+        aria-labelledby="taxonomy-publish-title"
+        onCancel={() => setPublishOpen(false)}
         onClose={() => setPublishOpen(false)}
-        className="max-w-xl border border-border bg-card p-6 text-foreground backdrop:bg-black/30"
+        className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto border border-border bg-card p-6 text-foreground backdrop:bg-black/30"
       >
-        <h3 className="font-serif text-2xl">Publish taxonomy revision</h3>
+        <h3 id="taxonomy-publish-title" className="font-serif text-2xl">
+          Publish taxonomy revision
+        </h3>
         <p className="mt-3 text-sm">
           The change applies when a future search plan is activated. Existing plans and running
           scrapes keep their pinned queries.
         </p>
+        <ul className="mt-3 text-sm">
+          {revisionChanges.map((change) => (
+            <li key={change}>{change}</li>
+          ))}
+        </ul>
         {structuralDraft && (
           <div className="mt-3 border border-border p-3 text-sm">
             {shadow ? (
               <>
-                Shadow passed: {String(JSON.parse(String(shadow.result_json)).plansChanged)} plan
-                query sets change. Added{" "}
-                {String(JSON.parse(String(shadow.result_json)).queriesAdded)}; removed{" "}
+                Discovery shadow passed (admissions and verdicts are not tested):{" "}
+                {String(JSON.parse(String(shadow.result_json)).plansChanged)} plan query sets
+                change. Added {String(JSON.parse(String(shadow.result_json)).queriesAdded)}; removed{" "}
                 {String(JSON.parse(String(shadow.result_json)).queriesRemoved)}.
+                <details className="mt-2">
+                  <summary>Query changes by plan</summary>
+                  <pre className="max-h-48 overflow-auto whitespace-pre-wrap text-xs">
+                    {JSON.stringify(JSON.parse(String(shadow.result_json)).changes, null, 2)}
+                  </pre>
+                </details>
               </>
             ) : (
               <button
                 className={button}
-                disabled={busy || !data.draft}
-                onClick={() => void perform({ kind: "shadow", revisionId: data.draft!.id })}
+                disabled={busy || !data.draft || publishReason.trim().length < 3}
+                onClick={() =>
+                  void perform({ kind: "shadow", revisionId: data.draft!.id }, publishReason)
+                }
               >
                 Run query-impact shadow
               </button>
@@ -377,8 +445,8 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
           <input
             autoFocus
             aria-label="Taxonomy publication reason"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
+            value={publishReason}
+            onChange={(event) => setPublishReason(event.target.value)}
             className="mt-2 w-full border border-border bg-background p-2"
           />
         </label>
@@ -387,13 +455,36 @@ export function TaxonomyControls({ data }: { data: Snapshot }) {
             {error}
           </p>
         )}
+        {structuralDraft && (
+          <label className="mt-4 block text-sm">
+            Type PUBLISH to confirm the structural change
+            <input
+              aria-label="Structural publication confirmation"
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              className="mt-2 w-full border border-border bg-background p-2"
+            />
+          </label>
+        )}
         <div className="mt-5 flex gap-3">
           <button
             className={button}
             disabled={
-              busy || reason.trim().length < 3 || !data.draft || (structuralDraft && !shadow)
+              busy ||
+              publishReason.trim().length < 3 ||
+              !data.draft ||
+              (structuralDraft && (!shadow || confirmation !== "PUBLISH"))
             }
-            onClick={() => void perform({ kind: "publish", revisionId: data.draft!.id })}
+            onClick={() =>
+              void perform(
+                {
+                  kind: "publish",
+                  revisionId: data.draft!.id,
+                  confirmation: structuralDraft ? "PUBLISH" : undefined,
+                },
+                publishReason,
+              )
+            }
           >
             Publish revision
           </button>

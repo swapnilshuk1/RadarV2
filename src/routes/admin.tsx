@@ -134,8 +134,8 @@ function AdminShell() {
     Date.now() - data.rollupAt > 2 * 3600000;
   return (
     <main className="mx-auto min-h-screen max-w-[1500px] pt-28 text-foreground">
-      <div className="grid min-h-screen md:grid-cols-[238px_minmax(0,1fr)]">
-        <aside className="border-b border-border bg-card py-7 md:border-b-0 md:border-r">
+      <div className="grid min-h-screen grid-cols-[minmax(0,1fr)] md:grid-cols-[238px_minmax(0,1fr)]">
+        <aside className="min-w-0 border-b border-border bg-card py-7 md:border-b-0 md:border-r">
           <p className="px-6 font-mono text-[.62rem] uppercase tracking-[.28em] text-muted-foreground">
             RADAR / CONTROL
           </p>

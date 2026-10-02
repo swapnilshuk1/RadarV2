@@ -339,7 +339,7 @@ never defaults to the application database or reads RADAR tables.
 Merging/pushing to main can automatically deploy Oracle and run migrations.
 Keep this branch isolated until deployment prerequisites are actually satisfied.
 
-## Discovery taxonomy (Phase 4, Tier 1)
+## Discovery taxonomy (Phase 4: partial implementation)
 
 **Taxonomy** provides a dense, platform-operator view of the portal-query
 concepts used when a new career search plan is activated. Each record shows its
@@ -365,9 +365,10 @@ Operators can add a discovery concept to an existing dimension and choose its
 primary, adjacent or excluded ring; a concept can also be retired without
 rewriting any historical revision. These structural changes create a structural
 draft. Publication is blocked until **Run query-impact shadow** has compared the
-exact draft against every active plan (up to 100). The result records the number
+exact draft against every authoritative active context snapshot (up to 100).
+The result records the number
 of plans with changed query sets and the queries added/removed. Invalid active
-criteria or a larger scope blocks the run rather than claiming no impact.
+criteria, an empty scope or a larger scope blocks the run rather than claiming no impact.
 
 This shadow is intentionally limited to the discovery topology it can actually
 measure. Re-parenting and changes to the executive evaluation taxonomy remain
@@ -376,3 +377,31 @@ console can safely expose them.
 
 Focused verification: `npx vitest run tests/security/admin-taxonomy.test.ts
 tests/scraper/scraper-correctness-contract.test.ts`.
+
+### Review hardening and release limits
+
+Migration **080** makes query-shadow evidence append-only. Structural status is
+computed against the active definition on every draft, including alias edits and
+restores. Structural publishing requires server-validated `PUBLISH` confirmation
+and a passing shadow for the exact draft, active revision and current snapshot
+cohort. Changed authority invalidates that proof. Stored definitions are checked
+against their fingerprints; malformed pinned queries fail rather than falling
+back to another vocabulary.
+
+The publish dialog is modal, supports Escape, reviews saved concept changes,
+requires a fresh publication reason and prevents publishing while editor changes
+are unsaved. Shadow details show added/removed queries per plan. Ring selection
+is descriptive metadata: it does not exclude a role or change query generation.
+
+**Full intelligence-taxonomy Phase 4 is not complete.** Reparenting, classification
+changes and admission/verdict shadow diffs remain outside this implementation.
+Do not interpret a passed discovery shadow as an evaluation safety proof.
+
+Run `npx tsx scripts/acceptance/admin-browser-acceptance.ts` for an isolated local
+browser journey covering all seven views, tenant-admin denial, viewer read-only
+access, alias publication, structural shadow/confirmation, keyboard dialog and
+mobile layout. It uses a dedicated fixture database and does not run acquisition
+or call a model provider. Screenshots/results are under `.radar/acceptance/admin`.
+For Oracle, apply migrations through 080 to the shared target, deploy matching
+web/worker revisions and verify operator access and enabled worker readiness.
+Remote Turso FK/contention proof remains unverified without a disposable target.

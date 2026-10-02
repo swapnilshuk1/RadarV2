@@ -1,7 +1,10 @@
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
-import { setupLineageTestFixture } from "../persistence/lineage_fixture";
+import {
+  activateLineageTestContext,
+  setupLineageTestFixture,
+} from "../persistence/lineage_fixture";
 import {
   activeSearchTaxonomy,
   mutateTaxonomy as rawMutateTaxonomy,
@@ -191,7 +194,10 @@ describe("Phase 4 discovery taxonomy", () => {
       targetLocations: ["Mumbai"],
       customParameters: { functions: ["Marketing"], generatedQueries: ["VP Marketing"] },
     };
-    await db.execute("UPDATE search_plans SET criteria_json=?", [JSON.stringify(criteria)]);
+    await db.execute("UPDATE search_plan_snapshots SET payload_json=? WHERE id='sps_A'", [
+      JSON.stringify(criteria),
+    ]);
+    await activateLineageTestContext(db);
     const draft = await mutate(db, {
       kind: "add_concept",
       dimension: "targetRoles",
@@ -202,7 +208,12 @@ describe("Phase 4 discovery taxonomy", () => {
       reason: "add a regional growth discovery concept",
     });
     await expect(
-      mutate(db, { kind: "publish", revisionId: draft.id, reason: "skip required impact test" }),
+      mutate(db, {
+        kind: "publish",
+        revisionId: draft.id,
+        confirmation: "PUBLISH",
+        reason: "skip required impact test",
+      }),
     ).rejects.toThrow("TAXONOMY_SHADOW_REQUIRED");
     await mutate(db, { kind: "shadow", revisionId: draft.id, reason: "compare active plans" });
     const run = await db.one<{ status: string; result_json: string }>(
@@ -210,12 +221,150 @@ describe("Phase 4 discovery taxonomy", () => {
       [draft.id],
     );
     expect(run?.status).toBe("passed");
-    expect(JSON.parse(String(run?.result_json))).toMatchObject({ plansExamined: 2 });
-    await mutate(db, { kind: "publish", revisionId: draft.id, reason: "publish measured change" });
+    expect(JSON.parse(String(run?.result_json))).toMatchObject({ plansExamined: 1 });
+    await mutate(db, {
+      kind: "publish",
+      revisionId: draft.id,
+      confirmation: "PUBLISH",
+      reason: "publish measured change",
+    });
     const active = await activeSearchTaxonomy(db);
     expect(active.definition.lexicon.dimensions.targetRoles["Regional Growth Lead"]).toEqual([
       "Regional Growth Lead",
     ]);
     expect(active.definition.taxonomy.concentricRings.adjacent).toContain("Regional Growth Lead");
+  });
+  it("does not clear structural protection through an alias edit or a restore", async () => {
+    const db = await fixture();
+    const baseline = (await activeSearchTaxonomy(db)).id;
+    await db.execute("UPDATE search_plan_snapshots SET payload_json=? WHERE id='sps_A'", [
+      JSON.stringify({
+        targetRoles: ["VP Marketing"],
+        customParameters: { functions: ["Marketing"] },
+      }),
+    ]);
+    await activateLineageTestContext(db);
+    await mutate(db, {
+      kind: "add_concept",
+      dimension: "targetRoles",
+      concept: "Growth Partner",
+      description: "Growth ownership",
+      phrases: ["Growth Partner"],
+      ring: "adjacent",
+      reason: "structural draft",
+    });
+    const edited = await mutate(db, {
+      kind: "draft_concept",
+      dimension: "targetRoles",
+      concept: "Growth Partner",
+      description: "Growth leadership",
+      phrases: ["Growth Partner"],
+      reason: "metadata edit",
+    });
+    expect((await readTaxonomySnapshot(db, "op")).draft?.requires_shadow).toBe(1);
+    await expect(
+      mutate(db, { kind: "publish", revisionId: edited.id, reason: "attempt bypass" }),
+    ).rejects.toThrow("TAXONOMY_STRUCTURAL_CONFIRMATION_REQUIRED");
+    await expect(
+      mutate(db, {
+        kind: "publish",
+        revisionId: edited.id,
+        confirmation: "PUBLISH",
+        reason: "attempt bypass",
+      }),
+    ).rejects.toThrow("TAXONOMY_SHADOW_REQUIRED");
+    await mutate(db, { kind: "shadow", revisionId: edited.id, reason: "measure query impact" });
+    await expect(db.execute("UPDATE taxonomy_shadow_runs SET status='failed'")).rejects.toThrow(
+      "TAXONOMY_SHADOW_IMMUTABLE",
+    );
+    await expect(db.execute("DELETE FROM taxonomy_shadow_runs")).rejects.toThrow(
+      "TAXONOMY_SHADOW_IMMUTABLE",
+    );
+    await mutate(db, {
+      kind: "publish",
+      revisionId: edited.id,
+      confirmation: "PUBLISH",
+      reason: "measured publication",
+    });
+    const restored = await mutate(db, {
+      kind: "revert",
+      revisionId: baseline,
+      reason: "restore baseline",
+    });
+    expect((await readTaxonomySnapshot(db, "op")).draft?.requires_shadow).toBe(1);
+    await expect(
+      mutate(db, {
+        kind: "publish",
+        revisionId: restored.id,
+        confirmation: "PUBLISH",
+        reason: "attempt restore bypass",
+      }),
+    ).rejects.toThrow("TAXONOMY_SHADOW_REQUIRED");
+  });
+  it("rejects empty shadow scopes and invalidates proof when authority changes", async () => {
+    const db = await fixture();
+    const draft = await mutate(db, {
+      kind: "retire_concept",
+      dimension: "targetRoles",
+      concept: "VP Marketing",
+      reason: "retire discovery label",
+    });
+    await expect(
+      mutate(db, { kind: "shadow", revisionId: draft.id, reason: "empty scope" }),
+    ).rejects.toThrow("TAXONOMY_SHADOW_SCOPE_EMPTY");
+    await db.execute("UPDATE search_plan_snapshots SET payload_json=? WHERE id='sps_A'", [
+      JSON.stringify({
+        targetRoles: ["VP Marketing"],
+        customParameters: { functions: ["Marketing"] },
+      }),
+    ]);
+    await activateLineageTestContext(db);
+    await mutate(db, { kind: "shadow", revisionId: draft.id, reason: "exact snapshot cohort" });
+    // Mutable plan criteria are not the source of shadow authority.
+    await db.execute("UPDATE search_plans SET criteria_json='invalid' WHERE id='plan_A'");
+    await mutate(db, {
+      kind: "shadow",
+      revisionId: draft.id,
+      reason: "snapshot remains authoritative",
+    });
+    await db.execute("UPDATE search_plan_snapshots SET payload_json=? WHERE id='sps_A'", [
+      JSON.stringify({ targetRoles: ["Head of Growth"] }),
+    ]);
+    await expect(
+      mutate(db, {
+        kind: "publish",
+        revisionId: draft.id,
+        confirmation: "PUBLISH",
+        reason: "stale scope publication",
+      }),
+    ).rejects.toThrow("TAXONOMY_SHADOW_STALE");
+  });
+  it("rejects reserved object keys and corrupt pinned query payloads", async () => {
+    const db = await fixture();
+    await expect(
+      mutate(db, {
+        kind: "add_concept",
+        dimension: "targetRoles",
+        concept: "__proto__",
+        description: "bad key",
+        phrases: ["Growth Partner"],
+        ring: "adjacent",
+        reason: "reserved key",
+      }),
+    ).rejects.toThrow("Reserved taxonomy key");
+    await db.execute("UPDATE search_plan_snapshots SET payload_json=? WHERE id='sps_A'", [
+      JSON.stringify({
+        targetRoles: ["VP Marketing"],
+        customParameters: { taxonomyRevisionId: "pinned", generatedQueries: [] },
+      }),
+    ]);
+    await expect(
+      ScraperPlanResolver.resolveActivePlan(
+        { tenantId: "tenant_A", personId: "person_A", roles: [] },
+        undefined,
+        db,
+        "plan_A",
+      ),
+    ).rejects.toThrow("PINNED_SEARCH_QUERIES_INVALID");
   });
 });

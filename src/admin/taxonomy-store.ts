@@ -51,12 +51,15 @@ export const taxonomyState = (activeId: string, draftId?: string | null) =>
 
 async function installed(db: DatabaseAdapter) {
   return Boolean(
-    await db.one("SELECT name FROM sqlite_master WHERE type='table' AND name='taxonomy_revisions'"),
+    await db.one(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='taxonomy_shadow_runs'",
+    ),
   );
 }
 
 async function ensureBaseline(db: DatabaseAdapter) {
   if (!(await installed(db))) return false;
+  await activeSearchTaxonomy(db);
   await db.execute(
     "INSERT OR IGNORE INTO taxonomy_revisions(id,parent_id,definition_json,fingerprint,created_at,created_by) VALUES(?,?,?,?,?,?)",
     [
@@ -75,7 +78,10 @@ async function ensureBaseline(db: DatabaseAdapter) {
 }
 
 function parsed(row: TaxonomyRevision) {
-  return { ...row, definition: searchTaxonomySchema.parse(JSON.parse(row.definition_json)) };
+  const definition = searchTaxonomySchema.parse(JSON.parse(row.definition_json));
+  if (taxonomyFingerprint(definition) !== row.fingerprint)
+    throw new Error("TAXONOMY_FINGERPRINT_MISMATCH");
+  return { ...row, definition };
 }
 
 export async function activeSearchTaxonomy(db: DatabaseAdapter) {
@@ -88,6 +94,13 @@ export async function activeSearchTaxonomy(db: DatabaseAdapter) {
   const pointer = await db.one<{ revision_id: string }>(
     "SELECT revision_id FROM taxonomy_active_pointer WHERE id=1",
   );
+  if (
+    !pointer &&
+    (await db.one("SELECT id FROM taxonomy_revisions WHERE id<>? LIMIT 1", [
+      BASELINE_TAXONOMY_REVISION,
+    ]))
+  )
+    throw new Error("TAXONOMY_ACTIVE_POINTER_MISSING");
   if (!pointer)
     return {
       id: BASELINE_TAXONOMY_REVISION,
@@ -103,6 +116,17 @@ export async function activeSearchTaxonomy(db: DatabaseAdapter) {
 
 function validateDefinition(definition: SearchTaxonomy) {
   const parsedDefinition = searchTaxonomySchema.parse(definition);
+  const reserved = new Set(["__proto__", "constructor", "prototype"]);
+  const conceptOwners = new Set<string>();
+  for (const [dimension, concepts] of Object.entries(parsedDefinition.lexicon.dimensions)) {
+    if (reserved.has(dimension) || Object.keys(concepts).length > 100)
+      throw new Error("TAXONOMY_INVALID_DIMENSION");
+    for (const concept of Object.keys(concepts)) {
+      const key = concept.toLowerCase();
+      if (reserved.has(key) || conceptOwners.has(key)) throw new Error("TAXONOMY_INVALID_CONCEPT");
+      conceptOwners.add(key);
+    }
+  }
   const phrasesByConcept = new Map<string, string>();
   for (const [dimension, concepts] of Object.entries(parsedDefinition.lexicon.dimensions)) {
     for (const [concept, phrases] of Object.entries(concepts)) {
@@ -152,9 +176,21 @@ async function createDraft(
   activeId: string,
   definition: SearchTaxonomy,
   actor: string,
-  requiresShadow = false,
 ) {
   const parsedDefinition = validateDefinition(definition);
+  const active = await revision(db, activeId);
+  const structural = (value: SearchTaxonomy) => ({
+    concepts: Object.fromEntries(
+      Object.entries(value.lexicon.dimensions).map(([dimension, entries]) => [
+        dimension,
+        Object.keys(entries).sort(),
+      ]),
+    ),
+    rings: value.taxonomy.concentricRings,
+    retired: value.taxonomy.retired,
+  });
+  const requiresShadow =
+    stableJson(structural(active.definition)) !== stableJson(structural(parsedDefinition));
   const id = randomUUID();
   await db.execute(
     "INSERT INTO taxonomy_revisions(id,parent_id,definition_json,fingerprint,created_at,created_by,requires_shadow) VALUES(?,?,?,?,?,?,?)",
@@ -175,8 +211,31 @@ async function createDraft(
   return id;
 }
 
-type ShadowPlan = { id: string; criteria_json: string };
+type ShadowPlan = {
+  id: string;
+  criteria_json: string;
+  context_fingerprint: string;
+  snapshot_id: string;
+};
+async function shadowPlans(db: DatabaseAdapter) {
+  const count = await db.one<{ n: number }>("SELECT COUNT(*) n FROM active_evaluation_contexts");
+  const plans = await db.many<ShadowPlan>(
+    `SELECT sp.id, sps.payload_json AS criteria_json, aec.context_fingerprint, sps.id AS snapshot_id
+     FROM active_evaluation_contexts aec
+     JOIN search_plans sp ON sp.id=aec.search_plan_id AND sp.tenant_id=aec.tenant_id AND sp.person_id=aec.person_id
+     JOIN evaluation_contexts ec ON ec.context_fingerprint=aec.context_fingerprint AND ec.tenant_id=aec.tenant_id AND ec.person_id=aec.person_id
+     JOIN search_plan_snapshots sps ON sps.id=ec.search_plan_snapshot_id AND sps.search_plan_id=sp.id AND sps.tenant_id=aec.tenant_id AND sps.person_id=aec.person_id
+     WHERE sp.status='active' ORDER BY sp.id, aec.context_fingerprint LIMIT 101`,
+  );
+  if (plans.length > 100) throw new Error("TAXONOMY_SHADOW_SCOPE_TOO_LARGE");
+  if (plans.length !== Number(count?.n)) throw new Error("TAXONOMY_SHADOW_SCOPE_INTEGRITY_FAILED");
+  if (!plans.length) throw new Error("TAXONOMY_SHADOW_SCOPE_EMPTY");
+  return plans;
+}
+const cohortFingerprint = (plans: ShadowPlan[]) =>
+  createHash("sha256").update(stableJson(plans)).digest("hex");
 type TaxonomyShadowResult = {
+  cohortFingerprint: string;
   plansExamined: number;
   plansChanged: number;
   queriesAdded: number;
@@ -215,10 +274,7 @@ async function shadowTaxonomy(
   active: Awaited<ReturnType<typeof activeSearchTaxonomy>>,
   draft: Awaited<ReturnType<typeof revision>>,
 ) {
-  const plans = await db.many<ShadowPlan>(
-    "SELECT id,criteria_json FROM search_plans WHERE status='active' ORDER BY id LIMIT 101",
-  );
-  if (plans.length > 100) throw new Error("TAXONOMY_SHADOW_SCOPE_TOO_LARGE");
+  const plans = await shadowPlans(db);
   const changes: TaxonomyShadowResult["changes"] = [];
   let queriesAdded = 0;
   let queriesRemoved = 0;
@@ -246,6 +302,7 @@ async function shadowTaxonomy(
     }
   }
   const result: TaxonomyShadowResult = {
+    cohortFingerprint: cohortFingerprint(plans),
     plansExamined: plans.length,
     plansChanged: changes.length,
     queriesAdded,
@@ -308,7 +365,8 @@ export async function mutateTaxonomy(db: DatabaseAdapter, actor: string, input: 
     if (data.kind === "draft_concept") {
       const current = draftPointer ? await revision(tx, draftPointer.revision_id) : active;
       const dimension = current.definition.lexicon.dimensions[data.dimension];
-      if (!dimension?.[data.concept]) throw new Error("TAXONOMY_CONCEPT_NOT_FOUND");
+      if (!dimension || !Object.hasOwn(dimension, data.concept))
+        throw new Error("TAXONOMY_CONCEPT_NOT_FOUND");
       const existing = new Set(
         dimension[data.concept].map((phrase) => phrase.toLowerCase().replace(/\s+/g, " ")),
       );
@@ -326,8 +384,9 @@ export async function mutateTaxonomy(db: DatabaseAdapter, actor: string, input: 
     } else if (data.kind === "add_concept") {
       const current = draftPointer ? await revision(tx, draftPointer.revision_id) : active;
       const dimension = current.definition.lexicon.dimensions[data.dimension];
-      if (!dimension) throw new Error("TAXONOMY_DIMENSION_NOT_FOUND");
-      if (dimension[data.concept]) throw new Error("TAXONOMY_CONCEPT_EXISTS");
+      if (!Object.hasOwn(current.definition.lexicon.dimensions, data.dimension))
+        throw new Error("TAXONOMY_DIMENSION_NOT_FOUND");
+      if (Object.hasOwn(dimension, data.concept)) throw new Error("TAXONOMY_CONCEPT_EXISTS");
       for (const phrase of data.phrases)
         if (!isSafeNewAlias(phrase)) throw new Error("TAXONOMY_ALIAS_NEEDS_FUNCTIONAL_SIGNAL");
       const definition = structuredClone(current.definition);
@@ -341,11 +400,12 @@ export async function mutateTaxonomy(db: DatabaseAdapter, actor: string, input: 
       definition.taxonomy.concentricRings[data.ring] = [
         ...new Set([...definition.taxonomy.concentricRings[data.ring], data.concept]),
       ];
-      id = await createDraft(tx, active.id, definition, actor, true);
+      id = await createDraft(tx, active.id, definition, actor);
     } else if (data.kind === "retire_concept") {
       const current = draftPointer ? await revision(tx, draftPointer.revision_id) : active;
       const dimension = current.definition.lexicon.dimensions[data.dimension];
-      if (!dimension?.[data.concept]) throw new Error("TAXONOMY_CONCEPT_NOT_FOUND");
+      if (!dimension || !Object.hasOwn(dimension, data.concept))
+        throw new Error("TAXONOMY_CONCEPT_NOT_FOUND");
       if (Object.keys(dimension).length <= 1) throw new Error("TAXONOMY_DIMENSION_CANNOT_BE_EMPTY");
       const definition = structuredClone(current.definition);
       delete definition.lexicon.dimensions[data.dimension][data.concept];
@@ -354,16 +414,10 @@ export async function mutateTaxonomy(db: DatabaseAdapter, actor: string, input: 
         definition.taxonomy.concentricRings[ring] = definition.taxonomy.concentricRings[
           ring
         ].filter((concept) => concept !== data.concept);
-      id = await createDraft(tx, active.id, definition, actor, true);
+      id = await createDraft(tx, active.id, definition, actor);
     } else if (data.kind === "revert") {
       const target = await revision(tx, data.revisionId);
-      id = await createDraft(
-        tx,
-        active.id,
-        target.definition,
-        actor,
-        Boolean(target.requires_shadow),
-      );
+      id = await createDraft(tx, active.id, target.definition, actor);
     } else {
       const target = await revision(tx, data.revisionId);
       if (draftPointer?.revision_id !== target.id || target.parent_id !== active.id)
@@ -374,11 +428,20 @@ export async function mutateTaxonomy(db: DatabaseAdapter, actor: string, input: 
         await shadowTaxonomy(tx, actor, active, target);
       } else {
         if (target.requires_shadow) {
-          const shadow = await tx.one<{ id: string }>(
-            "SELECT id FROM taxonomy_shadow_runs WHERE revision_id=? AND active_revision_id=? AND status='passed' ORDER BY created_at DESC LIMIT 1",
+          if (data.confirmation !== "PUBLISH")
+            throw new Error("TAXONOMY_STRUCTURAL_CONFIRMATION_REQUIRED");
+          const shadow = await tx.one<{ id: string; result_json: string }>(
+            "SELECT id,result_json FROM taxonomy_shadow_runs WHERE revision_id=? AND active_revision_id=? AND status='passed' ORDER BY created_at DESC LIMIT 1",
             [target.id, active.id],
           );
           if (!shadow) throw new Error("TAXONOMY_SHADOW_REQUIRED");
+          if (
+            JSON.parse(shadow.result_json).cohortFingerprint !==
+            cohortFingerprint(await shadowPlans(tx))
+          )
+            throw new Error(
+              "TAXONOMY_SHADOW_STALE; run the shadow again for the current active plans",
+            );
         }
         await tx.execute(
           "INSERT INTO taxonomy_active_pointer(id,revision_id) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET revision_id=excluded.revision_id",
@@ -392,7 +455,15 @@ export async function mutateTaxonomy(db: DatabaseAdapter, actor: string, input: 
       action: `taxonomy.${data.kind}`,
       target: id,
       reason: data.reason,
-      detail: { before: { revisionId: active.id }, after: { revisionId: id } },
+      detail: {
+        before: { revisionId: active.id, fingerprint: active.fingerprint },
+        after: { revisionId: id, fingerprint: (await revision(tx, id)).fingerprint },
+        ...(data.kind === "draft_concept" ||
+        data.kind === "add_concept" ||
+        data.kind === "retire_concept"
+          ? { dimension: data.dimension, concept: data.concept }
+          : {}),
+      },
     });
     return { id };
   });

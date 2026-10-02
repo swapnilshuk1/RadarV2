@@ -390,3 +390,9 @@ an operator can add or retire a concept and choose its ring, then must save a
 query-impact shadow against active plans before publishing. It reports only the
 discovery changes it can measure; executive-evaluation graph changes remain
 deferred until corpus-level admission and verdict impact is available.
+
+Migration 080 makes taxonomy shadow records immutable. Publication verifies the
+current authoritative context/snapshot cohort fingerprint, requires explicit
+structural confirmation and preserves structural protection through draft edits
+and restores. Discovery taxonomy is a partial Phase 4 slice; ring metadata has
+no runtime filtering effect and intelligence-taxonomy edits remain deferred.

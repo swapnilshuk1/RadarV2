@@ -118,3 +118,60 @@ controls-disabled scrape-to-reviewed-memo-to-Pursuit compatibility, and
 authoritative exact-SHA CI before deployment. Migration 077 separates scrape
 claims from model-worker concurrency so acquisition retains independent capacity.
 This review did not change live configuration.
+
+
+## Current Phase 4 implementation review
+
+Reviewed from baseline `2b41f27ac57d67fa3691b5743da3b58f3e6d9990`.
+
+| Finding | Resolution |
+| --- | --- |
+| P1: editing aliases after add/retire cleared the structural shadow requirement | Derive structural status from the active definition for every draft, rather than a caller flag. |
+| P1: restoring an older non-structural revision could bypass the structural shadow | Restore compares the restored structure to current active structure. |
+| P1: shadow inspected mutable plan criteria and remained reusable after scope changes | Compare authoritative active snapshots and bind proof to the exact current cohort fingerprint; reject empty/incomplete scope. |
+| P1: shadow evidence could be changed or removed | Migration 080 adds immutable evidence triggers. |
+| P2: stored taxonomy fingerprint and pinned-query corruption were not enforced | Verify stored fingerprints and fail on malformed taxonomy-pinned query payloads. |
+| P2: reserved keys and ambiguous concept identities | Reject reserved object keys and duplicate normalized concept identities. |
+| P2: publish dialog lacked true modality and saved-change review | Native modal, Escape support, fresh reason, concept-change summary, structural typed confirmation enforced server-side. Unsaved editor changes block review. |
+| P2: mobile shell exceeded the viewport | Constrain the single-column grid and sidebar minimum width; browser overflow assertion passes. |
+| P2: Phase 4 test omitted from certification inventory | Register the security suite in the certification manifest and complete test inventory. |
+
+Browser evidence: an isolated local libSQL database passes all seven console
+views, tenant-admin rejection, viewer read-only controls, alias publication,
+structural shadow/confirmation, modal Escape and mobile viewport containment.
+Screenshots were visually inspected; the publication dialog is centered and its
+change label renders correctly. The existing 3101 preview was separately checked:
+its synthetic fixture database lacked current migrations, was migrated locally,
+and authenticated Taxonomy now renders. No production target or live scraper
+configuration was changed. The repeat browser/build check was necessitated by
+modal positioning and text corrections; unchanged security evidence was reused.
+
+Eight taxonomy tests cover the structural-edit/restore bypasses, immutable proof,
+stale and empty shadow scopes, authoritative snapshots, reserved keys and corrupt
+pinned queries. The first final gate caught three test-inventory assertions while
+747 tests passed; the missing registry entry was corrected and the 18 targeted
+inventory/taxonomy checks then passed. Final gate result is recorded below.
+
+### Remaining scope and operational evidence
+
+- Full Phase 4 intelligence-taxonomy classification/reparenting and admission/
+  verdict impact diffs are not implemented. Discovery-query shadow success does
+  not certify those changes. Ring selection is metadata, not an exclusion rule.
+- Remote Turso FK/transaction contention remains unverified without a disposable
+  target. Local libSQL/SQLite fixtures do not establish remote behavior.
+- Before Oracle activation, apply 072-080, confirm matching web/worker release
+  and database identity, provision explicit operators and exercise enabled workers.
+  Existing controls-disabled acquisition-to-reviewed-memo-to-Pursuit operational
+  proof remains outstanding; acquisition was deliberately left running untouched.
+- Usage rollup scheduling still needs Oracle integration. The current host tool
+  is `npx tsx scripts/admin.ts rollup --apply`; dashboards honestly show stale or
+  unavailable rollups. Alerts and audit pagination retain their documented limits.
+- Oracle is the release target. Vercel preview status is not evidence for this
+  topology. This branch has not been merged or deployed during this review.
+
+
+Final verification: `npm run certify` passed all nine stages (182.72 seconds),
+including lint (zero errors; 21 existing warnings), formatting, TypeScript,
+production SSR build and the certification test manifest. Final authenticated
+browser acceptance passed after the modal/text correction; screenshots are under
+`.radar/acceptance/admin`. No further source changes followed these checks.

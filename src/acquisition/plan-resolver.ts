@@ -92,6 +92,16 @@ export class ScraperPlanResolver {
         )
       : [];
 
+    if (
+      customParams.taxonomyRevisionId &&
+      (!savedQueries.length ||
+        !Array.isArray(customParams.generatedQueries) ||
+        customParams.generatedQueries.some(
+          (value: unknown) => typeof value !== "string" || !value.trim(),
+        ))
+    )
+      throw new Error("PINNED_SEARCH_QUERIES_INVALID");
+
     // Zero-fallback invariant: Must have at least targetRoles or declared functions
     if (targetRoles.length === 0 && functions.length === 0) {
       throw new InsufficientSearchCriteriaError(
