@@ -156,7 +156,7 @@ inventory/taxonomy checks then passed. Final gate result is recorded below.
 
 - Phase 4 now includes revisioned intelligence classification/reparenting/retirement and bounded admission/verdict comparisons. Discovery and intelligence proofs remain distinct; combined structural edits require both. Ring/classification metadata never becomes an exclusion rule.
 - Remote Turso foreign-key and contention checks passed on radar-admin-disposable-20261002: one mutation winner, five stale writers rejected, one shadow claim and immutable terminal evidence. Injected decisions prove concurrency/publication, not live model quality.
-- Before Oracle activation, apply 072-082, confirm matching web/worker release
+- Before Oracle activation, apply 072-083, confirm matching web/worker release
   and database identity, provision explicit operators and exercise enabled workers.
   Existing controls-disabled acquisition-to-reviewed-memo-to-Pursuit operational
   proof remains outstanding; acquisition was deliberately left running untouched.

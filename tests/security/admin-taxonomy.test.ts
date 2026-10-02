@@ -116,7 +116,7 @@ describe("Phase 4 discovery taxonomy", () => {
         confirmation: "PUBLISH",
         reason: "activation must be tested",
       }),
-    ).rejects.toThrow("INTELLIGENCE_SHADOW_REQUIRED");
+    ).rejects.toThrow("INTELLIGENCE_GOLDEN_SHADOW_REQUIRED");
   });
   it("rejects ambiguous new intelligence aliases while preserving existing baseline mappings", () => {
     const graph = structuredClone(baselineIntelligenceTaxonomy);
@@ -658,7 +658,7 @@ describe("Phase 4 discovery taxonomy", () => {
         confirmation: "PUBLISH",
         reason: "skip shadow",
       }),
-    ).rejects.toThrow("INTELLIGENCE_SHADOW_REQUIRED");
+    ).rejects.toThrow("INTELLIGENCE_GOLDEN_SHADOW_REQUIRED");
   });
   it("preserves identities while moving and retiring a subtree", async () => {
     const db = await fixture(),
@@ -785,6 +785,57 @@ describe("Phase 4 discovery taxonomy", () => {
     result.cases[0].beforeViability = "BLOCKED";
     expect(assessIntelligenceShadow(result, ["case"]).safeToPublish).toBe(false);
     expect(assessIntelligenceShadow(result, ["case", "missing"]).safeToPublish).toBe(false);
+    result.cases[0].beforeViability = "PLAUSIBLE";
+    result.cases[0].afterVerdict = "CONSIDER";
+    expect(assessIntelligenceShadow(result, ["case"])).toMatchObject({
+      safeToPublish: false,
+      passToAdmitted: 1,
+    });
+  });
+  it("requires a golden pass and prevents duplicate live proof reservations", async () => {
+    const db = await fixture(),
+      draft = await mutate(db, {
+        kind: "intelligence_classify",
+        nodeId: "perf_mkt",
+        classification: "ADJACENT",
+        reason: "golden proof requirement",
+      }),
+      first = await mutate(db, {
+        kind: "intelligence_shadow",
+        revisionId: draft.id,
+        tokenCap: 1000000,
+        limit: 3,
+        reason: "queue only one golden proof",
+      });
+    await expect(
+      mutate(db, {
+        kind: "intelligence_shadow",
+        revisionId: draft.id,
+        tokenCap: 1000000,
+        limit: 3,
+        reason: "duplicate golden proof",
+      }),
+    ).rejects.toThrow("INTELLIGENCE_SHADOW_ALREADY_QUEUED_OR_RUNNING");
+    await db.execute(
+      "UPDATE intelligence_taxonomy_shadows SET status='failed',completed_at=? WHERE id=?",
+      [Date.now(), first.id],
+    );
+    const revisions = await db.one<{ id: string }>(
+      "SELECT id FROM config_revisions ORDER BY created_at LIMIT 1",
+    );
+    await db.execute(
+      `INSERT INTO intelligence_taxonomy_shadows(id,revision_id,active_revision_id,config_revision_id,cohort_hash,scope_kind,scope_json,environment_json,created_by,created_at,status,result_json,token_cap)
+       VALUES('tenant-proof',?,?,?,'sample','tenant_sample','{"kind":"tenant_sample","tenantId":"tenant_A","limit":1}','{}','op',?,'passed','{}',1000)`,
+      [draft.id, (await activeSearchTaxonomy(db)).id, revisions!.id, Date.now()],
+    );
+    await expect(
+      mutate(db, {
+        kind: "publish",
+        revisionId: draft.id,
+        confirmation: "PUBLISH",
+        reason: "tenant proof cannot replace golden",
+      }),
+    ).rejects.toThrow("INTELLIGENCE_GOLDEN_SHADOW_REQUIRED");
   });
   it("fails revoked-operator jobs and rejects empty real scope", async () => {
     const db = await fixture(),

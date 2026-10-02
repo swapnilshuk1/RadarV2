@@ -358,7 +358,7 @@ export async function readTaxonomySnapshot(db: DatabaseAdapter, actor: string) {
       "SELECT name FROM sqlite_master WHERE name='intelligence_taxonomy_shadows'",
     ))
       ? await db.many<Record<string, string | number | null>>(
-          "SELECT id,revision_id,active_revision_id,status,result_json,error,created_at,tokens_reserved,token_cap FROM intelligence_taxonomy_shadows ORDER BY created_at DESC LIMIT 20",
+           "SELECT id,revision_id,active_revision_id,scope_kind,status,result_json,error,created_at,tokens_reserved,token_cap FROM intelligence_taxonomy_shadows ORDER BY created_at DESC LIMIT 20",
         )
       : [],
     state: taxonomyState(active.id, draftPointer?.revision_id),

@@ -58,6 +58,7 @@ export type IntelligenceShadowResult = {
   invalidOutputs: number;
   repairs: number;
   passToPursue: number;
+  passToAdmitted?: number;
   repairStages?: string[];
 };
 export function assessIntelligenceShadow(result: IntelligenceShadowResult, expectedIds: string[]) {
@@ -67,6 +68,9 @@ export function assessIntelligenceShadow(result: IntelligenceShadowResult, expec
   result.verdictsChanged = result.cases.filter((c) => c.beforeVerdict !== c.afterVerdict).length;
   result.passToPursue = result.cases.filter(
     (c) => c.beforeVerdict === "PASS" && c.afterVerdict === "PURSUE",
+  ).length;
+  result.passToAdmitted = result.cases.filter(
+    (c) => c.beforeVerdict === "PASS" && ["PURSUE", "CONSIDER"].includes(c.afterVerdict),
   ).length;
   const sentinels =
     result.cases.every(
@@ -93,7 +97,7 @@ export function assessIntelligenceShadow(result: IntelligenceShadowResult, expec
     new Set(expectedIds).size === expectedIds.length &&
     expectedIds.every((id) => result.cases.filter((c) => c.id === id).length === 1) &&
     result.invalidOutputs === 0 &&
-    result.passToPursue === 0 &&
+    result.passToAdmitted === 0 &&
     result.cases.every(
       (c) =>
         [c.beforeVerdict, c.afterVerdict].every((v) =>

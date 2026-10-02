@@ -151,24 +151,39 @@ export async function queueIntelligenceShadow(
 ) {
   if (!(await db.one("SELECT name FROM sqlite_master WHERE name='intelligence_taxonomy_shadows'")))
     throw new Error("INTELLIGENCE_SHADOW_MIGRATION_REQUIRED");
-  const cases = await intelligenceShadowCases(db, request.tenantId, request.limit),
+  const scopeKind = request.tenantId ? "tenant_sample" : "golden",
+    cases = await intelligenceShadowCases(db, request.tenantId, request.limit),
     config = await activeRevision(db, request.tenantId),
     id = randomUUID();
-  await db.execute(
-    `INSERT INTO intelligence_taxonomy_shadows(id,revision_id,active_revision_id,config_revision_id,cohort_hash,scope_json,environment_json,created_by,created_at,status,token_cap) VALUES(?,?,?,?,?,?,?,?,?,'queued',?)`,
-    [
-      id,
-      draft.id,
-      active.id,
-      config.id,
-      intelligenceCohortHash(cases),
-      JSON.stringify({ tenantId: request.tenantId, limit: request.limit }),
-      JSON.stringify(benchEnvironment()),
-      actor,
-      Date.now(),
-      request.tokenCap,
-    ],
-  );
+  if (
+    await db.one(
+      "SELECT id FROM intelligence_taxonomy_shadows WHERE revision_id=? AND active_revision_id=? AND scope_kind=? AND status IN ('queued','running')",
+      [draft.id, active.id, scopeKind],
+    )
+  )
+    throw new Error("INTELLIGENCE_SHADOW_ALREADY_QUEUED_OR_RUNNING");
+  try {
+    await db.execute(
+      `INSERT INTO intelligence_taxonomy_shadows(id,revision_id,active_revision_id,config_revision_id,cohort_hash,scope_kind,scope_json,environment_json,created_by,created_at,status,token_cap) VALUES(?,?,?,?,?,?,?,?,?,?,'queued',?)`,
+      [
+        id,
+        draft.id,
+        active.id,
+        config.id,
+        intelligenceCohortHash(cases),
+        scopeKind,
+        JSON.stringify({ kind: scopeKind, tenantId: request.tenantId, limit: request.limit }),
+        JSON.stringify(benchEnvironment()),
+        actor,
+        Date.now(),
+        request.tokenCap,
+      ],
+    );
+  } catch (error) {
+    if (String(error).includes("intelligence_shadow_live_scope"))
+      throw new Error("INTELLIGENCE_SHADOW_ALREADY_QUEUED_OR_RUNNING");
+    throw error;
+  }
   return id;
 }
 export async function assertIntelligenceShadow(
@@ -184,19 +199,20 @@ export async function assertIntelligenceShadow(
     config_revision_id: string;
     result_json: string;
   }>(
-    "SELECT * FROM intelligence_taxonomy_shadows WHERE revision_id=? AND active_revision_id=? AND status='passed' ORDER BY created_at DESC LIMIT 1",
+    "SELECT * FROM intelligence_taxonomy_shadows WHERE revision_id=? AND active_revision_id=? AND scope_kind='golden' ORDER BY created_at DESC LIMIT 1",
     [draft.id, active.id],
   );
-  if (!row) throw new Error("INTELLIGENCE_SHADOW_REQUIRED");
+  if (!row || !row.result_json) throw new Error("INTELLIGENCE_GOLDEN_SHADOW_REQUIRED");
   assertBenchEnvironment(row.environment_json, row.worker_environment_json);
   const scope = JSON.parse(row.scope_json),
     result = JSON.parse(row.result_json);
   if (
+    scope.kind !== "golden" ||
     result.version !== INTELLIGENCE_SHADOW_VERSION ||
     !result.safeToPublish ||
-    (await activeRevision(db, scope.tenantId)).id !== row.config_revision_id ||
-    intelligenceCohortHash(await intelligenceShadowCases(db, scope.tenantId, scope.limit)) !==
+    (await activeRevision(db)).id !== row.config_revision_id ||
+    intelligenceCohortHash(await intelligenceShadowCases(db, undefined, scope.limit)) !==
       row.cohort_hash
   )
-    throw new Error("INTELLIGENCE_SHADOW_STALE");
+    throw new Error("INTELLIGENCE_GOLDEN_SHADOW_REQUIRED");
 }

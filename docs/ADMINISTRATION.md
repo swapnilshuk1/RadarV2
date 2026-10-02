@@ -6,7 +6,7 @@ Gate meaning, acquisition evidence and existing memo content are preserved. The 
 adds explicit model assignments, revisioned discovery and intelligence taxonomies, and
 bounded decision-comparison controls for future work.
 
-Apply migrations 072–082 through the normal migration runner before using this branch.
+Apply migrations 072–083 through the normal migration runner before using this branch.
 Platform access comes from `platform_roles`, never tenant memberships. An existing
 user can be granted `operator` or read-only `viewer` access by a trusted host
 operator. No user receives platform access automatically. Revocation takes effect
@@ -416,11 +416,14 @@ mandates without creating title vetoes. The evaluation role interpreter receives
 Existing plans, queued evaluations and memos keep their snapshots; publication
 is not a bulk re-evaluation. Explicit exclusions and provenance checks remain hard.
 
-Migration **081** adds durable `intelligence_taxonomy_shadows` jobs and BENCH
+Migrations **081–083** add durable `intelligence_taxonomy_shadows` jobs, BENCH
 invocation linkage. The existing `npm run worker:admin-bench` claims these jobs.
 Web and worker require matching `RADAR_ADMIN_BENCH_TARGET`, 40-character
 `RADAR_RELEASE_SHA`, `RADAR_ADMIN_BENCH_HOSTS` and provider/version configuration.
-The UI defaults to three golden fixtures. An operator can explicitly select a
+The UI defaults to three golden fixtures. A current passing **golden** comparison
+is mandatory for every intelligence publication; a tenant sample is supplementary
+evidence and can never replace it. At most one queued/running proof exists per
+draft, active revision and scope kind, preventing repeated reservations. An operator can explicitly select a
 tenant and compare up to three real opportunities with valid frozen inputs;
 the server supports a maximum of ten. This is a bounded sample, not a full
 corpus guarantee. Real runs validate canonical JD hashes and exact frozen source
@@ -428,7 +431,7 @@ identity. They use that tenant's effective model configuration.
 
 Each run compares attention admissions and actual staged decisions for active
 and draft graphs, within a conservative reservation cap checked before dispatch.
-Invalid output, source-integrity failure, PASS-to-PURSUE, relaxation of
+Invalid output, PASS-to-PURSUE or PASS-to-CONSIDER, source-integrity failure, relaxation of
 BLOCKED screening, incomplete cases or violated golden sentinels block passing.
 Results retain before/after screening drivers, requirement mappings and repair-stage diagnostics. Results are immutable; changed cohort, configuration, draft, active revision,
 operator permission or release/environment invalidates publication. Lease loss
@@ -450,6 +453,6 @@ mutations, exclusive shadow claims, publication and immutable results. Set
 injected synthetic decisions and does not prove live provider output quality.
 Both remote proofs passed against `radar-admin-disposable-20261002`.
 
-For Oracle activation, apply migrations through 082 to the shared target, deploy
+For Oracle activation, apply migrations through 083 to the shared target, deploy
 matching web/worker revisions, provision operators and exercise the enabled bench
 worker. This branch remains isolated from main and Oracle until release.

@@ -66,14 +66,28 @@ try {
   )
     throw new Error(`REMOTE_MUTATION_CONTENTION_FAILED:${wins.length} winners`);
   const draft = (await readTaxonomySnapshot(db, "remote-validation-op")).draft!;
-  const queued = await mutateTaxonomy(db, "remote-validation-op", {
-    kind: "intelligence_shadow",
-    revisionId: draft.id,
-    tokenCap: 1000000,
-    limit: 3,
-    reason: "disposable golden worker proof",
-    expectedState: (await readTaxonomySnapshot(db, "remote-validation-op")).state,
-  });
+  const proofState = (await readTaxonomySnapshot(db, "remote-validation-op")).state;
+  const proofRequests = await Promise.allSettled(
+    [db, second].map((connection) =>
+      mutateTaxonomy(connection, "remote-validation-op", {
+        kind: "intelligence_shadow",
+        revisionId: draft.id,
+        tokenCap: 1000000,
+        limit: 3,
+        reason: "disposable golden worker proof",
+        expectedState: proofState,
+      }),
+    ),
+  );
+  const queued = proofRequests.find(
+    (result): result is PromiseFulfilledResult<{ id: string }> => result.status === "fulfilled",
+  )?.value;
+  const duplicateRejected = proofRequests.filter(
+    (result) =>
+      result.status === "rejected" &&
+      String(result.reason).includes("INTELLIGENCE_SHADOW_ALREADY_QUEUED_OR_RUNNING"),
+  ).length;
+  if (!queued || duplicateRejected !== 1) throw new Error("REMOTE_SHADOW_DUPLICATE_QUEUE_FAILED");
   const runner = async (_row: unknown, specimens: { id: string }[]) => ({
     version: INTELLIGENCE_SHADOW_VERSION,
     safeToPublish: true,
@@ -119,6 +133,7 @@ try {
     mutationWinners: wins.length,
     staleLosers: losses.length,
     workerClaims: claims.filter(Boolean).length,
+    duplicateRejected,
     immutable,
     liveProvider: false,
     database: "radar-admin-disposable-20261002",
