@@ -12,13 +12,16 @@ import {
   operationsInstalled,
   writeRuntimeReceipt,
   operationalSettings,
+  confirmProviderRecovery,
 } from "./operations-runtime";
+import { probeTavilyCapability } from "../evaluation/tavily-request";
 export const TAVILY_CONNECTION = "tavily:platform";
 export const RECEIPT_FRESH_MS = 150_000;
 type Connection = {
   active_id: string | null;
   candidate_id: string | null;
   previous_id: string | null;
+  previous_source: "host" | "managed" | null;
   generation: number;
   revision: number;
   uptake_json: string;
@@ -96,14 +99,15 @@ export async function readSearchConnection(db: DatabaseAdapter, actor: string) {
     activeId: row.active_id,
     candidateId: row.candidate_id,
     previousId: row.previous_id,
+    previousSource: row.previous_source,
     hostConfigured: Boolean(process.env.TAVILY_API_KEY),
     activatedAt: row.activated_at,
     uptake: await searchUptake(db),
     credentials: await db.many<Record<string, string | number | null>>(
-      "SELECT c.id,c.created_at,l.activated_at,l.superseded_at,l.unreferenced_at,l.retired_at,l.last_validated_at,l.last_used_at,l.key_version FROM admin_search_credentials c JOIN provider_credential_lifecycle l ON l.credential_id=c.id ORDER BY c.created_at DESC LIMIT 20",
+      "SELECT c.id,c.created_at,l.activated_at,l.superseded_at,l.unreferenced_at,l.retired_at,l.last_validated_at,l.last_used_at AS last_selected_at,l.last_success_at,l.key_version FROM admin_search_credentials c JOIN provider_credential_lifecycle l ON l.credential_id=c.id ORDER BY c.created_at DESC LIMIT 20",
     ),
     checks: await db.many<Record<string, string | number | null>>(
-      "SELECT id,credential_id,status,worker_host,worker_instance,error_code,created_at,completed_at FROM admin_search_checks ORDER BY created_at DESC LIMIT 20",
+      "SELECT id,credential_id,source,generation,purpose,status,worker_host,worker_instance,error_code,created_at,completed_at FROM admin_search_checks ORDER BY created_at DESC LIMIT 20",
     ),
     cooldown: await db.one<{
       generation: number;
@@ -151,8 +155,14 @@ export async function mutateSearchConnection(
         "UPDATE admin_search_connection SET candidate_id=?,revision=revision+1,updated_at=?,updated_by=? WHERE id=1",
         [id, now, actor],
       );
-    } else if (data.kind === "test") {
-      if (![row.candidate_id, row.previous_id, row.active_id].includes(id))
+    } else if (
+      data.kind === "test" ||
+      data.kind === "test_host" ||
+      data.kind === "confirm_recovered"
+    ) {
+      if (data.kind === "test_host") id = null;
+      if (data.kind === "confirm_recovered") id = row.active_id;
+      if (data.kind === "test" && ![row.candidate_id, row.previous_id, row.active_id].includes(id))
         throw new Error("SEARCH_VERSION_NOT_CURRENT");
       if (
         await tx.one(
@@ -162,18 +172,27 @@ export async function mutateSearchConnection(
       )
         throw new Error("SEARCH_VERSION_RETIRED");
       await tx.execute(
-        "INSERT INTO admin_search_checks(id,credential_id,status,created_at,created_by) VALUES(?,?,'queued',?,?)",
-        [randomUUID(), id, now, actor],
+        "INSERT INTO admin_search_checks(id,credential_id,status,created_at,created_by,source,generation,purpose,capability_version) VALUES(?,?,'queued',?,?,?,?,?,1)",
+        [
+          randomUUID(),
+          id,
+          now,
+          actor,
+          id ? "managed" : "host",
+          row.generation,
+          data.kind === "confirm_recovered" ? "confirm" : "validate",
+        ],
       );
     } else if (data.kind === "activate" || data.kind === "rollback") {
       id = data.kind === "rollback" ? row.previous_id : data.credentialId;
-      if (!id || (data.kind === "activate" && id !== row.candidate_id))
+      const hostRollback = data.kind === "rollback" && row.previous_source === "host";
+      if ((!id && !hostRollback) || (data.kind === "activate" && id !== row.candidate_id))
         throw new Error("SEARCH_CANDIDATE_CHANGED");
       const consumers = await requiredSearchConsumers(tx);
       if (!consumers.length) throw new Error("SEARCH_REQUIRED_WORKER_OFFLINE");
       const proof = await tx.one<Consumer>(
-        "SELECT worker_instance AS instance_id,release_sha,database_fingerprint FROM admin_search_checks WHERE credential_id=? AND status='passed' AND completed_at>? ORDER BY completed_at DESC LIMIT 1",
-        [id, now - 15 * 60000],
+        "SELECT worker_instance AS instance_id,release_sha,database_fingerprint FROM admin_search_checks WHERE credential_id IS ? AND source=? AND capability_version=1 AND status='passed' AND completed_at>? ORDER BY completed_at DESC LIMIT 1",
+        [id, id ? "managed" : "host", now - 15 * 60000],
       );
       if (
         !proof ||
@@ -194,16 +213,24 @@ export async function mutateSearchConnection(
         [now, id],
       );
       await tx.execute(
-        "UPDATE admin_search_connection SET active_id=?,previous_id=?,candidate_id=NULL,generation=generation+1,revision=revision+1,activated_at=?,uptake_json=?,updated_at=?,updated_by=? WHERE id=1",
-        [id, row.active_id, now, JSON.stringify(consumers), now, actor],
+        "UPDATE admin_search_connection SET active_id=?,previous_id=?,previous_source=?,candidate_id=NULL,generation=generation+1,revision=revision+1,activated_at=?,uptake_json=?,updated_at=?,updated_by=? WHERE id=1",
+        [
+          id,
+          row.active_id,
+          row.active_id ? "managed" : "host",
+          now,
+          JSON.stringify(consumers),
+          now,
+          actor,
+        ],
       );
       await tx.execute(
-        "UPDATE provider_cooldowns SET generation=?,blocked_until=0,requires_action=0,failures=0,last_success_at=? WHERE connection_id=?",
-        [row.generation + 1, now, TAVILY_CONNECTION],
+        "INSERT INTO provider_cooldowns(connection_id,generation,blocked_until,requires_action,failures,failure_class) VALUES(?,?,0,1,0,'activation_canary') ON CONFLICT(connection_id) DO UPDATE SET generation=excluded.generation,blocked_until=0,requires_action=1,failures=0,last_success_at=NULL",
+        [TAVILY_CONNECTION, row.generation + 1],
       );
       await tx.execute(
-        "UPDATE provider_incidents SET state='recovering' WHERE connection_id=? AND state!='resolved'",
-        [TAVILY_CONNECTION],
+        "INSERT INTO admin_search_checks(id,credential_id,status,created_at,created_by,source,generation,purpose,capability_version) VALUES(?,?,'queued',?,?,?,?, 'confirm',1)",
+        [randomUUID(), id, now, actor, id ? "managed" : "host", row.generation + 1],
       );
     } else if (data.kind === "retire") {
       if ([row.active_id, row.previous_id, row.candidate_id].includes(id))
@@ -278,8 +305,15 @@ export async function pollSearchConnectionCheck(
       "UPDATE admin_search_checks SET status='failed',error_code='WORKER_LEASE_EXPIRED',completed_at=? WHERE status='running' AND lease_until<=?",
       [now, now],
     );
-    const row = await tx.one<{ id: string; credential_id: string; created_by: string }>(
-      "SELECT id,credential_id,created_by FROM admin_search_checks WHERE status='queued' ORDER BY created_at LIMIT 1",
+    const row = await tx.one<{
+      id: string;
+      credential_id: string | null;
+      created_by: string;
+      source: string;
+      generation: number | null;
+      purpose: string;
+    }>(
+      "SELECT id,credential_id,created_by,source,generation,purpose FROM admin_search_checks WHERE status='queued' ORDER BY created_at LIMIT 1",
     );
     if (!row) return null;
     const result = await tx.execute(
@@ -297,39 +331,59 @@ export async function pollSearchConnectionCheck(
     return result.rowsAffected ? row : null;
   });
   if (!claimed) return null;
+  const startedAt = Date.now();
   let error: string | null = null;
   try {
     await requirePlatformRole(db, claimed.created_by, true);
-    const response = await request("https://api.tavily.com/search", {
-      method: "POST",
-      redirect: "error",
-      signal: AbortSignal.timeout(25000),
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${await decrypt(db, claimed.credential_id)}`,
-      },
-      body: JSON.stringify({
-        query: "Oracle company official website",
-        search_depth: "basic",
-        max_results: 1,
-        include_answer: false,
-        include_raw_content: false,
-      }),
-    });
-    if (!response.ok) error = `CONTEXT_SEARCH_HTTP_${response.status}`;
-    else if (!Array.isArray((await response.json()).results)) error = "SEARCH_RESPONSE_INVALID";
-  } catch {
-    error = "SEARCH_CHECK_UNAVAILABLE";
+    await probeTavilyCapability(
+      claimed.credential_id ? await decrypt(db, claimed.credential_id) : process.env.TAVILY_API_KEY,
+      request,
+    );
+  } catch (failure) {
+    error =
+      failure instanceof Error && /^[A-Z_0-9]+$/.test(failure.message)
+        ? failure.message
+        : "SEARCH_CHECK_UNAVAILABLE";
   }
   const result = await db.execute(
     "UPDATE admin_search_checks SET status=?,error_code=?,completed_at=?,lease_until=NULL WHERE id=? AND status='running' AND lease_token=? AND lease_until>?",
     [error ? "failed" : "passed", error, Date.now(), claimed.id, token, Date.now()],
   );
-  if (result.rowsAffected && !error)
+  if (result.rowsAffected && !error) {
     await db.execute(
       "UPDATE provider_credential_lifecycle SET last_validated_at=? WHERE credential_id=?",
       [Date.now(), claimed.credential_id],
     );
+    if (claimed.purpose === "confirm") {
+      const current = await connection(db);
+      const consumers = await requiredSearchConsumers(db);
+      if (
+        current.generation === claimed.generation &&
+        current.active_id === claimed.credential_id &&
+        consumers.some(
+          (c) =>
+            c.instance_id === runtime.instance &&
+            c.release_sha === (process.env.RADAR_RELEASE_SHA ?? "development") &&
+            c.database_fingerprint === runtime.database,
+        )
+      ) {
+        const recovered = await confirmProviderRecovery(
+          db,
+          TAVILY_CONNECTION,
+          current.generation,
+          startedAt,
+        );
+        if (recovered)
+          await appendAdminAudit(db, {
+            actor: claimed.created_by,
+            action: "connection.tavily.recovered",
+            target: TAVILY_CONNECTION,
+            reason: "Current-worker production capability canary passed",
+            detail: { generation: current.generation, checkId: claimed.id },
+          });
+      }
+    }
+  }
   return {
     id: claimed.id,
     status: result.rowsAffected ? (error ? "failed" : "passed") : "lease_lost",

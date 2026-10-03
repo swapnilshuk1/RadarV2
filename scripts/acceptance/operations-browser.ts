@@ -14,6 +14,17 @@ import { pollNotificationDelivery } from "../../src/admin/notification-worker";
 import { reconcileProviderIncidents } from "../../src/admin/operations-recovery";
 import { notificationSignature } from "../../src/admin/notification-worker";
 import { associateIncidentWork } from "../../src/admin/operations-runtime";
+import {
+  CRITICAL_EVALUATION_MAINTENANCE_TASKS,
+  runMaintenanceTasks,
+} from "../../src/lib/health/maintenance-receipts";
+
+const tavilyCapabilityResponse = () =>
+  new Response(
+    JSON.stringify({
+      results: [{ url: "https://oracle.com", raw_content: "fixture official company content" }],
+    }),
+  );
 
 function assert(value: unknown, message: string): asserts value {
   if (!value) throw new Error(message);
@@ -67,21 +78,35 @@ export async function runOperationsBrowserJourney(
     ],
   );
   const instance = "operations-acceptance-worker";
-  await db.execute("INSERT INTO worker_heartbeats VALUES('evaluation',?,'development',?,?)", [
+  const releaseSha = process.env.RADAR_RELEASE_SHA ?? "development";
+  await db.execute("INSERT INTO worker_heartbeats VALUES('evaluation',?,?,?,?)", [
     instance,
+    releaseSha,
     fingerprint,
     new Date().toISOString(),
   ]);
   registerConnectionWorker("evaluation", instance, fingerprint);
   const signingSecret = "acceptance-signing-secret-000000000000000";
-  await db.execute("INSERT INTO operational_webhooks VALUES(1,?,?,?,?,?,?)", [
-    "https://alerts.example.com/radar",
-    JSON.stringify(new CredentialVault().encrypt(signingSecret)),
-    "High",
-    1,
-    Date.now(),
-    fixture.adminId,
-  ]);
+  await db.execute(
+    `INSERT INTO operational_webhooks(id,url,secret_envelope,minimum_severity,send_recovery,updated_at,updated_by)
+     VALUES(1,?,?,?,?,?,?)`,
+    [
+      "https://alerts.example.com/radar",
+      JSON.stringify(new CredentialVault().encrypt(signingSecret)),
+      "High",
+      1,
+      Date.now(),
+      fixture.adminId,
+    ],
+  );
+  await runMaintenanceTasks(
+    db,
+    { workerInstance: instance, releaseSha, databaseFingerprint: fingerprint },
+    CRITICAL_EVALUATION_MAINTENANCE_TASKS.map((task) => ({
+      task,
+      operation: async () => undefined,
+    })),
+  );
   process.env.TAVILY_API_KEY = "acceptance-host-key";
   const opportunity = { id: identity.canonicalJobId, title: "Head of Growth", company: "Company" };
   await new ProductionContextProvider(
@@ -194,10 +219,11 @@ export async function runOperationsBrowserJourney(
     "failed candidate activated",
   );
   await operation(page, "Validate on worker");
-  await pollSearchConnectionCheck(db, async () => new Response(JSON.stringify({ results: [] })));
+  await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
   await page.getByRole("button", { name: "Refresh operations", exact: true }).click();
   await operation(page, "Activate validated candidate");
   await refreshSearchWorkerReceipt(db);
+  await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
   await page.getByRole("button", { name: "Refresh operations", exact: true }).click();
   await page.getByText("Workers loaded: 1/1", { exact: false }).waitFor();
   await page.getByRole("button", { name: "Select recovery cohort", exact: true }).click();

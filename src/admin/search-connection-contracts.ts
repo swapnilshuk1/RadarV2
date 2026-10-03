@@ -6,11 +6,15 @@ export const searchConnectionMutation = z
       key: z
         .string()
         .trim()
-        .regex(/^tvly-[A-Za-z0-9_-]{20,500}$/),
+        .min(20)
+        .max(512)
+        .regex(/^[^\s\x00-\x1f\x7f]+$/),
     }),
     z.object({ kind: z.literal("test"), credentialId: z.string().min(1) }),
     z.object({ kind: z.literal("activate"), credentialId: z.string().min(1) }),
     z.object({ kind: z.literal("rollback") }),
+    z.object({ kind: z.literal("test_host") }),
+    z.object({ kind: z.literal("confirm_recovered") }),
     z.object({ kind: z.literal("retire"), credentialId: z.string().min(1) }),
   ])
   .and(

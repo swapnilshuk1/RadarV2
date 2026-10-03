@@ -279,6 +279,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
 
   function rollback(errorMessage: string): void {
     const canRestorePrior = Boolean(priorSha && priorReleaseVerified && priorReleaseDirectory);
+    const verifyPriorReadiness = `curl --max-time 15 --fail --silent --show-error ${shellQuote(`${config.readinessUrl.replace(/\/$/, "")}/health/ready`)} | RADAR_PREVIOUS_SHA=${shellQuote(priorSha ?? "")} node -e ${shellQuote('const fs=require("node:fs"); const response=JSON.parse(fs.readFileSync(0,"utf8")); if(response.status!=="ready" || response.releaseSha!==process.env.RADAR_PREVIOUS_SHA) process.exit(1)')}`;
     const rollbackFailedReceipt = JSON.stringify({
       previousSha: priorSha || null,
       newSha: config.sha,
@@ -324,7 +325,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
       canRestorePrior
         ? [
             `printf '%s' ${shellQuote(rollbackFailedReceipt)} > ${shellQuote(receipt)}`,
-            `if (cd ${shellQuote(priorReleaseDirectory!)} && export RADAR_RELEASE_SHA=${shellQuote(priorSha!)} && export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)} && export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)} && export RADAR_SERVER_SCRAPER_ENABLED=${shellQuote(String(runServerScraper))} && ${replaceManagedProcesses} && ${startAllProcesses} && ${waitForSystemReadiness} && ${verifyAllProcesses} && printf '%s' ${shellQuote(priorSha!)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}); then`,
+            `if (cd ${shellQuote(priorReleaseDirectory!)} && export RADAR_RELEASE_SHA=${shellQuote(priorSha!)} && export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)} && export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)} && export RADAR_SERVER_SCRAPER_ENABLED=${shellQuote(String(runServerScraper))} && ${replaceManagedProcesses} && npm run db:status && ${startAllProcesses} && ${waitForSystemReadiness} && ${verifyAllProcesses} && ${verifyPriorReadiness} && printf '%s' ${shellQuote(priorSha!)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}); then`,
             `  printf '%s' ${shellQuote(rollbackSuccessReceipt)} > ${shellQuote(receipt)}`,
             `else`,
             ...requiredProcesses.map((name) => `  pm2 stop ${shellQuote(name)} || true`),

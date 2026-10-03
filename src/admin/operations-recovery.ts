@@ -1,12 +1,18 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseAdapter } from "../data/database/adapter";
+import { getDatabaseTargetIdentity } from "../data/database";
 import type { WorkIdentity } from "./operations-contracts";
 import {
   operationalSettings,
   assertProviderDispatch,
   enqueueIncidentNotification,
 } from "./operations-runtime";
-import { searchUptake, TAVILY_CONNECTION } from "./search-connections";
+import {
+  RECEIPT_FRESH_MS,
+  searchUptake,
+  requiredSearchConsumers,
+  TAVILY_CONNECTION,
+} from "./search-connections";
 import { appendAdminAudit, requirePlatformRole } from "./service";
 import { resumeOperationalWork } from "../evaluation/operational-recovery";
 import { configJobTables } from "./config-store";
@@ -41,23 +47,104 @@ const identity = (row: LinkedJob): WorkIdentity => ({
   contextFingerprint: row.context_fingerprint,
 });
 async function recoveryReady(db: DatabaseAdapter, incidentId: string) {
-  const incident = await db.one<{ connection_id: string; state: string }>(
-    "SELECT connection_id,state FROM provider_incidents WHERE id=?",
-    [incidentId],
-  );
+  const incident = await db.one<{
+    connection_id: string;
+    state: string;
+    generation: number;
+    last_seen: number;
+  }>("SELECT connection_id,state,generation,last_seen FROM provider_incidents WHERE id=?", [
+    incidentId,
+  ]);
   if (!incident || incident.state === "resolved") throw new Error("INCIDENT_NOT_RECOVERABLE");
   await assertProviderDispatch(db, incident.connection_id);
-  if (incident.connection_id !== TAVILY_CONNECTION || !(await searchUptake(db)).ready)
-    throw new Error("WORKER_UPTAKE_REQUIRED");
-  const active = await db.one<{ generation: number; active_id: string | null }>(
-    "SELECT generation,active_id FROM admin_search_connection WHERE id=1",
+  if (incident.connection_id === TAVILY_CONNECTION) {
+    if (!(await searchUptake(db)).ready) throw new Error("WORKER_UPTAKE_REQUIRED");
+    const active = await db.one<{ generation: number; active_id: string | null }>(
+      "SELECT generation,active_id FROM admin_search_connection WHERE id=1",
+    );
+    const validated = await db.many<{
+      worker_instance: string;
+      release_sha: string;
+      database_fingerprint: string;
+    }>(
+      `SELECT c.worker_instance,c.release_sha,c.database_fingerprint FROM admin_search_checks c JOIN worker_heartbeats w ON w.instance_id=c.worker_instance
+       WHERE c.credential_id IS ? AND c.generation=? AND c.purpose='confirm' AND c.capability_version=1
+       AND c.status='passed' AND c.completed_at>? AND c.release_sha=w.release_sha
+       AND c.database_fingerprint=w.database_fingerprint AND w.worker_name='evaluation' AND w.last_seen_at>?`,
+      [
+        active!.active_id,
+        active!.generation,
+        Math.max(incident.last_seen, Date.now() - 15 * 60_000),
+        new Date(Date.now() - 150000).toISOString(),
+      ],
+    );
+    const consumers = await requiredSearchConsumers(db);
+    if (
+      !validated.some((proof) =>
+        consumers.some(
+          (c) =>
+            c.instance_id === proof.worker_instance &&
+            c.release_sha === proof.release_sha &&
+            c.database_fingerprint === proof.database_fingerprint,
+        ),
+      )
+    )
+      throw new Error("CURRENT_HEALTH_PROOF_REQUIRED");
+    return active!.generation;
+  }
+
+  const hostProviders: Record<string, { provider: string; worker: string }> = {
+    "bedrock:host": { provider: "bedrock", worker: "evaluation" },
+    "google:host": { provider: "google", worker: "dossier-review" },
+  };
+  const host = hostProviders[incident.connection_id];
+  if (!host) throw new Error("INCIDENT_PROVIDER_NOT_RECOVERABLE");
+  const probe = await db.one(
+    `SELECT id FROM provider_host_checks WHERE provider=? AND status='passed' AND worker_name=?
+      AND release_sha=? AND database_fingerprint=? AND completed_at>? AND completed_at>? ORDER BY completed_at DESC LIMIT 1`,
+    [
+      host.provider,
+      host.worker,
+      process.env.RADAR_RELEASE_SHA ?? "development",
+      getDatabaseTargetIdentity().fingerprint,
+      incident.last_seen,
+      Date.now() - 15 * 60_000,
+    ],
   );
-  const validated = await db.one(
-    "SELECT id FROM admin_search_checks WHERE credential_id=? AND status='passed' AND completed_at>?",
-    [active!.active_id, Date.now() - 15 * 60_000],
+  const hold = await db.one<{
+    requires_action: number;
+    blocked_until: number;
+    generation: number;
+    last_success_at: number | null;
+  }>(
+    "SELECT requires_action,blocked_until,generation,last_success_at FROM provider_cooldowns WHERE connection_id=?",
+    [incident.connection_id],
   );
-  if (!validated) throw new Error("CURRENT_HEALTH_PROOF_REQUIRED");
-  return active!.generation;
+  const runtimeReceipt =
+    hold?.last_success_at && hold.last_success_at > incident.last_seen
+      ? await db.one(
+          `SELECT instance_id FROM worker_runtime_receipts WHERE connection_id=? AND worker_name=?
+          AND release_sha=? AND database_fingerprint=? AND reload_status='loaded'
+          AND last_seen_at>? AND last_seen_at>? ORDER BY last_seen_at DESC LIMIT 1`,
+          [
+            incident.connection_id,
+            host.worker,
+            process.env.RADAR_RELEASE_SHA ?? "development",
+            getDatabaseTargetIdentity().fingerprint,
+            incident.last_seen,
+            Date.now() - RECEIPT_FRESH_MS,
+          ],
+        )
+      : null;
+  if (
+    (!probe && !runtimeReceipt) ||
+    !hold ||
+    hold.generation !== incident.generation ||
+    hold.requires_action ||
+    hold.blocked_until > Date.now()
+  )
+    throw new Error("CURRENT_HOST_MODEL_PROBE_REQUIRED");
+  return incident.generation;
 }
 export async function previewRecovery(
   db: DatabaseAdapter,
@@ -200,8 +287,8 @@ async function accountIncidentJob(
 /** Resolve the provider episode only after health and exact work accounting; terminal/excluded work is not successful output. */
 export async function reconcileProviderIncidents(storage: DatabaseAdapter) {
   const incidents = await storage.many<{ id: string }>(
-    "SELECT id FROM provider_incidents WHERE state='recovering' AND connection_id=?",
-    [TAVILY_CONNECTION],
+    "SELECT id FROM provider_incidents WHERE state='recovering' AND connection_id IN (?,?,?)",
+    [TAVILY_CONNECTION, "bedrock:host", "google:host"],
   );
   for (const incident of incidents) {
     await storage.transaction(async (db) => {

@@ -87,6 +87,7 @@ export function operationalModel(
             });
         }, 30000);
         timer.unref();
+        const requestStartedAt = Date.now();
         try {
           const result = await target.generate(...args);
           if (leaseLost || !(await renewProviderCapacity(db, capacity, owner)))
@@ -95,7 +96,7 @@ export function operationalModel(
               undefined,
               2000,
             );
-          await providerSucceeded(db, connectionId, 0);
+          await providerSucceeded(db, connectionId, 0, requestStartedAt);
           return result;
         } catch (error) {
           if (
