@@ -21,6 +21,7 @@ import {
 } from "../admin/operations-runtime";
 import { classifySearchFailure, type WorkIdentity } from "../admin/operations-contracts";
 import { getDatabaseTargetIdentity } from "../data/database";
+import { tavilySearchBody } from "./tavily-request";
 
 function publicHttps(value: string): URL {
   const url = new URL(value);
@@ -206,6 +207,7 @@ export class ProductionContextProvider implements ContextProvider {
         60_000,
       );
       try {
+        const requestStartedAt = Date.now();
         const response = await this.request("https://api.tavily.com/search", {
           method: "POST",
           redirect: "error",
@@ -214,19 +216,17 @@ export class ProductionContextProvider implements ContextProvider {
             "Content-Type": "application/json",
             Authorization: `Bearer ${credential.key}`,
           },
-          body: JSON.stringify({
-            query: [
-              [opportunity.company, ...researchAliases].map((value) => `"${value}"`).join(" OR "),
-              identityHint ? `"${identityHint}"` : "",
-              identityHint ? "company team" : policy.querySuffix,
-            ]
-              .filter(Boolean)
-              .join(" "),
-            search_depth: policy.searchDepth,
-            max_results: policy.maxResults,
-            include_raw_content: "text",
-            include_answer: false,
-          }),
+          body: JSON.stringify(
+            tavilySearchBody(
+              [
+                [opportunity.company, ...researchAliases].map((value) => `"${value}"`).join(" OR "),
+                identityHint ? `"${identityHint}"` : "",
+                identityHint ? "company team" : policy.querySuffix,
+              ]
+                .filter(Boolean)
+                .join(" "),
+            ),
+          ),
         });
         if (!response.ok) {
           const retryHeader = response.headers.get("retry-after");
@@ -266,7 +266,12 @@ export class ProductionContextProvider implements ContextProvider {
           }>;
         };
         if (!Array.isArray(payload.results)) throw new Error("CONTEXT_SEARCH_RESPONSE_INVALID");
-        await providerSucceeded(this.db, TAVILY_CONNECTION, credential.generation);
+        await providerSucceeded(
+          this.db,
+          TAVILY_CONNECTION,
+          credential.generation,
+          requestStartedAt,
+        );
         const found: EvidenceSource[] = [];
         for (const result of payload.results) {
           if (typeof result.url !== "string") continue;

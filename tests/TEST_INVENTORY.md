@@ -1,11 +1,13 @@
 # RADAR v2 — Permanent Test Architecture Map & Inventory
 
-Operations & Recovery: `tests/security/admin-operations.test.ts` belongs to
-`tenant-security`. It verifies role boundaries, encrypted connection
-activation, incident deduplication, cooldown/capacity fencing, exact recovery
-cohorts, pause/expiry precedence, terminal cohort visibility, maintenance owner
-health and asynchronous signed notification delivery.
-
+Operations & Recovery: `tests/security/admin-operations.test.ts`,
+`tests/security/tavily-hardening.test.ts`,
+`tests/security/host-provider-recovery.test.ts`, and
+`tests/security/notification-lifecycle.test.ts` belong to `tenant-security`.
+Together they verify role boundaries, encrypted connection activation, durable
+maintenance health, provider recovery and cooldown fencing, exact recovery
+cohorts, pause/expiry precedence, terminal cohort visibility, and signed alert
+delivery through resolution, rotation, retries, and batching.
 
 This document defines the authoritative test domains, invariant contracts, certification stage mappings, and full mechanical test registry for the RADAR v2 Executive Intelligence Engine.
 
@@ -378,7 +380,10 @@ Every test file in the repository is mechanically tracked below:
 | `tests/security/admin-config.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 21 | 59 |
 | `tests/security/admin-operations.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 3 (tenant-security) | 34 | 129 |
 | `tests/security/admin-taxonomy.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 23 | 30 |
+| `tests/security/host-provider-recovery.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 3 (tenant-security) | 3 | 18 |
 | `tests/security/admin-protection.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 21 | 74 |
+| `tests/security/notification-lifecycle.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 3 (tenant-security) | 3 | 13 |
+| `tests/security/tavily-hardening.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 3 (tenant-security) | 6 | 18 |
 | `tests/security/tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 16 | 43 |
 | `tests/semantic/controlled_integration.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 12 | 35 |
 | `tests/semantic/extraction-sanitation.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 14 |

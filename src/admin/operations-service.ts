@@ -9,6 +9,7 @@ import { validateWebhookDestination } from "./notification-worker";
 import { configJobTables } from "./config-store";
 import { randomUUID } from "node:crypto";
 import { describeBlobStoreConfiguration } from "../lib/storage/blob-store";
+import { CRITICAL_EVALUATION_MAINTENANCE_TASKS } from "../lib/health/maintenance-receipts";
 
 export async function readOperations(db: DatabaseAdapter, actor: string) {
   const role = await requirePlatformRole(db, actor);
@@ -130,7 +131,7 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
     `SELECT
     (SELECT COUNT(*) FROM admin_search_checks WHERE status IN ('queued','running')) validation,
     (SELECT COUNT(*) FROM provider_host_checks WHERE provider='bedrock' AND status IN ('queued','running')) host_probes,
-    (SELECT COUNT(*) FROM provider_incidents WHERE connection_id='tavily:platform' AND state='recovering') reconciliation,
+    (SELECT COUNT(*) FROM provider_incidents WHERE connection_id IN ('tavily:platform','bedrock:host','google:host') AND state='recovering') reconciliation,
     (SELECT COUNT(*) FROM notification_deliveries WHERE status IN ('queued','retry','sending')) notifications,
     (SELECT COUNT(*) FROM provider_credential_lifecycle l JOIN admin_search_credentials c ON c.id=l.credential_id
       WHERE l.retired_at IS NULL AND l.unreferenced_at<=? AND NOT EXISTS
@@ -139,7 +140,39 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
       (SELECT 1 FROM admin_search_connection s WHERE s.active_id=l.credential_id OR s.candidate_id=l.credential_id OR s.previous_id=l.credential_id)) purge`,
     [Date.now() - 30 * 86400000, Date.now() - 30 * 86400000],
   ))!;
-  const maintenance = { online: workerOnline("evaluation"), pending: maintenancePending };
+  const maintenanceTasks = await db.many<Record<string, string | number | null>>(
+    "SELECT * FROM operations_maintenance_tasks ORDER BY last_started_at DESC LIMIT 100",
+  );
+  const healthyMaintenance = workers.some(
+    (w) =>
+      w.worker_name === "evaluation" &&
+      w.release_sha === (process.env.RADAR_RELEASE_SHA ?? "development") &&
+      w.database_fingerprint === identity.fingerprint &&
+      Date.parse(String(w.last_seen_at)) > Date.now() - 150000 &&
+      CRITICAL_EVALUATION_MAINTENANCE_TASKS.every((task) =>
+        maintenanceTasks.some(
+          (r) =>
+            r.worker_instance === w.instance_id &&
+            r.task === task &&
+            r.release_sha === w.release_sha &&
+            r.database_fingerprint === w.database_fingerprint &&
+            Number(r.last_success_at) > Date.now() - 150000 &&
+            r.consecutive_failures === 0,
+        ),
+      ),
+  );
+  const maintenance = {
+    online: workerOnline("evaluation"),
+    healthy: healthyMaintenance,
+    tasks: maintenanceTasks,
+    pending: maintenancePending,
+  };
+  if (maintenance.online && !maintenance.healthy)
+    attention.push({
+      severity: "High",
+      message: "Operations maintenance missing, stale or failing; inspect individual task receipts",
+      target: "maintenance",
+    });
   if (!maintenance.online && Object.values(maintenance.pending).some((count) => count > 0))
     attention.push({
       severity: "High",
@@ -230,11 +263,17 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
       "SELECT rj.* FROM recovery_action_jobs rj JOIN recovery_actions ra ON ra.id=rj.action_id ORDER BY ra.created_at DESC LIMIT 300",
     ),
     deliveries: await db.many<Record<string, string | number | null>>(
-      "SELECT id,incident_id,event,status,attempts,error_code,delivered_at FROM notification_deliveries ORDER BY next_attempt_at DESC LIMIT 30",
+      "SELECT id,incident_id,event,status,attempts,error_code,delivered_at,destination_revision FROM notification_deliveries ORDER BY next_attempt_at DESC LIMIT 30",
     ),
-    webhook: await db.one<{ url: string; minimum_severity: string; send_recovery: number }>(
-      "SELECT url,minimum_severity,send_recovery FROM operational_webhooks WHERE id=1",
-    ),
+    webhook: await db.one<{
+      url: string;
+      minimum_severity: string;
+      send_recovery: number;
+      revision: number;
+      pending_deliveries: number;
+    }>(`SELECT w.url,w.minimum_severity,w.send_recovery,w.revision,
+      (SELECT COUNT(*) FROM notification_deliveries d WHERE d.status IN ('queued','retry','sending')) pending_deliveries
+      FROM operational_webhooks w WHERE w.id=1`),
     hostChecks: await db.many<Record<string, string | number | null>>(
       "SELECT id,provider,status,created_at,worker_name,worker_instance,release_sha,database_fingerprint,completed_at,error_code,details_json FROM provider_host_checks ORDER BY created_at DESC LIMIT 20",
     ),
@@ -253,11 +292,13 @@ export async function mutateOperations(
   const envelope =
     data.kind === "webhook" ? JSON.stringify(new CredentialVault().encrypt(data.secret)) : null;
   if (data.kind === "webhook") await validateWebhookDestination(data.url);
+  let webhookRevision: number | null = null;
+  let webhookPendingCancelled = 0;
   return db.transaction(async (tx) => {
     await requirePlatformRole(tx, actor, true);
     if (data.kind === "exclude") {
       const job = await tx.one<Record<string, string | number | null>>(
-        "SELECT j.* FROM provider_incident_jobs j JOIN provider_incidents i ON i.id=j.incident_id WHERE j.incident_id=? AND j.pipeline=? AND j.job_id=? AND i.connection_id='tavily:platform' AND i.state!='resolved'",
+        "SELECT j.* FROM provider_incident_jobs j JOIN provider_incidents i ON i.id=j.incident_id WHERE j.incident_id=? AND j.pipeline=? AND j.job_id=? AND i.connection_id IN ('tavily:platform','bedrock:host','google:host') AND i.state!='resolved'",
         [data.incidentId, data.pipeline, data.jobId],
       );
       if (!job) throw new Error("RECOVERY_JOB_NOT_IN_INCIDENT");
@@ -311,9 +352,27 @@ export async function mutateOperations(
       )
         throw new Error("INCIDENT_NOT_OPEN");
     } else if (data.kind === "webhook") {
+      const prior = await tx.one<{ revision: number }>(
+        "SELECT revision FROM operational_webhooks WHERE id=1",
+      );
+      const revision = (prior?.revision ?? 0) + 1;
+      const cancelled = prior
+        ? await tx.execute(
+            `UPDATE notification_deliveries SET status='cancelled',error_code='DESTINATION_ROTATED',
+              lease_token=NULL,lease_until=NULL
+              WHERE destination_revision<? AND status IN ('queued','retry','sending')`,
+            [revision],
+          )
+        : { rowsAffected: 0 };
+      webhookRevision = revision;
+      webhookPendingCancelled = cancelled.rowsAffected;
       await tx.execute(
-        "INSERT INTO operational_webhooks VALUES(1,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET url=excluded.url,secret_envelope=excluded.secret_envelope,minimum_severity=excluded.minimum_severity,send_recovery=excluded.send_recovery,updated_at=excluded.updated_at,updated_by=excluded.updated_by",
-        [data.url, envelope, data.severity, data.recovery ? 1 : 0, Date.now(), actor],
+        `INSERT INTO operational_webhooks(id,url,secret_envelope,minimum_severity,send_recovery,updated_at,updated_by,revision)
+          VALUES(1,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET url=excluded.url,
+          secret_envelope=excluded.secret_envelope,minimum_severity=excluded.minimum_severity,
+          send_recovery=excluded.send_recovery,updated_at=excluded.updated_at,
+          updated_by=excluded.updated_by,revision=excluded.revision`,
+        [data.url, envelope, data.severity, data.recovery ? 1 : 0, Date.now(), actor, revision],
       );
     } else if (data.kind === "host_probe") {
       await tx.execute(
@@ -334,6 +393,8 @@ export async function mutateOperations(
                 destination: new URL(data.url).origin,
                 severity: data.severity,
                 recovery: data.recovery,
+                revision: webhookRevision,
+                pendingCancelled: webhookPendingCancelled,
               }
             : {},
     });

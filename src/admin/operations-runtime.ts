@@ -96,11 +96,22 @@ export async function enqueueIncidentNotification(
     "SELECT severity,provider,failure_class FROM provider_incidents WHERE id=?",
     [incidentId],
   );
+  let openedSuperseded = 0;
+  if (incident && event === "resolved") {
+    const cancelled = await db.execute(
+      `UPDATE notification_deliveries SET status='cancelled',error_code='INCIDENT_RESOLVED_BEFORE_DELIVERY',
+        lease_token=NULL,lease_until=NULL
+        WHERE incident_id=? AND event='opened' AND status IN ('queued','retry','sending')`,
+      [incidentId],
+    );
+    openedSuperseded = cancelled.rowsAffected;
+  }
   const destination = await db.one<{
     url: string;
     secret_envelope: string;
     minimum_severity: string;
     send_recovery: number;
+    revision: number;
   }>("SELECT * FROM operational_webhooks WHERE id=1");
   if (
     !incident ||
@@ -115,8 +126,8 @@ export async function enqueueIncidentNotification(
     [incidentId],
   );
   await db.execute(
-    `INSERT INTO notification_deliveries(id,incident_id,event,destination_url,secret_envelope,payload_json,next_attempt_at)
-    VALUES(?,?,?,?,?,?,?) ON CONFLICT(incident_id,event,destination_url) DO NOTHING`,
+    `INSERT INTO notification_deliveries(id,incident_id,event,destination_url,secret_envelope,payload_json,next_attempt_at,destination_revision)
+    VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(incident_id,event,destination_url) DO NOTHING`,
     [
       id,
       incidentId,
@@ -127,12 +138,19 @@ export async function enqueueIncidentNotification(
         eventId: `${incidentId}:${event}`,
         incidentId,
         event,
+        summary:
+          event === "resolved" && openedSuperseded > 0
+            ? "Incident resolved while its opening alert was pending; an in-flight request may still arrive."
+            : undefined,
+        supersededOpenedDeliveries: openedSuperseded,
         provider: incident.provider,
         severity: incident.severity,
         failureClass: incident.failure_class,
         affectedJobs: affected?.n ?? 0,
+        destinationRevision: destination.revision,
       }),
       Date.now(),
+      destination.revision,
     ],
   );
 }
@@ -145,6 +163,7 @@ export async function observeProviderFailure(
     generation: number;
     failure: ProviderFailure;
     deployment: string;
+    releaseSha?: string;
     status?: number;
     retryAfterMs?: number;
     work?: WorkIdentity;
@@ -179,8 +198,14 @@ export async function observeProviderFailure(
             : "Warning";
     if (existing)
       await tx.execute(
-        "UPDATE provider_incidents SET last_seen=?,occurrences=occurrences+1,error_code=?,severity=? WHERE id=?",
-        [now, errorCode, severity, id],
+        "UPDATE provider_incidents SET last_seen=?,occurrences=occurrences+1,error_code=?,severity=?,last_release_sha=? WHERE id=?",
+        [
+          now,
+          errorCode,
+          severity,
+          input.releaseSha ?? process.env.RADAR_RELEASE_SHA ?? "development",
+          id,
+        ],
       );
     else {
       const previous = await tx.one<{ id: string }>(
@@ -188,8 +213,8 @@ export async function observeProviderFailure(
         [correlation],
       );
       await tx.execute(
-        `INSERT INTO provider_incidents(id,correlation_key,provider,connection_id,generation,failure_class,severity,state,recurrence_of,first_seen,last_seen,error_code)
-        VALUES(?,?,?,?,?,?,?,'open',?,?,?,?)`,
+        `INSERT INTO provider_incidents(id,correlation_key,provider,connection_id,generation,failure_class,severity,state,recurrence_of,first_seen,last_seen,error_code,first_release_sha,last_release_sha)
+        VALUES(?,?,?,?,?,?,?,'open',?,?,?,?,?,?)`,
         [
           id,
           correlation,
@@ -202,22 +227,29 @@ export async function observeProviderFailure(
           now,
           now,
           errorCode,
+          input.releaseSha ?? process.env.RADAR_RELEASE_SHA ?? "development",
+          input.releaseSha ?? process.env.RADAR_RELEASE_SHA ?? "development",
         ],
       );
     }
-    await tx.execute("INSERT INTO provider_incident_observations VALUES(?,?,?,?)", [
-      randomUUID(),
-      id,
-      now,
-      errorCode,
-    ]);
+    await tx.execute(
+      "INSERT INTO provider_incident_observations(id,incident_id,observed_at,error_code,release_sha,database_fingerprint) VALUES(?,?,?,?,?,?)",
+      [
+        randomUUID(),
+        id,
+        now,
+        errorCode,
+        input.releaseSha ?? process.env.RADAR_RELEASE_SHA ?? "development",
+        input.deployment,
+      ],
+    );
     await tx.execute(
       "DELETE FROM provider_incident_observations WHERE incident_id=? AND id NOT IN (SELECT id FROM provider_incident_observations WHERE incident_id=? ORDER BY observed_at DESC LIMIT 100)",
       [id, id],
     );
     if (input.work) await associateIncidentWork(tx, id, input.work);
-    const prior = await tx.one<{ failures: number }>(
-      "SELECT failures FROM provider_cooldowns WHERE connection_id=?",
+    const prior = await tx.one<{ failures: number; requires_action: number }>(
+      "SELECT failures,requires_action FROM provider_cooldowns WHERE connection_id=?",
       [input.connectionId],
     );
     const delay = Math.max(
@@ -226,10 +258,12 @@ export async function observeProviderFailure(
     );
     const action = ["credential", "quota_exhausted", "vault"].includes(input.failure) ? 1 : 0;
     await tx.execute(
-      `INSERT INTO provider_cooldowns(connection_id,generation,blocked_until,requires_action,failures,failure_class) VALUES(?,?,?,?,1,?)
+      `INSERT INTO provider_cooldowns(connection_id,generation,blocked_until,requires_action,failures,failure_class,active_incident_id) VALUES(?,?,?,?,1,?,?)
       ON CONFLICT(connection_id) DO UPDATE SET generation=excluded.generation,blocked_until=MAX(blocked_until,excluded.blocked_until),
-      requires_action=MAX(requires_action,excluded.requires_action),failures=failures+1,failure_class=excluded.failure_class`,
-      [input.connectionId, input.generation, now + delay, action, input.failure],
+      active_incident_id=CASE WHEN requires_action=1 AND excluded.requires_action=0 THEN active_incident_id ELSE excluded.active_incident_id END,
+      failure_class=CASE WHEN requires_action=1 AND excluded.requires_action=0 THEN failure_class ELSE excluded.failure_class END,
+      requires_action=MAX(requires_action,excluded.requires_action),failures=failures+1`,
+      [input.connectionId, input.generation, now + delay, action, input.failure, id],
     );
     await enqueueIncidentNotification(tx, id, "opened");
     return id;
@@ -261,17 +295,17 @@ export async function assertProviderDispatch(
   now = Date.now(),
 ) {
   if (!(await operationsInstalled(db))) return;
-  const row = await db.one<{ blocked_until: number; requires_action: number }>(
-    "SELECT blocked_until,requires_action FROM provider_cooldowns WHERE connection_id=?",
+  const row = await db.one<{
+    blocked_until: number;
+    requires_action: number;
+    active_incident_id: string | null;
+  }>(
+    "SELECT blocked_until,requires_action,active_incident_id FROM provider_cooldowns WHERE connection_id=?",
     [connectionId],
   );
   if (row && (row.requires_action || row.blocked_until > now)) {
     if (work) {
-      const incident = await db.one<{ id: string }>(
-        "SELECT id FROM provider_incidents WHERE connection_id=? AND state!='resolved' ORDER BY first_seen DESC LIMIT 1",
-        [connectionId],
-      );
-      if (incident) await associateIncidentWork(db, incident.id, work);
+      if (row.active_incident_id) await associateIncidentWork(db, row.active_incident_id, work);
     }
     throw new ModelProviderUnavailableError(
       "PROVIDER_COOLDOWN",
@@ -354,10 +388,54 @@ export async function providerSucceeded(
   db: DatabaseAdapter,
   connectionId: string,
   generation: number,
+  startedAt = Date.now(),
 ) {
   if (!(await operationsInstalled(db))) return;
-  await db.execute(
-    "UPDATE provider_cooldowns SET blocked_until=0,failures=0,last_success_at=? WHERE connection_id=? AND generation=? AND requires_action=0",
-    [Date.now(), connectionId, generation],
-  );
+  return db.transaction(async (tx) => {
+    const changed = await tx.execute(
+      "UPDATE provider_cooldowns SET blocked_until=0,failures=0,last_success_at=? WHERE connection_id=? AND generation=? AND requires_action=0 AND NOT EXISTS (SELECT 1 FROM provider_incidents WHERE connection_id=? AND state!='resolved' AND last_seen>=?)",
+      [Date.now(), connectionId, generation, connectionId, startedAt],
+    );
+    if (connectionId === "tavily:platform")
+      await tx.execute(
+        "UPDATE provider_credential_lifecycle SET last_success_at=? WHERE credential_id=(SELECT active_id FROM admin_search_connection WHERE id=1 AND generation=?)",
+        [Date.now(), generation],
+      );
+    if (changed.rowsAffected && connectionId !== "tavily:platform")
+      await tx.execute(
+        "UPDATE provider_incidents SET state='recovering' WHERE connection_id=? AND state!='resolved'",
+        [connectionId],
+      );
+  });
+}
+
+/** A bounded canary may bypass a hold, but a newer failure must retain it. */
+export async function confirmProviderRecovery(
+  db: DatabaseAdapter,
+  connectionId: string,
+  generation: number,
+  startedAt: number,
+) {
+  return db.transaction(async (tx) => {
+    const newer = await tx.one(
+      "SELECT id FROM provider_incidents WHERE connection_id=? AND state!='resolved' AND last_seen>=?",
+      [connectionId, startedAt],
+    );
+    if (newer) return false;
+    if (connectionId === "tavily:platform") {
+      const active = await tx.one<{ generation: number }>(
+        "SELECT generation FROM admin_search_connection WHERE id=1",
+      );
+      if (active?.generation !== generation) return false;
+    }
+    await tx.execute(
+      "UPDATE provider_cooldowns SET blocked_until=0,requires_action=0,failures=0,last_success_at=? WHERE connection_id=? AND generation=?",
+      [Date.now(), connectionId, generation],
+    );
+    await tx.execute(
+      "UPDATE provider_incidents SET state='recovering' WHERE connection_id=? AND state!='resolved'",
+      [connectionId],
+    );
+    return true;
+  });
 }

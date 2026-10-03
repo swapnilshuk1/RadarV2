@@ -13,6 +13,13 @@ import {
 } from "../../src/admin/search-connections";
 import { previewRecovery, executeRecovery } from "../../src/admin/operations-recovery";
 
+const tavilyCapabilityResponse = () =>
+  new Response(
+    JSON.stringify({
+      results: [{ url: "https://oracle.com", raw_content: "fixture official company content" }],
+    }),
+  );
+
 // Run in a child process: libSQL native handles on Windows can outlive client.close().
 // The caller supplies a disposable file and removes it after this process exits.
 const target = new URL(process.argv[2]!);
@@ -76,7 +83,7 @@ try {
     expectedRevision: 1,
     reason: "validate fixture",
   });
-  await pollSearchConnectionCheck(db, async () => new Response(JSON.stringify({ results: [] })));
+  await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
   await mutateSearchConnection(db, "op", {
     kind: "activate",
     credentialId: candidate.credentialId!,
@@ -84,6 +91,7 @@ try {
     reason: "activate fixture",
   });
   await refreshSearchWorkerReceipt(db);
+  await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
   const preview = await previewRecovery(db, "op", incident, [work.jobId], "preview rollback proof");
   await db.execute(
     "CREATE TRIGGER reject_recovery_audit BEFORE INSERT ON admin_audit_log WHEN NEW.action='recovery.execute' BEGIN SELECT RAISE(ABORT,'INJECTED_LATE_FAILURE'); END",

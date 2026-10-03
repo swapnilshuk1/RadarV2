@@ -6,32 +6,23 @@ and status on entry; the recorded baseline is not permission to reset local work
 
 ## Phase 0: authoritative checkout
 
-Verified on 3 October 2026:
-
-| Item                       | Verified baseline                                                                                                                            |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repository                 | RADAR V2; existing shared Git repository                                                                                                     |
-| Implementation worktree    | `C:/Users/swapn/.codex/worktrees/acquisition-performance/Radar V2`                                                                           |
-| Implementation branch      | `codex/admin-connections`                                                                                                                    |
-| HEAD                       | `5a7724d82f22fe99bff7e1c5943eb1cf013bba7b`                                                                                                   |
-| Upstream                   | `origin/main`, locally recorded at the same SHA as HEAD                                                                                      |
-| Local main                 | `0ced615933659400ac03d8791cfae2f41f70dea7` (older; do not use as this release base)                                                          |
-| Initial tracked changes    | None in the implementation worktree                                                                                                          |
-| Initial untracked work     | `src/admin/search-connection-contracts.ts`, `src/admin/search-connections.ts`, `src/data/sqlite/migrations/085_admin_search_connections.sql` |
-| Admin                      | Present: `src/routes/admin.tsx`, `src/admin/*`                                                                                               |
-| Latest committed migration | 084; 085 is the untracked prototype, not a deployed migration                                                                                |
-| Original chat workspace    | `C:/Users/swapn/Downloads/Radar V2`, branch `feat/scraped-interactive-filter`; dirty with unrelated scraper/acquisition work; leave intact   |
+| Item                  | Current entry point                                                             |
+| --------------------- | ------------------------------------------------------------------------------- |
+| Worktree              | `C:/Users/swapn/.codex/worktrees/acquisition-performance/Radar V2`              |
+| Branch                | `codex/operations-hardening`                                                    |
+| Deployed/base release | `040f9e94893c5e54ef92f4568a274555e2ed25cd` (PR #30)                             |
+| Migration             | 085–087 deployed; 088 forward-only hardening                                    |
+| Original workspace    | `C:/Users/swapn/Downloads/Radar V2`; unrelated dirty scraper work, leave intact |
 
 Use `git worktree list --porcelain`, `git branch --show-current`, `git rev-parse HEAD`,
 `git rev-parse --abbrev-ref --symbolic-full-name '@{u}'`, `git status --short` and
-`rg --files src/admin src/data/sqlite/migrations` to confirm these facts. Remote
-freshness was not asserted: the upstream SHA above is the local remote-tracking ref.
+`rg --files src/admin src/data/sqlite/migrations` to confirm these facts. Fetch
+`origin/main` before publishing; do not use the original workspace's older local main.
 
-The prototype was authored in this same checkout on the current Admin schema.
-Do not transplant it to the older original workspace or allocate migrations there.
-At baseline it is unimported; normal Tavily search still uses `TAVILY_API_KEY`.
-Its `last_error LIKE` bulk resume, process observations and unfenced validation
-completion do not satisfy this release and must be replaced before exposure.
+Current hardening entry, 3 October 2026: branch `codex/operations-hardening`,
+based on deployed merge `040f9e94893c5e54ef92f4568a274555e2ed25cd` (PR #30),
+in the same implementation worktree. Migrations 085–087 are deployed; 088 adds
+failure-complete recovery. Do not transplant work to the older original workspace.
 
 ## Authorized scope and working loop
 
@@ -56,7 +47,8 @@ checkpoint invariants, reaches a reviewed memo, records durable operational/audi
 evidence and delivers a signed recovery notification. PASS still has no dossier.
 
 Tavily is fully writable. Bedrock is read-only unless every credential consumer
-uses the unified resolver. Google ADC is host-managed health only. Deployment
+uses the unified resolver. Google ADC remains host-managed. Both host providers
+support bounded configured-model canaries and exact incident recovery. Deployment
 database/storage/encryption/release identity is displayed and validated, not edited.
 
 ## Delivery phases
@@ -74,6 +66,54 @@ database/storage/encryption/release identity is displayed and validated, not edi
 | 8     | Populated migration, deterministic journey, browser, live connectivity, certification | Partial; locally verified, live rollout/proof pending                    |
 
 ## Operational contracts
+
+### Hardening v1.0.1
+
+- Host Bedrock/Google repair: fix deployment authentication, run the Admin host
+  probe on the matching worker, then preview/resume the exact affected work. The
+  canary invokes configured models rather than listing models or issuing a token.
+  A newer failure retains its hold; transient recovery can also use a fresh,
+  matching production-success receipt. Domain-owned terminal retry is unchanged.
+- Tavily tracks the previous **source**, including host fallback. Validate the
+  previous host source before rollback. Candidate checks and active-generation
+  confirmation share advanced search with raw text and one bounded probe result.
+  Activation/rollback retain an action hold until their post-activation canary
+  passes. Use **Revalidate active source and confirm recovery** after repairing quota or permissions
+  on the same active key; no unnecessary credential rotation is required.
+- Cooldowns retain their owning incident. Observations record release SHA and
+  database fingerprint separately. Older in-flight success cannot clear a newer
+  failure. Credential metadata distinguishes selection from successful use.
+- Maintenance tasks record independent success/failure receipts and sanitized
+  errors. Failure in one task does not skip later tasks. Admin displays the ledger;
+  `/health/operations` requires fresh successful critical task receipts as well as
+  the matching evaluation heartbeat. Provider failures remain incident outcomes;
+  a completed check reporting failure does not itself mean maintenance is broken.
+- Resolution cancels pending opening alerts, including snoozed alerts. Webhook
+  changes revoke pending deliveries from older destination revisions; a request
+  already sent cannot be recalled. Delivery drains at most ten alerts with three
+  concurrent requests under a shared 45-second deadline.
+- Application rollback checks the migration catalog before restart, then exact
+  previous-SHA `/health/ready`, system readiness and process topology before
+  declaring restoration or changing `CURRENT_SHA`.
+
+Keep deployment and credential cutover separate. The first live Admin Tavily
+activation/fault exercise remains postponed until this hardening release passes.
+The Cloudflare email relay enables observability and exposes `/health` with its
+last completed successful sample and freshness. An independent service still must
+watch that signal: an endpoint does not detect its own scheduler disappearing.
+The relay health update was deployed with existing release SHA `040f9e94` on
+3 October 2026; its fresh successful sample returned HTTP 200. Update its expected
+SHA after application rollout. This verifies scheduler sampling, not inbox delivery.
+Repository visibility is public; no visibility change is implied by this release.
+
+Current candidate verification: `npm run certify` passed all nine stages on the
+frozen hardening source, with **820 passed / 1 skipped** on 3 October 2026.
+Authenticated Operations browser acceptance passed the incident -> validation ->
+activation -> uptake -> exact resume -> reviewed memo -> signed notification
+journey; both Admin screenshots were inspected. No live credential cutover or
+provider-fault injection was performed. Direct Bedrock evidence
+extraction and primary queue-loop functional receipts remain the next functional
+milestone, not claims of this focused hardening release.
 
 The incident is the durable anchor: observations -> affected exact work ->
 remediation/connection activation -> worker uptake -> recovery actions -> work
@@ -162,9 +202,9 @@ isolated local transports; remote network failure behaviour is not proven here.
 ## Operator runbook
 
 1. Confirm this checkout and the database target before `npm run db:migrate`.
-   Migrations 085–087 accompany this release. Existing host Tavily credentials
-   remain active until explicit Admin activation. No live migration or deployment
-   was performed during implementation.
+   Migrations 085–088 accompany this release. Existing host Tavily credentials
+   remain active until explicit Admin activation. Migration 088 hardening deployment
+   is pending; the prior 040f9e94 release is already deployed.
 2. Supply session/OAuth and encryption bootstrap secrets through deployment.
    Retained versions require their original encryption key. Database, storage and
    release identity remain deployment-managed.
@@ -175,12 +215,14 @@ isolated local transports; remote network failure behaviour is not proven here.
 4. Sign in as a platform operator, open Admin -> Connections, supply the change
    reason, save a Tavily candidate and validate on the evaluation worker. Failed
    validation preserves the active source. Activate after a passing current-worker
-   check; wait for required fresh consumers to acknowledge uptake.
+   check; wait for required fresh consumers to acknowledge uptake and for the
+   active-generation production canary to pass before recovery/dispatch.
 5. Select a bounded exact incident cohort, preview, then resume. Five-minute
    previews expire; execution rechecks generation, pause, lease, scope and
    dependencies. Valid checkpoints remain. Resolution requires reviewed canonical
    publication (PASS requires its evaluation only) or explicit work accounting (below).
-6. Revalidate the retained previous version before rollback. Automatic retirement
+6. Revalidate the retained previous version or host source before rollback, then
+   wait for its active-generation canary. Automatic retirement
    requires **30 days continuously unreferenced**, measured from `unreferenced_at`.
    Migration 087 timestamps existing unreferenced versions at migration time; each
    active/candidate/previous slot change records loss of the final reference and
@@ -221,8 +263,9 @@ There is no separate maintenance daemon in this release, so an unavailable worke
 also prevents its own outbound failure notification. Before production, configure
 an **off-host uptime monitor** to GET `/health/operations` every 60 seconds with a
 10-second request timeout and alert after three consecutive failures. It returns
-200 only for a fresh evaluation heartbeat (150-second cutoff) matching web SHA and
-database; missing, stale, mismatched or unreachable state returns 503. It requires
+200 only for a fresh evaluation heartbeat and successful critical maintenance task
+receipts (150-second cutoff) matching web SHA and database; missing, failed, stale,
+mismatched or unreachable state returns 503. It requires
 neither an evaluation job nor notification delivery and exposes only status and
 release SHA. Check the expected deployed SHA in the monitor as well. Registration
 and actual external alert delivery remain deployment prerequisites; the repository
@@ -231,7 +274,7 @@ cannot claim they are configured without a monitor destination.
 ## Deployment sequence
 
 1. Push the candidate and open its PR; require CI on the exact candidate SHA.
-2. Verify database backup and recovery before applying migrations 085–087.
+2. Verify database backup and recovery before applying migrations 085–088.
 3. Deploy web and exercised workers on that same SHA and database target. Verify
    migrations/readiness, required matching heartbeats and loaded receipts.
 4. Run host Bedrock/ADC probes and a bounded Tavily acquisition using the existing
@@ -242,10 +285,10 @@ cannot claim they are configured without a monitor destination.
    then confirm its reviewed downstream result (PASS needs evaluation only).
 
 For release rollback, redeploy the previously verified web/worker release against
-this same database **with additive migrations 085–087 left in place**. Never reverse
+this same database **with forward-only migrations 085–088 left in place**. Never reverse
 these migrations or delete operational history. Before cutover, test the rollback
 artifact against a restored, migrated database: the checksum verifier requires
-all recorded migration files, so an untouched older release missing 085–087 will
+all recorded migration files, so an untouched older release missing the new catalog will
 fail readiness. Prepare and verify its forward migration catalog as part of the
 rollback artifact rather than weakening checksum checks. The release deployer
 copies only missing SQL migration files into the retained prior release directory
@@ -276,6 +319,17 @@ evidence reaching a reviewed memo. Keep Bedrock rotation host-managed until all
 credential consumers converge. This is the first provider-expansion deliverable,
 not a claim that the current Tavily release covers evidence extraction.
 
+Entry points: `processNextDocumentJob` -> `ProjectionPipeline` ->
+`EvidenceExtractionService`. Document jobs own `lease_token`, 300-second stale
+reclaim, 30-second retries and three attempts before dead letter. Preserve their
+saved text/evidence checkpoints and source-span grounding. Add an explicit
+tenant/person/document/job identity branch to Operations; do not invent canonical
+opportunity identities for document work. Inject the operationally wrapped model
+from the owning queue, preserve the existing provider-selection behavior, and add
+document-worker model probes plus scoped domain retry. Accept with injected
+401/403, throttle/outage, wrong-owner rejection and recovered evidence reaching
+reviewed output. Primary workers' poll/claim-cycle receipts can follow that slice.
+
 ## Verification commands and limits
 
 - `npm run acceptance:operations`: isolated SQLite/Playwright Admin golden journey.
@@ -299,8 +353,9 @@ No credentials, tokens or provider bodies appear in reports. Normal candidate
 acceptance remains `npm run acceptance:browser`; the operations flag is separate.
 
 Deliberate limits: Bedrock rotation is read-only until all credential consumers
-use the unified resolver. ADC token issuance does not prove model/project access.
-Operator recovery covers Tavily evaluation incidents and nonterminal linked
+use the unified resolver. Configured-model probes prove the permissions they invoke,
+not every unrelated provider capability. Operator recovery covers Tavily and
+gateway-managed Bedrock/Google incidents and nonterminal linked
 evaluation/composition/review work. Terminal regeneration and Pursuit domain retry
 remain separate policies. Gate tuning, provider expansion, enrichment settings and
 tenant lifecycle are deferred. Notifications use one destination, severity routing

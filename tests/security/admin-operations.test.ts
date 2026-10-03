@@ -52,14 +52,21 @@ import { evaluationContextFingerprint } from "../fixtures/staged-rich-dossier";
 import { SqliteDossierReviewQueue } from "../../src/data/sqlite/repositories/SqliteDossierReviewQueue";
 import { dossier, evaluationFingerprint } from "../fixtures/staged-rich-dossier";
 import { SqliteRichDossierStore } from "../../src/data/sqlite/repositories/SqliteRichDossierStore";
-import { mkdtempSync, readdirSync, copyFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readdirSync, copyFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { runMigrations } from "../../src/data/sqlite/migrations/runner";
+import { CRITICAL_EVALUATION_MAINTENANCE_TASKS } from "../../src/lib/health/maintenance-receipts";
 const adapters: SqliteAdapter[] = [];
+const tavilyCapabilityResponse = () =>
+  new Response(
+    JSON.stringify({
+      results: [{ url: "https://oracle.com", raw_content: "fixture official company content" }],
+    }),
+  );
 afterEach(async () => {
   vi.unstubAllEnvs();
   for (const db of adapters.splice(0)) await db.close();
@@ -120,7 +127,7 @@ async function healthyRecovery(
     expectedRevision: 1,
     reason: "validate on worker",
   });
-  await pollSearchConnectionCheck(db, async () => new Response(JSON.stringify({ results: [] })));
+  await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
   await mutateSearchConnection(db, "op", {
     kind: "activate",
     credentialId: candidate.credentialId!,
@@ -128,6 +135,7 @@ async function healthyRecovery(
     reason: "activate validated key",
   });
   await refreshSearchWorkerReceipt(db);
+  await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
   return incident;
 }
 describe("Operations & Recovery", () => {
@@ -612,6 +620,20 @@ describe("Operations & Recovery", () => {
         "UPDATE worker_heartbeats SET release_sha=?,database_fingerprint=?,last_seen_at=?",
         [release, database, seen],
       );
+      if (online) {
+        const now = Date.now();
+        for (const task of CRITICAL_EVALUATION_MAINTENANCE_TASKS)
+          await db.execute(
+            `INSERT INTO operations_maintenance_tasks
+             (worker_instance,task,release_sha,database_fingerprint,last_started_at,last_success_at,consecutive_failures,error_code)
+             VALUES('processing-1',?,?,?,?,?,0,NULL)
+             ON CONFLICT(worker_instance,task) DO UPDATE SET
+               release_sha=excluded.release_sha,database_fingerprint=excluded.database_fingerprint,
+               last_started_at=excluded.last_started_at,last_success_at=excluded.last_success_at,
+               consecutive_failures=0,error_code=NULL`,
+            [task, release, database, now, now],
+          );
+      }
       const snapshot = await readOperations(db, "op");
       if (!snapshot.installed) throw new Error("operations required");
       expect(snapshot.maintenance.online).toBe(online);
@@ -629,19 +651,69 @@ describe("Operations & Recovery", () => {
     const db = new SqliteAdapter(new Database(":memory:"));
     adapters.push(db);
     const directory = resolve("src/data/sqlite/migrations");
+    const legacyDirectory = join(temporary, "legacy");
+    const through087Directory = join(temporary, "through-087");
+    mkdirSync(legacyDirectory);
+    mkdirSync(through087Directory);
     try {
       for (const file of readdirSync(directory))
         if (file.endsWith(".sql") && parseInt(file.slice(0, 3), 10) <= 84)
-          copyFileSync(join(directory, file), join(temporary, file));
-      await runMigrations(db, temporary, { verifyRequiredSchema: false });
+          copyFileSync(join(directory, file), join(legacyDirectory, file));
+      await runMigrations(db, legacyDirectory, { verifyRequiredSchema: false });
       await db.execute("INSERT INTO users(id,email) VALUES('existing-user','existing@fixture')");
       vi.stubEnv("TAVILY_API_KEY", "legacy-upgrade-fixture");
       expect((await resolveSearchCredential(db)).key).toBe("legacy-upgrade-fixture");
+
+      for (const file of readdirSync(directory))
+        if (file.endsWith(".sql") && parseInt(file.slice(0, 3), 10) <= 87)
+          copyFileSync(join(directory, file), join(through087Directory, file));
+      await runMigrations(db, through087Directory, { verifyRequiredSchema: false });
+      await db.execute(
+        `INSERT INTO provider_incidents(id,correlation_key,provider,connection_id,generation,failure_class,severity,state,first_seen,last_seen,error_code)
+         VALUES('tavily-mismatch','tavily-mismatch','tavily','tavily:platform',4,'credential','High','open',1,200,'FIXTURE'),
+               ('tavily-exact','tavily-exact','tavily','tavily:platform',4,'throttled','High','open',1,100,'FIXTURE'),
+               ('bedrock-fallback-old','bedrock-fallback-old','bedrock','bedrock:host',2,'throttled','Warning','open',1,300,'FIXTURE'),
+               ('bedrock-fallback-new','bedrock-fallback-new','bedrock','bedrock:host',2,'credential','Warning','open',1,400,'FIXTURE')`,
+      );
+      await db.execute(
+        `INSERT INTO provider_cooldowns(connection_id,generation,blocked_until,requires_action,failures,failure_class)
+         VALUES('tavily:platform',4,0,1,3,'throttled'),('bedrock:host',2,0,1,2,'provider_outage')`,
+      );
+      await db.execute(
+        "INSERT INTO admin_search_credentials VALUES('existing-credential','{}','suffix',1,'op')",
+      );
+      await db.execute(
+        `INSERT INTO provider_credential_lifecycle(credential_id,activated_at,superseded_at,retired_at,last_validated_at,last_used_at,key_version,secret_purged_at)
+         VALUES('existing-credential',11,12,NULL,13,14,'fixture-key-version',NULL)`,
+      );
       await runMigrations(db);
       expect(await db.one("SELECT email FROM users WHERE id='existing-user'")).toEqual({
         email: "existing@fixture",
       });
       expect((await resolveSearchCredential(db)).key).toBe("legacy-upgrade-fixture");
+      expect(
+        await db.one<{ active_incident_id: string }>(
+          "SELECT active_incident_id FROM provider_cooldowns WHERE connection_id='tavily:platform'",
+        ),
+      ).toEqual({ active_incident_id: "tavily-exact" });
+      expect(
+        await db.one<{ active_incident_id: string }>(
+          "SELECT active_incident_id FROM provider_cooldowns WHERE connection_id='bedrock:host'",
+        ),
+      ).toEqual({ active_incident_id: "bedrock-fallback-new" });
+      expect(
+        await db.one<{
+          activated_at: number;
+          superseded_at: number;
+          last_success_at: number | null;
+        }>(
+          `SELECT activated_at,superseded_at,last_success_at FROM provider_credential_lifecycle
+           WHERE credential_id='existing-credential'`,
+        ),
+      ).toEqual({ activated_at: 11, superseded_at: 12, last_success_at: null });
+      expect(
+        await db.one("SELECT name FROM sqlite_master WHERE name='operations_maintenance_tasks'"),
+      ).toBeTruthy();
       expect(await db.many("PRAGMA foreign_key_check")).toEqual([]);
     } finally {
       if (resolve(temporary).startsWith(resolve(tmpdir()) + "\\"))
@@ -701,16 +773,14 @@ describe("Operations & Recovery", () => {
         expectedRevision: revision + 1,
         reason: "validate version",
       });
-      await pollSearchConnectionCheck(
-        db,
-        async () => new Response(JSON.stringify({ results: [] })),
-      );
+      await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
       await mutateSearchConnection(db, "op", {
         kind: "activate",
         credentialId: candidate.credentialId!,
         expectedRevision: revision + 1,
         reason: "activate version",
       });
+      await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
       return candidate.credentialId!;
     }
     const first = await activate("tvly-" + "a".repeat(30), 0);
@@ -731,12 +801,13 @@ describe("Operations & Recovery", () => {
       expectedRevision: 4,
       reason: "validate rollback",
     });
-    await pollSearchConnectionCheck(db, async () => new Response(JSON.stringify({ results: [] })));
+    await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
     await mutateSearchConnection(db, "op", {
       kind: "rollback",
       expectedRevision: 4,
       reason: "verified rollback",
     });
+    await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
     expect((await resolveSearchCredential(db)).key).toBe("tvly-" + "a".repeat(30));
     expect(await readSearchConnection(db, "op")).toMatchObject({
       activeId: first,
@@ -778,14 +849,18 @@ describe("Operations & Recovery", () => {
     );
     const work = await seedOperationalEvaluation(db, identity, "plan_A");
     const secret = "recovery-signing-fixture-000000000000";
-    await db.execute("INSERT INTO operational_webhooks VALUES(1,?,?,?,?,?,?)", [
-      "https://alerts.example.com/radar",
-      JSON.stringify(new CredentialVault().encrypt(secret)),
-      "High",
-      1,
-      Date.now(),
-      "op",
-    ]);
+    await db.execute(
+      `INSERT INTO operational_webhooks(id,url,secret_envelope,minimum_severity,send_recovery,updated_at,updated_by)
+       VALUES(1,?,?,?,?,?,?)`,
+      [
+        "https://alerts.example.com/radar",
+        JSON.stringify(new CredentialVault().encrypt(secret)),
+        "High",
+        1,
+        Date.now(),
+        "op",
+      ],
+    );
     const opportunity = { id: "job", company: "Company", title: "Head of Growth" };
     await new ProductionContextProvider(
       db,
@@ -826,7 +901,7 @@ describe("Operations & Recovery", () => {
       expectedRevision: 1,
       reason: "worker validation",
     });
-    await pollSearchConnectionCheck(db, async () => new Response(JSON.stringify({ results: [] })));
+    await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
     await mutateSearchConnection(db, "op", {
       kind: "activate",
       credentialId: candidate.credentialId!,
@@ -834,6 +909,7 @@ describe("Operations & Recovery", () => {
       reason: "activate validated key",
     });
     await refreshSearchWorkerReceipt(db);
+    await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
     const preview = await previewRecovery(db, "op", incidentId, [work.jobId], "bounded recovery");
     expect(
       (await executeRecovery(db, "op", preview.id, "resume bounded recovery")).outcomes[0]!.outcome,
@@ -932,6 +1008,30 @@ describe("Operations & Recovery", () => {
     const db = await fixture();
     vi.stubEnv("BEDROCK_MANTLE_API_KEY", "fixture-secret");
     vi.stubEnv("GCP_PROJECT_ID", "fixture-project");
+    const modelProbeRequest: typeof fetch = async (input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      return url.includes("bedrock-mantle")
+        ? new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  finish_reason: "stop",
+                  message: { content: JSON.stringify({ canary: "RADAR" }) },
+                },
+              ],
+            }),
+          )
+        : new Response(
+            JSON.stringify({
+              candidates: [
+                {
+                  finishReason: "STOP",
+                  content: { parts: [{ text: JSON.stringify({ canary: "RADAR" }) }] },
+                },
+              ],
+            }),
+          );
+    };
     for (const provider of ["bedrock", "google"])
       await db.execute(
         "INSERT INTO provider_host_checks(id,provider,status,created_at,created_by) VALUES(?,?,'queued',?,'op')",
@@ -949,12 +1049,12 @@ describe("Operations & Recovery", () => {
     await pollHostProviderCheck(
       db,
       { name: "evaluation", instance: "eval", database: "fixture-db" },
-      async () => new Response(""),
+      modelProbeRequest,
     );
     await pollHostProviderCheck(
       db,
       { name: "dossier-review", instance: "review", database: "fixture-db" },
-      undefined,
+      modelProbeRequest,
       async () => "fixture-adc-token",
     );
     const checks = await db.many<{ status: string; details_json: string }>(
@@ -963,7 +1063,9 @@ describe("Operations & Recovery", () => {
     expect(checks.every((c) => c.status === "passed")).toBe(true);
     expect(JSON.stringify(checks)).not.toContain("fixture-secret");
     expect(JSON.stringify(checks)).not.toContain("fixture-adc-token");
-    expect(checks.map((c) => JSON.parse(c.details_json).permission)).toContain("unverified");
+    expect(checks.map((c) => JSON.parse(c.details_json).permission)).toContain(
+      "configured model invocation passed",
+    );
   });
   it("limits configuration-lag attention to workers that consume operational settings", async () => {
     const db = await fixture();
@@ -1083,13 +1185,14 @@ describe("Operations & Recovery", () => {
       expectedRevision: 1,
       reason: "validate replacement",
     });
-    await pollSearchConnectionCheck(db, async () => new Response(JSON.stringify({ results: [] })));
+    await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
     await mutateSearchConnection(db, "op", {
       kind: "activate",
       credentialId: candidate.credentialId!,
       expectedRevision: 1,
       reason: "activate replacement",
     });
+    await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
     expect((await resolveSearchCredential(db)).key).toBe(key);
     expect((await searchUptake(db)).ready).toBe(false);
     await refreshSearchWorkerReceipt(db);
@@ -1138,7 +1241,7 @@ describe("Operations & Recovery", () => {
       expectedRevision: 1,
       reason: "validate recovery",
     });
-    await pollSearchConnectionCheck(db, async () => new Response(JSON.stringify({ results: [] })));
+    await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
     await mutateSearchConnection(db, "op", {
       kind: "activate",
       credentialId: credential.credentialId!,
@@ -1146,6 +1249,7 @@ describe("Operations & Recovery", () => {
       reason: "activate recovery",
     });
     await refreshSearchWorkerReceipt(db);
+    await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
     await expect(previewRecovery(db, "op", incidentId, ["memo-2"], "wrong cohort")).rejects.toThrow(
       "RECOVERY_JOB_NOT_IN_INCIDENT",
     );
@@ -1221,14 +1325,18 @@ describe("Operations & Recovery", () => {
   it("delivers asynchronous signed events with redacted durable retries", async () => {
     const db = await fixture();
     const secret = "fixture-webhook-signing-secret-000000000";
-    await db.execute("INSERT INTO operational_webhooks VALUES(1,?,?,?,?,?,?)", [
-      "https://alerts.example.com/radar",
-      JSON.stringify(new CredentialVault().encrypt(secret)),
-      "High",
-      1,
-      Date.now(),
-      "op",
-    ]);
+    await db.execute(
+      `INSERT INTO operational_webhooks(id,url,secret_envelope,minimum_severity,send_recovery,updated_at,updated_by)
+       VALUES(1,?,?,?,?,?,?)`,
+      [
+        "https://alerts.example.com/radar",
+        JSON.stringify(new CredentialVault().encrypt(secret)),
+        "High",
+        1,
+        Date.now(),
+        "op",
+      ],
+    );
     const id = await observeProviderFailure(db, {
       connectionId: TAVILY_CONNECTION,
       provider: "tavily",

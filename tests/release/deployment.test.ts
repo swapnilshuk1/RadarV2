@@ -469,6 +469,13 @@ describe("deterministic release deployment", () => {
     expect(pm2Index).toBeGreaterThan(cdIndex);
     expect(shaUpdateIndex).toBeGreaterThan(pm2Index);
     expect(successReceiptIndex).toBeGreaterThan(shaUpdateIndex);
+    const schemaIndex = rollbackCmd.indexOf("npm run db:status");
+    const readyIndex = rollbackCmd.indexOf("/health/ready");
+    expect(schemaIndex).toBeGreaterThan(cdIndex);
+    expect(schemaIndex).toBeLessThan(pm2Index);
+    expect(readyIndex).toBeGreaterThan(pm2Index);
+    expect(readyIndex).toBeLessThan(shaUpdateIndex);
+    expect(rollbackCmd.slice(readyIndex, shaUpdateIndex)).toContain(priorSha);
 
     // Atomic subshell verifies all preconditions before success receipt is written
     expect(rollbackCmd).toContain(

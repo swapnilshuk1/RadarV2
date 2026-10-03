@@ -226,29 +226,44 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
             </button>
           </div>
         )}
-        {connection.previousId && (
+        {connection.previousSource && (
           <div className="flex flex-wrap gap-3">
             <button
               className={button}
               disabled={!enabled}
               onClick={() =>
-                void search({ kind: "test", credentialId: connection.previousId! } as Omit<
-                  SearchConnectionMutation,
-                  "expectedRevision" | "reason"
-                >)
+                void search(
+                  (connection.previousSource === "host"
+                    ? { kind: "test_host" }
+                    : { kind: "test", credentialId: connection.previousId! }) as Omit<
+                    SearchConnectionMutation,
+                    "expectedRevision" | "reason"
+                  >,
+                )
               }
             >
-              Validate previous version
+              Validate previous {connection.previousSource === "host" ? "host source" : "version"}
             </button>
             <button
               className={button}
               disabled={!enabled}
               onClick={() => void search({ kind: "rollback" })}
             >
-              Rollback to previous version
+              Rollback to previous{" "}
+              {connection.previousSource === "host" ? "host source" : "version"}
             </button>
           </div>
         )}
+        <button
+          className={button}
+          disabled={!enabled}
+          onClick={() => void search({ kind: "confirm_recovered" })}
+        >
+          Revalidate active source and confirm recovery
+        </button>
+        <p className="text-sm">
+          Activation and rollback wait for a production-capability canary before dispatch resumes.
+        </p>
         {connection.activeId && (
           <button
             className={button}
@@ -316,7 +331,7 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
                 </button>
                 <button
                   className={button}
-                  disabled={!enabled || i.connection_id !== "tavily:platform"}
+                  disabled={!enabled}
                   onClick={() => {
                     setIncidentId(String(i.id));
                     setSelected([]);
@@ -330,40 +345,44 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
             <p className="text-xs">
               Incident {i.id}
               {i.recurrence_of ? ` · recurrence of ${i.recurrence_of}` : ""}
+              {i.last_release_sha ? ` · release ${i.last_release_sha}` : ""}
             </p>
-            {i.state !== "resolved" && i.connection_id === "tavily:platform" && (
-              <details>
-                <summary>Affected work and exclusions</summary>
-                <p className="text-sm">
-                  Exclude exact work only with a reason. Exclusion accounts for the provider
-                  incident; it does not complete or retry the job.
-                </p>
-                {ops.linkedJobs
-                  .filter((j) => j.incident_id === i.id)
-                  .map((j) => (
-                    <div key={`${j.pipeline}:${j.job_id}`} className="my-3 space-y-2">
-                      <p className="text-sm">
-                        {j.pipeline} · {j.tenant_id} · {j.person_id} · {j.job_id} ·{" "}
-                        {j.accounted_reason ?? "pending accounting"}
-                      </p>
-                      <button
-                        className={button}
-                        disabled={!enabled || j.accounted_reason === "OPERATOR_EXCLUDED"}
-                        onClick={() =>
-                          void change({
-                            kind: "exclude",
-                            incidentId: String(i.id),
-                            pipeline: j.pipeline,
-                            jobId: String(j.job_id),
-                          } as Omit<OperationsMutation, "reason">)
-                        }
-                      >
-                        Exclude from provider recovery
-                      </button>
-                    </div>
-                  ))}
-              </details>
-            )}
+            {i.state !== "resolved" &&
+              ["tavily:platform", "bedrock:host", "google:host"].includes(
+                String(i.connection_id),
+              ) && (
+                <details>
+                  <summary>Affected work and exclusions</summary>
+                  <p className="text-sm">
+                    Exclude exact work only with a reason. Exclusion accounts for the provider
+                    incident; it does not complete or retry the job.
+                  </p>
+                  {ops.linkedJobs
+                    .filter((j) => j.incident_id === i.id)
+                    .map((j) => (
+                      <div key={`${j.pipeline}:${j.job_id}`} className="my-3 space-y-2">
+                        <p className="text-sm">
+                          {j.pipeline} · {j.tenant_id} · {j.person_id} · {j.job_id} ·{" "}
+                          {j.accounted_reason ?? "pending accounting"}
+                        </p>
+                        <button
+                          className={button}
+                          disabled={!enabled || j.accounted_reason === "OPERATOR_EXCLUDED"}
+                          onClick={() =>
+                            void change({
+                              kind: "exclude",
+                              incidentId: String(i.id),
+                              pipeline: j.pipeline,
+                              jobId: String(j.job_id),
+                            } as Omit<OperationsMutation, "reason">)
+                          }
+                        >
+                          Exclude from provider recovery
+                        </button>
+                      </div>
+                    ))}
+                </details>
+              )}
             {incidentId === i.id && (
               <div className="space-y-3">
                 {ops.linkedJobs
@@ -487,6 +506,10 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
             unavailable, even with empty business queues. Check its release, database and heartbeat.
           </p>
           <Records rows={[ops.maintenance.pending]} />
+          <p className="text-sm">
+            Maintenance tasks: {ops.maintenance.healthy ? "healthy" : "missing, stale or failing"}
+          </p>
+          <Records rows={ops.maintenance.tasks} />
         </div>
         <Records rows={ops.workers} />
         <Records rows={ops.receipts} />
@@ -613,6 +636,11 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
           Recovery notices use the same destination.
         </p>
         <p>Current destination: {ops.webhook?.url ?? "not configured"}</p>
+        <p className="text-sm text-muted-foreground">
+          Destination version {ops.webhook?.revision ?? 0}. Saving a destination or signing-secret
+          change cancels {ops.webhook?.pending_deliveries ?? 0} pending deliveries for the previous
+          version. A webhook request already sent cannot be recalled.
+        </p>
         <div className="flex flex-wrap gap-3">
           <input
             aria-label="Webhook destination"

@@ -88,10 +88,11 @@ export async function sendSignedWebhook(
   deliveryId: string,
   eventId: string,
   resolveDns: typeof lookup = lookup,
+  timeoutMs = 15000,
 ) {
   const startedAt = Date.now();
-  const target = await validateWebhookDestination(url, resolveDns);
-  const remaining = 15000 - (Date.now() - startedAt);
+  const target = await validateWebhookDestination(url, resolveDns, timeoutMs);
+  const remaining = timeoutMs - (Date.now() - startedAt);
   if (remaining <= 0) throw new Error("WEBHOOK_TIMEOUT");
   const timestamp = Math.floor(Date.now() / 1000).toString();
   // Pin the checked address to prevent DNS rebinding between validation and connect.
@@ -116,7 +117,11 @@ export async function sendSignedWebhook(
     req.end(body);
   });
 }
-export async function pollNotificationDelivery(db: DatabaseAdapter, send = sendSignedWebhook) {
+export async function pollNotificationDelivery(
+  db: DatabaseAdapter,
+  send = sendSignedWebhook,
+  deadline = Date.now() + 15000,
+) {
   const now = Date.now(),
     token = randomUUID();
   const delivery = await db.transaction(async (tx) => {
@@ -128,8 +133,9 @@ export async function pollNotificationDelivery(db: DatabaseAdapter, send = sendS
       attempts: number;
       incident_id: string;
       event: string;
+      destination_revision: number;
     }>(
-      "SELECT d.* FROM notification_deliveries d JOIN provider_incidents i ON i.id=d.incident_id WHERE d.status IN ('queued','retry','sending') AND d.next_attempt_at<=? AND (d.lease_until IS NULL OR d.lease_until<=?) AND (i.snoozed_until<=? OR d.event='resolved') ORDER BY d.next_attempt_at LIMIT 1",
+      "SELECT d.* FROM notification_deliveries d JOIN provider_incidents i ON i.id=d.incident_id WHERE d.status IN ('queued','retry','sending') AND d.next_attempt_at<=? AND (d.lease_until IS NULL OR d.lease_until<=?) AND (i.snoozed_until<=? OR d.event='resolved') AND (d.event='resolved' OR i.state!='resolved') ORDER BY d.next_attempt_at,d.id LIMIT 1",
       [now, now, now],
     );
     if (!row) return null;
@@ -140,6 +146,45 @@ export async function pollNotificationDelivery(db: DatabaseAdapter, send = sendS
     return claim.rowsAffected ? row : null;
   });
   if (!delivery) return null;
+  // Resolution and destination rotation can happen after a row was queued. Recheck
+  // immediately before making the external call, and fence the lease if it was revoked.
+  const current = await db.one<{
+    incident_state: string;
+    status: string;
+    lease_token: string | null;
+    error_code: string | null;
+    current_revision: number | null;
+  }>(
+    `SELECT i.state incident_state,d.status,d.lease_token,d.error_code,w.revision current_revision
+    FROM notification_deliveries d
+    JOIN provider_incidents i ON i.id=d.incident_id
+    LEFT JOIN operational_webhooks w ON w.id=1
+    WHERE d.id=?`,
+    [delivery.id],
+  );
+  const revokedReason =
+    !current || current.status !== "sending" || current.lease_token !== token
+      ? (current?.error_code ?? "DESTINATION_ROTATED")
+      : delivery.event === "opened" && current.incident_state === "resolved"
+        ? "INCIDENT_RESOLVED_BEFORE_DELIVERY"
+        : current.current_revision !== delivery.destination_revision
+          ? "DESTINATION_ROTATED"
+          : null;
+  if (revokedReason) {
+    await db.execute(
+      "UPDATE notification_deliveries SET status='cancelled',error_code=?,lease_token=NULL,lease_until=NULL WHERE id=? AND lease_token=?",
+      [revokedReason, delivery.id, token],
+    );
+    return { id: delivery.id, success: true, cancelled: true };
+  }
+  const sendTimeoutMs = Math.min(15000, deadline - Date.now());
+  if (sendTimeoutMs <= 0) {
+    await db.execute(
+      "UPDATE notification_deliveries SET status='retry',attempts=MAX(0,attempts-1),next_attempt_at=?,lease_token=NULL,lease_until=NULL WHERE id=? AND lease_token=?",
+      [Date.now(), delivery.id, token],
+    );
+    return null;
+  }
   let success = false;
   try {
     const secret = new CredentialVault().decrypt(JSON.parse(delivery.secret_envelope));
@@ -152,13 +197,15 @@ export async function pollNotificationDelivery(db: DatabaseAdapter, send = sendS
       secret,
       delivery.id,
       eventId,
+      undefined,
+      sendTimeoutMs,
     );
     success = status >= 200 && status < 300;
   } catch {
     /* Persist only a sanitized application code. */
   }
   const attempts = delivery.attempts + 1;
-  await db.execute(
+  const completed = await db.execute(
     "UPDATE notification_deliveries SET status=?,error_code=?,delivered_at=?,next_attempt_at=?,lease_token=NULL,lease_until=NULL WHERE id=? AND lease_token=? AND lease_until>?",
     [
       success ? "delivered" : attempts >= 5 ? "failed" : "retry",
@@ -170,5 +217,42 @@ export async function pollNotificationDelivery(db: DatabaseAdapter, send = sendS
       Date.now(),
     ],
   );
+  if (!completed.rowsAffected) return { id: delivery.id, success: true, cancelled: true };
   return { id: delivery.id, success };
+}
+
+/** Drain a bounded batch with limited concurrency and a shared wall-clock deadline. */
+export async function pollNotificationDeliveries(
+  db: DatabaseAdapter,
+  maxBatch = 10,
+  send = sendSignedWebhook,
+) {
+  const limit = Number.isFinite(maxBatch) ? Math.max(1, Math.min(50, Math.floor(maxBatch))) : 10;
+  let attempted = 0;
+  let sent = 0;
+  let failed = 0;
+  let cancelled = 0;
+  const deadline = Date.now() + 45000;
+  let processed = 0;
+  while (processed < limit && Date.now() < deadline) {
+    // Three concurrent sends cap a full batch near the per-delivery timeout while
+    // keeping outbound pressure bounded and each delivery independently leased.
+    const width = Math.min(3, limit - processed);
+    const results = await Promise.all(
+      Array.from({ length: width }, () => pollNotificationDelivery(db, send, deadline)),
+    );
+    const claimed = results.filter((result) => result !== null);
+    if (!claimed.length) break;
+    processed += claimed.length;
+    for (const result of claimed) {
+      if (result.cancelled) {
+        cancelled++;
+        continue;
+      }
+      attempted++;
+      if (result.success) sent++;
+      else failed++;
+    }
+  }
+  return { attempted, sent, failed, cancelled };
 }

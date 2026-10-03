@@ -5,6 +5,7 @@ import {
   type DatabaseAdapter,
 } from "../../data/database";
 import { describeBlobStoreConfiguration } from "../storage/blob-store";
+import { runMaintenanceTasks } from "./maintenance-receipts";
 
 export const REQUIRED_WORKERS = [
   "scrape",
@@ -99,46 +100,85 @@ export async function startWorkerHeartbeat(
          last_seen_at=excluded.last_seen_at`,
       [workerName, instanceId, releaseSha, identity.fingerprint, new Date().toISOString()],
     );
-    await connections.refreshSearchWorkerReceipt(db);
-    await connections.pollSearchConnectionCheck(db);
     const operations = await import("../../admin/operations-runtime");
     if (await operations.operationsInstalled(db)) {
       const hostChecks = await import("../../admin/host-provider-checks");
-      await hostChecks.pollHostProviderCheck(db, {
-        name: workerName,
-        instance: instanceId,
-        database: identity.fingerprint,
-      });
-      if (workerName === "evaluation") {
-        const { maintainCredentialRetention } = await import("../../admin/credential-maintenance");
-        await maintainCredentialRetention(db);
-      }
       const loaded = operations.effectiveOperationalRevision();
-      await operations.writeRuntimeReceipt(db, {
-        workerName,
-        instanceId,
-        runtimeRole: process.env.RADAR_RUNTIME_ROLE ?? "single-host",
+
+      const taskIdentity = {
+        workerInstance: instanceId,
         releaseSha,
         databaseFingerprint: identity.fingerprint,
-        configRevision: loaded === undefined ? "not-loaded" : `operational:${loaded}`,
-        connectionId: "runtime",
-        generation: loaded ?? 0,
-        credentialVersion: null,
-        credentialSource: "host",
-        reloadMode: "hot",
-        reloadStatus: loaded === undefined ? "pending" : "loaded",
-        errorCode: null,
-        startedAt,
-        loadedAt: Date.now(),
-        lastSeenAt: Date.now(),
-        effectiveSettings: operations.effectiveOperationalSettings(),
-      });
+      };
+      const tasks: Array<{ task: string; operation: () => Promise<unknown> }> = [
+        {
+          task: "search_connection_receipt",
+          operation: () => connections.refreshSearchWorkerReceipt(db),
+        },
+        {
+          task: "runtime_receipt",
+          operation: () =>
+            operations.writeRuntimeReceipt(db, {
+              workerName,
+              instanceId,
+              runtimeRole: process.env.RADAR_RUNTIME_ROLE ?? "single-host",
+              releaseSha,
+              databaseFingerprint: identity.fingerprint,
+              configRevision: loaded === undefined ? "not-loaded" : `operational:${loaded}`,
+              connectionId: "runtime",
+              generation: loaded ?? 0,
+              credentialVersion: null,
+              credentialSource: "host",
+              reloadMode: "hot",
+              reloadStatus: loaded === undefined ? "pending" : "loaded",
+              errorCode: null,
+              startedAt,
+              loadedAt: Date.now(),
+              lastSeenAt: Date.now(),
+              effectiveSettings: operations.effectiveOperationalSettings(),
+            }),
+        },
+      ];
       if (workerName === "evaluation") {
         const recovery = await import("../../admin/operations-recovery");
-        await recovery.reconcileProviderIncidents(db);
+        const { maintainCredentialRetention: runRetention } =
+          await import("../../admin/credential-maintenance");
         const notifications = await import("../../admin/notification-worker");
-        await notifications.pollNotificationDelivery(db);
+        tasks.push(
+          {
+            task: "notification_delivery",
+            operation: () => notifications.pollNotificationDeliveries(db, 10),
+          },
+          { task: "credential_retention", operation: () => runRetention(db) },
+          {
+            task: "incident_reconciliation",
+            operation: () => recovery.reconcileProviderIncidents(db),
+          },
+        );
       }
+      tasks.push(
+        {
+          task: "search_connection_validation",
+          operation: () => connections.pollSearchConnectionCheck(db),
+        },
+        {
+          task: "host_provider_checks",
+          operation: () =>
+            hostChecks.pollHostProviderCheck(db, {
+              name: workerName,
+              instance: instanceId,
+              database: identity.fingerprint,
+            }),
+        },
+      );
+      const results = await runMaintenanceTasks(db, taskIdentity, tasks);
+      for (const result of results)
+        if (!result.success)
+          console.error("RADAR_MAINTENANCE_TASK_FAILED", {
+            workerName,
+            task: result.task,
+            errorCode: result.errorCode,
+          });
     }
   };
   await db.execute("DELETE FROM worker_heartbeats WHERE last_seen_at < ?", [
@@ -150,7 +190,13 @@ export async function startWorkerHeartbeat(
     if (inFlight) return;
     inFlight = true;
     void beat()
-      .catch(() => undefined)
+      .catch((error: unknown) => {
+        const code =
+          error instanceof Error && /^[A-Z][A-Z0-9_]{1,79}$/.test(error.message)
+            ? error.message
+            : "WORKER_HEARTBEAT_FAILED";
+        console.error("RADAR_WORKER_HEARTBEAT_FAILED", { workerName, errorCode: code });
+      })
       .finally(() => {
         inFlight = false;
       });
