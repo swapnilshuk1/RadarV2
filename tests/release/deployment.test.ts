@@ -221,6 +221,7 @@ describe("deterministic release deployment", () => {
       if (command === "ssh") {
         const cmd = args[args.length - 1];
         if (cmd.includes("echo rec-12345")) return "rec-12345";
+        if (cmd.includes("RADAR_DISCOVER_LIVE_SHA")) return priorSha;
         if (cmd.includes("CURRENT_SHA") && cmd.startsWith("if [ -f ")) return priorSha;
         if (cmd.startsWith("if [ -d ") && cmd.includes(`releases/${priorSha}`)) return "VERIFIED";
         if (cmd.includes("RADAR_DEPLOY_STAGE=prior_release_migration_catalog")) activation = cmd;
@@ -303,6 +304,7 @@ describe("deterministic release deployment", () => {
           return "";
         }
         if (cmdStr.includes("echo rec-12345")) return "rec-12345";
+        if (cmdStr.includes("RADAR_DISCOVER_LIVE_SHA")) return priorSha;
         if (cmdStr.includes("CURRENT_SHA") && cmdStr.startsWith("if [ -f ")) return priorSha;
         if (cmdStr.startsWith("if [ -d ") && cmdStr.includes(`releases/${priorSha}`))
           return "VERIFIED";
@@ -364,6 +366,56 @@ describe("deterministic release deployment", () => {
     expect(rollbackCmd).toContain('"databaseRestored":false');
   });
 
+  it("uses the healthy live release when CURRENT_SHA is stale", () => {
+    const config = makeConfig();
+    const stalePointerSha = "b".repeat(40);
+    const liveSha = "c".repeat(40);
+    let activation = "";
+    const commands: string[] = [];
+    const mockRunner: CommandRunner = (command, args) => {
+      if (command === "ssh") {
+        const cmdStr = args[args.length - 1];
+        commands.push(cmdStr);
+        if (cmdStr.includes("RADAR_DISCOVER_LIVE_SHA")) return liveSha;
+        if (cmdStr.includes("CURRENT_SHA") && cmdStr.startsWith("if [ -f ")) return stalePointerSha;
+        if (cmdStr.startsWith("if [ -d ") && cmdStr.includes(`releases/${liveSha}`))
+          return "VERIFIED";
+        if (cmdStr.includes("echo rec-12345")) return "rec-12345";
+        if (cmdStr.includes("RADAR_DEPLOY_STAGE=prior_release_migration_catalog"))
+          activation = cmdStr;
+        return "";
+      }
+      if (command === "curl") return JSON.stringify({ status: "ready", releaseSha: testSha });
+      return "";
+    };
+
+    expect(() => deploy(config, mockRunner)).not.toThrow();
+    expect(activation).toContain(`/releases/${liveSha}/src/data/sqlite/migrations/`);
+    expect(activation).not.toContain(`/releases/${stalePointerSha}/src/data/sqlite/migrations/`);
+    expect(commands.some((command) => command.includes(`releases/${liveSha}`))).toBe(true);
+  });
+
+  it("fails closed when CURRENT_SHA exists but live readiness cannot identify a release", () => {
+    const config = makeConfig();
+    const priorSha = "b".repeat(40);
+    let recoveryPointCreated = false;
+    const mockRunner: CommandRunner = (command, args) => {
+      if (command === "ssh") {
+        const cmdStr = args[args.length - 1];
+        if (cmdStr.includes("RADAR_DISCOVER_LIVE_SHA")) return "";
+        if (cmdStr.includes("CURRENT_SHA") && cmdStr.startsWith("if [ -f ")) return priorSha;
+        if (cmdStr.includes("echo rec-12345")) {
+          recoveryPointCreated = true;
+          return "rec-12345";
+        }
+      }
+      return "";
+    };
+
+    expect(() => deploy(config, mockRunner)).toThrow("DEPLOY_PREVIOUS_RELEASE_NOT_READY");
+    expect(recoveryPointCreated).toBe(false);
+  });
+
   it("does not begin activation if the previous release is not ready", () => {
     const config = makeConfig();
     const priorSha = "b".repeat(40);
@@ -373,6 +425,7 @@ describe("deterministic release deployment", () => {
         const cmdStr = args[args.length - 1];
         commands.push(cmdStr);
         if (cmdStr.includes("echo rec-12345")) return "rec-12345";
+        if (cmdStr.includes("RADAR_DISCOVER_LIVE_SHA")) return priorSha;
         if (cmdStr.includes("CURRENT_SHA") && cmdStr.startsWith("if [ -f ")) return priorSha;
         // The prior release is not healthy at the exact recorded SHA.
         if (cmdStr.startsWith("if [ -d ") && cmdStr.includes(`releases/${priorSha}`))
@@ -398,6 +451,7 @@ describe("deterministic release deployment", () => {
           return "";
         }
         if (cmdStr.includes("echo rec-12345")) return "rec-12345";
+        if (cmdStr.includes("RADAR_DISCOVER_LIVE_SHA")) return priorSha;
         if (cmdStr.includes("CURRENT_SHA") && cmdStr.startsWith("if [ -f ")) return priorSha;
         if (cmdStr.startsWith("if [ -d ") && cmdStr.includes(`releases/${priorSha}`))
           return "VERIFIED";
@@ -438,6 +492,7 @@ describe("deterministic release deployment", () => {
           return "";
         }
         if (cmdStr.includes("echo rec-12345")) return "rec-12345";
+        if (cmdStr.includes("RADAR_DISCOVER_LIVE_SHA")) return priorSha;
         if (cmdStr.includes("CURRENT_SHA") && cmdStr.startsWith("if [ -f ")) return priorSha;
         if (cmdStr.startsWith("if [ -d ") && cmdStr.includes(`releases/${priorSha}`))
           return "VERIFIED";
