@@ -107,6 +107,18 @@ export async function runOperationsBrowserJourney(
       operation: async () => undefined,
     })),
   );
+  const reviewerInstance = "operations-acceptance-reviewer";
+  await db.execute("INSERT INTO worker_heartbeats VALUES('dossier-review',?,?,?,?)", [
+    reviewerInstance,
+    releaseSha,
+    fingerprint,
+    new Date().toISOString(),
+  ]);
+  await runMaintenanceTasks(
+    db,
+    { workerInstance: reviewerInstance, releaseSha, databaseFingerprint: fingerprint },
+    [{ task: "host_provider_checks", operation: async () => undefined }],
+  );
   process.env.TAVILY_API_KEY = "acceptance-host-key";
   const opportunity = { id: identity.canonicalJobId, title: "Head of Growth", company: "Company" };
   await new ProductionContextProvider(
@@ -178,6 +190,23 @@ export async function runOperationsBrowserJourney(
   assert(
     (await page.request.get(`${baseUrl}/health/operations`)).status() === 200,
     "external heartbeat probe unavailable",
+  );
+  await db.execute(
+    "UPDATE operations_maintenance_tasks SET consecutive_failures=1 WHERE worker_instance=? AND task='host_provider_checks'",
+    [reviewerInstance],
+  );
+  assert(
+    (await page.request.get(`${baseUrl}/health/operations`)).status() === 503,
+    "failed Google maintenance was hidden by healthy evaluation",
+  );
+  await runMaintenanceTasks(
+    db,
+    { workerInstance: reviewerInstance, releaseSha, databaseFingerprint: fingerprint },
+    [{ task: "host_provider_checks", operation: async () => undefined }],
+  );
+  assert(
+    (await page.request.get(`${baseUrl}/health/operations`)).status() === 200,
+    "recovered Google maintenance remained unhealthy",
   );
   await page.getByLabel("Operational change reason").fill("Recover isolated credential incident");
   const affected = page

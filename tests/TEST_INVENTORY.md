@@ -8,6 +8,10 @@ Together they verify role boundaries, encrypted connection activation, durable
 maintenance health, provider recovery and cooldown fencing, exact recovery
 cohorts, pause/expiry precedence, terminal cohort visibility, and signed alert
 delivery through resolution, rotation, retries, and batching.
+Follow-up regressions cover failed Tavily activation incident/alert creation,
+transient production recovery and recurrence, Google maintenance health,
+host-check lease loss, populated delivery migration, and atomic same-URL secret
+rotation with relevant pending events requeued.
 
 This document defines the authoritative test domains, invariant contracts, certification stage mappings, and full mechanical test registry for the RADAR v2 Executive Intelligence Engine.
 

@@ -240,5 +240,8 @@ export async function pollHostProviderCheck(
     if (probeStartedAt !== undefined)
       await confirmProviderRecovery(db, connectionId, 0, probeStartedAt);
   }
-  return { id: check.id, status: error ? "failed" : "passed" };
+  return {
+    id: check.id,
+    status: updated.rowsAffected ? (error ? "failed" : "passed") : "lease_lost",
+  };
 }

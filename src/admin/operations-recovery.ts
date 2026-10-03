@@ -52,9 +52,11 @@ async function recoveryReady(db: DatabaseAdapter, incidentId: string) {
     state: string;
     generation: number;
     last_seen: number;
-  }>("SELECT connection_id,state,generation,last_seen FROM provider_incidents WHERE id=?", [
-    incidentId,
-  ]);
+    failure_class: string;
+  }>(
+    "SELECT connection_id,state,generation,last_seen,failure_class FROM provider_incidents WHERE id=?",
+    [incidentId],
+  );
   if (!incident || incident.state === "resolved") throw new Error("INCIDENT_NOT_RECOVERABLE");
   await assertProviderDispatch(db, incident.connection_id);
   if (incident.connection_id === TAVILY_CONNECTION) {
@@ -62,6 +64,26 @@ async function recoveryReady(db: DatabaseAdapter, incidentId: string) {
     const active = await db.one<{ generation: number; active_id: string | null }>(
       "SELECT generation,active_id FROM admin_search_connection WHERE id=1",
     );
+    const hold = await db.one<{
+      generation: number;
+      requires_action: number;
+      last_success_at: number | null;
+    }>(
+      "SELECT generation,requires_action,last_success_at FROM provider_cooldowns WHERE connection_id=?",
+      [TAVILY_CONNECTION],
+    );
+    // A real current-generation request is sufficient proof for transient
+    // episodes. Action-required failures still need explicit capability validation.
+    if (
+      !["credential", "quota_exhausted", "vault"].includes(incident.failure_class) &&
+      hold?.generation === active!.generation &&
+      hold.generation === incident.generation &&
+      !hold.requires_action &&
+      hold.last_success_at !== null &&
+      hold.last_success_at > Math.max(incident.last_seen, Date.now() - 15 * 60_000)
+    ) {
+      return active!.generation;
+    }
     const validated = await db.many<{
       worker_instance: string;
       release_sha: string;

@@ -66,6 +66,45 @@ async function activate(db: SqliteAdapter) {
   return candidate.credentialId;
 }
 describe("Tavily failure-complete source recovery", () => {
+  it("does not turn a failed candidate validation into an active-provider incident", async () => {
+    const db = await fixture();
+    const candidate = await mutateSearchConnection(db, "op", {
+      kind: "candidate",
+      key: "candidate-key-fixture-000000000",
+      expectedRevision: 0,
+      reason: "test replacement",
+    });
+    await mutateSearchConnection(db, "op", {
+      kind: "test",
+      credentialId: candidate.credentialId!,
+      expectedRevision: 1,
+      reason: "validate candidate",
+    });
+    expect(
+      await pollSearchConnectionCheck(db, async () => new Response("", { status: 401 })),
+    ).toMatchObject({ status: "failed" });
+    expect(await db.many("SELECT id FROM provider_incidents")).toEqual([]);
+    await expect(assertProviderDispatch(db, "tavily:platform")).resolves.toBeUndefined();
+  });
+
+  it.each(["generation", "lease"] as const)(
+    "does not create an incident for a superseded confirmation %s",
+    async (fence) => {
+      const db = await fixture();
+      await activate(db);
+      const result = await pollSearchConnectionCheck(db, async () => {
+        if (fence === "generation")
+          await db.execute("UPDATE admin_search_connection SET generation=generation+1");
+        else
+          await db.execute(
+            "UPDATE admin_search_checks SET lease_token='replacement' WHERE status='running'",
+          );
+        return new Response("", { status: 401 });
+      });
+      expect(result).toMatchObject({ status: fence === "lease" ? "lease_lost" : "failed" });
+      expect(await db.many("SELECT id FROM provider_incidents")).toEqual([]);
+    },
+  );
   it("does not let an older successful request clear a newer transient failure", async () => {
     const db = await fixture();
     const started = Date.now() - 100;

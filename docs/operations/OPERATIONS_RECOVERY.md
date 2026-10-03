@@ -1,5 +1,34 @@
 # Operations & Recovery: implementation and agent entry point
 
+## Follow-up hardening — 3 October 2026
+
+Keep deployed release `e3c6f9a20f0dbf9429ad491f0c8bd33bb8b60d1d` (PR #31).
+This follow-up is local only, on `codex/operations-recovery-followups` in
+`C:/Users/swapn/.codex/worktrees/operations-recovery-followups/Radar V2`.
+The earlier checkout/release records below describe the preceding patch.
+
+- Failed current-generation Tavily confirmation records its incident and alert
+  atomically with the failed check. Activation holds acquire that incident as owner.
+- `/health/operations` requires evaluation task receipts and dossier-review Google
+  host-check maintenance on the same release/database. Admin counts both host providers.
+- Later production success moves transient Tavily episodes through recovery and exact
+  work accounting; credential, quota and vault incidents still require explicit validation.
+- Migration 089 preserves historical delivery rows and adds destination revision to
+  notification uniqueness. Rotation atomically replaces relevant pending events using
+  the new destination/secret and current severity/recovery settings.
+- Host checks return `lease_lost` when fenced completion cannot commit.
+
+No deployment, rollback, live credential activation or provider failure drill is
+authorized by this patch. The direct `EvidenceExtractionService` Bedrock path remains
+the subsequent document-worker gateway convergence described below.
+
+Verification: focused recovery/migration/health regressions passed. The single
+`npm run certify` run passed all nine stages with **840 passed / 1 skipped**.
+The isolated `npm run acceptance:operations` journey passed, including Google
+maintenance failure/recovery HTTP checks. Screenshots were inspected. Subsequent
+Admin changes only clarify maintenance ownership and notification replacement;
+their formatting/lint checks passed. No live provider or destination was contacted.
+
 Read this document before continuing this release. It records the authoritative
 checkout, product scope and current implementation status. Revalidate Git identity
 and status on entry; the recorded baseline is not permission to reset local work.

@@ -70,6 +70,36 @@ async function seedIncident(db: SqliteAdapter, provider: "bedrock" | "google") {
 }
 
 describe("host-managed provider recovery", () => {
+  it("returns lease_lost without clearing recovery when a successful probe loses its lease", async () => {
+    const db = await fixture();
+    vi.stubEnv("BEDROCK_MANTLE_API_KEY", "fixture-bedrock-key");
+    await seedIncident(db, "bedrock");
+    const result = await pollHostProviderCheck(
+      db,
+      {
+        name: "evaluation",
+        instance: "lost-lease",
+        database: getDatabaseTargetIdentity().fingerprint,
+      },
+      async () => {
+        await db.execute(
+          "UPDATE provider_host_checks SET lease_token='replacement' WHERE id='probe-bedrock'",
+        );
+        return Response.json({
+          choices: [{ finish_reason: "stop", message: { content: '{"canary":"RADAR"}' } }],
+        });
+      },
+    );
+    expect(result).toEqual({ id: "probe-bedrock", status: "lease_lost" });
+    expect(
+      await db.one(
+        "SELECT requires_action FROM provider_cooldowns WHERE connection_id='bedrock:host'",
+      ),
+    ).toEqual({ requires_action: 1 });
+    expect(
+      await db.one("SELECT status FROM provider_host_checks WHERE id='probe-bedrock'"),
+    ).toEqual({ status: "running" });
+  });
   it.each([
     ["bedrock", "evaluation", "bedrock-mantle.us-east-1.api.aws", "deepseek.v3.2,zai.glm-5"],
     ["google", "dossier-review", "aiplatform.googleapis.com", "gemini-3.8-flash"],

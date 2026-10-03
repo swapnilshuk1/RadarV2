@@ -13,7 +13,9 @@ import {
   writeRuntimeReceipt,
   operationalSettings,
   confirmProviderRecovery,
+  observeProviderFailure,
 } from "./operations-runtime";
+import { classifySearchFailure } from "./operations-contracts";
 import { probeTavilyCapability } from "../evaluation/tavily-request";
 export const TAVILY_CONNECTION = "tavily:platform";
 export const RECEIPT_FRESH_MS = 150_000;
@@ -225,7 +227,7 @@ export async function mutateSearchConnection(
         ],
       );
       await tx.execute(
-        "INSERT INTO provider_cooldowns(connection_id,generation,blocked_until,requires_action,failures,failure_class) VALUES(?,?,0,1,0,'activation_canary') ON CONFLICT(connection_id) DO UPDATE SET generation=excluded.generation,blocked_until=0,requires_action=1,failures=0,last_success_at=NULL",
+        "INSERT INTO provider_cooldowns(connection_id,generation,blocked_until,requires_action,failures,failure_class) VALUES(?,?,0,1,0,'activation_canary') ON CONFLICT(connection_id) DO UPDATE SET generation=excluded.generation,blocked_until=0,requires_action=1,failures=0,last_success_at=NULL,failure_class='activation_canary',active_incident_id=NULL",
         [TAVILY_CONNECTION, row.generation + 1],
       );
       await tx.execute(
@@ -333,6 +335,7 @@ export async function pollSearchConnectionCheck(
   if (!claimed) return null;
   const startedAt = Date.now();
   let error: string | null = null;
+  let providerFailure: unknown;
   try {
     await requirePlatformRole(db, claimed.created_by, true);
     await probeTavilyCapability(
@@ -340,15 +343,56 @@ export async function pollSearchConnectionCheck(
       request,
     );
   } catch (failure) {
+    providerFailure = failure;
     error =
       failure instanceof Error && /^[A-Z_0-9]+$/.test(failure.message)
         ? failure.message
         : "SEARCH_CHECK_UNAVAILABLE";
   }
-  const result = await db.execute(
-    "UPDATE admin_search_checks SET status=?,error_code=?,completed_at=?,lease_until=NULL WHERE id=? AND status='running' AND lease_token=? AND lease_until>?",
-    [error ? "failed" : "passed", error, Date.now(), claimed.id, token, Date.now()],
-  );
+  const result = await db.transaction(async (tx) => {
+    const updated = await tx.execute(
+      "UPDATE admin_search_checks SET status=?,error_code=?,completed_at=?,lease_until=NULL WHERE id=? AND status='running' AND lease_token=? AND lease_until>?",
+      [error ? "failed" : "passed", error, Date.now(), claimed.id, token, Date.now()],
+    );
+    if (
+      updated.rowsAffected &&
+      error &&
+      claimed.purpose === "confirm" &&
+      claimed.generation !== null
+    ) {
+      const current = await connection(tx);
+      if (
+        current.generation === claimed.generation &&
+        current.active_id === claimed.credential_id
+      ) {
+        const status = Number(error.match(/^CONTEXT_SEARCH_HTTP_(\d+)$/)?.[1]) || undefined;
+        const code =
+          error === "SEARCH_CREDENTIAL_UNREADABLE"
+            ? "VAULT_UNREADABLE"
+            : error === "TAVILY_HOST_KEY_UNCONFIGURED"
+              ? undefined
+              : error === "SEARCH_CAPABILITY_RESPONSE_INVALID" ||
+                  providerFailure instanceof SyntaxError
+                ? "INVALID_RESPONSE"
+                : providerFailure instanceof Error &&
+                    ["TimeoutError", "AbortError"].includes(providerFailure.name)
+                  ? "TIMEOUT"
+                  : undefined;
+        await observeProviderFailure(tx, {
+          connectionId: TAVILY_CONNECTION,
+          provider: "tavily",
+          generation: claimed.generation,
+          failure:
+            error === "TAVILY_HOST_KEY_UNCONFIGURED"
+              ? "credential"
+              : classifySearchFailure(status, code),
+          status,
+          deployment: runtime.database,
+        });
+      }
+    }
+    return updated;
+  });
   if (result.rowsAffected && !error) {
     await db.execute(
       "UPDATE provider_credential_lifecycle SET last_validated_at=? WHERE credential_id=?",
