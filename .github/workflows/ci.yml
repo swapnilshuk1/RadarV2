@@ -2,9 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [main, "rebuild/**", "readiness/**"]
+    branches: [main]
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ci-pr-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
@@ -13,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Reject tracked machine state and generated artifacts
         shell: bash
@@ -64,13 +70,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run authoritative release certification
+      - name: Pull request release feedback
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          CERTIFY_AFFECTED_BASE: ${{ github.event.pull_request.base.sha }}
+        run: npm run certify:feedback
+
+      - name: Authoritative main release certification
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: npm run certify
 
       - name: Package exact certified release artifact
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: npm run release:package
 
       - name: Verify extracted release portability
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -98,6 +113,7 @@ jobs:
           node_modules/.bin/tsx --tsconfig tsconfig.json scripts/release/smoke-worker-runtime.ts
 
       - name: Retain release artifact for this exact commit
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: actions/upload-artifact@v4
         with:
           name: radar-release-${{ github.sha }}
