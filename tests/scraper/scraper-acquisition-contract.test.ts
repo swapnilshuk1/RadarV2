@@ -1,3 +1,4 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 /**
  * tests/scraper/scraper-acquisition-contract.test.ts
  *
@@ -8,7 +9,6 @@
  *  4. Historical Incident Replay Contracts (missing company, ATS fallback, pagination matching)
  */
 
-import Database from "better-sqlite3";
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
@@ -24,7 +24,7 @@ describe("Slice B: Acquisition Efficiency & Failure Truth Contracts", () => {
   let db: SqliteAdapter;
 
   beforeEach(async () => {
-    db = new SqliteAdapter(new Database(":memory:"));
+    db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
   });
 

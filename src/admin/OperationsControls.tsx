@@ -494,16 +494,17 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
           }))}
         />
         <div id="maintenance" className="space-y-3 border border-border p-4">
-          <h3 className="text-lg">Evaluation maintenance worker</h3>
+          <h3 className="text-lg">Operations maintenance workers</h3>
           <p>
             {ops.maintenance.online
-              ? "Matching evaluation worker online"
-              : "Evaluation maintenance worker unavailable"}
+              ? "Evaluation and dossier-review maintenance workers online"
+              : "A required maintenance worker is unavailable"}
           </p>
           <p className="text-sm">
             The evaluation heartbeat owns Tavily validation, credential retirement and purge,
-            incident reconciliation and webhook delivery. These stop when that worker is
-            unavailable, even with empty business queues. Check its release, database and heartbeat.
+            incident reconciliation and webhook delivery. The dossier-review heartbeat owns Google
+            host checks. Maintenance health requires fresh successful task receipts from both
+            workers on the current release and database, even with empty business queues.
           </p>
           <Records rows={[ops.maintenance.pending]} />
           <p className="text-sm">
@@ -639,7 +640,8 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
         <p className="text-sm text-muted-foreground">
           Destination version {ops.webhook?.revision ?? 0}. Saving a destination or signing-secret
           change cancels {ops.webhook?.pending_deliveries ?? 0} pending deliveries for the previous
-          version. A webhook request already sent cannot be recalled.
+          version and requeues relevant events using the new settings. A webhook request already
+          sent cannot be recalled.
         </p>
         <div className="flex flex-wrap gap-3">
           <input

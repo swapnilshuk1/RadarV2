@@ -1,33 +1,14 @@
 import { defineConfig } from "vitest/config";
 import path from "node:path";
+import { standardTestFiles } from "./scripts/certification/registry";
 
 export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(process.cwd(), "src") },
   },
   test: {
-    include: [
-      "tests/certification/**/*.test.ts",
-      "tests/intelligence/**/*.test.ts",
-      "tests/security/**/*.test.ts",
-      "tests/ontology/**/*.test.ts",
-      "tests/policy/**/*.test.ts",
-      "tests/editorial/**/*.test.ts",
-      "tests/semantic/**/*.test.ts",
-      "tests/persistence/**/*.test.ts",
-      "tests/scraper/**/*.test.ts",
-      "tests/acquisition/**/*.test.ts",
-      "tests/pipeline/**/*.test.ts",
-      "tests/serving/**/*.test.ts",
-      "tests/release/**/*.test.ts",
-    ],
-    exclude: [
-      "tests/regression/**",
-      "tests/archive/**",
-      "node_modules/**",
-      "tests/scraper/integration.test.ts",
-      "tests/scraper/scrape-progress.test.ts"
-    ],
+    include: standardTestFiles,
+    exclude: ["node_modules/**"],
     environment: "node",
     pool: "threads",
     testTimeout: 30000,

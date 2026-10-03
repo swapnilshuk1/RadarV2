@@ -10,6 +10,11 @@ export const CRITICAL_EVALUATION_MAINTENANCE_TASKS = [
   "notification_delivery",
 ] as const;
 
+export const CRITICAL_MAINTENANCE_BY_WORKER = {
+  evaluation: CRITICAL_EVALUATION_MAINTENANCE_TASKS,
+  "dossier-review": ["host_provider_checks"],
+} as const;
+
 export type MaintenanceTaskName = (typeof CRITICAL_EVALUATION_MAINTENANCE_TASKS)[number] | string;
 
 export type MaintenanceTaskIdentity = {

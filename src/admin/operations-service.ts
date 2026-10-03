@@ -2,14 +2,18 @@ import type { DatabaseAdapter } from "../data/database/adapter";
 import { getDatabaseTargetIdentity } from "../data/database";
 import { CredentialVault } from "../lib/security/CredentialVault";
 import { appendAdminAudit, requirePlatformRole } from "./service";
-import { operationalSettings, operationsInstalled } from "./operations-runtime";
+import {
+  operationalSettings,
+  operationsInstalled,
+  enqueueIncidentNotification,
+} from "./operations-runtime";
 import { operationsMutationSchema, type OperationsMutation } from "./operations-contracts";
 import { executeRecovery, previewRecovery } from "./operations-recovery";
 import { validateWebhookDestination } from "./notification-worker";
 import { configJobTables } from "./config-store";
 import { randomUUID } from "node:crypto";
 import { describeBlobStoreConfiguration } from "../lib/storage/blob-store";
-import { CRITICAL_EVALUATION_MAINTENANCE_TASKS } from "../lib/health/maintenance-receipts";
+import { CRITICAL_MAINTENANCE_BY_WORKER } from "../lib/health/maintenance-receipts";
 
 export async function readOperations(db: DatabaseAdapter, actor: string) {
   const role = await requirePlatformRole(db, actor);
@@ -130,7 +134,7 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
   }>(
     `SELECT
     (SELECT COUNT(*) FROM admin_search_checks WHERE status IN ('queued','running')) validation,
-    (SELECT COUNT(*) FROM provider_host_checks WHERE provider='bedrock' AND status IN ('queued','running')) host_probes,
+    (SELECT COUNT(*) FROM provider_host_checks WHERE provider IN ('bedrock','google') AND status IN ('queued','running')) host_probes,
     (SELECT COUNT(*) FROM provider_incidents WHERE connection_id IN ('tavily:platform','bedrock:host','google:host') AND state='recovering') reconciliation,
     (SELECT COUNT(*) FROM notification_deliveries WHERE status IN ('queued','retry','sending')) notifications,
     (SELECT COUNT(*) FROM provider_credential_lifecycle l JOIN admin_search_credentials c ON c.id=l.credential_id
@@ -143,31 +147,38 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
   const maintenanceTasks = await db.many<Record<string, string | number | null>>(
     "SELECT * FROM operations_maintenance_tasks ORDER BY last_started_at DESC LIMIT 100",
   );
-  const healthyMaintenance = workers.some(
-    (w) =>
-      w.worker_name === "evaluation" &&
-      w.release_sha === (process.env.RADAR_RELEASE_SHA ?? "development") &&
-      w.database_fingerprint === identity.fingerprint &&
-      Date.parse(String(w.last_seen_at)) > Date.now() - 150000 &&
-      CRITICAL_EVALUATION_MAINTENANCE_TASKS.every((task) =>
-        maintenanceTasks.some(
-          (r) =>
-            r.worker_instance === w.instance_id &&
-            r.task === task &&
-            r.release_sha === w.release_sha &&
-            r.database_fingerprint === w.database_fingerprint &&
-            Number(r.last_success_at) > Date.now() - 150000 &&
-            r.consecutive_failures === 0,
-        ),
+  const maintenanceByWorker = Object.entries(CRITICAL_MAINTENANCE_BY_WORKER).map(
+    ([name, tasks]) => ({
+      name,
+      online: workerOnline(name),
+      healthy: workers.some(
+        (w) =>
+          w.worker_name === name &&
+          w.release_sha === (process.env.RADAR_RELEASE_SHA ?? "development") &&
+          w.database_fingerprint === identity.fingerprint &&
+          Date.parse(String(w.last_seen_at)) > Date.now() - 150000 &&
+          tasks.every((task) =>
+            maintenanceTasks.some(
+              (r) =>
+                r.worker_instance === w.instance_id &&
+                r.task === task &&
+                r.release_sha === w.release_sha &&
+                r.database_fingerprint === w.database_fingerprint &&
+                Number(r.last_success_at) > Date.now() - 150000 &&
+                r.consecutive_failures === 0,
+            ),
+          ),
       ),
+    }),
   );
   const maintenance = {
-    online: workerOnline("evaluation"),
-    healthy: healthyMaintenance,
+    online: maintenanceByWorker.every((worker) => worker.online),
+    healthy: maintenanceByWorker.every((worker) => worker.healthy),
+    workers: maintenanceByWorker,
     tasks: maintenanceTasks,
     pending: maintenancePending,
   };
-  if (maintenance.online && !maintenance.healthy)
+  if (maintenanceByWorker.some((worker) => worker.online && !worker.healthy))
     attention.push({
       severity: "High",
       message: "Operations maintenance missing, stale or failing; inspect individual task receipts",
@@ -177,7 +188,7 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
     attention.push({
       severity: "High",
       message:
-        "Evaluation maintenance worker unavailable: pending validation, retention, reconciliation or notification delivery cannot progress",
+        "Evaluation maintenance worker unavailable or dossier-review maintenance worker unavailable: pending validation, host probes, retention, reconciliation or notification delivery cannot progress",
       target: "maintenance",
     });
   for (const receipt of receipts)
@@ -294,6 +305,7 @@ export async function mutateOperations(
   if (data.kind === "webhook") await validateWebhookDestination(data.url);
   let webhookRevision: number | null = null;
   let webhookPendingCancelled = 0;
+  let webhookPendingRequeued = 0;
   return db.transaction(async (tx) => {
     await requirePlatformRole(tx, actor, true);
     if (data.kind === "exclude") {
@@ -356,6 +368,13 @@ export async function mutateOperations(
         "SELECT revision FROM operational_webhooks WHERE id=1",
       );
       const revision = (prior?.revision ?? 0) + 1;
+      const pending = await tx.many<{ incident_id: string; event: "opened" | "resolved" }>(
+        `SELECT DISTINCT d.incident_id,d.event FROM notification_deliveries d
+         JOIN provider_incidents i ON i.id=d.incident_id
+         WHERE d.destination_revision<? AND d.status IN ('queued','retry','sending')
+         AND ((d.event='opened' AND i.state!='resolved') OR (d.event='resolved' AND i.state='resolved'))`,
+        [revision],
+      );
       const cancelled = prior
         ? await tx.execute(
             `UPDATE notification_deliveries SET status='cancelled',error_code='DESTINATION_ROTATED',
@@ -374,6 +393,13 @@ export async function mutateOperations(
           updated_by=excluded.updated_by,revision=excluded.revision`,
         [data.url, envelope, data.severity, data.recovery ? 1 : 0, Date.now(), actor, revision],
       );
+      for (const delivery of pending) {
+        await enqueueIncidentNotification(tx, delivery.incident_id, delivery.event);
+      }
+      webhookPendingRequeued = (await tx.one<{ n: number }>(
+        "SELECT COUNT(*) n FROM notification_deliveries WHERE destination_revision=? AND status='queued'",
+        [revision],
+      ))!.n;
     } else if (data.kind === "host_probe") {
       await tx.execute(
         "INSERT INTO provider_host_checks(id,provider,status,created_at,created_by) VALUES(?,?,'queued',?,?)",
@@ -395,6 +421,7 @@ export async function mutateOperations(
                 recovery: data.recovery,
                 revision: webhookRevision,
                 pendingCancelled: webhookPendingCancelled,
+                pendingRequeued: webhookPendingRequeued,
               }
             : {},
     });

@@ -1,3 +1,4 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { hostname } from "node:os";
 import {
   baselineIntelligenceTaxonomy,
@@ -23,7 +24,6 @@ import {
   contextInputFingerprint,
   validateSnapshot,
 } from "../../src/data/sqlite/repositories/SqliteStagedInputStore";
-import Database from "better-sqlite3";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import {
@@ -68,7 +68,7 @@ async function fixture() {
   vi.stubEnv("RADAR_ADMIN_BENCH_TARGET", "taxonomy-fixture");
   vi.stubEnv("RADAR_RELEASE_SHA", "b".repeat(40));
   vi.stubEnv("RADAR_ADMIN_BENCH_HOSTS", hostname());
-  const db = new SqliteAdapter(new Database(":memory:"));
+  const db = await migratedFixtureDatabase();
   cleanup.push(db);
   await setupLineageTestFixture(db);
   await db.execute(

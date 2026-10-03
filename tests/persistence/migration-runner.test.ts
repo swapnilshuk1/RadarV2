@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import os from "os";
 import fs from "fs";
 import path from "path";
+import { migratedFixtureDatabase } from "./migrated-fixture";
+import { setupLineageTestFixture } from "./lineage_fixture";
 import {
   getRequiredSchemaStatus,
   migrationChecksum,
@@ -11,7 +13,6 @@ import {
   verifyRequiredSchema,
 } from "../../src/data/sqlite/migrations/runner";
 import { getDatabaseAdapter, resetDatabaseAdapter } from "../../src/data/database";
-import { setupLineageTestFixture } from "./lineage_fixture";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 
 describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
@@ -38,6 +39,44 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
     else delete process.env.TURSO_CONNECTION_URL;
     if (originalTursoToken) process.env.TURSO_AUTH_TOKEN = originalTursoToken;
     else delete process.env.TURSO_AUTH_TOKEN;
+  });
+
+  it("clones the complete migrated schema without leaking tenant data, triggers or transactions", async () => {
+    const first = await migratedFixtureDatabase();
+    const second = await migratedFixtureDatabase();
+    try {
+      await setupLineageTestFixture(first);
+      await setupLineageTestFixture(second);
+      await first.execute("UPDATE people SET email='changed@fixture' WHERE id='person_A'");
+      expect(await second.one("SELECT email FROM people WHERE id='person_A'")).toEqual({
+        email: "a@a.com",
+      });
+      await first.execute(
+        "CREATE TRIGGER clone_only BEFORE INSERT ON users BEGIN SELECT RAISE(ABORT,'CLONE_ONLY'); END",
+      );
+      await second.execute("INSERT INTO users(id,email) VALUES('other','other@fixture')");
+      await expect(
+        first.transaction(async (tx) => {
+          await tx.execute("UPDATE people SET email='rollback@fixture' WHERE id='person_A'");
+          throw new Error("ROLLBACK");
+        }),
+      ).rejects.toThrow("ROLLBACK");
+      expect(await first.one("SELECT email FROM people WHERE id='person_A'")).toEqual({
+        email: "changed@fixture",
+      });
+      await expect(
+        second.execute(
+          "INSERT INTO people(id,email,tenant_id) VALUES('bad','bad@fixture','missing-tenant')",
+        ),
+      ).rejects.toThrow("FOREIGN KEY");
+      await verifyMigrationChecksums(first);
+      await verifyRequiredSchema(second);
+      expect(await first.many("PRAGMA foreign_key_check")).toEqual([]);
+      expect(await second.many("PRAGMA foreign_key_check")).toEqual([]);
+    } finally {
+      await first.close();
+      await second.close();
+    }
   });
 
   it("1. splitSqlStatements correctly parses SQL with comments and strings", () => {

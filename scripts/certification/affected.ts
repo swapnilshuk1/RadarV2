@@ -7,6 +7,7 @@ import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { certificationManifest, certificationTestFiles } from "./manifest";
+import { sourceOwnership } from "./registry";
 
 const require = createRequire(import.meta.url);
 
@@ -15,53 +16,9 @@ type CertificationGroupId = (typeof certificationManifest)[number]["id"];
 const allGroupIds = certificationManifest.map((group) => group.id);
 
 function groupsForKnownSource(file: string): CertificationGroupId[] | null {
-  if (file === "tests/TEST_INVENTORY.md" || file === "scripts/certify.ts")
-    return ["boundary-journeys"];
-  if (file.startsWith("docs/") || file.endsWith(".md")) return [];
-  if (file.startsWith("src/pursuit/") || /^src\/data\/sqlite\/migrations\/0(6[5-9]|70)_/.test(file))
-    return ["pursuit"];
-  if (
-    file === "package.json" ||
-    file === "package-lock.json" ||
-    file.startsWith("tsconfig") ||
-    file.startsWith("vitest") ||
-    file.startsWith("scripts/certification/")
-  )
-    return allGroupIds;
-
-  if (
-    file.startsWith("src/lib/security/") ||
-    file.startsWith("src/lib/auth/") ||
-    file.startsWith("scripts/scraper/")
-  ) {
-    return ["boundary-journeys", "tenant-security"];
-  }
-
-  if (
-    file.startsWith("src/lib/intelligence/editorial/") ||
-    file.startsWith("src/components/radar/opportunity/") ||
-    file.startsWith("src/dossier/")
-  ) {
-    return ["boundary-journeys", "staged-dossier-merge-gate"];
-  }
-
-  if (
-    file.startsWith("src/acquisition/") ||
-    file.startsWith("src/lib/intelligence/extraction/") ||
-    file.startsWith("src/lib/intelligence/semantic/")
-  )
-    return ["boundary-journeys", "ingestion-lineage"];
-
-  if (
-    file.startsWith("src/data/") ||
-    file.startsWith("src/routes/") ||
-    file.startsWith("src/opportunity/") ||
-    file.includes("opportunity-service") ||
-    file.includes("opportunity-queries")
-  )
-    return ["boundary-journeys", "serving-pagination"];
-
-  return null;
+  const ownership = sourceOwnership.find((rule) => rule.pattern.test(file));
+  if (!ownership) return null;
+  return ownership.groups === "all" ? allGroupIds : [...ownership.groups];
 }
 
 /** Returns every group when a change cannot be mapped with confidence. */

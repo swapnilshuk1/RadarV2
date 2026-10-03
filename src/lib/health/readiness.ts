@@ -9,7 +9,7 @@ import {
   requiredWorkersForEnvironment,
 } from "./worker-heartbeat";
 import { operationsInstalled } from "../../admin/operations-runtime";
-import { CRITICAL_EVALUATION_MAINTENANCE_TASKS } from "./maintenance-receipts";
+import { CRITICAL_MAINTENANCE_BY_WORKER } from "./maintenance-receipts";
 
 export type ReadinessPayload = {
   readonly status: "ready" | "unavailable";
@@ -54,13 +54,13 @@ export async function getOperationsReadiness(): Promise<{
     const now = Date.now();
     const cutoff = now - WORKER_HEARTBEAT_STALE_MS;
     const workers = installed
-      ? await db.many<{ instance_id: string }>(
-          `SELECT instance_id FROM worker_heartbeats
-           WHERE worker_name='evaluation' AND release_sha=? AND database_fingerprint=? AND last_seen_at>=?`,
+      ? await db.many<{ instance_id: string; worker_name: string }>(
+          `SELECT instance_id,worker_name FROM worker_heartbeats
+           WHERE worker_name IN ('evaluation','dossier-review') AND release_sha=? AND database_fingerprint=? AND last_seen_at>=?`,
           [sha, fingerprint, new Date(cutoff).toISOString()],
         )
       : [];
-    let healthyWorkerFound = false;
+    const healthyWorkers = new Set<string>();
     for (const worker of workers) {
       const receipts = await db.many<{
         task: string;
@@ -73,7 +73,11 @@ export async function getOperationsReadiness(): Promise<{
         [worker.instance_id, sha, fingerprint],
       );
       const byTask = new Map(receipts.map((receipt) => [receipt.task, receipt]));
-      const current = CRITICAL_EVALUATION_MAINTENANCE_TASKS.every((task) => {
+      const tasks =
+        CRITICAL_MAINTENANCE_BY_WORKER[
+          worker.worker_name as keyof typeof CRITICAL_MAINTENANCE_BY_WORKER
+        ];
+      const current = tasks.every((task) => {
         const receipt = byTask.get(task);
         return Boolean(
           receipt &&
@@ -83,11 +87,12 @@ export async function getOperationsReadiness(): Promise<{
         );
       });
       if (current) {
-        healthyWorkerFound = true;
-        break;
+        healthyWorkers.add(worker.worker_name);
       }
     }
-    const ready = installed && healthyWorkerFound;
+    const ready =
+      installed &&
+      Object.keys(CRITICAL_MAINTENANCE_BY_WORKER).every((name) => healthyWorkers.has(name));
     return {
       status: ready ? 200 : 503,
       body: { status: ready ? "ready" : "unavailable", releaseSha: releaseSha() },

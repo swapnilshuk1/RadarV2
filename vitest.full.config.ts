@@ -1,17 +1,14 @@
 import { defineConfig } from "vitest/config";
 import path from "node:path";
+import { fullTestFiles } from "./scripts/certification/registry";
 
 export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(process.cwd(), "src") },
   },
   test: {
-    include: ["tests/**/*.test.ts"],
-    exclude: [
-      // Opt-in live operator audit; reads live production identity data from external Turso DB
-      "tests/intelligence/canonical-identity.test.ts",
-      "node_modules/**",
-    ],
+    include: fullTestFiles,
+    exclude: ["node_modules/**"],
     environment: "node",
     pool: "threads",
     testTimeout: 30000,

@@ -1,10 +1,10 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { validateClaims } from "../../src/dossier/grounding";
 import type { ReasoningModel } from "../../src/dossier/contracts";
 import type { BenchRow } from "../../src/admin/bench-worker";
 import type { EngineConfig, ModelLane } from "../../src/admin/config-contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { hostname } from "node:os";
-import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import {
@@ -53,7 +53,7 @@ async function fixture() {
   vi.stubEnv("RADAR_ADMIN_BENCH_TARGET", "test-control-plane");
   vi.stubEnv("RADAR_RELEASE_SHA", "a".repeat(40));
   vi.stubEnv("RADAR_ADMIN_BENCH_HOSTS", hostname());
-  const db = new SqliteAdapter(new Database(":memory:"));
+  const db = await migratedFixtureDatabase();
   cleanup.push(db);
   await setupLineageTestFixture(db);
   await db.execute(

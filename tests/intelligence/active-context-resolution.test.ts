@@ -1,6 +1,6 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { describe, it, expect, beforeAll } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
-import Database from "better-sqlite3";
 import { SqliteEvaluationContextStore } from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
@@ -13,7 +13,7 @@ describe("Active Context Resolution", () => {
   const scopeB = { tenantId: "tenant_B", personId: "person_B", roles: [] } as any;
 
   beforeAll(async () => {
-    db = new SqliteAdapter(new Database(":memory:"));
+    db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
     for (const [userId, tenantId] of [["person_A", "tenant_A"], ["person_B", "tenant_B"]] as const) {
       await db.execute(`INSERT INTO users (id, email) VALUES (?, ?)`, [userId, `${userId}@example.com`]);

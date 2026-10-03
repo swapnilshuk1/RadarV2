@@ -127,7 +127,7 @@ export async function enqueueIncidentNotification(
   );
   await db.execute(
     `INSERT INTO notification_deliveries(id,incident_id,event,destination_url,secret_envelope,payload_json,next_attempt_at,destination_revision)
-    VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(incident_id,event,destination_url) DO NOTHING`,
+    VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(incident_id,event,destination_url,destination_revision) DO NOTHING`,
     [
       id,
       incidentId,
@@ -260,8 +260,8 @@ export async function observeProviderFailure(
     await tx.execute(
       `INSERT INTO provider_cooldowns(connection_id,generation,blocked_until,requires_action,failures,failure_class,active_incident_id) VALUES(?,?,?,?,1,?,?)
       ON CONFLICT(connection_id) DO UPDATE SET generation=excluded.generation,blocked_until=MAX(blocked_until,excluded.blocked_until),
-      active_incident_id=CASE WHEN requires_action=1 AND excluded.requires_action=0 THEN active_incident_id ELSE excluded.active_incident_id END,
-      failure_class=CASE WHEN requires_action=1 AND excluded.requires_action=0 THEN failure_class ELSE excluded.failure_class END,
+      active_incident_id=CASE WHEN requires_action=1 AND excluded.requires_action=0 AND active_incident_id IS NOT NULL THEN active_incident_id ELSE excluded.active_incident_id END,
+      failure_class=CASE WHEN requires_action=1 AND excluded.requires_action=0 AND active_incident_id IS NOT NULL THEN failure_class ELSE excluded.failure_class END,
       requires_action=MAX(requires_action,excluded.requires_action),failures=failures+1`,
       [input.connectionId, input.generation, now + delay, action, input.failure, id],
     );
@@ -401,7 +401,7 @@ export async function providerSucceeded(
         "UPDATE provider_credential_lifecycle SET last_success_at=? WHERE credential_id=(SELECT active_id FROM admin_search_connection WHERE id=1 AND generation=?)",
         [Date.now(), generation],
       );
-    if (changed.rowsAffected && connectionId !== "tavily:platform")
+    if (changed.rowsAffected)
       await tx.execute(
         "UPDATE provider_incidents SET state='recovering' WHERE connection_id=? AND state!='resolved'",
         [connectionId],

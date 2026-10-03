@@ -20,7 +20,12 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import { STAGES } from "../../scripts/certify";
-import { certificationTestFiles, requiredCertificationRegressionFiles } from "../../scripts/certification/manifest";
+import {
+  certificationTestFiles,
+  requiredCertificationRegressionFiles,
+} from "../../scripts/certification/manifest";
+import { testRegistry } from "../../scripts/certification/registry";
+import { updateInventory } from "../../scripts/certification/inventory";
 
 describe("Test Inventory Self-Auditing & Governance Contract", () => {
   const inventoryPath = path.resolve(process.cwd(), "tests/TEST_INVENTORY.md");
@@ -47,25 +52,38 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
 
   const testFilesOnDisk = getTestFilesOnDisk();
 
+  it("derives every lane and inventory row from the registry without drift", () => {
+    expect(testRegistry.map((entry) => entry.file).sort()).toEqual(testFilesOnDisk);
+    expect(new Set(testRegistry.map((entry) => entry.file)).size).toBe(testRegistry.length);
+    const normalized = inventoryContent.replaceAll("\r\n", "\n");
+    expect(updateInventory(normalized)).toBe(normalized);
+    expect(
+      testRegistry.filter((entry) => entry.certificationGroup).every((entry) => entry.full),
+    ).toBe(true);
+  });
+
   it("1. asserts every test file on disk is explicitly classified in TEST_INVENTORY.md", () => {
     for (const file of testFilesOnDisk) {
       expect(
         inventoryContent.includes(`\`${file}\``),
-        `Test file "${file}" is missing from tests/TEST_INVENTORY.md registry!`
+        `Test file "${file}" is missing from tests/TEST_INVENTORY.md registry!`,
       ).toBe(true);
     }
   });
 
   it("2. asserts every test file registered in TEST_INVENTORY.md exists on disk (bidirectional audit)", () => {
-    const registrySection = inventoryContent.split("## 3. Complete Test File Registry")[1]?.split("## 4.")[0] || "";
+    const registrySection =
+      inventoryContent.split("## 3. Complete Test File Registry")[1]?.split("## 4.")[0] || "";
     expect(registrySection, "Section 3 not found in TEST_INVENTORY.md").toBeDefined();
-    const tableMatches = [...registrySection.matchAll(/\|\s*`([^`]+\.test\.ts)`/g)].map((m) => m[1]);
+    const tableMatches = [...registrySection.matchAll(/\|\s*`([^`]+\.test\.ts)`/g)].map(
+      (m) => m[1],
+    );
     expect(tableMatches.length).toBeGreaterThan(0);
 
     for (const file of tableMatches) {
       expect(
         fs.existsSync(path.resolve(process.cwd(), file)),
-        `Inventory lists test file "${file}", but it does not exist on disk!`
+        `Inventory lists test file "${file}", but it does not exist on disk!`,
       ).toBe(true);
     }
     expect(tableMatches.length).toBe(testFilesOnDisk.length);
@@ -78,12 +96,15 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
 
     for (const file of testFilesOnDisk) {
       const tableLine = lines.find((l) => l.includes(`\`${file}\``));
-      expect(tableLine, `Line for "${file}" not found in Section 3 of TEST_INVENTORY.md`).toBeDefined();
+      expect(
+        tableLine,
+        `Line for "${file}" not found in Section 3 of TEST_INVENTORY.md`,
+      ).toBeDefined();
       const hasValidDisposition =
         tableLine!.includes("**KEEP**") || tableLine!.includes("**REVIEW**");
       expect(
         hasValidDisposition,
-        `File "${file}" has invalid disposition in TEST_INVENTORY.md: "${tableLine}"`
+        `File "${file}" has invalid disposition in TEST_INVENTORY.md: "${tableLine}"`,
       ).toBe(true);
     }
   });
@@ -102,11 +123,11 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
       if (tableLine && tableLine.includes("**KEEP**")) {
         expect(
           itMatches.length > 0,
-          `File "${file}" is marked KEEP but contains 0 test() or it() blocks!`
+          `File "${file}" is marked KEEP but contains 0 test() or it() blocks!`,
         ).toBe(true);
         expect(
           expectMatches.length > 0,
-          `File "${file}" is marked KEEP but contains 0 expect() assertions!`
+          `File "${file}" is marked KEEP but contains 0 expect() assertions!`,
         ).toBe(true);
       }
     }
@@ -114,7 +135,8 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
 
   it("5. asserts zero archived test files on disk and zero tests/archive/ references in inventory registry", () => {
     expect(fs.existsSync(path.resolve(process.cwd(), "tests/archive"))).toBe(false);
-    const registrySection = inventoryContent.split("## 3. Complete Test File Registry")[1]?.split("## 4.")[0] || "";
+    const registrySection =
+      inventoryContent.split("## 3. Complete Test File Registry")[1]?.split("## 4.")[0] || "";
     expect(registrySection.includes("tests/archive/")).toBe(false);
   });
 
@@ -122,13 +144,13 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
     for (const suite of certificationTestFiles) {
       expect(
         fs.existsSync(path.resolve(process.cwd(), suite)),
-        `Certification suite "${suite}" in the manifest does not exist on disk!`
+        `Certification suite "${suite}" in the manifest does not exist on disk!`,
       ).toBe(true);
     }
   });
 
   it("7. asserts all mandatory certification stages exist and have executable commands", () => {
-    expect(STAGES).toHaveLength(9);
+    expect(STAGES).toHaveLength(5);
     for (const stage of STAGES) {
       expect(stage.name).toBeDefined();
       expect(stage.command).toBeDefined();
@@ -169,7 +191,7 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
     for (const script of requiredScripts) {
       expect(
         fs.existsSync(path.resolve(process.cwd(), script)),
-        `Critical script "${script}" does not exist on disk!`
+        `Critical script "${script}" does not exist on disk!`,
       ).toBe(true);
     }
   });

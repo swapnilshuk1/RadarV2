@@ -21,6 +21,21 @@ import {
   runMaintenanceTasks,
 } from "../../src/lib/health/maintenance-receipts";
 
+async function healthyReviewer(db: ReturnType<typeof getDatabaseAdapter>) {
+  const identity = {
+    workerInstance: "review-probe",
+    releaseSha: process.env.RADAR_RELEASE_SHA!,
+    databaseFingerprint: getDatabaseTargetIdentity().fingerprint,
+  };
+  await db.execute("INSERT INTO worker_heartbeats VALUES('dossier-review',?,?,?,?)", [
+    identity.workerInstance,
+    identity.releaseSha,
+    identity.databaseFingerprint,
+    new Date().toISOString(),
+  ]);
+  await runMaintenanceTask(db, identity, "host_provider_checks", async () => undefined);
+}
+
 describe("release readiness", () => {
   const original = { ...process.env };
 
@@ -28,7 +43,7 @@ describe("release readiness", () => {
     resetDatabaseAdapter();
     process.env = { ...original };
   });
-  it("supports an external operations probe with no dependency on other workers or outbound delivery", async () => {
+  it("requires evaluation and reviewer maintenance independently of outbound delivery", async () => {
     process.env.RADAR_ENV = "test";
     process.env.RADAR_RELEASE_SHA = "d".repeat(40);
     const db = getDatabaseAdapter();
@@ -49,6 +64,8 @@ describe("release readiness", () => {
         [task, process.env.RADAR_RELEASE_SHA, fingerprint, Date.now() - 1, Date.now()],
       );
     }
+    expect((await getOperationsReadiness()).status).toBe(503);
+    await healthyReviewer(db);
     expect((await getOperationsReadiness()).status).toBe(200);
 
     await db.execute(
@@ -99,6 +116,7 @@ describe("release readiness", () => {
       releaseSha: "f".repeat(40),
       databaseFingerprint: getDatabaseTargetIdentity().fingerprint,
     };
+    await healthyReviewer(db);
     await db.execute("DELETE FROM operations_maintenance_tasks WHERE worker_instance=?", [
       identity.workerInstance,
     ]);
@@ -177,6 +195,50 @@ describe("release readiness", () => {
       ),
     ).resolves.toMatchObject({ consecutive_failures: 0, error_code: null });
   });
+
+  it.each(["failed", "stale", "wrong-release", "wrong-database", "offline"])(
+    "fails operations readiness for %s Google maintenance while evaluation is healthy",
+    async (failure) => {
+      process.env.RADAR_ENV = "test";
+      process.env.RADAR_RELEASE_SHA = "google-maintenance-test";
+      const db = getDatabaseAdapter();
+      await db.execute("DELETE FROM worker_heartbeats");
+      const identity = {
+        workerInstance: "eval-probe",
+        releaseSha: process.env.RADAR_RELEASE_SHA,
+        databaseFingerprint: getDatabaseTargetIdentity().fingerprint,
+      };
+      await db.execute("INSERT INTO worker_heartbeats VALUES('evaluation',?,?,?,?)", [
+        identity.workerInstance,
+        identity.releaseSha,
+        identity.databaseFingerprint,
+        new Date().toISOString(),
+      ]);
+      for (const task of CRITICAL_EVALUATION_MAINTENANCE_TASKS)
+        await runMaintenanceTask(db, identity, task, async () => undefined);
+      await healthyReviewer(db);
+      expect((await getOperationsReadiness()).status).toBe(200);
+      if (failure === "failed")
+        await db.execute(
+          "UPDATE operations_maintenance_tasks SET consecutive_failures=1 WHERE worker_instance='review-probe'",
+        );
+      if (failure === "stale")
+        await db.execute(
+          "UPDATE operations_maintenance_tasks SET last_success_at=0 WHERE worker_instance='review-probe'",
+        );
+      if (failure === "wrong-release")
+        await db.execute(
+          "UPDATE operations_maintenance_tasks SET release_sha='old' WHERE worker_instance='review-probe'",
+        );
+      if (failure === "wrong-database")
+        await db.execute(
+          "UPDATE operations_maintenance_tasks SET database_fingerprint='other' WHERE worker_instance='review-probe'",
+        );
+      if (failure === "offline")
+        await db.execute("DELETE FROM worker_heartbeats WHERE worker_name='dossier-review'");
+      expect((await operationsReadyResponse()).status).toBe(503);
+    },
+  );
 
   it("fails closed without a reachable, verified database and exposes no target details", async () => {
     process.env.RADAR_RELEASE_SHA = "a".repeat(40);

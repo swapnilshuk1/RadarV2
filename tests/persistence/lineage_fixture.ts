@@ -1,10 +1,11 @@
 import { DatabaseAdapter } from "../../src/data/database/adapter";
 import { runMigrations } from "../../src/data/sqlite/migrations/runner";
 import { expect } from "vitest";
+import { isMigratedFixture } from "./migrated-fixture";
 
 export async function setupLineageTestFixture(db: DatabaseAdapter): Promise<void> {
   // 1. Apply canonical migrations
-  await runMigrations(db);
+  if (!isMigratedFixture(db)) await runMigrations(db);
 
   // 2. Execute PRAGMA foreign_keys = ON;
   await db.execute("PRAGMA foreign_keys = ON;");

@@ -1,3 +1,4 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { pollHostProviderCheck } from "../../src/admin/host-provider-checks";
 import { readOperations, mutateOperations } from "../../src/admin/operations-service";
 import { getDatabaseTargetIdentity } from "../../src/data/database";
@@ -17,6 +18,7 @@ import {
   observeProviderFailure,
   assertProviderDispatch,
   writeRuntimeReceipt,
+  providerSucceeded,
 } from "../../src/admin/operations-runtime";
 import {
   mutateSearchConnection,
@@ -72,7 +74,7 @@ afterEach(async () => {
   for (const db of adapters.splice(0)) await db.close();
 });
 async function fixture(provided?: SqliteAdapter | TursoAdapter) {
-  const db = provided ?? new SqliteAdapter(new Database(":memory:"));
+  const db = provided ?? await migratedFixtureDatabase();
   if (!provided) adapters.push(db as SqliteAdapter);
   await setupLineageTestFixture(db);
   await db.execute(
@@ -139,6 +141,162 @@ async function healthyRecovery(
   return incident;
 }
 describe("Operations & Recovery", () => {
+  it.each([401, 429, 503])(
+    "opens exactly one incident and queues an alert when an activated Tavily canary returns %s",
+    async (status) => {
+      const db = await fixture();
+      await db.execute(
+        "INSERT INTO operational_webhooks(id,url,secret_envelope,minimum_severity,send_recovery,updated_at,updated_by) VALUES(1,'https://alerts.example.com','{}','Warning',1,0,'op')",
+      );
+      const candidate = await mutateSearchConnection(db, "op", {
+        kind: "candidate",
+        key: "tvly-" + "c".repeat(30),
+        expectedRevision: 0,
+        reason: "validated replacement",
+      });
+      await mutateSearchConnection(db, "op", {
+        kind: "test",
+        credentialId: candidate.credentialId!,
+        expectedRevision: 1,
+        reason: "prevalidate candidate",
+      });
+      await pollSearchConnectionCheck(db, tavilyCapabilityResponse);
+      await mutateSearchConnection(db, "op", {
+        kind: "activate",
+        credentialId: candidate.credentialId!,
+        expectedRevision: 1,
+        reason: "activate candidate",
+      });
+      expect(
+        await pollSearchConnectionCheck(db, async () => new Response("", { status })),
+      ).toMatchObject({ status: "failed" });
+      expect(await pollSearchConnectionCheck(db, tavilyCapabilityResponse)).toBeNull();
+      const incidents = await db.many<{ id: string; generation: number; failure_class: string }>(
+        "SELECT id,generation,failure_class FROM provider_incidents",
+      );
+      expect(incidents).toHaveLength(1);
+      expect(incidents[0]).toMatchObject({
+        generation: 1,
+        failure_class: classifySearchFailure(status),
+      });
+      expect(
+        await db.one(
+          "SELECT requires_action,active_incident_id FROM provider_cooldowns WHERE connection_id=?",
+          [TAVILY_CONNECTION],
+        ),
+      ).toEqual({ requires_action: 1, active_incident_id: incidents[0].id });
+      expect(await db.many("SELECT incident_id,event,status FROM notification_deliveries")).toEqual(
+        [{ incident_id: incidents[0].id, event: "opened", status: "queued" }],
+      );
+      await expect(assertProviderDispatch(db, TAVILY_CONNECTION)).rejects.toThrow(
+        "PROVIDER_COOLDOWN",
+      );
+    },
+  );
+
+  it.each(["timeout", "throttled", "provider_outage", "transport"] as const)(
+    "reconciles a transient Tavily %s after production succeeds and starts a new recurrence",
+    async (failure) => {
+      const db = await fixture();
+      vi.stubEnv("TAVILY_API_KEY", "host-fixture-key");
+      await db.execute("UPDATE worker_heartbeats SET database_fingerprint=?", [
+        getDatabaseTargetIdentity().fingerprint,
+      ]);
+      registerConnectionWorker(
+        "evaluation",
+        "processing-1",
+        getDatabaseTargetIdentity().fingerprint,
+      );
+      await refreshSearchWorkerReceipt(db);
+      const observation = {
+        connectionId: TAVILY_CONNECTION,
+        provider: "tavily",
+        generation: 0,
+        failure,
+        deployment: "fixture-db",
+      };
+      const incident = await observeProviderFailure(db, observation, Date.now() - 1000);
+      await providerSucceeded(db, TAVILY_CONNECTION, 0, Date.now() - 100);
+      expect(await db.one("SELECT state FROM provider_incidents WHERE id=?", [incident])).toEqual({
+        state: "recovering",
+      });
+      await reconcileProviderIncidents(db);
+      expect(await db.one("SELECT state FROM provider_incidents WHERE id=?", [incident])).toEqual({
+        state: "resolved",
+      });
+      const recurrence = await observeProviderFailure(db, observation);
+      expect(recurrence).not.toBe(incident);
+      expect(
+        await db.one("SELECT recurrence_of FROM provider_incidents WHERE id=?", [recurrence]),
+      ).toEqual({ recurrence_of: incident });
+    },
+  );
+
+  it("does not let stale generation success, in-flight success or action-required Tavily failures recover naturally", async () => {
+    const db = await fixture();
+    const observedAt = Date.now() - 100;
+    const incident = await observeProviderFailure(
+      db,
+      {
+        connectionId: TAVILY_CONNECTION,
+        provider: "tavily",
+        generation: 0,
+        failure: "timeout",
+        deployment: "fixture-db",
+      },
+      observedAt,
+    );
+    await providerSucceeded(db, TAVILY_CONNECTION, 1, observedAt + 1);
+    await providerSucceeded(db, TAVILY_CONNECTION, 0, observedAt - 1);
+    expect(await db.one("SELECT state FROM provider_incidents WHERE id=?", [incident])).toEqual({
+      state: "open",
+    });
+    await observeProviderFailure(
+      db,
+      {
+        connectionId: TAVILY_CONNECTION,
+        provider: "tavily",
+        generation: 0,
+        failure: "credential",
+        deployment: "fixture-db",
+      },
+      observedAt,
+    );
+    await providerSucceeded(db, TAVILY_CONNECTION, 0, observedAt + 1);
+    expect(await db.many("SELECT DISTINCT state FROM provider_incidents")).toEqual([
+      { state: "open" },
+    ]);
+  });
+
+  it("counts queued Google probes and exposes failed reviewer maintenance with healthy evaluation", async () => {
+    const db = await fixture();
+    const fingerprint = getDatabaseTargetIdentity().fingerprint;
+    await db.execute("UPDATE worker_heartbeats SET database_fingerprint=?", [fingerprint]);
+    await db.execute(
+      "INSERT INTO worker_heartbeats VALUES('dossier-review','review-1','development',?,?)",
+      [fingerprint, new Date().toISOString()],
+    );
+    for (const task of CRITICAL_EVALUATION_MAINTENANCE_TASKS)
+      await db.execute(
+        "INSERT INTO operations_maintenance_tasks VALUES('processing-1',?,'development',?,?,?,0,NULL)",
+        [task, fingerprint, Date.now(), Date.now()],
+      );
+    await db.execute(
+      "INSERT INTO operations_maintenance_tasks VALUES('review-1','host_provider_checks','development',?,?,?,1,'GOOGLE_MAINTENANCE_FAILED')",
+      [fingerprint, Date.now(), Date.now()],
+    );
+    await db.execute(
+      "INSERT INTO provider_host_checks(id,provider,status,created_at,created_by) VALUES('google-check','google','queued',0,'op')",
+    );
+    const snapshot = await readOperations(db, "op");
+    if (!snapshot.installed) throw new Error("operations required");
+    expect(snapshot.maintenance).toMatchObject({
+      online: true,
+      healthy: false,
+      pending: { host_probes: 1 },
+    });
+    expect(snapshot.attention.some((item) => item.target === "maintenance")).toBe(true);
+  });
   it("rechecks operator exclusion after preview and preserves the queue deadline", async () => {
     const db = await fixture();
     const work = await recoveryMemo(db);
@@ -340,7 +498,7 @@ describe("Operations & Recovery", () => {
         }
         return;
       }
-      const adapter = new SqliteAdapter(new Database(":memory:"));
+      const adapter = await migratedFixtureDatabase();
       try {
         const db = await fixture(adapter);
         const work = await recoveryMemo(db);
@@ -610,6 +768,14 @@ describe("Operations & Recovery", () => {
       "INSERT INTO provider_host_checks(id,provider,status,created_at,created_by) VALUES('check','bedrock','queued',0,'op')",
     );
     const fingerprint = getDatabaseTargetIdentity().fingerprint;
+    await db.execute(
+      "INSERT INTO worker_heartbeats VALUES('dossier-review','review-1','development',?,?)",
+      [fingerprint, new Date().toISOString()],
+    );
+    await db.execute(
+      "INSERT INTO operations_maintenance_tasks VALUES('review-1','host_provider_checks','development',?,?,?,0,NULL)",
+      [fingerprint, Date.now(), Date.now()],
+    );
     for (const [release, database, seen, online] of [
       ["older-release", fingerprint, new Date().toISOString(), false],
       ["development", "other-database", new Date().toISOString(), false],
@@ -686,7 +852,32 @@ describe("Operations & Recovery", () => {
         `INSERT INTO provider_credential_lifecycle(credential_id,activated_at,superseded_at,retired_at,last_validated_at,last_used_at,key_version,secret_purged_at)
          VALUES('existing-credential',11,12,NULL,13,14,'fixture-key-version',NULL)`,
       );
+      for (const [id, url, status] of [
+        ["alert-old", "https://old.example.com", "delivered"],
+        ["alert-current", "https://current.example.com", "retry"],
+      ]) {
+        await db.execute(
+          "INSERT INTO notification_deliveries(id,incident_id,event,destination_url,secret_envelope,payload_json,status,attempts,next_attempt_at) VALUES(?,'tavily-exact','opened',?,'{}','{}',?,2,123)",
+          [id, url, status],
+        );
+      }
+      const beforeDeliveries = await db.many("SELECT * FROM notification_deliveries ORDER BY id");
       await runMigrations(db);
+      const afterDeliveries = await db.many<Record<string, unknown>>(
+        "SELECT * FROM notification_deliveries ORDER BY id",
+      );
+      expect(afterDeliveries.map(({ destination_revision, ...row }) => row)).toEqual(
+        beforeDeliveries,
+      );
+      expect(afterDeliveries.every((row) => row.destination_revision === 0)).toBe(true);
+      await db.execute(
+        "INSERT INTO notification_deliveries(id,incident_id,event,destination_url,secret_envelope,payload_json,next_attempt_at,destination_revision) VALUES('rotated','tavily-exact','opened','https://current.example.com','{}','{}',0,1)",
+      );
+      await expect(
+        db.execute(
+          "INSERT INTO notification_deliveries(id,incident_id,event,destination_url,secret_envelope,payload_json,next_attempt_at,destination_revision) VALUES('duplicate','tavily-exact','opened','https://current.example.com','{}','{}',0,1)",
+        ),
+      ).rejects.toThrow("UNIQUE");
       expect(await db.one("SELECT email FROM users WHERE id='existing-user'")).toEqual({
         email: "existing@fixture",
       });

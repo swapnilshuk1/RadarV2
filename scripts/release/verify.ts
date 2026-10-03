@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { releasePayloadChecksum, type ReleaseManifest } from "./package";
+import type { ReleaseManifest } from "./package";
+import { releasePayloadChecksum } from "./payload";
 
 const sha256 = (value: Buffer | string) => crypto.createHash("sha256").update(value).digest("hex");
 
@@ -23,7 +24,16 @@ export function verifyReleaseDirectory(directory: string, expectedSha?: string):
     throw new Error("RELEASE_LOCKFILE_CHECKSUM_MISMATCH");
   if (
     manifest.certificationManifestSha256 !==
-    sha256(fs.readFileSync(path.join(directory, "scripts/certification/manifest.ts")))
+    sha256(
+      fs.readFileSync(
+        path.join(
+          directory,
+          fs.existsSync(path.join(directory, "release-metadata/test-registry.ts"))
+            ? "release-metadata/test-registry.ts"
+            : "scripts/certification/manifest.ts",
+        ),
+      ),
+    )
   )
     throw new Error("RELEASE_CERTIFICATION_MANIFEST_CHECKSUM_MISMATCH");
   return manifest;

@@ -1,3 +1,4 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Database from "better-sqlite3";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -44,7 +45,8 @@ const quota = (extra: Partial<TenantQuota> = {}): TenantQuota =>
     job_output_tokens: 1000,
     ...extra,
   }) as TenantQuota;
-async function fixture(db: DatabaseAdapter = new SqliteAdapter(new Database(":memory:"))) {
+async function fixture(provided?: DatabaseAdapter) {
+  const db = provided ?? await migratedFixtureDatabase();
   cleanup.push(() => db.close?.());
   await setupLineageTestFixture(db);
   await db.execute(
