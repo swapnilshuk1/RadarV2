@@ -196,20 +196,34 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
 
   // The recovery command is supplied by the operator's actual database
   // provider. Its non-empty result is persisted as the recovery-point ID.
-  // Previous-release discovery: reading CURRENT_SHA must succeed when the file does not yet exist.
-  const readPriorShaCommand = `if [ -f ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)} ]; then cat ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}; fi`;
-  const rawPriorSha = runner("ssh", sshArgs(config, readPriorShaCommand));
-  const priorSha = rawPriorSha && /^[0-9a-f]{40}$/i.test(rawPriorSha) ? rawPriorSha : null;
+  //
+  // Live readiness is authoritative for the currently serving release.
+  // CURRENT_SHA is only a durable pointer and can legitimately lag if a prior
+  // deployment was interrupted after process activation but before the final
+  // pointer write.
+  const readyUrl = `${config.readinessUrl.replace(/\/$/, "")}/health/ready`;
+  const discoverLiveShaCommand = [
+    ": RADAR_DISCOVER_LIVE_SHA",
+    `curl --max-time 15 --fail --silent --show-error ${shellQuote(readyUrl)} 2>/dev/null | node -e ${shellQuote('const fs=require("node:fs"); try { const response=JSON.parse(fs.readFileSync(0,"utf8")); if(response.status==="ready" && /^[0-9a-f]{40}$/i.test(response.releaseSha||"")) process.stdout.write(response.releaseSha); } catch {}')} || true`,
+  ].join("; ");
+  const rawLiveSha = runner("ssh", sshArgs(config, discoverLiveShaCommand));
+  const liveSha = rawLiveSha && /^[0-9a-f]{40}$/i.test(rawLiveSha) ? rawLiveSha : null;
 
-  // A serving release can acquire runtime files after extraction, so its
-  // payload checksum is not a reliable rollback check. Require the previous
-  // release directory and an exact, healthy live readiness response instead.
+  const readPriorShaCommand = `if [ -f ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)} ]; then cat ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}; fi`;
+  const rawPointerSha = runner("ssh", sshArgs(config, readPriorShaCommand));
+  const pointerSha = rawPointerSha && /^[0-9a-f]{40}$/i.test(rawPointerSha) ? rawPointerSha : null;
+
+  // A claimed previous release with no healthy live identity is unsafe to
+  // replace. With no pointer and no live release this is a true first deploy.
+  if (pointerSha && !liveSha) throw new Error("DEPLOY_PREVIOUS_RELEASE_NOT_READY");
+
+  const priorSha = liveSha;
   const priorReleaseDirectory = priorSha ? `${config.appDirectory}/releases/${priorSha}` : null;
   let priorReleaseVerified = false;
   if (priorSha && priorReleaseDirectory) {
     const verifyPriorCommand = [
       `if [ -d ${shellQuote(priorReleaseDirectory)} ] && [ -d ${shellQuote(`${priorReleaseDirectory}/src/data/sqlite/migrations`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/ecosystem.config.cjs`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/release-manifest.json`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/node_modules/.bin/tsx`)} ]; then`,
-      `  (curl --fail --silent --show-error ${shellQuote(`${config.readinessUrl.replace(/\/$/, "")}/health/ready`)} | RADAR_PREVIOUS_SHA=${shellQuote(priorSha)} node -e ${shellQuote('const fs=require("node:fs"); const response=JSON.parse(fs.readFileSync(0,"utf8")); if(response.status!=="ready" || response.releaseSha!==process.env.RADAR_PREVIOUS_SHA) process.exit(1)')} && echo "VERIFIED") || echo "FAILED";`,
+      `  (cd ${shellQuote(priorReleaseDirectory)} && RADAR_PREVIOUS_SHA=${shellQuote(priorSha)} node -e ${shellQuote('const fs=require("node:fs"); const manifest=JSON.parse(fs.readFileSync("release-manifest.json","utf8")); if(manifest.commitSha!==process.env.RADAR_PREVIOUS_SHA) process.exit(1)')} && curl --fail --silent --show-error ${shellQuote(readyUrl)} | RADAR_PREVIOUS_SHA=${shellQuote(priorSha)} node -e ${shellQuote('const fs=require("node:fs"); const response=JSON.parse(fs.readFileSync(0,"utf8")); if(response.status!=="ready" || response.releaseSha!==process.env.RADAR_PREVIOUS_SHA) process.exit(1)')} && echo "VERIFIED") || echo "FAILED";`,
       `fi`,
     ].join(" ");
     const priorCheckResult = runner("ssh", sshArgs(config, verifyPriorCommand));
