@@ -1667,6 +1667,16 @@ export const testRegistry: readonly TestEntry[] = [
     required: false,
   },
   {
+    file: "tests/security/document-provider-operations.test.ts",
+    domain: "Document provider recovery, ownership, and credential convergence",
+    disposition: "KEEP",
+    certificationGroup: "tenant-security",
+    standard: true,
+    full: true,
+    regression: false,
+    required: false,
+  },
+  {
     file: "tests/security/admin-protection.test.ts",
     domain: "Security & Tenant Isolation",
     disposition: "KEEP",

@@ -5,7 +5,6 @@
  */
 import { getDatabaseAdapter } from "../src/data/database";
 import { jobConcurrency } from "../src/admin/operations-runtime";
-import { loadMantleCredentials } from "../src/lib/model/bedrock-credentials";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 import { PursuitPreparationWorker } from "../src/pursuit/preparation";
 import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
@@ -17,12 +16,6 @@ if (
   ))
 )
   throw new Error("Apply migration 067 before starting the pursuit preparation worker");
-
-try {
-  loadMantleCredentials();
-} catch {
-  runtimeLog("warn", "pursuit_preparation_model_unavailable", { fallback: "deterministic" });
-}
 
 const arg = process.argv.find((v) => v.startsWith("--concurrency="));
 const concurrency = Number(arg?.slice(14) || process.env.RADAR_PURSUIT_JOB_CONCURRENCY || "2");

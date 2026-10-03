@@ -26,7 +26,7 @@ export async function operationalSettings(db: DatabaseAdapter) {
 }
 export async function jobConcurrency(
   db: DatabaseAdapter,
-  pipeline: WorkIdentity["pipeline"],
+  pipeline: Exclude<WorkIdentity["pipeline"], "documents">,
   fallback: number,
 ) {
   const config = await operationalSettings(db);
@@ -274,17 +274,26 @@ export async function associateIncidentWork(
   incidentId: string,
   work: WorkIdentity,
 ) {
+  if (
+    work.pipeline === "documents" &&
+    !(await db.one(
+      "SELECT id FROM candidate_document_jobs WHERE id=? AND document_id=? AND tenant_id=? AND person_id=?",
+      [work.jobId, work.documentId, work.tenantId, work.personId],
+    ))
+  )
+    throw new Error("DOCUMENT_WORK_IDENTITY_INVALID");
   await db.execute(
-    "INSERT INTO provider_incident_jobs(incident_id,pipeline,job_id,tenant_id,person_id,canonical_job_id,opportunity_version,context_fingerprint) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
+    "INSERT INTO provider_incident_jobs(incident_id,pipeline,job_id,tenant_id,person_id,canonical_job_id,opportunity_version,context_fingerprint,document_id) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
     [
       incidentId,
       work.pipeline,
       work.jobId,
       work.tenantId,
       work.personId,
-      work.canonicalJobId,
-      work.opportunityVersion,
-      work.contextFingerprint,
+      work.canonicalJobId ?? null,
+      work.opportunityVersion ?? null,
+      work.contextFingerprint ?? null,
+      work.documentId ?? null,
     ],
   );
 }

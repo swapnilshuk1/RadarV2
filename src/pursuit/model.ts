@@ -18,21 +18,6 @@
 import type { ModelCallMetadata, ModelUsage } from "../lib/model/model-invocation";
 import type { PursuitModelContext } from "./budget";
 
-/**
- * Mantle bearer keys are base64 and are sometimes stored with the trailing
- * padding clipped. Pure string work, kept local so this module stays portable:
- * importing the credential loader would pull node:fs/node:path (and, through
- * the ADC helper, google-auth-library -> node:process) into every runtime that
- * bundles the cockpit, including edge bundlers that ship no Node ESM modules.
- */
-function normalizeMantleKey(value: string): string {
-  const key = value.trim();
-  if (!/^[A-Za-z0-9+/]+=*$/.test(key)) return key;
-  const remainder = key.length % 4;
-  if (remainder === 0) return key;
-  return key.padEnd(key.length + (4 - remainder), "=");
-}
-
 export interface PursuitModel {
   id: string;
   generate(
@@ -69,17 +54,25 @@ export function pursuitMantleModelIds(): string[] {
 }
 
 async function mantleModels(context?: PursuitModelContext): Promise<PursuitModel[]> {
-  const raw = env("BEDROCK_MANTLE_API_KEY");
-  if (!raw) return [];
-  const apiKey = normalizeMantleKey(raw);
+  const { resolveBedrockCredential } = await import("../lib/model/bedrock-credential-resolver");
+  try {
+    await resolveBedrockCredential();
+  } catch {
+    if (!context?.wrapModel) return [];
+  }
   const { BedrockMantleJsonModel } = await import("../lib/model/bedrock-mantle-model");
   return pursuitMantleModelIds().map((modelId) => {
-    const model = new BedrockMantleJsonModel(modelId, async () => apiKey, fetch, {
-      region: env("AWS_REGION") || "us-east-1",
-      maxOutputTokens: 10_240,
-      timeoutMs: 120_000,
-      ...(context?.invocationSink ? { invocationSink: context.invocationSink } : {}),
-    });
+    const model = new BedrockMantleJsonModel(
+      modelId,
+      async () => (await resolveBedrockCredential()).key,
+      fetch,
+      {
+        region: env("AWS_REGION") || "us-east-1",
+        maxOutputTokens: 10_240,
+        timeoutMs: 120_000,
+        ...(context?.invocationSink ? { invocationSink: context.invocationSink } : {}),
+      },
+    );
     return {
       id: `bedrock-mantle:${model.version}`,
       generate: (

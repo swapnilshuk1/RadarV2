@@ -4,7 +4,7 @@ import type { ReasoningModel } from "../dossier/contracts";
 import type { StagedDecisionTrace } from "../dossier/staged-decision-contract";
 import type { ModelInvocationSink } from "../lib/model/model-invocation";
 import { createBedrockGlmResearchModel } from "../lib/model/bedrock-glm-research-model";
-import { laneModel } from "./model-gateway";
+import { laneModel, operationalModel } from "./model-gateway";
 import { benchOutputAllowance } from "./bench-worker";
 import { activeRevision, revision as configRevision } from "./config-store";
 import type { EngineConfig } from "./config-contracts";
@@ -292,12 +292,23 @@ export class IntelligenceShadowWorker {
     };
     // Recheck after waiting for a provider slot, immediately before dispatch.
     sink.beforeCall = async () => this.db.transaction((tx) => this.assertCurrent(tx, row, token));
-    const model = laneModel(
-      config,
-      "reasoning",
-      () => createBedrockGlmResearchModel({ invocationSink: sink }),
-      sink,
-      "taxonomy-shadow",
+    const model = operationalModel(
+      this.db,
+      laneModel(
+        config,
+        "reasoning",
+        () => createBedrockGlmResearchModel({ invocationSink: sink }),
+        sink,
+        "taxonomy-shadow",
+      ),
+      {
+        pipeline: "evaluation",
+        tenantId: row.scope === "platform" ? "platform-bench" : row.scope.slice(7),
+        personId: "synthetic-fixture",
+        canonicalJobId: `bench:${row.id}`,
+        opportunityVersion: "fixture",
+        evaluationContextFingerprint: side === "active" ? row.active_revision_id : row.revision_id,
+      },
     );
     return {
       ...model,

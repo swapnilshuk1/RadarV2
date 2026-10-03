@@ -1,6 +1,5 @@
 import { createJobModel } from "../src/admin/model-gateway";
 import { getDatabaseAdapter } from "../src/data/database";
-import { loadMantleCredentials } from "../src/lib/model/bedrock-credentials";
 import { createDossierWriterModel } from "../src/lib/model/dossier-writer-model";
 import { createFactualReviewModel } from "../src/lib/model/factual-review-model";
 import { DossierReviewWorker } from "../src/dossier/runtime/review-worker";
@@ -19,9 +18,6 @@ if (
   ))
 )
   throw new Error("Apply migration 052 before starting the review worker");
-if ((process.env.RADAR_DOSSIER_WRITER_PROVIDER ?? "glm").trim().toLowerCase() === "glm") {
-  loadMantleCredentials();
-}
 const workers = Array.from(
   { length: 8 },
   () =>

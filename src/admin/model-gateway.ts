@@ -2,7 +2,7 @@ import type { DatabaseAdapter } from "../data/database/adapter";
 import type { ReasoningModel } from "../dossier/contracts";
 import type { ModelInvocationContext, ModelInvocationSink } from "../lib/model/model-invocation";
 import { BedrockMantleJsonModel } from "../lib/model/bedrock-mantle-model";
-import { loadMantleCredentials } from "../lib/model/bedrock-credentials";
+import { resolveBedrockCredential } from "../lib/model/bedrock-credential-resolver";
 import { GLM_STAGE_OUTPUT_TOKENS } from "../lib/model/bedrock-glm-research-model";
 import { jobConfig } from "./config-store";
 import type { EngineConfig, ModelLane } from "./config-contracts";
@@ -32,17 +32,26 @@ export function operationalModel(
     context.evaluationJobId ??
     context.dossierCompositionJobId ??
     context.reviewJobId ??
-    context.pursuitPreparationJobId;
+    context.pursuitPreparationJobId ??
+    context.documentJobId;
   const work: WorkIdentity | undefined = jobId
-    ? {
-        pipeline: context.pipeline,
-        jobId,
-        tenantId: context.tenantId,
-        personId: context.personId,
-        canonicalJobId: context.canonicalJobId,
-        opportunityVersion: context.opportunityVersion,
-        contextFingerprint: context.evaluationContextFingerprint,
-      }
+    ? context.pipeline === "documents"
+      ? {
+          pipeline: "documents",
+          jobId,
+          tenantId: context.tenantId,
+          personId: context.personId,
+          documentId: context.documentId,
+        }
+      : {
+          pipeline: context.pipeline,
+          jobId,
+          tenantId: context.tenantId,
+          personId: context.personId,
+          canonicalJobId: context.canonicalJobId,
+          opportunityVersion: context.opportunityVersion,
+          contextFingerprint: context.evaluationContextFingerprint,
+        }
     : undefined;
   return new Proxy(model, {
     get(target, key) {
@@ -141,11 +150,11 @@ export function laneModel(
   const model = new BedrockMantleJsonModel(
     settings.model,
     async () => {
-      loadMantleCredentials();
-      const key = process.env.BEDROCK_MANTLE_API_KEY?.trim();
-      if (!key)
+      try {
+        return (await resolveBedrockCredential()).key;
+      } catch {
         throw new ModelProviderUnavailableError("BEDROCK_MANTLE_CREDENTIAL_UNAVAILABLE", 401);
-      return key;
+      }
     },
     fetch,
     {
@@ -186,8 +195,10 @@ export async function createJobModel(
     context.evaluationJobId ??
     context.dossierCompositionJobId ??
     context.reviewJobId ??
-    context.pursuitPreparationJobId;
+    context.pursuitPreparationJobId ??
+    context.documentJobId;
   if (!id) throw new Error("CONFIG_MODEL_JOB_UNSCOPED");
+  if (context.pipeline === "documents") return operationalModel(db, legacy(), context);
   const pinned = await jobConfig(db, context.pipeline, id);
   return operationalModel(
     db,

@@ -1,4 +1,4 @@
-import type { JsonModel } from '../../model/json-model';
+import type { JsonModel } from "../../model/json-model";
 /**
  * EvidenceExtractionService.ts
  *
@@ -8,7 +8,11 @@ import type { JsonModel } from '../../model/json-model';
  */
 
 import type { EvidenceGraph, ExtractedFact, FactType } from "../../../domain/evidence";
-import { BedrockMantleJsonModel } from "../../model/bedrock-mantle-model";
+import { createBedrockGlmResearchModel } from "../../model/bedrock-glm-research-model";
+import {
+  ModelProviderUnavailableError,
+  ModelInvalidOutputError,
+} from "../../model/provider-unavailable";
 import fs from "fs";
 import path from "path";
 
@@ -21,12 +25,11 @@ export interface EvidenceExtractionInput {
 
 export class EvidenceExtractionService {
   private apiKey: string = "";
-  private bedrockToken: string = "";
   private extractorVersion = "1.0.0";
   private promptVersion = "v1.0";
   private modelName = "llama-3.3-70b-versatile";
 
-  constructor(private readonly model?:JsonModel) {
+  constructor(private readonly model?: JsonModel) {
     if (typeof process !== "undefined" && process.env && process.env.GROQ_API_KEY) {
       this.apiKey = process.env.GROQ_API_KEY;
     } else if (typeof window === "undefined" && typeof process !== "undefined" && process.cwd) {
@@ -52,21 +55,26 @@ export class EvidenceExtractionService {
         }
       }
     }
-    this.bedrockToken = process.env.BEDROCK_MANTLE_API_KEY?.trim() || "";
   }
 
   public async extract(input: EvidenceExtractionInput): Promise<EvidenceGraph> {
     const graphId = `ev-graph-${input.documentId}-${Date.now()}`;
     const now = new Date().toISOString();
 
-    if (this.model) return this.bedrockExtract(input, graphId, now);
-
-    if (!this.apiKey && this.bedrockToken) {
-      return this.bedrockExtract(input, graphId, now);
-    }
-
-    if (!this.apiKey) {
-      throw new Error("CANDIDATE_EVIDENCE_PROVIDER_UNAVAILABLE");
+    try {
+      return await this.bedrockExtract(input, graphId, now);
+    } catch (error) {
+      // Grounding rejection and provider unavailability can use the same factual
+      // fallback. The gateway owns incident classification; local validation does not.
+      if (
+        !this.apiKey ||
+        !(
+          error instanceof ModelProviderUnavailableError ||
+          error instanceof ModelInvalidOutputError ||
+          (error instanceof Error && error.message === "CANDIDATE_EVIDENCE_GROUNDING_INVALID")
+        )
+      )
+        throw error;
     }
 
     const cleanText = input.documentText.slice(0, 10000).replace(/\s+/g, " ").trim();
@@ -110,9 +118,10 @@ Return ONLY a JSON object formatted as:
     try {
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
+        signal: AbortSignal.timeout(120_000),
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
           model: this.modelName,
@@ -133,9 +142,13 @@ Return ONLY a JSON object formatted as:
       const parsed = JSON.parse(content);
       const rawFacts = Array.isArray(parsed.facts) ? parsed.facts : [];
 
-      const facts = rawFacts.map((fact: unknown, index: number) => this.toExtractedFact(fact, input.documentText, input.documentId, index))
+      const facts = rawFacts
+        .map((fact: unknown, index: number) =>
+          this.toExtractedFact(fact, input.documentText, input.documentId, index),
+        )
         .filter((fact: ExtractedFact | undefined): fact is ExtractedFact => Boolean(fact));
-      if (facts.length !== rawFacts.length || facts.length === 0) throw new Error("CANDIDATE_EVIDENCE_GROUNDING_INVALID");
+      if (facts.length !== rawFacts.length || facts.length === 0)
+        throw new Error("CANDIDATE_EVIDENCE_GROUNDING_INVALID");
 
       return {
         id: graphId,
@@ -147,25 +160,20 @@ Return ONLY a JSON object formatted as:
           extractorVersion: this.extractorVersion,
           promptVersion: this.promptVersion,
           model: this.modelName,
-          createdAt: now
-        }
+          createdAt: now,
+        },
       };
-    } catch (err: any) { throw new Error(`CANDIDATE_EVIDENCE_EXTRACTION_FAILED: ${err.message}`); }
+    } catch (err: any) {
+      throw new Error(`CANDIDATE_EVIDENCE_EXTRACTION_FAILED: ${err.message}`);
+    }
   }
 
-  /**
-   * The candidate pipeline predates the staged Bedrock model route. Keep Groq
-   * as the primary legacy provider, while allowing a process-supplied Bedrock
-   * Mantle key to provide the same factual-extraction contract. Credential
-   * discovery remains outside this service.
-   */
-  private async bedrockExtract(input: EvidenceExtractionInput, graphId: string, now: string): Promise<EvidenceGraph> {
-    const model = this.model ?? new BedrockMantleJsonModel(
-      "zai.glm-5",
-      async () => this.bedrockToken,
-      fetch,
-      { region: "us-east-1", maxOutputTokens: 8192 },
-    );
+  private async bedrockExtract(
+    input: EvidenceExtractionInput,
+    graphId: string,
+    now: string,
+  ): Promise<EvidenceGraph> {
+    const model = this.model ?? createBedrockGlmResearchModel();
     const responseSchema = {
       type: "object",
       properties: {
@@ -174,7 +182,18 @@ Return ONLY a JSON object formatted as:
           items: {
             type: "object",
             properties: {
-              type: { type: "string", enum: ["EMPLOYMENT", "ACHIEVEMENT", "TECHNOLOGY", "LEADERSHIP", "EDUCATION", "LOCATION", "OTHER"] },
+              type: {
+                type: "string",
+                enum: [
+                  "EMPLOYMENT",
+                  "ACHIEVEMENT",
+                  "TECHNOLOGY",
+                  "LEADERSHIP",
+                  "EDUCATION",
+                  "LOCATION",
+                  "OTHER",
+                ],
+              },
               value: { type: "string" },
               confidence: { type: "number" },
               sourceSpan: { type: "string" },
@@ -188,15 +207,20 @@ Return ONLY a JSON object formatted as:
       required: ["facts"],
       additionalProperties: false,
     };
-    const output = await model.generate(
+    const output = (await model.generate(
       `You are a factual candidate-evidence extraction engine. Extract discrete facts from the supplied candidate document.\n\nRules:\n1. Do not infer candidate intent, preferences, future plans, or eligibility.\n2. Each sourceSpan must be an exact contiguous quotation from the supplied document.\n3. Preserve original quantities, currencies, titles, employers, and dates.\n4. Classify each fact as EMPLOYMENT, ACHIEVEMENT, TECHNOLOGY, LEADERSHIP, EDUCATION, LOCATION, or OTHER.\n5. Return only the requested JSON object.`,
       { documentText: input.documentText.slice(0, 10000) },
       responseSchema,
-    ) as { facts?: unknown[] };
+      { stage: "evidence-extraction" },
+    )) as { facts?: unknown[] };
     const facts = (Array.isArray(output.facts) ? output.facts : [])
       .map((fact, index) => this.toExtractedFact(fact, input.documentText, input.documentId, index))
       .filter((fact): fact is ExtractedFact => Boolean(fact));
-    if (facts.length !== (Array.isArray(output.facts) ? output.facts.length : 0) || facts.length === 0) throw new Error("CANDIDATE_EVIDENCE_GROUNDING_INVALID");
+    if (
+      facts.length !== (Array.isArray(output.facts) ? output.facts.length : 0) ||
+      facts.length === 0
+    )
+      throw new Error("CANDIDATE_EVIDENCE_GROUNDING_INVALID");
     return {
       id: graphId,
       personId: input.personId,
@@ -212,13 +236,40 @@ Return ONLY a JSON object formatted as:
     };
   }
 
-  private toExtractedFact(value: unknown, rawText: string, documentId: string, index: number): ExtractedFact | undefined {
+  private toExtractedFact(
+    value: unknown,
+    rawText: string,
+    documentId: string,
+    index: number,
+  ): ExtractedFact | undefined {
     if (!value || typeof value !== "object") return undefined;
     const fact = value as Partial<ExtractedFact>;
     const sourceSpan = typeof fact.sourceSpan === "string" ? fact.sourceSpan.trim() : "";
-    if (!sourceSpan || !rawText.includes(sourceSpan) || typeof fact.value !== "string" || !fact.value.trim() || typeof fact.justification !== "string" || !fact.justification.trim()) return undefined;
-    const allowedTypes: FactType[] = ["EMPLOYMENT", "ACHIEVEMENT", "TECHNOLOGY", "LEADERSHIP", "EDUCATION", "LOCATION", "OTHER"];
-    if (!allowedTypes.includes(fact.type as FactType) || typeof fact.confidence !== "number" || fact.confidence < 0 || fact.confidence > 1) return undefined;
+    if (
+      !sourceSpan ||
+      !rawText.includes(sourceSpan) ||
+      typeof fact.value !== "string" ||
+      !fact.value.trim() ||
+      typeof fact.justification !== "string" ||
+      !fact.justification.trim()
+    )
+      return undefined;
+    const allowedTypes: FactType[] = [
+      "EMPLOYMENT",
+      "ACHIEVEMENT",
+      "TECHNOLOGY",
+      "LEADERSHIP",
+      "EDUCATION",
+      "LOCATION",
+      "OTHER",
+    ];
+    if (
+      !allowedTypes.includes(fact.type as FactType) ||
+      typeof fact.confidence !== "number" ||
+      fact.confidence < 0 ||
+      fact.confidence > 1
+    )
+      return undefined;
     return {
       id: `fact-${documentId}-${index + 1}`,
       type: fact.type as FactType,
@@ -230,15 +281,22 @@ Return ONLY a JSON object formatted as:
   }
 
   /** Test-only helper; production extract() never promotes heuristic output. */
-  private heuristicExtract(input: EvidenceExtractionInput, graphId: string, createdAt: string): EvidenceGraph {
-    const lines = input.documentText.split("\n").map(l => l.trim()).filter(Boolean);
+  private heuristicExtract(
+    input: EvidenceExtractionInput,
+    graphId: string,
+    createdAt: string,
+  ): EvidenceGraph {
+    const lines = input.documentText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
     const facts: ExtractedFact[] = lines.slice(0, 30).map((line, idx) => ({
       id: `fact-${input.documentId}-h-${idx + 1}`,
       type: "OTHER",
       value: line,
       confidence: 0.5,
       sourceSpan: line.slice(0, 100),
-      justification: "Heuristic fallback line extraction"
+      justification: "Heuristic fallback line extraction",
     }));
 
     return {
@@ -251,8 +309,8 @@ Return ONLY a JSON object formatted as:
         extractorVersion: `${this.extractorVersion}-fallback`,
         promptVersion: "heuristic-v1",
         model: "heuristic",
-        createdAt
-      }
+        createdAt,
+      },
     };
   }
 }

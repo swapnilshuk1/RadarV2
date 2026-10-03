@@ -9,6 +9,42 @@ export async function resumeOperationalWork(
   identity: WorkIdentity,
   execute = true,
 ): Promise<QueueRecoveryOutcome> {
+  if (identity.pipeline === "documents")
+    return db.transaction(async (tx) => {
+      const row = await tx.one<{ status: string; leased: number }>(
+        `SELECT j.status, CASE WHEN j.lease_token IS NOT NULL AND
+       (j.locked_at IS NULL OR j.locked_at>=datetime('now','-300 seconds')) THEN 1 ELSE 0 END leased
+       FROM candidate_document_jobs j JOIN candidate_documents d
+       ON d.id=j.document_id AND d.tenant_id=j.tenant_id AND d.person_id=j.person_id
+       WHERE j.id=? AND j.document_id=? AND j.tenant_id=? AND j.person_id=?`,
+        [identity.jobId, identity.documentId, identity.tenantId, identity.personId],
+      );
+      if (!row) return { outcome: "blocked", reason: "IDENTITY_CHANGED" };
+      if (row.status === "completed") return { outcome: "skipped", reason: "ALREADY_COMPLETED" };
+      if (row.status !== "pending")
+        return {
+          outcome: "blocked",
+          reason: row.status === "processing" ? "CURRENTLY_LEASED" : "DOMAIN_RETRY_REQUIRED",
+        };
+      if (row.leased) return { outcome: "blocked", reason: "CURRENTLY_LEASED" };
+      if (
+        await tx.one(
+          "SELECT scope_key FROM pipeline_controls WHERE paused=1 AND scope_key IN ('*',?) AND pipeline IN ('*','documents')",
+          [identity.tenantId],
+        )
+      )
+        return { outcome: "skipped", reason: "MANUALLY_PAUSED" };
+      if (!execute) return { outcome: "resumed", reason: "ELIGIBLE_CHECKPOINTS_PRESERVED" };
+      const result = await tx.execute(
+        `UPDATE candidate_document_jobs SET next_attempt_at=CURRENT_TIMESTAMP,locked_by=NULL,lease_token=NULL,locked_at=NULL
+       WHERE id=? AND document_id=? AND tenant_id=? AND person_id=? AND status='pending'
+       AND (lease_token IS NULL OR locked_at<datetime('now','-300 seconds'))`,
+        [identity.jobId, identity.documentId, identity.tenantId, identity.personId],
+      );
+      return result.rowsAffected
+        ? { outcome: "resumed", reason: "VALID_CHECKPOINTS_PRESERVED" }
+        : { outcome: "blocked", reason: "STATE_CHANGED" };
+    });
   if (identity.pipeline === "pursuit")
     return { outcome: "blocked", reason: "PURSUIT_DOMAIN_RETRY_REQUIRED" };
   const table = configJobTables[identity.pipeline];

@@ -1,8 +1,8 @@
 /** Host-only connectivity evidence. No application DB writes or secret output. */
-import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { readEnvFile, loadUnifiedEnvironment } from "../../src/lib/env";
-import { parseMantleKey, loadMantleCredentials } from "../../src/lib/model/bedrock-credentials";
+import { resolveBedrockCredential } from "../../src/lib/model/bedrock-credential-resolver";
 import { adcTokenProvider } from "../../src/lib/model/google-adc";
 loadUnifiedEnvironment();
 const credentialRoot = process.argv[process.argv.indexOf("--credential-root") + 1];
@@ -10,15 +10,14 @@ const selectedRoot = process.argv.includes("--credential-root") ? credentialRoot
 if (selectedRoot) {
   for (const file of [".env.development.local", ".env.local", ".env.development", ".env"]) {
     const values = readEnvFile(path.join(selectedRoot, file));
-    for (const key of ["TAVILY_API_KEY", "BEDROCK_MANTLE_API_KEY", "GCP_PROJECT_ID"] as const)
+    for (const key of [
+      "TAVILY_API_KEY",
+      "BEDROCK_MANTLE_API_KEY",
+      "BEDROCK_MANTLE_KEY_FILE",
+      "GCP_PROJECT_ID",
+    ] as const)
       if (!process.env[key] && values[key]) process.env[key] = values[key];
   }
-  if (!process.env.BEDROCK_MANTLE_API_KEY)
-    try {
-      process.env.BEDROCK_MANTLE_API_KEY = parseMantleKey(
-        readFileSync(path.join(selectedRoot, "mantle.key"), "utf8"),
-      );
-    } catch {}
 }
 
 type Result = { provider: string; status: string; httpStatus?: number; permission: string };
@@ -42,16 +41,10 @@ async function bearer(provider: string, url: string, key: string | undefined): P
     return { provider, status: "connectivity unavailable", permission: "unverified" };
   }
 }
-try {
-  loadMantleCredentials();
-} catch {}
+const credential = await resolveBedrockCredential().catch(() => null);
 const results = await Promise.all([
   bearer("Tavily", "https://api.tavily.com/usage", process.env.TAVILY_API_KEY),
-  bearer(
-    "Bedrock Mantle",
-    "https://bedrock-mantle.us-east-1.api.aws/v1/models",
-    process.env.BEDROCK_MANTLE_API_KEY,
-  ),
+  bearer("Bedrock Mantle", "https://bedrock-mantle.us-east-1.api.aws/v1/models", credential?.key),
   (async (): Promise<Result> => {
     if (process.argv.includes("--skip-adc"))
       return {

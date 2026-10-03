@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-export const operationalPipelines = ["evaluation", "dossier", "factual_review", "pursuit"] as const;
+export const operationalPipelines = [
+  "evaluation",
+  "dossier",
+  "factual_review",
+  "pursuit",
+  "documents",
+] as const;
 export type OperationalPipeline = (typeof operationalPipelines)[number];
 export type ProviderFailure =
   | "credential"
@@ -12,14 +18,44 @@ export type ProviderFailure =
   | "invalid_response"
   | "vault";
 export type WorkIdentity = {
-  pipeline: OperationalPipeline;
   jobId: string;
   tenantId: string;
   personId: string;
-  canonicalJobId: string;
-  opportunityVersion: string;
-  contextFingerprint: string;
+} & (
+  | {
+      pipeline: Exclude<OperationalPipeline, "documents">;
+      canonicalJobId: string;
+      opportunityVersion: string;
+      contextFingerprint: string;
+      documentId?: never;
+    }
+  | {
+      pipeline: "documents";
+      documentId: string;
+      canonicalJobId?: never;
+      opportunityVersion?: never;
+      contextFingerprint?: never;
+    }
+);
+const workOwner = {
+  jobId: z.string().min(1),
+  tenantId: z.string().min(1),
+  personId: z.string().min(1),
 };
+export const workIdentitySchema = z.union([
+  z
+    .object({
+      ...workOwner,
+      pipeline: z.enum(["evaluation", "dossier", "factual_review", "pursuit"]),
+      canonicalJobId: z.string().min(1),
+      opportunityVersion: z.string().min(1),
+      contextFingerprint: z.string().min(1),
+    })
+    .strict(),
+  z
+    .object({ ...workOwner, pipeline: z.literal("documents"), documentId: z.string().min(1) })
+    .strict(),
+]);
 export type RuntimeReceipt = {
   workerName: string;
   instanceId: string;

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { ModelProviderUnavailableError } from "./provider-unavailable";
 import type { DatabaseAdapter } from "@/data/database";
 
-export type ModelPipeline = "evaluation" | "dossier" | "factual_review" | "pursuit";
+export type ModelPipeline = "evaluation" | "dossier" | "factual_review" | "pursuit" | "documents";
 
 export interface ModelCallMetadata {
   stage?: string;
@@ -10,20 +10,35 @@ export interface ModelCallMetadata {
   maxOutputTokens?: number;
 }
 
-export interface ModelInvocationContext {
+type ModelInvocationOwner = {
   leaseToken?: string;
-  pipeline: ModelPipeline;
   tenantId: string;
   personId: string;
-  canonicalJobId: string;
-  opportunityVersion: string;
-  evaluationContextFingerprint: string;
   evaluationJobId?: string;
   dossierCompositionJobId?: string;
   reviewJobId?: string;
   pursuitId?: string;
   pursuitPreparationJobId?: string;
-}
+};
+export type ModelInvocationContext = ModelInvocationOwner &
+  (
+    | {
+        pipeline: Exclude<ModelPipeline, "documents">;
+        canonicalJobId: string;
+        opportunityVersion: string;
+        evaluationContextFingerprint: string;
+        documentId?: never;
+        documentJobId?: never;
+      }
+    | {
+        pipeline: "documents";
+        documentId: string;
+        documentJobId: string;
+        canonicalJobId?: never;
+        opportunityVersion?: never;
+        evaluationContextFingerprint?: never;
+      }
+  );
 
 export interface ModelUsage {
   inputTokens?: number;
@@ -98,8 +113,8 @@ export function createSqliteModelInvocationSink(
           pipeline,stage,attempt,provider,model_id,model_version,model_configuration_fingerprint,
           request_fingerprint,max_output_tokens,started_at,completed_at,latency_ms,
           input_tokens,cached_input_tokens,output_tokens,reasoning_tokens,total_tokens,
-          finish_reason,status,error_code
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          finish_reason,status,error_code,document_id,document_job_id
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(id) DO UPDATE SET
           completed_at=excluded.completed_at,
           latency_ms=excluded.latency_ms,
@@ -120,9 +135,9 @@ export function createSqliteModelInvocationSink(
           context.pursuitPreparationJobId ?? null,
           context.tenantId,
           context.personId,
-          context.canonicalJobId,
-          context.opportunityVersion,
-          context.evaluationContextFingerprint,
+          context.canonicalJobId ?? null,
+          context.opportunityVersion ?? null,
+          context.evaluationContextFingerprint ?? null,
           context.pipeline,
           event.stage,
           event.attempt,
@@ -143,15 +158,18 @@ export function createSqliteModelInvocationSink(
           event.finishReason ?? null,
           event.status,
           event.errorCode ?? null,
+          context.documentId ?? null,
+          context.documentJobId ?? null,
         ],
       );
       const { JobTokenLedger } = await import("../../admin/protection");
-      await new JobTokenLedger(db, context).settle(event);
+      if (context.pipeline !== "documents") await new JobTokenLedger(db, context).settle(event);
 
       const jobId =
         context.evaluationJobId ??
         context.dossierCompositionJobId ??
         context.reviewJobId ??
+        context.documentJobId ??
         "unscoped";
       if (event.status === "running") {
         console.log(
@@ -172,6 +190,23 @@ export function createSqliteModelInvocationSink(
     }
   };
   sink.beforeCall = async (call) => {
+    if (context.pipeline === "documents") {
+      const owner = await db.one(
+        `SELECT j.id FROM candidate_document_jobs j JOIN candidate_documents d
+         ON d.id=j.document_id AND d.tenant_id=j.tenant_id AND d.person_id=j.person_id
+         WHERE j.id=? AND j.document_id=? AND j.tenant_id=? AND j.person_id=?
+         AND j.status='processing' AND j.lease_token=? AND j.locked_at>=datetime('now','-300 seconds')`,
+        [
+          context.documentJobId,
+          context.documentId,
+          context.tenantId,
+          context.personId,
+          context.leaseToken ?? null,
+        ],
+      );
+      if (!owner) throw new Error("DOCUMENT_JOB_LEASE_LOST");
+      return;
+    }
     const { JobTokenLedger } = await import("../../admin/protection");
     try {
       await new JobTokenLedger(db, context).reserve(call);

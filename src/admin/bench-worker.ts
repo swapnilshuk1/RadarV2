@@ -16,7 +16,7 @@ import { createDossierWriterModel } from "../lib/model/dossier-writer-model";
 import { createFactualReviewModel } from "../lib/model/factual-review-model";
 import { runStagedFrozenDecisionDetailed } from "../dossier/staged-decision";
 import { composeStagedDossier } from "../dossier/staged-composition";
-import { laneModel } from "./model-gateway";
+import { laneModel, operationalModel } from "./model-gateway";
 import { activeRevision, revision } from "./config-store";
 import type { EngineConfig, ModelLane } from "./config-contracts";
 import { requirePlatformRole } from "./service";
@@ -340,17 +340,28 @@ export class BenchWorker {
     };
     // Recheck after waiting for a provider slot, immediately before dispatch.
     sink.beforeCall = async () => this.db.transaction((tx) => this.assertCurrent(tx, row, token));
-    const model = laneModel(
-      config,
-      lane,
-      () =>
-        lane === "reasoning"
-          ? createBedrockGlmResearchModel({ invocationSink: sink })
-          : review
-            ? createFactualReviewModel({ invocationSink: sink })
-            : createDossierWriterModel({ invocationSink: sink }),
-      sink,
-      `bench:${row.scope}`,
+    const model = operationalModel(
+      this.db,
+      laneModel(
+        config,
+        lane,
+        () =>
+          lane === "reasoning"
+            ? createBedrockGlmResearchModel({ invocationSink: sink })
+            : review
+              ? createFactualReviewModel({ invocationSink: sink })
+              : createDossierWriterModel({ invocationSink: sink }),
+        sink,
+        `bench:${row.scope}`,
+      ),
+      {
+        pipeline: "evaluation",
+        tenantId: row.scope === "platform" ? "platform-bench" : row.scope.slice(7),
+        personId: "synthetic-fixture",
+        canonicalJobId: `bench:${row.id}`,
+        opportunityVersion: "fixture",
+        evaluationContextFingerprint: side === "active" ? row.active_revision_id : row.revision_id,
+      },
     );
     return {
       ...model,
