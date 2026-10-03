@@ -116,6 +116,7 @@ export class PursuitTokenLedger {
 export interface PursuitModelContext {
   strictBudget?: boolean;
   configuredModels?: import("./model").PursuitModel[];
+  wrapModel?: (model: import("./model").PursuitModel) => import("./model").PursuitModel;
   /** Records each provider call for cost and latency observability. */
   invocationSink?: ModelInvocationSink;
   /** Enforces the per-package token ceiling. */

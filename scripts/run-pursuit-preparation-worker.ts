@@ -4,13 +4,18 @@
  *   bun scripts/run-pursuit-preparation-worker.ts [--once] [--concurrency=N]
  */
 import { getDatabaseAdapter } from "../src/data/database";
+import { jobConcurrency } from "../src/admin/operations-runtime";
 import { loadMantleCredentials } from "../src/lib/model/bedrock-credentials";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 import { PursuitPreparationWorker } from "../src/pursuit/preparation";
 import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
 
 const db = getDatabaseAdapter();
-if (!(await db.one("SELECT name FROM sqlite_master WHERE type='table' AND name='pursuit_preparation_jobs'")))
+if (
+  !(await db.one(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='pursuit_preparation_jobs'",
+  ))
+)
   throw new Error("Apply migration 067 before starting the pursuit preparation worker");
 
 try {
@@ -31,7 +36,7 @@ const heartbeat = process.argv.includes("--once")
   : await startWorkerHeartbeat("pursuit-preparation");
 
 const workers = Array.from(
-  { length: concurrency },
+  { length: 8 },
   (_, i) => new PursuitPreparationWorker(`pursuit-prep-${process.pid}-${i}`),
 );
 let stopping = false;
@@ -40,7 +45,8 @@ process.on("SIGTERM", () => (stopping = true));
 
 let idle = 0;
 do {
-  const results = await Promise.all(workers.map((w) => w.pollOnce()));
+  const activeConcurrency = await jobConcurrency(getDatabaseAdapter(), "pursuit", concurrency);
+  const results = await Promise.all(workers.slice(0, activeConcurrency).map((w) => w.pollOnce()));
   for (const r of results) if (r) runtimeLog("info", "pursuit_preparation_processed", r);
   if (process.argv.includes("--once")) break;
   if (results.some(Boolean)) idle = 0;

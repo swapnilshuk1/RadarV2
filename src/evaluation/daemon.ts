@@ -4,6 +4,7 @@ import { EvaluationWorker } from "@/evaluation/worker";
 import { RunReconciliationService } from "@/lib/intelligence/RunReconciliationService";
 import { getDatabaseAdapter, type DatabaseAdapter } from "@/data/database";
 import { runtimeLog } from "@/lib/intelligence/runtime-log";
+import { jobConcurrency } from "../admin/operations-runtime";
 
 /** A global repair is crash recovery, not a per-poll health check. */
 export const GLOBAL_RECONCILIATION_INTERVAL_MS = 5 * 60_000;
@@ -11,6 +12,8 @@ export const MAX_IDLE_POLL_INTERVAL_MS = 30_000;
 
 export class EvaluationDaemon {
   private readonly workers: EvaluationWorker[];
+  private readonly adapter: DatabaseAdapter;
+  private readonly fallbackConcurrency: number;
   private readonly reconciler: RunReconciliationService;
   private isRunning = false;
   private abortController: AbortController | null = null;
@@ -25,16 +28,17 @@ export class EvaluationDaemon {
   ) {
     const id = workerId || `daemon_${crypto.randomUUID().slice(0, 8)}`;
     const concurrency =
-      options?.concurrency ??
-      Number(process.env.RADAR_EVALUATION_JOB_CONCURRENCY || "2");
+      options?.concurrency ?? Number(process.env.RADAR_EVALUATION_JOB_CONCURRENCY || "2");
     if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 8)
       throw new Error("EVALUATION_JOB_CONCURRENCY_INVALID");
     this.workers = Array.from(
-      { length: concurrency },
+      { length: 8 },
       (_value, index) =>
         new EvaluationWorker(`${id}_slot${index + 1}`, { adapter: options?.adapter }),
     );
     const adapter = options?.adapter ?? getDatabaseAdapter();
+    this.adapter = adapter;
+    this.fallbackConcurrency = concurrency;
     this.reconciler = new RunReconciliationService(adapter);
     this.pollIntervalMs = pollIntervalMs;
   }
@@ -45,11 +49,18 @@ export class EvaluationDaemon {
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
 
-    runtimeLog("info", "evaluation_daemon_started", { pollIntervalMs: this.pollIntervalMs, workers: this.workers.length });
+    runtimeLog("info", "evaluation_daemon_started", {
+      pollIntervalMs: this.pollIntervalMs,
+      workers: this.workers.length,
+    });
 
     const loop = async (worker: EvaluationWorker, slot: number, idlePolls = 0) => {
       if (signal.aborted) return;
       try {
+        if (slot > (await jobConcurrency(this.adapter, "evaluation", this.fallbackConcurrency))) {
+          setTimeout(() => void loop(worker, slot, idlePolls), this.pollIntervalMs);
+          return;
+        }
         const result = await worker.pollAndProcessNext();
         if (signal.aborted) return;
 
@@ -59,9 +70,17 @@ export class EvaluationDaemon {
           void this.reconcileActiveRuns("safety");
 
         if (result) {
-          runtimeLog("info", "evaluation_job_processed", { slot, jobId: result.jobId, status: result.status });
+          runtimeLog("info", "evaluation_job_processed", {
+            slot,
+            jobId: result.jobId,
+            status: result.status,
+          });
           if (result.error) {
-            runtimeLog("warn", "evaluation_job_error", { slot, jobId: result.jobId, status: result.status });
+            runtimeLog("warn", "evaluation_job_error", {
+              slot,
+              jobId: result.jobId,
+              status: result.status,
+            });
           }
           setTimeout(() => void loop(worker, slot, 0), 0);
         } else {
@@ -126,5 +145,4 @@ export class EvaluationDaemon {
   public get isDaemonRunning(): boolean {
     return this.isRunning;
   }
-
 }

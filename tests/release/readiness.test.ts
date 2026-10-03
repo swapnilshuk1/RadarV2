@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { getReadiness, getSystemReadiness } from "../../src/lib/health/readiness";
+import {
+  getReadiness,
+  getSystemReadiness,
+  getOperationsReadiness,
+  operationsReadyResponse,
+} from "../../src/lib/health/readiness";
 import {
   getDatabaseAdapter,
   getDatabaseTargetIdentity,
@@ -17,6 +22,37 @@ describe("release readiness", () => {
   afterEach(() => {
     resetDatabaseAdapter();
     process.env = { ...original };
+  });
+  it("supports an external operations probe with no dependency on other workers or outbound delivery", async () => {
+    process.env.RADAR_ENV = "test";
+    process.env.RADAR_RELEASE_SHA = "d".repeat(40);
+    const db = getDatabaseAdapter();
+    const fingerprint = getDatabaseTargetIdentity().fingerprint;
+    await db.execute("DELETE FROM worker_heartbeats");
+    expect((await getOperationsReadiness()).status).toBe(503);
+    await db.execute("INSERT INTO worker_heartbeats VALUES('evaluation','probe',?,?,?)", [
+      process.env.RADAR_RELEASE_SHA,
+      fingerprint,
+      new Date().toISOString(),
+    ]);
+    expect((await getOperationsReadiness()).status).toBe(200);
+    for (const [sha, target, seen] of [
+      ["old-release", fingerprint, new Date().toISOString()],
+      [process.env.RADAR_RELEASE_SHA, "other-db", new Date().toISOString()],
+      [process.env.RADAR_RELEASE_SHA, fingerprint, new Date(Date.now() - 151000).toISOString()],
+    ]) {
+      await db.execute(
+        "UPDATE worker_heartbeats SET release_sha=?,database_fingerprint=?,last_seen_at=?",
+        [sha, target, seen],
+      );
+      const response = await operationsReadyResponse();
+      expect(response.status).toBe(503);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(await response.json()).toEqual({
+        status: "unavailable",
+        releaseSha: process.env.RADAR_RELEASE_SHA,
+      });
+    }
   });
 
   it("fails closed without a reachable, verified database and exposes no target details", async () => {

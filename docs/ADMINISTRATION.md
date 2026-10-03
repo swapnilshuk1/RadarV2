@@ -1,10 +1,15 @@
-# Administration — Phases 1–4
+# Administration
 
 The `/admin` console provides platform authorization, visibility and opt-in protection.
 It uses the existing RADAR login; platform access is granted separately below.
 Gate meaning, acquisition evidence and existing memo content are preserved. The console
 adds explicit model assignments, revisioned discovery and intelligence taxonomies, and
 bounded decision-comparison controls for future work.
+
+Connections, worker/runtime visibility, throughput and incident recovery are
+documented in [Operations & Recovery](operations/OPERATIONS_RECOVERY.md), including
+the authoritative checkout and autonomous continuation instructions. That slice
+requires migrations 085–086 in addition to the foundations below.
 
 Apply migrations 072–084 through the normal migration runner before activating the console.
 Platform access comes from `platform_roles`, never tenant memberships. An existing
@@ -22,7 +27,8 @@ npx tsx scripts/admin.ts rollup --apply
 The CLI previews writes unless `--apply` is explicit. Role changes and their audit
 entry commit together. The host operator is a trusted deployment identity, not a
 web authorization bypass. Keep shell access restricted. No credential values are
-read or displayed by this console.
+returned by this console. Operators can submit replacement Tavily credentials
+through Connections; persisted values remain encrypted and write-only in Admin.
 
 Usage comes only from `usage_daily`, rebuilt transactionally from invocation
 telemetry. Run `rollup --apply` hourly with the existing host scheduler, plus a
