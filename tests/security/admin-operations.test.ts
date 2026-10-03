@@ -1,9 +1,11 @@
 import { pollHostProviderCheck } from "../../src/admin/host-provider-checks";
-import { readOperations } from "../../src/admin/operations-service";
+import { readOperations, mutateOperations } from "../../src/admin/operations-service";
 import { getDatabaseTargetIdentity } from "../../src/data/database";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
+import { TursoAdapter } from "../../src/data/database/turso";
+import { maintainCredentialRetention } from "../../src/admin/credential-maintenance";
 import {
   setupLineageTestFixture,
   activateLineageTestContext,
@@ -36,6 +38,8 @@ import {
   pollNotificationDelivery,
   notificationSignature,
   validateWebhookDestination,
+  notificationHeaders,
+  sendSignedWebhook,
 } from "../../src/admin/notification-worker";
 import { CredentialVault } from "../../src/lib/security/CredentialVault";
 import { deferralFilter } from "../../src/admin/protection";
@@ -60,9 +64,9 @@ afterEach(async () => {
   vi.unstubAllEnvs();
   for (const db of adapters.splice(0)) await db.close();
 });
-async function fixture() {
-  const db = new SqliteAdapter(new Database(":memory:"));
-  adapters.push(db);
+async function fixture(provided?: SqliteAdapter | TursoAdapter) {
+  const db = provided ?? new SqliteAdapter(new Database(":memory:"));
+  if (!provided) adapters.push(db as SqliteAdapter);
   await setupLineageTestFixture(db);
   await db.execute(
     "INSERT INTO users(id,email) VALUES('op','op@fixture'),('viewer','viewer@fixture')",
@@ -77,7 +81,342 @@ async function fixture() {
   registerConnectionWorker("evaluation", "processing-1", "fixture-db");
   return db;
 }
+async function recoveryMemo(db: SqliteAdapter | TursoAdapter, id = "recovery-memo") {
+  await db.execute(
+    "INSERT INTO dossier_composition_jobs(id,tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,evaluation_fingerprint,profile_version,recipe,status,next_attempt_at,created_at,updated_at) VALUES(?,'tenant_A','person_A','job','version','fingerprint_A','eval','profile',?,'retry',?,0,0)",
+    [id, id, Date.now() + 86400000],
+  );
+  return {
+    pipeline: "dossier" as const,
+    jobId: id,
+    tenantId: "tenant_A",
+    personId: "person_A",
+    canonicalJobId: "job",
+    opportunityVersion: "version",
+    contextFingerprint: "fingerprint_A",
+  };
+}
+async function healthyRecovery(
+  db: SqliteAdapter | TursoAdapter,
+  work?: Awaited<ReturnType<typeof recoveryMemo>>,
+) {
+  const incident = (await observeProviderFailure(db, {
+    connectionId: TAVILY_CONNECTION,
+    provider: "tavily",
+    generation: 0,
+    failure: "credential",
+    deployment: "test",
+    work,
+  }))!;
+  const candidate = await mutateSearchConnection(db, "op", {
+    kind: "candidate",
+    key: "tvly-" + "h".repeat(30),
+    expectedRevision: 0,
+    reason: "replace credential",
+  });
+  await mutateSearchConnection(db, "op", {
+    kind: "test",
+    credentialId: candidate.credentialId!,
+    expectedRevision: 1,
+    reason: "validate on worker",
+  });
+  await pollSearchConnectionCheck(db, async () => new Response(JSON.stringify({ results: [] })));
+  await mutateSearchConnection(db, "op", {
+    kind: "activate",
+    credentialId: candidate.credentialId!,
+    expectedRevision: 1,
+    reason: "activate validated key",
+  });
+  await refreshSearchWorkerReceipt(db);
+  return incident;
+}
 describe("Operations & Recovery", () => {
+  it("accounts domain-terminal work without claiming a successful memo or changing its queue", async () => {
+    const db = await fixture();
+    const work = await recoveryMemo(db);
+    const incident = await healthyRecovery(db, work);
+    const preview = await previewRecovery(db, "op", incident, [work.jobId], "exact resume");
+    await executeRecovery(db, "op", preview.id, "resume exact work");
+    await db.execute("UPDATE dossier_composition_jobs SET status='needs_attention' WHERE id=?", [
+      work.jobId,
+    ]);
+    const before = await db.one("SELECT * FROM dossier_composition_jobs WHERE id=?", [work.jobId]);
+    await reconcileProviderIncidents(db);
+    expect(await db.one("SELECT state FROM provider_incidents WHERE id=?", [incident])).toEqual({
+      state: "resolved",
+    });
+    expect(
+      await db.one("SELECT accounted_reason FROM provider_incident_jobs WHERE incident_id=?", [
+        incident,
+      ]),
+    ).toEqual({ accounted_reason: "DOMAIN_TERMINAL_NEEDS_ATTENTION" });
+    expect(
+      await db.one("SELECT outcome,reason FROM recovery_action_jobs WHERE action_id=?", [
+        preview.id,
+      ]),
+    ).toEqual({ outcome: "skipped", reason: "DOMAIN_TERMINAL_NEEDS_ATTENTION" });
+    expect(await db.one("SELECT * FROM dossier_composition_jobs WHERE id=?", [work.jobId])).toEqual(
+      before,
+    );
+    const snapshot = await readOperations(db, "op");
+    if (!snapshot.installed) throw new Error("operations required");
+    expect(snapshot.maintenance.pending.reconciliation).toBe(0);
+    expect(snapshot.attention.some((a) => a.target === "queue-dossier")).toBe(true);
+  });
+  it.each(["identity", "context"] as const)(
+    "accounts superseded %s without modifying replacement work",
+    async (kind) => {
+      const db = await fixture();
+      const work = await recoveryMemo(db);
+      const incident = await healthyRecovery(db, work);
+      if (kind === "identity")
+        await db.execute(
+          "UPDATE dossier_composition_jobs SET evaluation_context_fingerprint='replacement' WHERE id=?",
+          [work.jobId],
+        );
+      else {
+        await activateLineageTestContext(db);
+        await db.execute(
+          "INSERT INTO evaluation_contexts(context_fingerprint,tenant_id,person_id,search_plan_snapshot_id,ontology_version,ontology_fingerprint,policy_version,profile_version) VALUES('replacement','tenant_A','person_A','sps_A','v1','hash_ontology','v1','replacement-profile')",
+        );
+        await db.execute(
+          "INSERT INTO evaluation_context_scopes VALUES('replacement','tenant_A','person_A','plan_A',CURRENT_TIMESTAMP)",
+        );
+        await db.execute(
+          "UPDATE active_evaluation_contexts SET context_fingerprint='replacement' WHERE tenant_id='tenant_A' AND person_id='person_A'",
+        );
+      }
+      const before = await db.one("SELECT * FROM dossier_composition_jobs WHERE id=?", [
+        work.jobId,
+      ]);
+      await reconcileProviderIncidents(db);
+      expect(await db.one("SELECT state FROM provider_incidents WHERE id=?", [incident])).toEqual({
+        state: "resolved",
+      });
+      expect(
+        await db.one("SELECT accounted_reason FROM provider_incident_jobs WHERE incident_id=?", [
+          incident,
+        ]),
+      ).toEqual({
+        accounted_reason: kind === "identity" ? "IDENTITY_SUPERSEDED" : "CONTEXT_SUPERSEDED",
+      });
+      expect(
+        await db.one("SELECT * FROM dossier_composition_jobs WHERE id=?", [work.jobId]),
+      ).toEqual(before);
+    },
+  );
+  it("requires an audited operator exclusion for missing work and preserves it through reconciliation", async () => {
+    const db = await fixture();
+    const work = await recoveryMemo(db);
+    const incident = await healthyRecovery(db, work);
+    await db.execute("DELETE FROM dossier_composition_jobs WHERE id=?", [work.jobId]);
+    await reconcileProviderIncidents(db);
+    expect(await db.one("SELECT state FROM provider_incidents WHERE id=?", [incident])).toEqual({
+      state: "recovering",
+    });
+    const exclusion = {
+      kind: "exclude" as const,
+      incidentId: incident,
+      pipeline: work.pipeline,
+      jobId: work.jobId,
+      reason: "Obsolete missing work independently investigated",
+    };
+    await expect(mutateOperations(db, "viewer", exclusion)).rejects.toThrow(
+      "PLATFORM_ACCESS_DENIED",
+    );
+    await expect(mutateOperations(db, "op", { ...exclusion, jobId: "unrelated" })).rejects.toThrow(
+      "RECOVERY_JOB_NOT_IN_INCIDENT",
+    );
+    await mutateOperations(db, "op", exclusion);
+    expect(
+      await db.one<{ reason: string; detail_json: string }>(
+        "SELECT reason,detail_json FROM admin_audit_log WHERE action='recovery.exclude'",
+      ),
+    ).toMatchObject({ reason: exclusion.reason, detail_json: expect.stringContaining(work.jobId) });
+    await reconcileProviderIncidents(db);
+    expect(
+      await db.one("SELECT accounted_reason FROM provider_incident_jobs WHERE incident_id=?", [
+        incident,
+      ]),
+    ).toEqual({ accounted_reason: "OPERATOR_EXCLUDED" });
+    expect(await db.one("SELECT state FROM provider_incidents WHERE id=?", [incident])).toEqual({
+      state: "resolved",
+    });
+  });
+  it("resolves healthy episodes without linked jobs and requires fresh health for terminal accounting", async () => {
+    const db = await fixture();
+    const incident = await healthyRecovery(db);
+    await db.execute("UPDATE admin_search_checks SET completed_at=0 WHERE status='passed'");
+    await reconcileProviderIncidents(db);
+    expect(await db.one("SELECT state FROM provider_incidents WHERE id=?", [incident])).toEqual({
+      state: "recovering",
+    });
+    await db.execute("UPDATE admin_search_checks SET completed_at=? WHERE status='passed'", [
+      Date.now(),
+    ]);
+    await reconcileProviderIncidents(db);
+    expect(await db.one("SELECT state FROM provider_incidents WHERE id=?", [incident])).toEqual({
+      state: "resolved",
+    });
+  });
+  it.each(["sqlite", "libsql", "libsql-stream"] as const)(
+    "rolls nested recovery and outcomes back to previewed after a late failure on %s",
+    async (kind) => {
+      const temporary = mkdtempSync(join(tmpdir(), "radar-recovery-rollback-"));
+      if (kind !== "sqlite") {
+        try {
+          const run = promisify(execFile);
+          const child = await run(
+            process.execPath,
+            [
+              "--import",
+              "tsx",
+              "scripts/acceptance/operations-rollback.ts",
+              pathToFileURL(join(temporary, "rollback.sqlite")).href,
+              kind === "libsql-stream" ? "stream" : "local",
+            ],
+            {
+              cwd: process.cwd(),
+              env: { ...process.env, RADAR_RELEASE_SHA: "development" },
+              timeout: 20000,
+            },
+          );
+          expect(JSON.parse(child.stdout.trim().split(/\r?\n/).at(-1)!)).toMatchObject({
+            rollback: "passed",
+            retry: "passed",
+          });
+        } finally {
+          if (resolve(temporary).startsWith(resolve(tmpdir()) + "\\"))
+            rmSync(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+        }
+        return;
+      }
+      const adapter = new SqliteAdapter(new Database(":memory:"));
+      try {
+        const db = await fixture(adapter);
+        const work = await recoveryMemo(db);
+        const incident = await healthyRecovery(db, work);
+        const preview = await previewRecovery(
+          db,
+          "op",
+          incident,
+          [work.jobId],
+          "preview rollback proof",
+        );
+        const before = await db.one(
+          "SELECT next_attempt_at FROM dossier_composition_jobs WHERE id=?",
+          [work.jobId],
+        );
+        await db.execute(
+          "CREATE TRIGGER reject_recovery_audit BEFORE INSERT ON admin_audit_log WHEN NEW.action='recovery.execute' BEGIN SELECT RAISE(ABORT,'INJECTED_LATE_FAILURE'); END",
+        );
+        await expect(
+          executeRecovery(db, "op", preview.id, "force atomic rollback"),
+        ).rejects.toThrow("INJECTED_LATE_FAILURE");
+        expect(await db.one("SELECT state FROM recovery_actions WHERE id=?", [preview.id])).toEqual(
+          { state: "previewed" },
+        );
+        expect(
+          await db.one("SELECT next_attempt_at FROM dossier_composition_jobs WHERE id=?", [
+            work.jobId,
+          ]),
+        ).toEqual(before);
+        expect(
+          await db.one("SELECT outcome FROM recovery_action_jobs WHERE action_id=?", [preview.id]),
+        ).toEqual({ outcome: "selected" });
+        await db.execute("DROP TRIGGER reject_recovery_audit");
+        expect(
+          (await executeRecovery(db, "op", preview.id, "retry valid preview")).outcomes[0]!.outcome,
+        ).toBe("resumed");
+      } finally {
+        await adapter.close();
+        if (resolve(temporary).startsWith(resolve(tmpdir()) + "\\"))
+          rmSync(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      }
+    },
+  );
+  it("starts automatic retention grace when the last reference is released", async () => {
+    const db = await fixture();
+    const old = Date.now() - 90 * 86400000;
+    for (const id of ["old-key", "other-key"]) {
+      await db.execute("INSERT INTO admin_search_credentials VALUES(?,'{}','suffix',?,'op')", [
+        id,
+        old,
+      ]);
+      await db.execute(
+        "INSERT INTO provider_credential_lifecycle(credential_id,key_version) VALUES(?,'fixture')",
+        [id],
+      );
+    }
+    await db.execute("UPDATE admin_search_connection SET active_id='old-key'");
+    await db.execute(
+      "UPDATE admin_search_connection SET active_id='other-key',previous_id='old-key'",
+    );
+    await maintainCredentialRetention(db);
+    expect(
+      await db.one(
+        "SELECT retired_at,unreferenced_at FROM provider_credential_lifecycle WHERE credential_id='old-key'",
+      ),
+    ).toEqual({ retired_at: null, unreferenced_at: null });
+    await db.execute("UPDATE admin_search_connection SET previous_id=NULL");
+    const released = (await db.one<{ unreferenced_at: number }>(
+      "SELECT unreferenced_at FROM provider_credential_lifecycle WHERE credential_id='old-key'",
+    ))!.unreferenced_at;
+    expect(released).toBeGreaterThan(old);
+    await maintainCredentialRetention(db, released + 29 * 86400000);
+    expect(
+      await db.one(
+        "SELECT retired_at FROM provider_credential_lifecycle WHERE credential_id='old-key'",
+      ),
+    ).toEqual({ retired_at: null });
+    await maintainCredentialRetention(db, released + 31 * 86400000);
+    expect(
+      await db.one(
+        "SELECT retired_at FROM provider_credential_lifecycle WHERE credential_id='old-key'",
+      ),
+    ).toEqual({ retired_at: released + 31 * 86400000 });
+    expect(
+      await db.one(
+        "SELECT retired_at FROM provider_credential_lifecycle WHERE credential_id='other-key'",
+      ),
+    ).toEqual({ retired_at: null });
+  });
+  it("binds event and delivery identities to the webhook signature and bounds stalled DNS", async () => {
+    const body = JSON.stringify({ eventId: "episode:resolved" });
+    const headers = notificationHeaders("secret", "100", "episode:resolved", "delivery", body);
+    const signed = notificationSignature("secret", "100", "episode:resolved", "delivery", body);
+    expect(headers).toMatchObject({
+      "X-Radar-Event-Id": "episode:resolved",
+      "Idempotency-Key": "delivery",
+      "X-Radar-Signature": `sha256=${signed}`,
+      "X-Radar-Signature-Version": "2",
+    });
+    expect(notificationSignature("secret", "100", "other", "delivery", body)).not.toBe(signed);
+    expect(notificationSignature("secret", "100", "episode:resolved", "other", body)).not.toBe(
+      signed,
+    );
+    await expect(
+      validateWebhookDestination("https://alerts.example.com", (async () => [
+        { address: "192.88.99.2", family: 4 },
+      ]) as never),
+    ).rejects.toThrow("WEBHOOK_DESTINATION_BLOCKED");
+    vi.useFakeTimers();
+    try {
+      const stalled = sendSignedWebhook(
+        "https://alerts.example.com",
+        body,
+        "secret",
+        "delivery",
+        "episode:resolved",
+        (() => new Promise(() => {})) as never,
+      );
+      const failure = expect(stalled).rejects.toThrow("WEBHOOK_TIMEOUT");
+      await vi.advanceTimersByTimeAsync(15000);
+      await failure;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("highlights 114 staged dead letters and legacy/failed/domain terminal cohorts without replay or provider bodies", async () => {
     const db = await fixture();
     for (let i = 0; i < 116; i++) {
@@ -167,8 +506,8 @@ describe("Operations & Recovery", () => {
           [kind === "validation" ? Date.now() : old],
         );
         await db.execute(
-          "INSERT INTO provider_credential_lifecycle(credential_id,key_version,retired_at) VALUES('maintenance-credential','fixture',?)",
-          [kind === "purge" ? old : null],
+          "INSERT INTO provider_credential_lifecycle(credential_id,key_version,retired_at,unreferenced_at) VALUES('maintenance-credential','fixture',?,?)",
+          [kind === "purge" ? old : null, kind === "retirement" ? old : null],
         );
       }
       if (kind === "validation")
@@ -856,13 +1195,17 @@ describe("Operations & Recovery", () => {
       failure: "credential",
       deployment: "test",
     });
-    const send = vi.fn(async (_url: string, body: string, value: string, eventId: string) => {
-      expect(value).toBe(secret);
-      expect(JSON.parse(body).incidentId).toBe(id);
-      expect(JSON.parse(body).eventId).toBe(eventId);
-      expect(notificationSignature(value, "100", body)).toMatch(/^[a-f0-9]{64}$/);
-      return 204;
-    });
+    const send = vi.fn(
+      async (_url: string, body: string, value: string, deliveryId: string, eventId: string) => {
+        expect(value).toBe(secret);
+        expect(JSON.parse(body).incidentId).toBe(id);
+        expect(JSON.parse(body).eventId).toBe(eventId);
+        expect(notificationSignature(value, "100", eventId, deliveryId, body)).toMatch(
+          /^[a-f0-9]{64}$/,
+        );
+        return 204;
+      },
+    );
     expect((await pollNotificationDelivery(db, send))!.success).toBe(true);
     expect(
       (await db.one<{ state: string }>("SELECT state FROM provider_incidents WHERE id=?", [id]))!

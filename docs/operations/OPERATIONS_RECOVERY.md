@@ -61,17 +61,17 @@ database/storage/encryption/release identity is displayed and validated, not edi
 
 ## Delivery phases
 
-| Phase | Scope                                                                                 | Status                                                         |
-| ----- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| 0     | Checkout, baseline, prototype/schema compatibility                                    | Complete; evidence above                                       |
-| 1     | Connection, incident, receipt, recovery and operational setting contracts             | Complete; populated migration and integrated contracts pass    |
-| 2     | Durable incidents/cooldown/capacity; crash-safe leases                                | Cross-process/restart/expiry/fencing tests pass                |
-| 3     | Tavily resolver, worker validation, uptake, rollback/retirement                       | Validation/rollback/retention boundary tests pass              |
-| 4     | Exact expiring recovery preview; queue-owned resume; durable outcomes                 | Reviewed memo journey and exact cohort tests pass              |
-| 5     | Runtime/deployment/queue health; stage throughput; provider visibility                | Actual driver/model receipts and worker-host probes integrated |
-| 6     | Incident-centered Admin workflow and Needs attention                                  | Authenticated isolated browser acceptance passes               |
-| 7     | Durable asynchronous signed webhooks and routing                                      | Opened/resolved signed delivery and retries pass               |
-| 8     | Populated migration, deterministic journey, browser, live connectivity, certification | Local delivery verified; deployment remains unverified         |
+| Phase | Scope                                                                                 | Status                                                                   |
+| ----- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| 0     | Checkout, baseline, prototype/schema compatibility                                    | Complete; evidence above                                                 |
+| 1     | Connection, incident, receipt, recovery and operational setting contracts             | Complete; populated migration and integrated contracts pass              |
+| 2     | Durable incidents/cooldown/capacity; crash-safe leases                                | Complete; Cross-process/restart/expiry/fencing tests pass                |
+| 3     | Tavily resolver, worker validation, uptake, rollback/retirement                       | Complete; Validation/rollback/retention boundary tests pass              |
+| 4     | Exact expiring recovery preview; queue-owned resume; durable outcomes                 | Complete; Reviewed memo journey and exact cohort tests pass              |
+| 5     | Runtime/deployment/queue health; stage throughput; provider visibility                | Complete; Actual driver/model receipts and worker-host probes integrated |
+| 6     | Incident-centered Admin workflow and Needs attention                                  | Complete; Authenticated isolated browser acceptance passes               |
+| 7     | Durable asynchronous signed webhooks and routing                                      | Complete; Opened/resolved signed delivery and retries pass               |
+| 8     | Populated migration, deterministic journey, browser, live connectivity, certification | Partial; locally verified, live rollout/proof pending                    |
 
 ## Operational contracts
 
@@ -104,103 +104,58 @@ revalidates pause/scope/lease/state. Resume never rewrites terminal statuses.
 Successful dispatch persists every resumed, skipped or blocked per-job outcome.
 
 Resolution requires a validated active connection, no cooldown, fresh required
-worker uptake and a health probe; every affected job must be completed, legitimately
-terminal, manually paused, in a valid recovery path or audited as excluded.
+worker uptake and a current health probe. Every affected job must have one explicit
+accounting reason: `COMPLETED`, `MANUALLY_PAUSED`, `DOMAIN_TERMINAL_<status>`,
+`IDENTITY_SUPERSEDED`, `CONTEXT_SUPERSEDED`, `VERSION_SUPERSEDED` or
+`OPERATOR_EXCLUDED`. Terminal and superseded accounting resolves the provider
+problem without asserting a successful memo or changing the queue; domain failures
+remain visible in Needs attention. Missing work needs an operator exclusion.
+Exclude one exact incident/pipeline/job from its affected-work details with a
+required reason; role, identity and reason are audited atomically. Exclusion does
+not retry or complete the job. Pending work still prevents resolution. A healthy
+incident with no linked jobs may resolve. Accounting and resolution share one
+transaction, and health is rechecked before resolution.
 Acknowledgement/snooze do not resolve or resume. Resolution notifications are
 asynchronous and independent of incident state.
 
-Webhook contract: HTTPS, protected destinations and redirects, timestamped HMAC,
-event/delivery identity, replay/idempotency metadata, bounded timeouts/retries,
+Webhook contract: HTTPS, protected destinations and redirects, HMAC-SHA256 of
+`timestamp.eventId.deliveryId.rawBody` with signature version `2`. Event identity
+is stable for an incident episode/event (`incidentId:opened` or `incidentId:resolved`);
+`X-Radar-Event-Id` matches the body, and `Idempotency-Key` is the stable delivery ID.
+Receivers verify signature and timestamp age (300-second window), then deduplicate
+by delivery ID; retries reuse identities with a fresh timestamp. DNS validation
+and HTTPS share one 15-second delivery deadline. Redirects fail. Bounded retries,
 no response-body retention, encrypted signing secret, operator role and audit.
 Limit editable policy to throughput, operational profiles, routing/destination,
 snooze and bounded cohort size. Safety equations/mappings/transitions stay tested
 code policy.
 
-## Verification evidence and continuation
+## Current candidate evidence and continuation
 
-Phase 0 self-review: checked both worktrees, tracked/untracked status, branch and
-base identity, Admin presence and migration sequence. No runtime/database changes
-or tests were required for this discovery/documentation cycle.
+Candidate: resolve `git rev-parse HEAD` on `codex/admin-connections`; the Phase 0
+SHA records the starting baseline. Source corrections after `269c99b2` require new
+final certification. Current cycle verification is in progress; update these
+results after the checks actually finish:
 
-Update this section with actual checks and unresolved limits as work progresses.
-Keep this as the single continuation reference; do not create competing handoffs.
+- Focused regressions: 38 passed (33 Operations + 5 readiness).
+- Authenticated browser acceptance: passed; exact audited exclusion and external
+  heartbeat endpoint precede activation/uptake/resume/reviewed memo/signed delivery.
+- Final `npm run certify`: pending final source candidate.
+- Live migration, deployment, external monitor registration, operator webhook and
+  model-backed recovery: unverified. Local fixtures are not deployment evidence.
 
-Current code: migration 085 retains prototype storage; additive migration 086
-adds incidents, capacity, receipts, recovery, settings and deliveries. Active
-generation is distinct from optimistic mutation revision. Tavily traffic resolves
-the active version per acquisition. Validation/maintenance runs in evaluation
-heartbeat; ordinary UI reads never start workers or provider calls. Gateway-managed
-model calls flowing through `operationalModel()` participate in shared operational
-capacity/cooldown; stage job limits apply per worker process. Direct Bedrock
-consumers, including `src/lib/intelligence/extraction/EvidenceExtractionService.ts`,
-remain outside those controls. Bedrock rotation remains read-only until all consumers
-converge on the resolver; ADC remains host-managed.
-
-Verification so far: initial 17 tests passed (operations + existing context input);
-then 80 passed across operations/config/protection/context/review queues. A later
-focused 50 passed across operations/config/context after generation and gateway
-changes. Expanded operations suite: 7 passed. TypeScript passed before later
-coupled source/UI changes; final certification will validate the final candidate.
-
-Cycle relook fixes: removed broad error-string recovery; separated candidate
-revision from active generation; fenced validation completion; blocked late
-superseded failure observations; transient throttling remains automatically
-retryable while credential/quota incidents retain explicit recovery holds;
-resolution validates the reviewed memo and matching publication rather than
-trusting a presentation row's existence. Existing user pauses remain authoritative.
-
-Verification of the original `e47b5406` candidate: 77 focused tests passed across Operations, configuration,
-protection and review queues. Operations includes populated-schema upgrade,
-cross-process capacity/restart cooldown, rollback, retention boundary, worker-host
-probes, exact recovery and reviewed publication. Receipt schema refinement passed
-47 affected tests; the final health/inventory correction passed 25 affected tests.
-Final `npm run certify` passed all nine stages in 176.52 seconds: lint, formatting,
-TypeScript, production SSR build, and 78 manifest suites with 783 passed and one
-skipped test. The initial inventory failure was corrected and narrowly verified
-before final certification. These results predate the review corrections below.
-
-Review correction cycle (3 October 2026): terminal counts now distinguish legacy
-and staged dead letters, failed jobs and domain needs-attention; all four stages
-produce Needs attention links and bounded exact identity cohorts. Pending maintenance
-produces its own worker-unavailable signal independently of queue depth. Recovery
-states, gateway-only model coverage, creation-age retirement and deployment order
-now describe the implementation. No terminal retry, maintenance daemon, migration
-or live configuration change was added. Self-review checked role boundaries,
-arbitrary-error exclusion, cohort bounds, pursuit-owned identity and maintenance
-release/database/freshness matching, including protected previous credentials.
-
-All 23 focused Operations tests passed, including a 114 staged dead-letter fixture,
-legacy dead letters, unchanged terminal rows, domain retry classification and six
-maintenance backlog categories with empty business queues. Authenticated browser
-acceptance passed the new Overview links and exact terminal cohort, then completed
-the existing validated activation/uptake/recovery/reviewed memo/signed-delivery
-journey. The first browser fixture introduced a second version of the golden
-opportunity and correctly failed exact claim; moving the terminal fixture to its
-own opportunity restored the independent journey. Final `npm run certify` passed
-all nine stages in 218.51 seconds, including TypeScript, SSR build and all 78
-manifest suites: 791 tests passed and one skipped. `git diff --check` passed.
-Only this verification record changed after certification. Engineering review
-corrections are complete locally; push/PR, exact-SHA CI and live rollout/proof
-remain unperformed by this cycle.
-
-Later self-review fixes: rejected stale review failures, preserved independent
-review concurrency with shared cooldown, fixed browser date hydration with ISO
-timestamps, classified vault failures operationally, bounded Retry-After, renewed
-long model capacity leases and fenced their output, and exposed actual host/admin
-driver limits plus job-pinned model revisions. Host model limits remain explicitly
-host-managed. Per-job recovery outcomes now progress from resumed to completed.
-Configuration-lag attention excludes workers that do not consume those controls;
-a worker awaiting its first driver read reports pending rather than restart-required.
-
-Local implementation and acceptance are complete for the scope below. Resolve the
-current candidate SHA with `git rev-parse HEAD` on `codex/admin-connections`;
-the Phase 0 table records the starting baseline, not the final candidate. Re-enter
-through this document and its runbook, preserving unrelated original-checkout work.
+Migrations 085–087 are additive. Tavily resolves each acquisition through the
+active connection. Gateway-managed model calls participate in shared capacity and
+cooldown; direct Bedrock evidence extraction does not yet participate. Maintenance
+runs on evaluation heartbeats; ordinary Admin reads never invoke provider calls.
+No terminal job replay or new drain worker was added. Recovery exception rollback
+has passed for better-sqlite3 and both libSQL adapter transaction branches using
+isolated local transports; remote network failure behaviour is not proven here.
 
 ## Operator runbook
 
 1. Confirm this checkout and the database target before `npm run db:migrate`.
-   Migrations 085/086 accompany this release. Existing host Tavily credentials
+   Migrations 085–087 accompany this release. Existing host Tavily credentials
    remain active until explicit Admin activation. No live migration or deployment
    was performed during implementation.
 2. Supply session/OAuth and encryption bootstrap secrets through deployment.
@@ -217,12 +172,13 @@ through this document and its runbook, preserving unrelated original-checkout wo
 5. Select a bounded exact incident cohort, preview, then resume. Five-minute
    previews expire; execution rechecks generation, pause, lease, scope and
    dependencies. Valid checkpoints remain. Resolution requires reviewed canonical
-   publication (PASS requires its evaluation only) or manual pause.
+   publication (PASS requires its evaluation only) or explicit work accounting (below).
 6. Revalidate the retained previous version before rollback. Automatic retirement
-   requires an unreferenced credential whose **creation time** is at least 30 days
-   old. An older version can retire on the next maintenance beat immediately after
-   it stops being active/candidate/previous; there is no 30-day grace period measured
-   from becoming unreferenced. Ciphertext becomes eligible for purge 30 days after
+   requires **30 days continuously unreferenced**, measured from `unreferenced_at`.
+   Migration 087 timestamps existing unreferenced versions at migration time; each
+   active/candidate/previous slot change records loss of the final reference and
+   clears the timestamp if referenced again. Creation age and `superseded_at` do not
+   control this grace period. Explicit audited manual retirement is separate. Ciphertext becomes eligible for purge 30 days after
    `retired_at`. Active, candidate and previous versions remain protected from both
    operations. Metadata/history remains; unavailable maintenance delays cleanup.
 7. Configure a signed HTTPS webhook with a 32+ character signing secret. Severity
@@ -255,12 +211,20 @@ recovering Tavily incidents, queued/retrying/sending deliveries and eligible
 retirement/purge work. A fresh heartbeat proves worker presence, not that each
 maintenance task succeeded; inspect check, incident and delivery outcomes too.
 There is no separate maintenance daemon in this release, so an unavailable worker
-also prevents outbound notifications about its own failure.
+also prevents its own outbound failure notification. Before production, configure
+an **off-host uptime monitor** to GET `/health/operations` every 60 seconds with a
+10-second request timeout and alert after three consecutive failures. It returns
+200 only for a fresh evaluation heartbeat (150-second cutoff) matching web SHA and
+database; missing, stale, mismatched or unreachable state returns 503. It requires
+neither an evaluation job nor notification delivery and exposes only status and
+release SHA. Check the expected deployed SHA in the monitor as well. Registration
+and actual external alert delivery remain deployment prerequisites; the repository
+cannot claim they are configured without a monitor destination.
 
 ## Deployment sequence
 
 1. Push the candidate and open its PR; require CI on the exact candidate SHA.
-2. Verify database backup and recovery before applying migrations 085/086.
+2. Verify database backup and recovery before applying migrations 085–087.
 3. Deploy web and exercised workers on that same SHA and database target. Verify
    migrations/readiness, required matching heartbeats and loaded receipts.
 4. Run host Bedrock/ADC probes and a bounded Tavily acquisition using the existing
@@ -270,6 +234,15 @@ also prevents outbound notifications about its own failure.
    verify required uptake. Run one bounded real recovery or live context acquisition,
    then confirm its reviewed downstream result (PASS needs evaluation only).
 
+For release rollback, redeploy the previously verified web/worker release against
+this same database **with additive migrations 085–087 left in place**. Never reverse
+these migrations or delete operational history. Before cutover, test the rollback
+artifact against a restored, migrated database: the checksum verifier requires
+all recorded migration files, so an untouched older release missing 085–087 will
+fail readiness. Prepare and verify its forward migration catalog as part of the
+rollback artifact rather than weakening checksum checks. If credentials were
+already activated, validate their separate rollback path before release rollback.
+
 Local certification is not deployed evidence. Record the exact deployed SHA and
 these results before calling the operational journey deployment-proven. Deployment
 and credential activation remain separate events with distinct rollback paths.
@@ -278,6 +251,19 @@ Stage limits apply per worker process; provider slots apply across processes per
 connection. Lower limits drain running work. Explicit lane concurrency still limits
 model calls. Rate-window support is separate internal infrastructure; unknown
 provider RPM/token quotas are not fabricated as editable settings.
+
+## Next phase priority
+
+First close the direct Bedrock evidence-extraction boundary. Candidate evidence is
+on the dossier path, so unobserved provider failure is a product risk. Route
+`EvidenceExtractionService` and remaining direct consumers through the existing
+operational gateway with exact document/tenant/person identity, visible incidents,
+bounded cooldown/capacity and a domain-owned retry path. Preserve extraction
+provenance, document queue leases and evidence integrity. Acceptance must inject
+credential/throttle/outage failures, then verify scoped document retry and restored
+evidence reaching a reviewed memo. Keep Bedrock rotation host-managed until all
+credential consumers converge. This is the first provider-expansion deliverable,
+not a claim that the current Tavily release covers evidence extraction.
 
 ## Verification commands and limits
 

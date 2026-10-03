@@ -324,7 +324,7 @@ Scraped routes. Decision-log regressions are included in release certification.
 
 ## Administration foundations
 
-Migrations 085–086 add the Connections and operational recovery slice. Tavily
+Migrations 085–087 add the Connections and operational recovery slice. Tavily
 versions are encrypted and validated on evaluation workers; incident-linked exact
 work resumes through queue-owned operations. Durable capacity leases, cooldowns,
 runtime receipts, per-stage job limits and signed asynchronous notifications share

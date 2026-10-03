@@ -331,6 +331,39 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
               Incident {i.id}
               {i.recurrence_of ? ` · recurrence of ${i.recurrence_of}` : ""}
             </p>
+            {i.state !== "resolved" && i.connection_id === "tavily:platform" && (
+              <details>
+                <summary>Affected work and exclusions</summary>
+                <p className="text-sm">
+                  Exclude exact work only with a reason. Exclusion accounts for the provider
+                  incident; it does not complete or retry the job.
+                </p>
+                {ops.linkedJobs
+                  .filter((j) => j.incident_id === i.id)
+                  .map((j) => (
+                    <div key={`${j.pipeline}:${j.job_id}`} className="my-3 space-y-2">
+                      <p className="text-sm">
+                        {j.pipeline} · {j.tenant_id} · {j.person_id} · {j.job_id} ·{" "}
+                        {j.accounted_reason ?? "pending accounting"}
+                      </p>
+                      <button
+                        className={button}
+                        disabled={!enabled || j.accounted_reason === "OPERATOR_EXCLUDED"}
+                        onClick={() =>
+                          void change({
+                            kind: "exclude",
+                            incidentId: String(i.id),
+                            pipeline: j.pipeline,
+                            jobId: String(j.job_id),
+                          } as Omit<OperationsMutation, "reason">)
+                        }
+                      >
+                        Exclude from provider recovery
+                      </button>
+                    </div>
+                  ))}
+              </details>
+            )}
             {incidentId === i.id && (
               <div className="space-y-3">
                 {ops.linkedJobs

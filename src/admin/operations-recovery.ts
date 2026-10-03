@@ -11,7 +11,10 @@ import { appendAdminAudit, requirePlatformRole } from "./service";
 import { resumeOperationalWork } from "../evaluation/operational-recovery";
 import { configJobTables } from "./config-store";
 import { SqliteStagedEvaluationStore } from "../data/sqlite/repositories/SqliteStagedEvaluationStore";
-import { SqliteRichDossierStore } from "../data/sqlite/repositories/SqliteRichDossierStore";
+import {
+  SqliteRichDossierStore,
+  RICH_DOSSIER_VERSION,
+} from "../data/sqlite/repositories/SqliteRichDossierStore";
 import {
   createStagedEvaluationFingerprint,
   assertCanonicalDecisionTrace,
@@ -26,6 +29,7 @@ type LinkedJob = {
   canonical_job_id: string;
   opportunity_version: string;
   context_fingerprint: string;
+  accounted_reason: string | null;
 };
 const identity = (row: LinkedJob): WorkIdentity => ({
   pipeline: row.pipeline,
@@ -161,116 +165,191 @@ export async function executeRecovery(
     return { actionId, outcomes };
   });
 }
-/** Completion is polled by workers, never asserted by an operator. */
-export async function reconcileProviderIncidents(db: DatabaseAdapter) {
-  const incidents = await db.many<{ id: string }>(
+async function accountIncidentJob(
+  db: DatabaseAdapter,
+  incidentId: string,
+  work: WorkIdentity,
+  reason: string | null,
+) {
+  await db.execute(
+    "UPDATE provider_incident_jobs SET accounted_reason=? WHERE incident_id=? AND pipeline=? AND job_id=?",
+    [reason, incidentId, work.pipeline, work.jobId],
+  );
+  if (reason)
+    await db.execute(
+      "UPDATE recovery_action_jobs SET outcome=?,reason=? WHERE pipeline=? AND job_id=? AND outcome='resumed' AND action_id IN (SELECT id FROM recovery_actions WHERE incident_id=?)",
+      [
+        reason === "COMPLETED" ? "completed" : "skipped",
+        reason,
+        work.pipeline,
+        work.jobId,
+        incidentId,
+      ],
+    );
+}
+/** Resolve the provider episode only after health and exact work accounting; terminal/excluded work is not successful output. */
+export async function reconcileProviderIncidents(storage: DatabaseAdapter) {
+  const incidents = await storage.many<{ id: string }>(
     "SELECT id FROM provider_incidents WHERE state='recovering' AND connection_id=?",
     [TAVILY_CONNECTION],
   );
   for (const incident of incidents) {
-    try {
-      await recoveryReady(db, incident.id);
-    } catch {
-      continue;
-    }
-    const jobs = await db.many<LinkedJob>(
-      "SELECT * FROM provider_incident_jobs WHERE incident_id=?",
-      [incident.id],
-    );
-    let complete = jobs.length > 0;
-    for (const linked of jobs) {
-      const work = identity(linked);
-      const row = await db.one<{
-        status: string;
-        person_id: string;
-        tenant_id: string;
-        canonical_job_id: string;
-        opportunity_version: string;
-        evaluation_context_fingerprint: string;
-      }>(`SELECT * FROM ${configJobTables[work.pipeline]} WHERE id=?`, [work.jobId]);
-      if (
-        !row ||
-        row.tenant_id !== work.tenantId ||
-        row.person_id !== work.personId ||
-        row.opportunity_version !== work.opportunityVersion ||
-        row.canonical_job_id !== work.canonicalJobId ||
-        row.evaluation_context_fingerprint !== work.contextFingerprint
-      ) {
-        complete = false;
-        continue;
+    await storage.transaction(async (db) => {
+      try {
+        await recoveryReady(db, incident.id);
+      } catch {
+        return;
       }
-      let accounted = ["completed", "staged_completed"].includes(row.status);
-      if (accounted && work.pipeline === "evaluation") {
-        try {
-          const dossierIdentity = {
-            ...work,
-            evaluationContextFingerprint: work.contextFingerprint,
-          };
-          const evaluation = await new SqliteStagedEvaluationStore(db).get(dossierIdentity);
-          accounted = evaluation?.evaluationState === "COMPLETED" && evaluation.decision === "PASS";
-          if (evaluation?.evaluationState === "COMPLETED" && evaluation.decision !== "PASS") {
-            const staged = parseCanonicalStagedDecisionResult(evaluation.evaluation);
-            const fingerprint = createStagedEvaluationFingerprint({
-              evaluationContextFingerprint: work.contextFingerprint,
-              inputFingerprint: evaluation.inputFingerprint,
-              evaluation: staged,
-            });
-            const memo = await new SqliteRichDossierStore(db).get(dossierIdentity, fingerprint);
-            if (memo) assertCanonicalDecisionTrace(memo, staged.trace);
-            const published = await db.one(
-              "SELECT id FROM materialized_evaluations WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=? AND evaluation_fingerprint=? AND json_extract(evaluation_json,'$.presentationVersion')='dossier-v4.1'",
-              [
-                work.tenantId,
-                work.personId,
-                work.canonicalJobId,
-                work.opportunityVersion,
-                work.contextFingerprint,
-                fingerprint,
-              ],
-            );
-            accounted = Boolean(memo && published);
-          }
-        } catch {
-          accounted = false;
+      const jobs = await db.many<LinkedJob>(
+        "SELECT * FROM provider_incident_jobs WHERE incident_id=?",
+        [incident.id],
+      );
+      let complete = true; // A healthy episode with no linked work has no outstanding cohort.
+      for (const linked of jobs) {
+        const work = identity(linked);
+        if (linked.accounted_reason === "OPERATOR_EXCLUDED") {
+          await accountIncidentJob(db, incident.id, work, "OPERATOR_EXCLUDED");
+          continue;
         }
-      }
-      const paused = await db.one(
-        "SELECT scope_key FROM pipeline_controls WHERE paused=1 AND scope_key IN ('*',?) AND pipeline IN ('*',?)",
-        [work.tenantId, work.pipeline],
-      );
-      const userPaused =
-        work.pipeline === "evaluation" &&
-        Boolean(
-          await db.one(
-            "SELECT desired_state FROM evaluation_runtime_control WHERE tenant_id=? AND person_id=? AND desired_state!='RUNNING'",
-            [work.tenantId, work.personId],
-          ),
+        const owner = work.pipeline === "pursuit" ? "p" : "j";
+        const join =
+          work.pipeline === "pursuit"
+            ? "LEFT JOIN opportunity_pursuits p ON p.id=j.pursuit_id AND p.tenant_id=j.tenant_id AND p.person_id=j.person_id"
+            : "";
+        const row = await db.one<{
+          status: string;
+          person_id: string;
+          tenant_id: string;
+          canonical_job_id: string;
+          opportunity_version: string;
+          evaluation_context_fingerprint: string;
+          search_plan_id?: string;
+        }>(
+          `SELECT j.*,${owner}.canonical_job_id,${owner}.opportunity_version,${owner}.evaluation_context_fingerprint FROM ${configJobTables[work.pipeline]} j ${join} WHERE j.id=?`,
+          [work.jobId],
         );
-      if (paused || userPaused) accounted = true;
-      if (!accounted) complete = false;
-      if (accounted && !paused && !userPaused)
-        await db.execute(
-          "UPDATE recovery_action_jobs SET outcome='completed',reason='REVIEWED_WORK_COMPLETED' WHERE pipeline=? AND job_id=? AND outcome='resumed' AND action_id IN (SELECT id FROM recovery_actions WHERE incident_id=?)",
-          [work.pipeline, work.jobId, incident.id],
+        if (!row) {
+          complete = false; // Missing data needs an explicit audited exclusion, not an invented success.
+          await accountIncidentJob(db, incident.id, work, null);
+          continue;
+        }
+        if (
+          row.tenant_id !== work.tenantId ||
+          row.person_id !== work.personId ||
+          row.opportunity_version !== work.opportunityVersion ||
+          row.canonical_job_id !== work.canonicalJobId ||
+          row.evaluation_context_fingerprint !== work.contextFingerprint
+        ) {
+          await accountIncidentJob(db, incident.id, work, "IDENTITY_SUPERSEDED");
+          continue;
+        }
+        const supersededContext = await db.one(
+          `SELECT a.context_fingerprint FROM evaluation_context_scopes s JOIN active_evaluation_contexts a
+         ON a.tenant_id=s.tenant_id AND a.person_id=s.person_id AND a.search_plan_id=s.search_plan_id
+         WHERE s.tenant_id=? AND s.person_id=? AND s.context_fingerprint=? AND a.context_fingerprint!=s.context_fingerprint
+         AND NOT EXISTS (SELECT 1 FROM active_evaluation_contexts current WHERE current.tenant_id=s.tenant_id AND current.person_id=s.person_id AND current.context_fingerprint=s.context_fingerprint)`,
+          [work.tenantId, work.personId, work.contextFingerprint],
         );
-      await db.execute(
-        "UPDATE provider_incident_jobs SET accounted_reason=? WHERE incident_id=? AND pipeline=? AND job_id=?",
-        [
-          accounted ? (paused || userPaused ? "MANUALLY_PAUSED" : "COMPLETED") : null,
+        const supersededVersion =
+          row.search_plan_id &&
+          (await db.one(
+            `SELECT newer.id FROM search_plan_candidates c JOIN opportunity_versions newer ON newer.id=c.opportunity_version AND newer.canonical_job_id=c.canonical_job_id
+         JOIN opportunity_versions old ON old.id=? AND old.canonical_job_id=c.canonical_job_id
+         WHERE c.tenant_id=? AND c.person_id=? AND c.search_plan_id=? AND c.canonical_job_id=? AND newer.created_at>old.created_at`,
+            [
+              work.opportunityVersion,
+              work.tenantId,
+              work.personId,
+              row.search_plan_id,
+              work.canonicalJobId,
+            ],
+          ));
+        if (supersededContext || supersededVersion) {
+          await accountIncidentJob(
+            db,
+            incident.id,
+            work,
+            supersededContext ? "CONTEXT_SUPERSEDED" : "VERSION_SUPERSEDED",
+          );
+          continue;
+        }
+        if (
+          ["failed", "dead_letter", "staged_dead_letter", "needs_attention"].includes(row.status)
+        ) {
+          await accountIncidentJob(
+            db,
+            incident.id,
+            work,
+            `DOMAIN_TERMINAL_${row.status.toUpperCase()}`,
+          );
+          continue;
+        }
+        let accounted = ["completed", "staged_completed"].includes(row.status);
+        if (accounted && work.pipeline === "evaluation") {
+          try {
+            const dossierIdentity = {
+              ...work,
+              evaluationContextFingerprint: work.contextFingerprint,
+            };
+            const evaluation = await new SqliteStagedEvaluationStore(db).get(dossierIdentity);
+            accounted =
+              evaluation?.evaluationState === "COMPLETED" && evaluation.decision === "PASS";
+            if (evaluation?.evaluationState === "COMPLETED" && evaluation.decision !== "PASS") {
+              const staged = parseCanonicalStagedDecisionResult(evaluation.evaluation);
+              const fingerprint = createStagedEvaluationFingerprint({
+                evaluationContextFingerprint: work.contextFingerprint,
+                inputFingerprint: evaluation.inputFingerprint,
+                evaluation: staged,
+              });
+              const memo = await new SqliteRichDossierStore(db).get(dossierIdentity, fingerprint);
+              if (memo) assertCanonicalDecisionTrace(memo, staged.trace);
+              const published = await db.one(
+                "SELECT id FROM materialized_evaluations WHERE tenant_id=? AND person_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=? AND evaluation_fingerprint=? AND json_extract(evaluation_json,'$.presentationVersion')=?",
+                [
+                  work.tenantId,
+                  work.personId,
+                  work.canonicalJobId,
+                  work.opportunityVersion,
+                  work.contextFingerprint,
+                  fingerprint,
+                  RICH_DOSSIER_VERSION,
+                ],
+              );
+              accounted = Boolean(memo && published);
+            }
+          } catch {
+            accounted = false;
+          }
+        }
+        const paused = await db.one(
+          "SELECT scope_key FROM pipeline_controls WHERE paused=1 AND scope_key IN ('*',?) AND pipeline IN ('*',?)",
+          [work.tenantId, work.pipeline],
+        );
+        const userPaused =
+          work.pipeline === "evaluation" &&
+          Boolean(
+            await db.one(
+              "SELECT desired_state FROM evaluation_runtime_control WHERE tenant_id=? AND person_id=? AND desired_state!='RUNNING'",
+              [work.tenantId, work.personId],
+            ),
+          );
+        if (paused || userPaused) accounted = true;
+        if (!accounted) complete = false;
+        await accountIncidentJob(
+          db,
           incident.id,
-          work.pipeline,
-          work.jobId,
-        ],
-      );
-    }
-    if (complete)
-      await db.transaction(async (tx) => {
-        await recoveryReady(tx, incident.id); // Fence resolution against a failure or rotation racing reconciliation.
-        const changed = await tx.execute(
+          work,
+          accounted ? (paused || userPaused ? "MANUALLY_PAUSED" : "COMPLETED") : null,
+        );
+      }
+      if (complete) {
+        await recoveryReady(db, incident.id); // Account and resolve inside the same transaction.
+        const changed = await db.execute(
           "UPDATE provider_incidents SET state='resolved',resolved_at=? WHERE id=? AND state='recovering'",
           [Date.now(), incident.id],
         );
-        if (changed.rowsAffected) await enqueueIncidentNotification(tx, incident.id, "resolved");
-      });
+        if (changed.rowsAffected) await enqueueIncidentNotification(db, incident.id, "resolved");
+      }
+    });
   }
 }

@@ -13,6 +13,7 @@ import { CredentialVault } from "../../src/lib/security/CredentialVault";
 import { pollNotificationDelivery } from "../../src/admin/notification-worker";
 import { reconcileProviderIncidents } from "../../src/admin/operations-recovery";
 import { notificationSignature } from "../../src/admin/notification-worker";
+import { associateIncidentWork } from "../../src/admin/operations-runtime";
 
 function assert(value: unknown, message: string): asserts value {
   if (!value) throw new Error(message);
@@ -106,6 +107,12 @@ export async function runOperationsBrowserJourney(
     );
   }
   const incident = (await db.one<{ id: string }>("SELECT id FROM provider_incidents"))!;
+  await associateIncidentWork(db, incident.id, {
+    ...work,
+    jobId: "operations-terminal-job",
+    canonicalJobId: terminalCanonical,
+    opportunityVersion: terminalVersion,
+  });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage();
   await context.addCookies([
@@ -143,7 +150,33 @@ export async function runOperationsBrowserJourney(
   ]);
   await page.getByRole("button", { name: "Refresh operations", exact: true }).click();
   await page.getByRole("heading", { name: "Tavily connection", exact: true }).waitFor();
+  assert(
+    (await page.request.get(`${baseUrl}/health/operations`)).status() === 200,
+    "external heartbeat probe unavailable",
+  );
   await page.getByLabel("Operational change reason").fill("Recover isolated credential incident");
+  const affected = page
+    .locator(`#incident-${incident.id} details`)
+    .filter({ has: page.getByText("Affected work and exclusions", { exact: true }) });
+  await affected.getByText("Affected work and exclusions", { exact: true }).click();
+  const excluded = affected
+    .locator("div")
+    .filter({ has: page.getByText(/evaluation.*operations-terminal-job/) })
+    .last();
+  await excluded
+    .getByRole("button", { name: "Exclude from provider recovery", exact: true })
+    .click();
+  await page.getByRole("status").filter({ hasText: "Operation recorded." }).waitFor();
+  assert(
+    await db.one(
+      "SELECT job_id FROM provider_incident_jobs WHERE job_id='operations-terminal-job' AND accounted_reason='OPERATOR_EXCLUDED'",
+    ),
+    "exact exclusion missing",
+  );
+  assert(
+    await db.one("SELECT id FROM admin_audit_log WHERE action='recovery.exclude'"),
+    "exclusion audit missing",
+  );
   const candidateKey = "tvly-" + "z".repeat(30);
   await page.getByLabel("Replacement Tavily key").fill(candidateKey);
   await operation(page, "Save candidate");
@@ -173,11 +206,17 @@ export async function runOperationsBrowserJourney(
   await operation(page, "Resume 1 selected jobs");
   await completeOperationalMemo(db, identity, work.jobId);
   await reconcileProviderIncidents(db);
-  const send = async (_url: string, body: string, secret: string, eventId: string) => {
+  const send = async (
+    _url: string,
+    body: string,
+    secret: string,
+    deliveryId: string,
+    eventId: string,
+  ) => {
     assert(secret === signingSecret, "signing secret mismatch");
     assert(JSON.parse(body).eventId === eventId, "event identity missing");
     assert(
-      notificationSignature(secret, String(Date.now()), body).length === 64,
+      notificationSignature(secret, String(Date.now()), eventId, deliveryId, body).length === 64,
       "signature missing",
     );
     return 204;

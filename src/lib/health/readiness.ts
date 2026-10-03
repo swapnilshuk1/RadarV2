@@ -7,7 +7,9 @@ import {
   REQUIRED_WORKERS,
   WORKER_HEARTBEAT_STALE_MS,
   requiredWorkersForEnvironment,
+  isWorkerOnline,
 } from "./worker-heartbeat";
+import { operationsInstalled } from "../../admin/operations-runtime";
 
 export type ReadinessPayload = {
   readonly status: "ready" | "unavailable";
@@ -35,6 +37,30 @@ export async function readyResponse(): Promise<Response> {
   const readiness = await getReadiness();
   return new Response(JSON.stringify(readiness.body), {
     status: readiness.status,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+  });
+}
+
+/** External uptime monitors can detect maintenance loss without relying on the dead worker's notification loop. */
+export async function getOperationsReadiness(): Promise<{
+  status: number;
+  body: ReadinessPayload;
+}> {
+  try {
+    const db = getDatabaseAdapter();
+    const ready = (await operationsInstalled(db)) && (await isWorkerOnline("evaluation", { db }));
+    return {
+      status: ready ? 200 : 503,
+      body: { status: ready ? "ready" : "unavailable", releaseSha: releaseSha() },
+    };
+  } catch {
+    return { status: 503, body: { status: "unavailable", releaseSha: releaseSha() } };
+  }
+}
+export async function operationsReadyResponse(): Promise<Response> {
+  const result = await getOperationsReadiness();
+  return new Response(JSON.stringify(result.body), {
+    status: result.status,
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
   });
 }

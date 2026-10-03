@@ -100,7 +100,7 @@ export async function readSearchConnection(db: DatabaseAdapter, actor: string) {
     activatedAt: row.activated_at,
     uptake: await searchUptake(db),
     credentials: await db.many<Record<string, string | number | null>>(
-      "SELECT c.id,c.created_at,l.activated_at,l.superseded_at,l.retired_at,l.last_validated_at,l.last_used_at,l.key_version FROM admin_search_credentials c JOIN provider_credential_lifecycle l ON l.credential_id=c.id ORDER BY c.created_at DESC LIMIT 20",
+      "SELECT c.id,c.created_at,l.activated_at,l.superseded_at,l.unreferenced_at,l.retired_at,l.last_validated_at,l.last_used_at,l.key_version FROM admin_search_credentials c JOIN provider_credential_lifecycle l ON l.credential_id=c.id ORDER BY c.created_at DESC LIMIT 20",
     ),
     checks: await db.many<Record<string, string | number | null>>(
       "SELECT id,credential_id,status,worker_host,worker_instance,error_code,created_at,completed_at FROM admin_search_checks ORDER BY created_at DESC LIMIT 20",

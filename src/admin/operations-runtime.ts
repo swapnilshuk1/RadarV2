@@ -124,7 +124,7 @@ export async function enqueueIncidentNotification(
       destination.url,
       destination.secret_envelope,
       JSON.stringify({
-        eventId: id,
+        eventId: `${incidentId}:${event}`,
         incidentId,
         event,
         provider: incident.provider,

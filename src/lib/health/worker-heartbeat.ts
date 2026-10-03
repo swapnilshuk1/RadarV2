@@ -110,25 +110,8 @@ export async function startWorkerHeartbeat(
         database: identity.fingerprint,
       });
       if (workerName === "evaluation") {
-        const now = Date.now();
-        await db.transaction(async (tx) => {
-          await tx.execute(
-            `UPDATE provider_credential_lifecycle SET retired_at=? WHERE retired_at IS NULL
-            AND credential_id IN (SELECT id FROM admin_search_credentials WHERE created_at<=?)
-            AND credential_id NOT IN (SELECT COALESCE(active_id,'') FROM admin_search_connection UNION SELECT COALESCE(candidate_id,'') FROM admin_search_connection UNION SELECT COALESCE(previous_id,'') FROM admin_search_connection)`,
-            [now, now - 30 * 86400000],
-          );
-          await tx.execute(
-            `UPDATE admin_search_credentials SET envelope_json='{"retired":true}'
-            WHERE id IN (SELECT credential_id FROM provider_credential_lifecycle WHERE retired_at<=? AND secret_purged_at IS NULL)
-            AND id NOT IN (SELECT COALESCE(active_id,'') FROM admin_search_connection UNION SELECT COALESCE(candidate_id,'') FROM admin_search_connection UNION SELECT COALESCE(previous_id,'') FROM admin_search_connection)`,
-            [now - 30 * 86400000],
-          );
-          await tx.execute(
-            `UPDATE provider_credential_lifecycle SET secret_purged_at=? WHERE secret_purged_at IS NULL AND credential_id IN (SELECT id FROM admin_search_credentials WHERE envelope_json='{"retired":true}')`,
-            [now],
-          );
-        });
+        const { maintainCredentialRetention } = await import("../../admin/credential-maintenance");
+        await maintainCredentialRetention(db);
       }
       const loaded = operations.effectiveOperationalRevision();
       await operations.writeRuntimeReceipt(db, {

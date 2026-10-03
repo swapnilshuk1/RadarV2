@@ -133,7 +133,7 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
     (SELECT COUNT(*) FROM provider_incidents WHERE connection_id='tavily:platform' AND state='recovering') reconciliation,
     (SELECT COUNT(*) FROM notification_deliveries WHERE status IN ('queued','retry','sending')) notifications,
     (SELECT COUNT(*) FROM provider_credential_lifecycle l JOIN admin_search_credentials c ON c.id=l.credential_id
-      WHERE l.retired_at IS NULL AND c.created_at<=? AND NOT EXISTS
+      WHERE l.retired_at IS NULL AND l.unreferenced_at<=? AND NOT EXISTS
       (SELECT 1 FROM admin_search_connection s WHERE s.active_id=c.id OR s.candidate_id=c.id OR s.previous_id=c.id)) retirement,
     (SELECT COUNT(*) FROM provider_credential_lifecycle l WHERE l.retired_at<=? AND l.secret_purged_at IS NULL AND NOT EXISTS
       (SELECT 1 FROM admin_search_connection s WHERE s.active_id=l.credential_id OR s.candidate_id=l.credential_id OR s.previous_id=l.credential_id)) purge`,
@@ -255,7 +255,36 @@ export async function mutateOperations(
   if (data.kind === "webhook") await validateWebhookDestination(data.url);
   return db.transaction(async (tx) => {
     await requirePlatformRole(tx, actor, true);
-    if (data.kind === "throughput") {
+    if (data.kind === "exclude") {
+      const job = await tx.one<Record<string, string | number | null>>(
+        "SELECT j.* FROM provider_incident_jobs j JOIN provider_incidents i ON i.id=j.incident_id WHERE j.incident_id=? AND j.pipeline=? AND j.job_id=? AND i.connection_id='tavily:platform' AND i.state!='resolved'",
+        [data.incidentId, data.pipeline, data.jobId],
+      );
+      if (!job) throw new Error("RECOVERY_JOB_NOT_IN_INCIDENT");
+      if (job.accounted_reason === "OPERATOR_EXCLUDED")
+        throw new Error("RECOVERY_JOB_ALREADY_EXCLUDED");
+      await tx.execute(
+        "UPDATE provider_incident_jobs SET accounted_reason='OPERATOR_EXCLUDED' WHERE incident_id=? AND pipeline=? AND job_id=?",
+        [data.incidentId, data.pipeline, data.jobId],
+      );
+      await appendAdminAudit(tx, {
+        actor,
+        action: "recovery.exclude",
+        tenant: String(job.tenant_id),
+        target: data.incidentId,
+        reason: data.reason,
+        detail: {
+          pipeline: data.pipeline,
+          jobId: data.jobId,
+          tenantId: job.tenant_id,
+          personId: job.person_id,
+          canonicalJobId: job.canonical_job_id,
+          opportunityVersion: job.opportunity_version,
+          contextFingerprint: job.context_fingerprint,
+        },
+      });
+      return { ok: true };
+    } else if (data.kind === "throughput") {
       const changed = await tx.execute(
         "UPDATE operational_settings SET revision=revision+1,settings_json=?,updated_at=?,updated_by=? WHERE id=1 AND revision=?",
         [JSON.stringify(data.settings), Date.now(), actor, data.revision],

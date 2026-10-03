@@ -80,6 +80,12 @@ export const operationsMutationSchema = z
       jobIds: z.array(z.string().min(1)).min(1).max(100),
     }),
     z.object({ kind: z.literal("execute"), actionId: z.string().uuid() }),
+    z.object({
+      kind: z.literal("exclude"),
+      incidentId: z.string().uuid(),
+      pipeline: z.enum(operationalPipelines),
+      jobId: z.string().min(1).max(500),
+    }),
     z.object({ kind: z.literal("host_probe"), provider: z.enum(["bedrock", "google"]) }),
     z.object({
       kind: z.literal("webhook"),
