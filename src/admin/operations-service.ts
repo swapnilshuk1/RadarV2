@@ -10,6 +10,7 @@ import {
 import { operationsMutationSchema, type OperationsMutation } from "./operations-contracts";
 import { executeRecovery, previewRecovery } from "./operations-recovery";
 import { validateWebhookDestination } from "./notification-worker";
+import { resolveBedrockCredential } from "../lib/model/bedrock-credential-resolver";
 import { configJobTables } from "./config-store";
 import { randomUUID } from "node:crypto";
 import { describeBlobStoreConfiguration } from "../lib/storage/blob-store";
@@ -65,6 +66,32 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
       })),
     );
   }
+  const documents = await db.one<{
+    waiting: number;
+    active: number;
+    terminal: number;
+    dead_letter: number;
+    failed: number;
+    needs_attention: number;
+    oldest: string | null;
+  }>(
+    `SELECT SUM(status='pending') waiting,SUM(status='processing') active,SUM(status='dead_letter') terminal,
+     SUM(status='dead_letter') dead_letter,0 failed,0 needs_attention,
+     MIN(CASE WHEN status='pending' THEN created_at END) oldest FROM candidate_document_jobs`,
+  );
+  queues.push({ pipeline: "documents", ...documents });
+  terminalJobs.push(
+    ...(
+      await db.many<Record<string, string | number | null>>(
+        "SELECT id job_id,tenant_id,person_id,document_id,status,created_at FROM candidate_document_jobs WHERE status='dead_letter' ORDER BY created_at DESC,id LIMIT 100",
+      )
+    ).map((job) => ({
+      pipeline: "documents",
+      ...job,
+      recovery: "Domain recovery policy required; Operations resume unavailable",
+    })),
+  );
+  const bedrockCredential = await resolveBedrockCredential().catch(() => null);
   let callbackValid = false;
   try {
     const callback = new URL(process.env.GOOGLE_REDIRECT_URI ?? "");
@@ -99,6 +126,7 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
     dossier: "dossier-composition",
     factual_review: "dossier-review",
     pursuit: "pursuit-preparation",
+    documents: "documents",
   };
   const workerOnline = (name: string) =>
     workers.some(
@@ -195,7 +223,10 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
     if (
       Number(receipt.last_seen_at) > Date.now() - 150000 &&
       receipt.connection_id === "runtime" &&
-      Object.values(workerNames).includes(String(receipt.worker_name)) &&
+      Object.entries(workerNames).some(
+        ([pipeline, name]) =>
+          pipeline in configuration.settings && name === String(receipt.worker_name),
+      ) &&
       receipt.config_revision !== `operational:${configuration.revision}`
     )
       attention.push({
@@ -248,9 +279,9 @@ export async function readOperations(db: DatabaseAdapter, actor: string) {
       migrationInstalled: true,
       storageStatus,
       bedrock: {
-        credentialConfigured: Boolean(process.env.BEDROCK_MANTLE_API_KEY),
+        credentialConfigured: Boolean(bedrockCredential),
         source: "host",
-        version: process.env.RADAR_MODEL_CREDENTIAL_VERSION ?? "unversioned host setting",
+        version: bedrockCredential?.version ?? "unavailable",
         rotation: "deployment-managed",
       },
       adc: {

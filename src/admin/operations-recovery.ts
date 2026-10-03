@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseAdapter } from "../data/database/adapter";
 import { getDatabaseTargetIdentity } from "../data/database";
-import type { WorkIdentity } from "./operations-contracts";
+import { workIdentitySchema, type WorkIdentity } from "./operations-contracts";
 import {
   operationalSettings,
   assertProviderDispatch,
@@ -35,17 +35,27 @@ type LinkedJob = {
   canonical_job_id: string;
   opportunity_version: string;
   context_fingerprint: string;
+  document_id: string | null;
   accounted_reason: string | null;
 };
-const identity = (row: LinkedJob): WorkIdentity => ({
-  pipeline: row.pipeline,
-  jobId: row.job_id,
-  tenantId: row.tenant_id,
-  personId: row.person_id,
-  canonicalJobId: row.canonical_job_id,
-  opportunityVersion: row.opportunity_version,
-  contextFingerprint: row.context_fingerprint,
-});
+const identity = (row: LinkedJob): WorkIdentity =>
+  row.pipeline === "documents"
+    ? {
+        pipeline: "documents",
+        jobId: row.job_id,
+        tenantId: row.tenant_id,
+        personId: row.person_id,
+        documentId: row.document_id!,
+      }
+    : {
+        pipeline: row.pipeline,
+        jobId: row.job_id,
+        tenantId: row.tenant_id,
+        personId: row.person_id,
+        canonicalJobId: row.canonical_job_id,
+        opportunityVersion: row.opportunity_version,
+        contextFingerprint: row.context_fingerprint,
+      };
 async function recoveryReady(db: DatabaseAdapter, incidentId: string) {
   const incident = await db.one<{
     connection_id: string;
@@ -259,7 +269,10 @@ export async function executeRecovery(
       const outcome =
         linked?.accounted_reason === "OPERATOR_EXCLUDED"
           ? { outcome: "skipped" as const, reason: "OPERATOR_EXCLUDED" }
-          : await resumeOperationalWork(tx, JSON.parse(job.identity_json));
+          : await resumeOperationalWork(
+              tx,
+              workIdentitySchema.parse(JSON.parse(job.identity_json)),
+            );
       await tx.execute(
         "UPDATE recovery_action_jobs SET outcome=?,reason=? WHERE action_id=? AND pipeline=? AND job_id=?",
         [outcome.outcome, outcome.reason, actionId, job.pipeline, job.job_id],
@@ -309,15 +322,16 @@ async function accountIncidentJob(
 /** Resolve the provider episode only after health and exact work accounting; terminal/excluded work is not successful output. */
 export async function reconcileProviderIncidents(storage: DatabaseAdapter) {
   const incidents = await storage.many<{ id: string }>(
-    "SELECT id FROM provider_incidents WHERE state='recovering' AND connection_id IN (?,?,?)",
+    "SELECT id FROM provider_incidents WHERE state!='resolved' AND connection_id IN (?,?,?)",
     [TAVILY_CONNECTION, "bedrock:host", "google:host"],
   );
   for (const incident of incidents) {
     await storage.transaction(async (db) => {
+      let healthy = true;
       try {
         await recoveryReady(db, incident.id);
       } catch {
-        return;
+        healthy = false;
       }
       const jobs = await db.many<LinkedJob>(
         "SELECT * FROM provider_incident_jobs WHERE incident_id=?",
@@ -328,6 +342,27 @@ export async function reconcileProviderIncidents(storage: DatabaseAdapter) {
         const work = identity(linked);
         if (linked.accounted_reason === "OPERATOR_EXCLUDED") {
           await accountIncidentJob(db, incident.id, work, "OPERATOR_EXCLUDED");
+          continue;
+        }
+        if (work.pipeline === "documents") {
+          const row = await db.one<{ status: string }>(
+            `SELECT j.status FROM candidate_document_jobs j JOIN candidate_documents d
+             ON d.id=j.document_id AND d.tenant_id=j.tenant_id AND d.person_id=j.person_id
+             WHERE j.id=? AND j.document_id=? AND j.tenant_id=? AND j.person_id=?`,
+            [work.jobId, work.documentId, work.tenantId, work.personId],
+          );
+          const reason =
+            row?.status === "completed"
+              ? "COMPLETED"
+              : row?.status === "dead_letter"
+                ? "DOMAIN_TERMINAL_DEAD_LETTER"
+                : null;
+          await accountIncidentJob(db, incident.id, work, reason);
+          if (!reason) complete = false;
+          continue;
+        }
+        if (!healthy) {
+          complete = false;
           continue;
         }
         const owner = work.pipeline === "pursuit" ? "p" : "j";
@@ -461,7 +496,7 @@ export async function reconcileProviderIncidents(storage: DatabaseAdapter) {
           accounted ? (paused || userPaused ? "MANUALLY_PAUSED" : "COMPLETED") : null,
         );
       }
-      if (complete) {
+      if (complete && healthy) {
         await recoveryReady(db, incident.id); // Account and resolve inside the same transaction.
         const changed = await db.execute(
           "UPDATE provider_incidents SET state='resolved',resolved_at=? WHERE id=? AND state='recovering'",

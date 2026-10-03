@@ -1,4 +1,4 @@
-import type { JsonModel } from '@/lib/model/json-model';
+import type { JsonModel } from "@/lib/model/json-model";
 /**
  * ProjectionPipeline.ts
  *
@@ -39,6 +39,7 @@ export type PipelineStage =
 
 export interface PipelineExecutionInput {
   scope: AuthorizedPersonScope;
+  documentJobLease?: { jobId: string; token: string };
   documentId: string;
   filename: string;
   storageUri: string;
@@ -57,7 +58,12 @@ export function reuseEvidenceGraphForOwner(
   personId: string,
   documentId: string,
 ): EvidenceGraph | undefined {
-  if (!existingGraph || existingGraph.personId !== personId || existingGraph.provenance.model === "heuristic") return undefined;
+  if (
+    !existingGraph ||
+    existingGraph.personId !== personId ||
+    existingGraph.provenance.model === "heuristic"
+  )
+    return undefined;
   return {
     ...existingGraph,
     id: `ev-graph-${documentId}-dedup`,
@@ -67,17 +73,41 @@ export function reuseEvidenceGraphForOwner(
 }
 
 export class ProjectionPipeline {
-  private readonly db:DatabaseAdapter;
-  private readonly repos:ReturnType<typeof getRepositories>;
-  private readonly extractor:EvidenceExtractionService;
-  constructor(options:{db?:DatabaseAdapter;model?:JsonModel}={}){
-    this.db=options.db??getDatabaseAdapter();
-    this.repos=options.db?createRepositories(options.db):getRepositories();
-    this.extractor=new EvidenceExtractionService(options.model);
+  private readonly db: DatabaseAdapter;
+  private readonly repos: ReturnType<typeof getRepositories>;
+  private readonly extractor: EvidenceExtractionService;
+  constructor(options: { db?: DatabaseAdapter; model?: JsonModel } = {}) {
+    this.db = options.db ?? getDatabaseAdapter();
+    this.repos = options.db ? createRepositories(options.db) : getRepositories();
+    this.extractor = new EvidenceExtractionService(options.model);
+  }
+  private async write<T>(
+    input: PipelineExecutionInput,
+    action: (repos: ReturnType<typeof createRepositories>, db: DatabaseAdapter) => Promise<T>,
+  ): Promise<T> {
+    if (!input.documentJobLease) return action(this.repos, this.db);
+    return this.db.transaction(async (tx) => {
+      const owned = await tx.one(
+        `SELECT id FROM candidate_document_jobs WHERE id=? AND document_id=? AND tenant_id=? AND person_id=?
+         AND status='processing' AND lease_token=? AND locked_at>=datetime('now','-300 seconds')`,
+        [
+          input.documentJobLease!.jobId,
+          input.documentId,
+          input.scope.tenantId,
+          input.scope.personId,
+          input.documentJobLease!.token,
+        ],
+      );
+      if (!owned) throw new Error("DOCUMENT_JOB_LEASE_LOST");
+      return action(createRepositories(tx), tx);
+    });
   }
   private builder = new CandidateProjectionBuilderImpl();
 
-  public async run(input: PipelineExecutionInput, startStage: PipelineStage = "DOCUMENT_REGISTERED"): Promise<{
+  public async run(
+    input: PipelineExecutionInput,
+    startStage: PipelineStage = "DOCUMENT_REGISTERED",
+  ): Promise<{
     success: boolean;
     stage: PipelineStage;
     error?: string;
@@ -103,9 +133,9 @@ export class ProjectionPipeline {
           status: "PROCESSING",
           stage: "DOCUMENT_REGISTERED",
           createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
         };
-        await this.repos.documents.saveDocument(scope, docRecord);
+        await this.write(input, (repos) => repos.documents.saveDocument(scope, docRecord));
         currentStage = "TEXT_EXTRACTED";
       }
 
@@ -114,7 +144,9 @@ export class ProjectionPipeline {
       let textHash = "";
 
       if (currentStage === "TEXT_EXTRACTED") {
-        await this.repos.documents.updateDocumentStage(scope, documentId, "TEXT_EXTRACTED", "PROCESSING");
+        await this.write(input, (repos) =>
+          repos.documents.updateDocumentStage(scope, documentId, "TEXT_EXTRACTED", "PROCESSING"),
+        );
         if (input.fileBuffer) {
           const parsed = await parseDocumentText(input.fileBuffer, mimeType);
           rawText = parsed.rawText;
@@ -123,7 +155,9 @@ export class ProjectionPipeline {
           const parsed = await parseDocumentText(Buffer.from(rawText, "utf-8"), "text/plain");
           textHash = parsed.textHash;
         }
-        await this.repos.documents.saveDocumentContent(scope, documentId, rawText, textHash);
+        await this.write(input, (repos) =>
+          repos.documents.saveDocumentContent(scope, documentId, rawText, textHash),
+        );
         currentStage = "EVIDENCE_EXTRACTED";
       } else {
         const content = await this.repos.documents.getDocumentContent(scope, documentId);
@@ -136,18 +170,36 @@ export class ProjectionPipeline {
       // 3. EVIDENCE_EXTRACTED (with text_hash deduplication)
       let evidenceGraph: EvidenceGraph | undefined;
       if (currentStage === "EVIDENCE_EXTRACTED") {
-        await this.repos.documents.updateDocumentStage(scope, documentId, "EVIDENCE_EXTRACTED", "PROCESSING");
-        const persistedGraph = await this.repos.documents.getEvidenceGraphForDocument(scope, documentId);
+        await this.write(input, (repos) =>
+          repos.documents.updateDocumentStage(
+            scope,
+            documentId,
+            "EVIDENCE_EXTRACTED",
+            "PROCESSING",
+          ),
+        );
+        const persistedGraph = await this.repos.documents.getEvidenceGraphForDocument(
+          scope,
+          documentId,
+        );
         const replaceHeuristicGraph = persistedGraph?.provenance.model === "heuristic";
         evidenceGraph = replaceHeuristicGraph ? undefined : persistedGraph;
 
         // Content can be reused only inside the same candidate identity. A hash
         // proves identical text, never shared ownership or provenance.
         if (!evidenceGraph && textHash) {
-          const existingGraph = await this.repos.documents.findExistingEvidenceGraphByTextHash(scope, textHash);
-          const reusableGraph = existingGraph?.provenance.model === "heuristic" ? undefined : reuseEvidenceGraphForOwner(existingGraph, personId, documentId);
+          const existingGraph = await this.repos.documents.findExistingEvidenceGraphByTextHash(
+            scope,
+            textHash,
+          );
+          const reusableGraph =
+            existingGraph?.provenance.model === "heuristic"
+              ? undefined
+              : reuseEvidenceGraphForOwner(existingGraph, personId, documentId);
           if (reusableGraph) {
-            console.log(`[ProjectionPipeline] Instant deduplication match for textHash ${textHash.slice(0, 8)}...!`);
+            console.log(
+              `[ProjectionPipeline] Instant deduplication match for textHash ${textHash.slice(0, 8)}...!`,
+            );
             evidenceGraph = reusableGraph;
             isDeduplicated = true;
           }
@@ -158,7 +210,7 @@ export class ProjectionPipeline {
             personId,
             documentId,
             documentHash: textHash || documentHash,
-            documentText: rawText
+            documentText: rawText,
           });
         }
 
@@ -166,8 +218,13 @@ export class ProjectionPipeline {
           throw new Error("AUTHORITATIVE_SOURCE_EXTRACTION_UNAVAILABLE");
         }
 
-        if (replaceHeuristicGraph) await this.repos.documents.replaceEvidenceGraphForDocument(scope, evidenceGraph);
-        else if (!(await this.repos.documents.getEvidenceGraphForDocument(scope, documentId))) await this.repos.documents.saveEvidenceGraph(scope, evidenceGraph);
+        const acceptedGraph = evidenceGraph;
+        await this.write(input, async (repos) => {
+          if (replaceHeuristicGraph)
+            await repos.documents.replaceEvidenceGraphForDocument(scope, acceptedGraph);
+          else if (!(await repos.documents.getEvidenceGraphForDocument(scope, documentId)))
+            await repos.documents.saveEvidenceGraph(scope, acceptedGraph);
+        });
         currentStage = "NORMALIZED";
       } else {
         evidenceGraph = await this.repos.documents.getEvidenceGraphForDocument(scope, documentId);
@@ -180,7 +237,9 @@ export class ProjectionPipeline {
       // 4. NORMALIZED
       let normalizedGraph = evidenceGraph;
       if (currentStage === "NORMALIZED") {
-        await this.repos.documents.updateDocumentStage(scope, documentId, "NORMALIZED", "PROCESSING");
+        await this.write(input, (repos) =>
+          repos.documents.updateDocumentStage(scope, documentId, "NORMALIZED", "PROCESSING"),
+        );
         normalizedGraph = EvidenceNormalizer.normalize(evidenceGraph);
         currentStage = "ONTOLOGY_RESOLVED";
       }
@@ -188,7 +247,9 @@ export class ProjectionPipeline {
       // 5. ONTOLOGY_RESOLVED
       let resolvedOntology;
       if (currentStage === "ONTOLOGY_RESOLVED") {
-        await this.repos.documents.updateDocumentStage(scope, documentId, "ONTOLOGY_RESOLVED", "PROCESSING");
+        await this.write(input, (repos) =>
+          repos.documents.updateDocumentStage(scope, documentId, "ONTOLOGY_RESOLVED", "PROCESSING"),
+        );
         resolvedOntology = OntologyResolver.resolve(normalizedGraph);
         currentStage = "PROJECTION_BUILT";
       } else {
@@ -198,7 +259,9 @@ export class ProjectionPipeline {
       // 6. PROJECTION_BUILT
       let baseProjection;
       if (currentStage === "PROJECTION_BUILT") {
-        await this.repos.documents.updateDocumentStage(scope, documentId, "PROJECTION_BUILT", "PROCESSING");
+        await this.write(input, (repos) =>
+          repos.documents.updateDocumentStage(scope, documentId, "PROJECTION_BUILT", "PROCESSING"),
+        );
         baseProjection = this.builder.fromEvidence(normalizedGraph, resolvedOntology);
         currentStage = "INFERENCE_COMPLETE";
       } else {
@@ -208,21 +271,41 @@ export class ProjectionPipeline {
       // 7. INFERENCE_COMPLETE
       let finalProjection = baseProjection;
       if (currentStage === "INFERENCE_COMPLETE") {
-        await this.repos.documents.updateDocumentStage(scope, documentId, "INFERENCE_COMPLETE", "PROCESSING");
-        finalProjection = versionCandidateProjection(OperatingLevelEngine.evaluate(baseProjection, rawText));
-        await new TenantScopedPersonStore(this.db, scope).saveProjection(personId, finalProjection);
-        // A staged evaluation requires this exact profile-to-source binding; there is no latest-document fallback.
-        await this.db.execute(
-          `INSERT INTO profile_projection_source_bindings (tenant_id, person_id, profile_version, document_id, evidence_graph_id, document_text_hash)
+        await this.write(input, (repos) =>
+          repos.documents.updateDocumentStage(
+            scope,
+            documentId,
+            "INFERENCE_COMPLETE",
+            "PROCESSING",
+          ),
+        );
+        finalProjection = versionCandidateProjection(
+          OperatingLevelEngine.evaluate(baseProjection, rawText),
+        );
+        await this.write(input, async (_repos, tx) => {
+          await new TenantScopedPersonStore(tx, scope).saveProjection(personId, finalProjection);
+          // A staged evaluation requires this exact profile-to-source binding; there is no latest-document fallback.
+          await tx.execute(
+            `INSERT INTO profile_projection_source_bindings (tenant_id, person_id, profile_version, document_id, evidence_graph_id, document_text_hash)
            VALUES (?, ?, ?, ?, ?, ?)
            ON CONFLICT(tenant_id, person_id, profile_version, document_id) DO NOTHING`,
-          [scope.tenantId, personId, finalProjection.profileVersion, documentId, evidenceGraph.id, textHash || documentHash],
-        );
+            [
+              scope.tenantId,
+              personId,
+              finalProjection.profileVersion,
+              documentId,
+              evidenceGraph.id,
+              textHash || documentHash,
+            ],
+          );
+        });
         // A saved CV projection is a new immutable input. It must never switch
         // the serving evaluation policy implicitly; activation is an explicit
         // action after the caller has selected the policy/context lineage.
         if (!input.activateServingPlan) {
-          await this.repos.documents.updateDocumentStage(scope, documentId, "PROFILE_READY", "COMPLETED");
+          await this.write(input, (repos) =>
+            repos.documents.updateDocumentStage(scope, documentId, "PROFILE_READY", "COMPLETED"),
+          );
           return { success: true, stage: "PROFILE_READY", deduplicated: isDeduplicated };
         }
         // Explicit legacy-serving activation remains available to the caller
@@ -231,8 +314,15 @@ export class ProjectionPipeline {
         if (!intent) {
           // A projection is usable profile processing, not a recommendation
           // refresh. No target intent means no canonical evaluation lineage.
-          await this.repos.documents.updateDocumentStage(scope, documentId, "PROFILE_READY", "COMPLETED");
-          return { success: true, stage: "PROFILE_READY", deduplicated: isDeduplicated, intentRequired: true };
+          await this.write(input, (repos) =>
+            repos.documents.updateDocumentStage(scope, documentId, "PROFILE_READY", "COMPLETED"),
+          );
+          return {
+            success: true,
+            stage: "PROFILE_READY",
+            deduplicated: isDeduplicated,
+            intentRequired: true,
+          };
         }
         const completionStage = resolveProjectionCompletionStage(true);
         await activateSearchPlanForIntent({
@@ -248,27 +338,40 @@ export class ProjectionPipeline {
 
       // 8. EVALUATED
       if (currentStage === "EVALUATED") {
-        await this.repos.documents.updateDocumentStage(scope, documentId, "EVALUATED", "PROCESSING");
+        await this.write(input, (repos) =>
+          repos.documents.updateDocumentStage(scope, documentId, "EVALUATED", "PROCESSING"),
+        );
         currentStage = "COMPLETED";
       }
 
       // 9. COMPLETED
-      await this.repos.documents.updateDocumentStage(scope, documentId, "COMPLETED", "COMPLETED");
+      await this.write(input, (repos) =>
+        repos.documents.updateDocumentStage(scope, documentId, "COMPLETED", "COMPLETED"),
+      );
 
       return {
         success: true,
         stage: "COMPLETED",
-        deduplicated: isDeduplicated
+        deduplicated: isDeduplicated,
       };
     } catch (err: any) {
       console.error(`[ProjectionPipeline] Failed at stage ${currentStage}:`, err.message);
-      await this.repos.documents.updateDocumentStage(scope, documentId, currentStage, "FAILED", err.message);
+      if (err.message !== "DOCUMENT_JOB_LEASE_LOST") {
+        await this.write(input, (repos) =>
+          repos.documents.updateDocumentStage(
+            scope,
+            documentId,
+            currentStage,
+            "FAILED",
+            err.message,
+          ),
+        );
+      }
       return {
         success: false,
         stage: currentStage,
-        error: err.message
+        error: err.message,
       };
     }
   }
 }
-

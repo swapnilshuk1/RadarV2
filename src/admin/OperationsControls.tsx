@@ -363,6 +363,7 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
                       <div key={`${j.pipeline}:${j.job_id}`} className="my-3 space-y-2">
                         <p className="text-sm">
                           {j.pipeline} · {j.tenant_id} · {j.person_id} · {j.job_id} ·{" "}
+                          {j.document_id ? `document ${j.document_id} � ` : ""}
                           {j.accounted_reason ?? "pending accounting"}
                         </p>
                         <button
@@ -401,6 +402,7 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
                         }
                       />{" "}
                       {j.pipeline} · {j.tenant_id} · {j.job_id} ·{" "}
+                      {j.document_id ? `document ${j.document_id} � ` : ""}
                       {j.accounted_reason ?? "pending accounting"}
                     </label>
                   ))}
@@ -532,8 +534,8 @@ export function OperationsControls({ data, overview = false }: { data: Data; ove
           · {ops.deployment.bedrock.version} · rotation is deployment-managed.
         </p>
         <p className="text-sm">
-          Gateway-managed model calls participate in shared operational capacity and cooldown.
-          Direct Bedrock consumers, including evidence extraction, remain outside those controls.
+          Bedrock model calls, including document evidence extraction, participate in shared
+          operational capacity and cooldown. Groq remains the document extraction fallback.
         </p>
         <p>
           Google ADC: {ops.deployment.adc.status} · Project:{" "}

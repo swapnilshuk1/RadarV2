@@ -18,7 +18,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { loadMantleCredentials } from "../../src/lib/model/bedrock-credentials";
+import { resolveBedrockCredential } from "../../src/lib/model/bedrock-credential-resolver";
 import { extractFigures } from "../../src/pursuit/approval";
 import { PursuitTokenLedger } from "../../src/pursuit/budget";
 import { pursuitMantleModelIds } from "../../src/pursuit/model";
@@ -311,7 +311,7 @@ describe("Pursuit memo model quality/cost benchmark — Mantle", () => {
   liveIt(
     "compares GLM-5, DeepSeek V3.2 and Kimi K2.5 across five real captured roles",
     async () => {
-      loadMantleCredentials();
+      await resolveBedrockCredential();
 
       const originalModel = process.env.RADAR_PURSUIT_MANTLE_MODEL;
       const originalGemini = process.env.RADAR_PURSUIT_ENABLE_GEMINI;

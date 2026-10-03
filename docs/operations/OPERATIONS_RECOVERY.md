@@ -335,29 +335,37 @@ connection. Lower limits drain running work. Explicit lane concurrency still lim
 model calls. Rate-window support is separate internal infrastructure; unknown
 provider RPM/token quotas are not fabricated as editable settings.
 
-## Next phase priority
+## Bedrock and document convergence
 
-First close the direct Bedrock evidence-extraction boundary. Candidate evidence is
-on the dossier path, so unobserved provider failure is a product risk. Route
-`EvidenceExtractionService` and remaining direct consumers through the existing
-operational gateway with exact document/tenant/person identity, visible incidents,
-bounded cooldown/capacity and a domain-owned retry path. Preserve extraction
-provenance, document queue leases and evidence integrity. Acceptance must inject
-credential/throttle/outage failures, then verify scoped document retry and restored
-evidence reaching a reviewed memo. Keep Bedrock rotation host-managed until all
-credential consumers converge. This is the first provider-expansion deliverable,
-not a claim that the current Tavily release covers evidence extraction.
+Every runtime Bedrock model uses the asynchronous host credential resolver and
+operational gateway: evaluation, composition, factual review, pursuit, documents,
+Admin bench and taxonomy shadow. The resolver reads an environment key or the
+configured Mantle file without copying file contents into `process.env`; clipped
+base64 padding is normalized. Host canaries bypass holds intentionally and still
+use the same resolver. Bounded standalone memo validation and opt-in benchmark
+scripts have no operational queue and remain explicit gateway exemptions.
 
-Entry points: `processNextDocumentJob` -> `ProjectionPipeline` ->
-`EvidenceExtractionService`. Document jobs own `lease_token`, 300-second stale
-reclaim, 30-second retries and three attempts before dead letter. Preserve their
-saved text/evidence checkpoints and source-span grounding. Add an explicit
-tenant/person/document/job identity branch to Operations; do not invent canonical
-opportunity identities for document work. Inject the operationally wrapped model
-from the owning queue, preserve the existing provider-selection behavior, and add
-document-worker model probes plus scoped domain retry. Accept with injected
-401/403, throttle/outage, wrong-owner rejection and recovered evidence reaching
-reviewed output. Primary workers' poll/claim-cycle receipts can follow that slice.
+Document extraction tries gateway-controlled Bedrock first, then Groq on provider
+unavailability, cooldown/capacity pressure or rejected factual output. Grounding
+rejection and local capacity pressure do not create provider incidents. The graph
+records the provider/model and prompt that actually produced its evidence.
+
+Migration 090 gives incidents and invocation telemetry an exclusive document
+identity: tenant, person, document and durable job. It preserves historical
+opportunity telemetry, bench/taxonomy references and incident associations.
+Document claims renew their lease; evidence/profile writes recheck that lease in
+the same transaction as persistence. A stale worker cannot publish its output.
+
+Operations can resume only pending document jobs with no live lease, making the
+existing job due while preserving its checkpoints. Processing, completed and
+dead-letter jobs cannot be resumed here. Completed Groq fallback and dead-letter
+outcomes account for linked work while the Bedrock incident remains open until
+current provider health is proven. Operator exclusion accounts for the incident
+without completing or replaying the document.
+
+The next release adds Admin-managed Bedrock candidate validation, activation,
+worker uptake and confirmation with generation-fenced hot reload. Credential
+activation remains host-managed until that lifecycle is deployed.
 
 ## Verification commands and limits
 
@@ -385,7 +393,7 @@ Deliberate limits: Bedrock rotation is read-only until all credential consumers
 use the unified resolver. Configured-model probes prove the permissions they invoke,
 not every unrelated provider capability. Operator recovery covers Tavily and
 gateway-managed Bedrock/Google incidents and nonterminal linked
-evaluation/composition/review work. Terminal regeneration and Pursuit domain retry
+evaluation/composition/review/document work. Terminal regeneration and Pursuit domain retry
 remain separate policies. Gate tuning, provider expansion, enrichment settings and
 tenant lifecycle are deferred. Notifications use one destination, severity routing
 and public IPv4 HTTPS. Real deployment, model-backed recovery and delivery to an

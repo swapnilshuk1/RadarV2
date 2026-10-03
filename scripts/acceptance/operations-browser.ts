@@ -13,7 +13,7 @@ import { CredentialVault } from "../../src/lib/security/CredentialVault";
 import { pollNotificationDelivery } from "../../src/admin/notification-worker";
 import { reconcileProviderIncidents } from "../../src/admin/operations-recovery";
 import { notificationSignature } from "../../src/admin/notification-worker";
-import { associateIncidentWork } from "../../src/admin/operations-runtime";
+import { associateIncidentWork, observeProviderFailure } from "../../src/admin/operations-runtime";
 import {
   CRITICAL_EVALUATION_MAINTENANCE_TASKS,
   runMaintenanceTasks,
@@ -297,5 +297,54 @@ export async function runOperationsBrowserJourney(
     "credential disclosed in rendered page",
   );
   await page.screenshot({ path: ".radar/acceptance/operations.png", fullPage: true });
+  // Document identities render and exclude without inventing opportunity identity.
+  await db.execute(
+    "INSERT INTO candidate_documents(id,tenant_id,person_id,filename,storage_uri,mime_type,document_hash) VALUES('operations-cv',?,?,'fixture-cv.txt','fixture://operations-cv','text/plain','operations-cv-hash')",
+    [identity.tenantId, identity.personId],
+  );
+  await db.execute(
+    "INSERT INTO candidate_document_jobs(id,tenant_id,person_id,document_id,job_hash,payload_json,next_attempt_at) VALUES('operations-document-job',?,?,'operations-cv','operations-document-hash','{}',datetime('now','+1 day'))",
+    [identity.tenantId, identity.personId],
+  );
+  const documentIncident = await observeProviderFailure(db, {
+    connectionId: "bedrock:host",
+    provider: "bedrock-mantle",
+    generation: 0,
+    failure: "credential",
+    status: 401,
+    deployment: fingerprint,
+    work: {
+      pipeline: "documents",
+      jobId: "operations-document-job",
+      tenantId: identity.tenantId,
+      personId: identity.personId,
+      documentId: "operations-cv",
+    },
+  });
+  await page.getByRole("button", { name: "Refresh operations", exact: true }).click();
+  const documentAffected = page
+    .locator(`#incident-${documentIncident} details`)
+    .filter({ has: page.getByText("Affected work and exclusions", { exact: true }) });
+  await documentAffected.getByText("Affected work and exclusions", { exact: true }).click();
+  await documentAffected
+    .getByText(/documents.*operations-document-job.*document operations-cv/)
+    .waitFor();
+  await page.screenshot({ path: ".radar/acceptance/operations-documents.png", fullPage: true });
+  await documentAffected
+    .getByRole("button", { name: "Exclude from provider recovery", exact: true })
+    .click();
+  await page.getByRole("status").filter({ hasText: "Operation recorded." }).waitFor();
+  assert(
+    await db.one(
+      "SELECT job_id FROM provider_incident_jobs WHERE job_id='operations-document-job' AND accounted_reason='OPERATOR_EXCLUDED'",
+    ),
+    "document exclusion missing",
+  );
+  assert(
+    await db.one(
+      "SELECT id FROM candidate_document_jobs WHERE id='operations-document-job' AND status='pending'",
+    ),
+    "document exclusion changed queue state",
+  );
   await context.close();
 }

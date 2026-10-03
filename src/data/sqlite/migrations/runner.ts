@@ -374,6 +374,7 @@ export async function runMigrations(
     "042_scrape_runs_distributed_lifecycle.sql",
     "043_distributed_work_identity.sql",
     "046_scrape_runs_nullable_search_plan.sql",
+    "090_operations_document_identity.sql",
   ]);
 
   const applied: string[] = [];

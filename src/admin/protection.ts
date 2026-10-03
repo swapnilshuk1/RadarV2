@@ -389,6 +389,7 @@ export async function renewReservation(
   );
 }
 function jobIdentity(context: ModelInvocationContext) {
+  if (context.pipeline === "documents") return undefined;
   return {
     evaluation: context.evaluationJobId,
     dossier: context.dossierCompositionJobId,
@@ -409,6 +410,7 @@ export async function reserveModelCall(
     maxOutput: number;
   },
 ) {
+  if (context.pipeline === "documents") return;
   if (!(await protectionInstalled(db))) return;
   const limits = await policy(db, context.tenantId, Date.now());
   if (!limits) {

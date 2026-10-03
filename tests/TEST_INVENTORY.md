@@ -365,6 +365,7 @@ Generated from `scripts/certification/registry.ts` with `npm run tests:inventory
 | `tests/security/admin-config.test.ts` | Security & Tenant Isolation | **KEEP** | standard, full | tenant-security |
 | `tests/security/admin-foundations.test.ts` | Security & Tenant Isolation | **KEEP** | standard, full | tenant-security |
 | `tests/security/admin-operations.test.ts` | Security & Tenant Isolation | **KEEP** | standard, full | tenant-security |
+| `tests/security/document-provider-operations.test.ts` | Document provider recovery, ownership, and credential convergence | **KEEP** | standard, full | tenant-security |
 | `tests/security/admin-protection.test.ts` | Security & Tenant Isolation | **KEEP** | standard, full | tenant-security |
 | `tests/security/admin-taxonomy.test.ts` | Security & Tenant Isolation | **KEEP** | standard, full | tenant-security |
 | `tests/security/candidate-profile-tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | standard, full | tenant-security |

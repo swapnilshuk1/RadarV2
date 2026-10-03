@@ -471,3 +471,20 @@ unique index. Their error requests an explicit retry; no paid work is automatica
 restarted. Migration 084 makes scope kind immutable. Staged cache identity includes
 the pinned intelligence fingerprint, so a newly activated taxonomy cannot reuse a
 role interpretation from an earlier graph.
+
+
+### Bedrock document operations (migration 090)
+
+All runtime Bedrock consumers, including documents, Admin bench and taxonomy
+shadow, share the host resolver and operational gateway. Bedrock is the factual
+extraction primary; Groq remains its fallback. Source spans remain exact and the
+evidence graph retains the model and prompt that produced it. Local capacity
+pressure and invalid grounded output do not create provider incidents.
+
+Document incidents and telemetry identify the tenant, person, document and job;
+they carry no invented opportunity identity. Operations shows the document queue
+and exact linked work. Recovery makes only eligible pending jobs due, preserving
+checkpoints and rejecting active leases or terminal work. Document evidence and
+profile persistence are fenced by the owning queue lease. Fallback completion
+accounts for work but does not prove Bedrock recovery. Credential rotation remains
+host-managed until the subsequent Admin-managed lifecycle release.

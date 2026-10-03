@@ -1,13 +1,30 @@
 /** Durable CV/document worker. Run explicitly by a worker bootstrap, never a request handler. */
 import crypto from "node:crypto";
-import { getDatabaseAdapter } from "../src/data/database";
+import { getDatabaseAdapter, type DatabaseAdapter } from "../src/data/database";
 import { ProjectionPipeline } from "../src/candidate/pipeline";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
 
-export async function processNextDocumentJob(workerId = `document-worker-${crypto.randomUUID()}`): Promise<boolean> {
-  const db = getDatabaseAdapter();
-  const job = await db.one<{ id: string; tenant_id: string; person_id: string; document_id: string; payload_json: string; attempts: number; max_attempts: number }>(
+import { createBedrockGlmResearchModel } from "../src/lib/model/bedrock-glm-research-model";
+import {
+  createSqliteModelInvocationSink,
+  type ModelInvocationContext,
+} from "../src/lib/model/model-invocation";
+import { operationalModel } from "../src/admin/model-gateway";
+
+export async function processNextDocumentJob(
+  workerId = `document-worker-${crypto.randomUUID()}`,
+  db: DatabaseAdapter = getDatabaseAdapter(),
+): Promise<boolean> {
+  const job = await db.one<{
+    id: string;
+    tenant_id: string;
+    person_id: string;
+    document_id: string;
+    payload_json: string;
+    attempts: number;
+    max_attempts: number;
+  }>(
     `SELECT j.id, j.tenant_id, j.person_id, j.document_id, j.payload_json, j.attempts, j.max_attempts
      FROM candidate_document_jobs j
      JOIN candidate_documents d ON d.id = j.document_id AND d.tenant_id = j.tenant_id AND d.person_id = j.person_id
@@ -22,17 +39,54 @@ export async function processNextDocumentJob(workerId = `document-worker-${crypt
     [workerId, leaseToken, job.id],
   );
   if (claimed.rowsAffected !== 1) return false;
+  const context: ModelInvocationContext = {
+    pipeline: "documents",
+    tenantId: job.tenant_id,
+    personId: job.person_id,
+    documentId: job.document_id,
+    documentJobId: job.id,
+    leaseToken,
+  };
+  let renewing = false;
+  const timer = setInterval(() => {
+    if (renewing) return;
+    renewing = true;
+    void db
+      .execute(
+        "UPDATE candidate_document_jobs SET locked_at=CURRENT_TIMESTAMP WHERE id=? AND lease_token=? AND status='processing'",
+        [job.id, leaseToken],
+      )
+      .catch(() => {})
+      .finally(() => {
+        renewing = false;
+      });
+  }, 60_000);
+  timer.unref();
   try {
     const payload = JSON.parse(job.payload_json);
-    const result = await new ProjectionPipeline().run({
-      scope: { tenantId: job.tenant_id, personId: job.person_id }, documentId: job.document_id, filename: payload.filename,
-      storageUri: `turso://document_contents/${job.document_id}`, mimeType: payload.mimeType,
-      documentHash: payload.documentHash, documentText: payload.documentText,
+    const result = await new ProjectionPipeline({
+      db,
+      model: operationalModel(
+        db,
+        createBedrockGlmResearchModel({
+          invocationSink: createSqliteModelInvocationSink(db, context),
+        }),
+        context,
+      ),
+    }).run({
+      documentJobLease: { jobId: job.id, token: leaseToken },
+      scope: { tenantId: job.tenant_id, personId: job.person_id },
+      documentId: job.document_id,
+      filename: payload.filename,
+      storageUri: `turso://document_contents/${job.document_id}`,
+      mimeType: payload.mimeType,
+      documentHash: payload.documentHash,
+      documentText: payload.documentText,
       fileBuffer: payload.base64Buffer ? Buffer.from(payload.base64Buffer, "base64") : undefined,
     });
     if (!result.success) throw new Error(result.error || "Document pipeline failed");
     const completed = await db.execute(
-      `UPDATE candidate_document_jobs SET status = 'completed', completed_at = CURRENT_TIMESTAMP, payload_json = '{}'
+      `UPDATE candidate_document_jobs SET status = 'completed', completed_at = CURRENT_TIMESTAMP, payload_json = '{}', locked_by=NULL, lease_token=NULL, locked_at=NULL
        WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
       [job.id, workerId, leaseToken],
     );
@@ -46,16 +100,28 @@ export async function processNextDocumentJob(workerId = `document-worker-${crypt
        SET status = ?, attempts = ?, last_error = ?, locked_by = NULL, lease_token = NULL, locked_at = NULL,
            next_attempt_at = CASE WHEN ? = 'pending' THEN datetime('now', '+30 seconds') ELSE NULL END
        WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
-      [terminal ? "dead_letter" : "pending", attempts, error?.message || String(error), terminal ? "dead_letter" : "pending", job.id, workerId, leaseToken],
+      [
+        terminal ? "dead_letter" : "pending",
+        attempts,
+        error?.message || String(error),
+        terminal ? "dead_letter" : "pending",
+        job.id,
+        workerId,
+        leaseToken,
+      ],
     );
     if (failed.rowsAffected !== 1) throw new Error("DOCUMENT_JOB_LEASE_LOST");
     return true;
+  } finally {
+    clearInterval(timer);
   }
 }
 
 if (process.argv[1]?.endsWith("process-document-jobs.ts")) {
   let stopping = false;
-  const stop = () => { stopping = true; };
+  const stop = () => {
+    stopping = true;
+  };
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);
   const workerId = `document-worker-${crypto.randomUUID()}`;
@@ -65,14 +131,20 @@ if (process.argv[1]?.endsWith("process-document-jobs.ts")) {
     while (!stopping) {
       try {
         const processed = await processNextDocumentJob(workerId);
-        if (processed) { idleMs = 1_000; continue; }
-        await new Promise(resolve => setTimeout(resolve, idleMs));
+        if (processed) {
+          idleMs = 1_000;
+          continue;
+        }
+        await new Promise((resolve) => setTimeout(resolve, idleMs));
         idleMs = Math.min(idleMs * 2, 30_000);
       } catch (error) {
         runtimeLog("error", "document_worker_poll_error");
-        await new Promise(resolve => setTimeout(resolve, 5_000));
+        await new Promise((resolve) => setTimeout(resolve, 5_000));
       }
     }
   };
-  run().catch(() => { runtimeLog("error", "document_worker_fatal"); process.exitCode = 1; });
+  run().catch(() => {
+    runtimeLog("error", "document_worker_fatal");
+    process.exitCode = 1;
+  });
 }

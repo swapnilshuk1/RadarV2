@@ -1,5 +1,5 @@
 import { BedrockMantleJsonModel } from "./bedrock-mantle-model";
-import { loadMantleCredentials } from "./bedrock-credentials";
+import { resolveBedrockCredential } from "./bedrock-credential-resolver";
 import type { ModelInvocationSink } from "./model-invocation";
 
 export const GLM_STAGE_OUTPUT_TOKENS = {
@@ -43,10 +43,7 @@ export function createBedrockGlmResearchModel(
 ) {
   return new BedrockMantleJsonModel(
     "zai.glm-5",
-    async () => {
-      loadMantleCredentials();
-      return process.env.BEDROCK_MANTLE_API_KEY!.trim();
-    },
+    async () => (await resolveBedrockCredential()).key,
     fetch,
     {
       region: "us-east-1",

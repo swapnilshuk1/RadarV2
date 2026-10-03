@@ -1,5 +1,4 @@
 import { getDatabaseAdapter } from "../src/data/database";
-import { loadMantleCredentials } from "../src/lib/model/bedrock-credentials";
 import { DossierCompositionWorker } from "../src/dossier/runtime/composition-worker";
 import { runtimeLog } from "../src/lib/intelligence/runtime-log";
 import { startWorkerHeartbeat } from "../src/lib/health/worker-heartbeat";
@@ -13,9 +12,6 @@ if (
 )
   throw new Error("Apply migration 053 before starting the dossier composition worker");
 
-if ((process.env.RADAR_DOSSIER_WRITER_PROVIDER ?? "glm").trim().toLowerCase() === "glm") {
-  loadMantleCredentials();
-}
 
 const arg = process.argv.find((value) => value.startsWith("--concurrency="));
 const concurrency = Number(

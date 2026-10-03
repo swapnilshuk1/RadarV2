@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseAdapter } from "../data/database/adapter";
 import { requirePlatformRole } from "./service";
-import { loadMantleCredentials } from "../lib/model/bedrock-credentials";
+import { resolveBedrockCredential } from "../lib/model/bedrock-credential-resolver";
 import { adcTokenProvider } from "../lib/model/google-adc";
 import { BedrockMantleJsonModel } from "../lib/model/bedrock-mantle-model";
 import { GeminiJsonModel } from "../lib/model/json-model";
@@ -52,9 +52,7 @@ async function runConfiguredModelCanary(
     return { model: modelVersion };
   }
 
-  loadMantleCredentials();
-  const apiKey = process.env.BEDROCK_MANTLE_API_KEY?.trim();
-  if (!apiKey) throw new Error("BEDROCK_CREDENTIAL_UNAVAILABLE");
+  const { key: apiKey } = await resolveBedrockCredential();
   const activeConfigs = await db.many<{ config_json: string }>(
     "SELECT r.config_json FROM config_active_pointers p JOIN config_revisions r ON r.id=p.revision_id",
   );
