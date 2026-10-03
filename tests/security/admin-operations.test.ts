@@ -131,6 +131,47 @@ async function healthyRecovery(
   return incident;
 }
 describe("Operations & Recovery", () => {
+  it("rechecks operator exclusion after preview and preserves the queue deadline", async () => {
+    const db = await fixture();
+    const work = await recoveryMemo(db);
+    const incident = await healthyRecovery(db, work);
+    const preview = await previewRecovery(db, "op", incident, [work.jobId], "preview exact work");
+    const before = await db.one(
+      "SELECT status,next_attempt_at FROM dossier_composition_jobs WHERE id=?",
+      [work.jobId],
+    );
+    await mutateOperations(db, "op", {
+      kind: "exclude",
+      incidentId: incident,
+      pipeline: work.pipeline,
+      jobId: work.jobId,
+      reason: "Work excluded after preview by operator",
+    });
+    const afterExclusion = await previewRecovery(
+      db,
+      "op",
+      incident,
+      [work.jobId],
+      "confirm current eligibility",
+    );
+    expect(
+      await db.one("SELECT reason FROM recovery_action_jobs WHERE action_id=?", [
+        afterExclusion.id,
+      ]),
+    ).toEqual({ reason: "skipped:OPERATOR_EXCLUDED" });
+    expect(
+      (await executeRecovery(db, "op", preview.id, "execute stale eligibility preview")).outcomes,
+    ).toEqual([{ jobId: work.jobId, outcome: "skipped", reason: "OPERATOR_EXCLUDED" }]);
+    expect(
+      await db.one("SELECT status,next_attempt_at FROM dossier_composition_jobs WHERE id=?", [
+        work.jobId,
+      ]),
+    ).toEqual(before);
+    await reconcileProviderIncidents(db);
+    expect(await db.one("SELECT state FROM provider_incidents WHERE id=?", [incident])).toEqual({
+      state: "resolved",
+    });
+  });
   it("accounts domain-terminal work without claiming a successful memo or changing its queue", async () => {
     const db = await fixture();
     const work = await recoveryMemo(db);

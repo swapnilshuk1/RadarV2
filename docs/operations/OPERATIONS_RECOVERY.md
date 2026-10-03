@@ -112,7 +112,8 @@ problem without asserting a successful memo or changing the queue; domain failur
 remain visible in Needs attention. Missing work needs an operator exclusion.
 Exclude one exact incident/pipeline/job from its affected-work details with a
 required reason; role, identity and reason are audited atomically. Exclusion does
-not retry or complete the job. Pending work still prevents resolution. A healthy
+not retry or complete the job; preview and execution both recheck it, including
+exclusion after an earlier preview. Pending work still prevents resolution. A healthy
 incident with no linked jobs may resolve. Accounting and resolution share one
 transaction, and health is rechecked before resolution.
 Acknowledgement/snooze do not resolve or resume. Resolution notifications are
@@ -148,7 +149,9 @@ Migrations 085–087 are additive. Tavily resolves each acquisition through the
 active connection. Gateway-managed model calls participate in shared capacity and
 cooldown; direct Bedrock evidence extraction does not yet participate. Maintenance
 runs on evaluation heartbeats; ordinary Admin reads never invoke provider calls.
-No terminal job replay or new drain worker was added. Recovery exception rollback
+No terminal job replay or new drain worker was added. Nested callbacks join the outer transaction on both adapters; they do not create
+independent savepoints. A propagated exception rolls the outer unit back to
+`previewed`, including queue deadlines and outcome/audit writes. Recovery rollback
 has passed for better-sqlite3 and both libSQL adapter transaction branches using
 isolated local transports; remote network failure behaviour is not proven here.
 

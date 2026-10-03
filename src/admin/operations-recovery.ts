@@ -85,7 +85,10 @@ export async function previewRecovery(
       [id, incidentId, generation, now, now + 5 * 60_000, actor, reason],
     );
     for (const job of jobs) {
-      const eligibility = await resumeOperationalWork(tx, identity(job), false);
+      const eligibility =
+        job.accounted_reason === "OPERATOR_EXCLUDED"
+          ? { outcome: "skipped" as const, reason: "OPERATOR_EXCLUDED" }
+          : await resumeOperationalWork(tx, identity(job), false);
       await tx.execute(
         "INSERT INTO recovery_action_jobs(action_id,pipeline,job_id,identity_json,reason) VALUES(?,?,?,?,?)",
         [
@@ -140,7 +143,14 @@ export async function executeRecovery(
     );
     const outcomes = [];
     for (const job of jobs) {
-      const outcome = await resumeOperationalWork(tx, JSON.parse(job.identity_json));
+      const linked = await tx.one<{ accounted_reason: string | null }>(
+        "SELECT accounted_reason FROM provider_incident_jobs WHERE incident_id=? AND pipeline=? AND job_id=?",
+        [action.incident_id, job.pipeline, job.job_id],
+      );
+      const outcome =
+        linked?.accounted_reason === "OPERATOR_EXCLUDED"
+          ? { outcome: "skipped" as const, reason: "OPERATOR_EXCLUDED" }
+          : await resumeOperationalWork(tx, JSON.parse(job.identity_json));
       await tx.execute(
         "UPDATE recovery_action_jobs SET outcome=?,reason=? WHERE action_id=? AND pipeline=? AND job_id=?",
         [outcome.outcome, outcome.reason, actionId, job.pipeline, job.job_id],
