@@ -1,5 +1,5 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { getDatabaseTargetIdentity } from "../../src/data/database";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 async function fixture() {
-  const db = new SqliteAdapter(new Database(":memory:"));
+  const db = await migratedFixtureDatabase();
   adapters.push(db);
   await setupLineageTestFixture(db);
   await db.execute("INSERT INTO users(id,email) VALUES('operator','operator@fixture')");

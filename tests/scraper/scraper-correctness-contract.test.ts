@@ -1,3 +1,4 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 /**
  * tests/scraper/scraper-correctness-contract.test.ts
  *
@@ -16,7 +17,6 @@
  * 5. LinkedIn clean cancellation semantics
  */
 
-import Database from "better-sqlite3";
 import { describe, expect, it, beforeEach } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
@@ -31,7 +31,7 @@ describe("Scraper Correctness & Invariant Contract Suite", () => {
   let db: SqliteAdapter;
 
   beforeEach(async () => {
-    db = new SqliteAdapter(new Database(":memory:"));
+    db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
 
     // Setup user, tenant & membership

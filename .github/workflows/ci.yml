@@ -7,8 +7,12 @@ on:
     branches: [main]
 
 concurrency:
-  group: ci-pr-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.event.pull_request.number) || 'ci-main' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
   verify:
@@ -80,12 +84,36 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: npm run certify
 
-      - name: Package exact certified release artifact
+      - name: Read the last successful deployment receipt
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .radar
+          # A green CI/package is not proof of deployment. Missing/expired receipts
+          # conservatively create a release; no cache can suppress a required rollout.
+          if runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy-oracle.yml --status success --limit 30 --json databaseId --jq '.[].databaseId')"; then
+            for run_id in $runs; do
+              if gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --name radar-deployed-runtime --dir .radar/deployed-receipt 2>/dev/null; then
+                cp .radar/deployed-receipt/deployed-runtime.json .radar/deployed-runtime.json
+                break
+              fi
+            done
+          fi
+
+      - name: Compare runtime inputs with the deployed release
+        id: runtime
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: node_modules/.bin/tsx scripts/release/runtime-input.ts
+
+      - name: Package exact certified release artifact
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.runtime.outputs.changed == 'true' }}
         run: npm run release:package
 
       - name: Verify extracted release portability
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.runtime.outputs.changed == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -113,9 +141,11 @@ jobs:
           node_modules/.bin/tsx --tsconfig tsconfig.json scripts/release/smoke-worker-runtime.ts
 
       - name: Retain release artifact for this exact commit
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.runtime.outputs.changed == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: radar-release-${{ github.sha }}
-          path: release/radar-release-${{ github.sha }}.tar.gz
+          path: |
+            release/radar-release-${{ github.sha }}.tar.gz
+            release/radar-release-${{ github.sha }}.tar.gz.sha256
           retention-days: 7

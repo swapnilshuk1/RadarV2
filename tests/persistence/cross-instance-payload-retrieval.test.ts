@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import { migratedFixtureDatabase } from "./migrated-fixture";
 import { beforeEach, describe, expect, it } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "./lineage_fixture";
@@ -10,7 +10,7 @@ describe("Phase 4B: Cross-Instance Payload Retrieval & BlobStore Invariant", () 
   let sharedObjectStorage: BlobStore;
 
   beforeEach(async () => {
-    db = new SqliteAdapter(new Database(":memory:"));
+    db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
 
     // Shared remote object store (e.g., S3/R2 simulation accessible over network by all instances)

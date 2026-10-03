@@ -6,6 +6,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import { load as loadYaml } from "js-yaml";
 import { releasePayloadChecksum } from "../../scripts/release/package";
 import { verifyReleaseDirectory } from "../../scripts/release/verify";
+import { runtimeChanged } from "../../scripts/release/runtime-input";
+import {
+  productionDependencyFilter,
+  runtimeInputChecksum,
+  runtimeScriptIncluded,
+} from "../../scripts/release/payload";
+import { execFileSync } from "node:child_process";
 
 type WorkflowStep = {
   name: string;
@@ -24,7 +31,7 @@ type CiWorkflow = {
   };
   concurrency: {
     group: string;
-    "cancel-in-progress": string;
+    "cancel-in-progress": boolean;
   };
   jobs: { verify: { steps: WorkflowStep[] } };
 };
@@ -95,15 +102,13 @@ describe("certified release artifacts", () => {
     expect(releasePayloadChecksum(directory)).not.toBe(checksum);
   });
 
-  it("runs cancellable PR feedback and keeps authoritative main runs uncancelled", () => {
+  it("cancels superseded main and PR verification without cancelling deployments", () => {
     const workflow = ciWorkflow();
     expect(workflow.on.push.branches).toEqual(["main"]);
     expect(workflow.on.pull_request.branches).toEqual(["main"]);
     expect(workflow.concurrency.group).toContain("github.event.pull_request.number");
-    expect(workflow.concurrency.group).toContain("github.run_id");
-    expect(workflow.concurrency["cancel-in-progress"]).toContain(
-      "github.event_name == 'pull_request'",
-    );
+    expect(workflow.concurrency.group).toContain("ci-main");
+    expect(workflow.concurrency["cancel-in-progress"]).toBe(true);
 
     const checkout = workflow.jobs.verify.steps.find((step) => step.uses === "actions/checkout@v4");
     expect(checkout?.with?.["fetch-depth"]).toBe(0);
@@ -119,6 +124,8 @@ describe("certified release artifacts", () => {
   it("certifies and publishes release artifacts only on main after full certification", () => {
     const steps = ciWorkflow().jobs.verify.steps;
     const mainOnly = "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}";
+    const runtimeOnly =
+      "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.runtime.outputs.changed == 'true' }}";
     const mainCertification = steps.find(
       (step) => step.name === "Authoritative main release certification",
     );
@@ -134,9 +141,9 @@ describe("certified release artifacts", () => {
 
     expect(mainCertification?.if).toBe(mainOnly);
     expect(mainCertification?.run).toBe("npm run certify");
-    expect(packageRelease?.if).toBe(mainOnly);
-    expect(verifyPortability?.if).toBe(mainOnly);
-    expect(retainArtifact?.if).toBe(mainOnly);
+    expect(packageRelease?.if).toBe(runtimeOnly);
+    expect(verifyPortability?.if).toBe(runtimeOnly);
+    expect(retainArtifact?.if).toBe(runtimeOnly);
     for (const step of [mainCertification, packageRelease, verifyPortability, retainArtifact]) {
       expect(step?.["continue-on-error"]).not.toBe(true);
       expect(step?.if).not.toMatch(/\b(always|failure|cancelled)\s*\(/i);
@@ -144,5 +151,77 @@ describe("certified release artifacts", () => {
     expect(steps.indexOf(mainCertification!)).toBeLessThan(steps.indexOf(packageRelease!));
     expect(steps.indexOf(packageRelease!)).toBeLessThan(steps.indexOf(verifyPortability!));
     expect(steps.indexOf(verifyPortability!)).toBeLessThan(steps.indexOf(retainArtifact!));
+  });
+
+  it("bases runtime identity on source content and deploy receipts rather than commit history", () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "radar-runtime-input-"));
+    directories.push(directory);
+    const git = (...args: string[]) => execFileSync("git", args, { cwd: directory, stdio: "pipe" });
+    git("init");
+    git("config", "user.email", "fixture@example.test");
+    git("config", "user.name", "Fixture");
+    fs.mkdirSync(path.join(directory, "src"));
+    fs.writeFileSync(path.join(directory, "src/runtime.ts"), "export const version = 1;");
+    fs.writeFileSync(path.join(directory, "notes.md"), "first");
+    git("add", ".");
+    git("commit", "-m", "runtime");
+    const original = runtimeInputChecksum(directory);
+    fs.writeFileSync(path.join(directory, "notes.md"), "second");
+    git("add", ".");
+    git("commit", "-m", "docs");
+    expect(runtimeInputChecksum(directory)).toBe(original);
+    expect(runtimeChanged(original, { status: "ready", runtimeInputSha256: original })).toBe(false);
+    for (const receipt of [
+      null,
+      {},
+      { status: "failed", runtimeInputSha256: original },
+      { status: "ready", runtimeInputSha256: "invalid" },
+    ])
+      expect(runtimeChanged(original, receipt)).toBe(true);
+    fs.writeFileSync(path.join(directory, "src/runtime.ts"), "export const version = 2;");
+    git("add", ".");
+    git("commit", "-m", "runtime change");
+    expect(runtimeInputChecksum(directory)).not.toBe(original);
+  });
+
+  it("retains runtime/acquisition modules while omitting dev dependencies and verification entry points", () => {
+    const directory = releaseDirectory();
+    const filter = productionDependencyFilter(
+      {
+        packages: {
+          "node_modules/tsx": {},
+          "node_modules/esbuild": {},
+          "node_modules/vitest": { dev: true },
+          "node_modules/@libsql/client": {},
+          "node_modules/tsx/node_modules/dev-only": { dev: true },
+        },
+      },
+      directory,
+    );
+    expect(filter(path.join(directory, "node_modules/tsx/dist/cli.mjs"))).toBe(true);
+    expect(filter(path.join(directory, "node_modules/@libsql"))).toBe(true);
+    expect(filter(path.join(directory, "node_modules/vitest/index.js"))).toBe(false);
+    expect(filter(path.join(directory, "node_modules/tsx/node_modules/dev-only/index.js"))).toBe(
+      false,
+    );
+    expect(runtimeScriptIncluded("scripts/run-scrape-worker.ts")).toBe(true);
+    expect(runtimeScriptIncluded("scripts/scraper/portals/indeed.ts")).toBe(true);
+    expect(runtimeScriptIncluded("scripts/certify.ts")).toBe(false);
+    expect(runtimeScriptIncluded("scripts/acceptance/browser-acceptance.ts")).toBe(false);
+  });
+
+  it("skips a missing artifact only for automatic verification-only releases", () => {
+    const workflow = fs.readFileSync(
+      path.resolve(process.cwd(), ".github/workflows/deploy-oracle.yml"),
+      "utf8",
+    );
+    expect(workflow).toContain('if [[ "$GITHUB_EVENT_NAME" == workflow_run ]]');
+    expect(workflow).toContain('echo "deploy=false" >> "$GITHUB_OUTPUT"');
+    expect(workflow).toContain(
+      'echo "::error::The requested certified release artifact for $sha is missing or expired."',
+    );
+    expect(workflow.indexOf('if [[ "$GITHUB_EVENT_NAME" == workflow_run ]]')).toBeLessThan(
+      workflow.indexOf("::error::The requested certified release artifact"),
+    );
   });
 });

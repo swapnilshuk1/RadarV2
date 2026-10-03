@@ -1,5 +1,5 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { beforeEach, describe, expect, it } from "vitest";
-import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture, activateLineageTestContext } from "../persistence/lineage_fixture";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
@@ -12,7 +12,7 @@ describe("current serving boundary", () => {
   let scope: AuthorizedPersonScope;
 
   beforeEach(async () => {
-    db = new SqliteAdapter(new Database(":memory:"));
+    db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
     await db.execute(`INSERT OR IGNORE INTO users (id, email) VALUES ('person_A', 'a@a.com')`);
     await db.execute(

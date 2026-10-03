@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import { migratedFixtureDatabase } from "./migrated-fixture";
 import { beforeEach, describe, expect, it } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import {
@@ -19,7 +19,7 @@ describe("Phase 4A: Scrape Run State Machine & Atomic Uniqueness Contract", () =
   let store: SqliteScrapeRunStore;
 
   beforeEach(async () => {
-    db = new SqliteAdapter(new Database(":memory:"));
+    db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
 
     // Insert required fixture people and search plans

@@ -91,7 +91,12 @@ jobs:
             exit 1
           fi
           if ! gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" --jq '.artifacts[] | select(.expired == false) | .name' | grep -Fxq "radar-release-$sha"; then
-            echo "::error::The certified release artifact for $sha is missing or expired."
+            if [[ "$GITHUB_EVENT_NAME" == workflow_run ]]; then
+              echo "deploy=false" >> "$GITHUB_OUTPUT"
+              echo "No retained runtime artifact for $sha; verification-only main commits do not deploy."
+              exit 0
+            fi
+            echo "::error::The requested certified release artifact for $sha is missing or expired."
             exit 1
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
@@ -159,11 +164,15 @@ jobs:
           gh run download "$CI_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "radar-release-$RELEASE_SHA" --dir "$RUNNER_TEMP/radar-release"
           artifact="$RUNNER_TEMP/radar-release/radar-release-$RELEASE_SHA.tar.gz"
           test -s "$artifact"
+          (cd "$RUNNER_TEMP/radar-release" && sha256sum -c "radar-release-$RELEASE_SHA.tar.gz.sha256")
+          digest="$(cut -d ' ' -f1 "$artifact.sha256")"
+          echo "RADAR_DEPLOY_ARTIFACT_SHA256=$digest" >> "$GITHUB_ENV"
           tar -xzf "$artifact" -C "$RUNNER_TEMP/radar-runtime"
           test -x "$RUNNER_TEMP/radar-runtime/node_modules/.bin/tsx"
           echo "RADAR_DEPLOY_ARTIFACT=$artifact" >> "$GITHUB_ENV"
 
       - name: Deploy and verify Oracle release
+        id: activation
         shell: bash
         env:
           RELEASE_SHA: ${{ needs.resolve-release.outputs.sha }}
@@ -181,6 +190,8 @@ jobs:
           fi
           cd "$RUNNER_TEMP/radar-runtime"
           node_modules/.bin/tsx scripts/deploy.ts "$RELEASE_SHA"
+          node -e 'const fs=require("fs"); const manifest=JSON.parse(fs.readFileSync("release-manifest.json","utf8")); fs.writeFileSync("deployed-runtime.json",JSON.stringify({status:"ready",sourceCommit:manifest.commitSha,sourceTree:manifest.sourceTree,runtimeInputSha256:manifest.runtimeInputSha256,payloadSha256:manifest.payloadSha256,artifactSha256:process.env.RADAR_DEPLOY_ARTIFACT_SHA256},null,2)+"\n");'
+          echo "deployed=true" >> "$GITHUB_OUTPUT"
           echo "Oracle is serving certified release $RELEASE_SHA."
           {
             echo "### Oracle deployment"
@@ -189,3 +200,11 @@ jobs:
             echo "- Database fingerprint: $RADAR_DEPLOY_DB_FINGERPRINT"
             echo "- Readiness: $RADAR_DEPLOY_READINESS_URL/health/system"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain successful runtime deployment identity
+        if: steps.activation.outputs.deployed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: radar-deployed-runtime
+          path: ${{ runner.temp }}/radar-runtime/deployed-runtime.json
+          retention-days: 90

@@ -1,3 +1,4 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { pollHostProviderCheck } from "../../src/admin/host-provider-checks";
 import { readOperations, mutateOperations } from "../../src/admin/operations-service";
 import { getDatabaseTargetIdentity } from "../../src/data/database";
@@ -72,7 +73,7 @@ afterEach(async () => {
   for (const db of adapters.splice(0)) await db.close();
 });
 async function fixture(provided?: SqliteAdapter | TursoAdapter) {
-  const db = provided ?? new SqliteAdapter(new Database(":memory:"));
+  const db = provided ?? await migratedFixtureDatabase();
   if (!provided) adapters.push(db as SqliteAdapter);
   await setupLineageTestFixture(db);
   await db.execute(
@@ -340,7 +341,7 @@ describe("Operations & Recovery", () => {
         }
         return;
       }
-      const adapter = new SqliteAdapter(new Database(":memory:"));
+      const adapter = await migratedFixtureDatabase();
       try {
         const db = await fixture(adapter);
         const work = await recoveryMemo(db);

@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { beforeEach, describe, expect, it } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { SqliteScrapeRunStore } from "../../src/data/sqlite/repositories/SqliteScrapeRunStore";
@@ -23,7 +23,7 @@ describe("Phase 4A: Scrape Run Multi-Tenant Ownership & Security Isolation", () 
   let store: SqliteScrapeRunStore;
 
   beforeEach(async () => {
-    db = new SqliteAdapter(new Database(":memory:"));
+    db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
 
     // Set up fixtures for negative matrix

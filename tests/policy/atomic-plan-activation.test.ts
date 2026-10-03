@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { beforeEach, describe, expect, it } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { SqliteEvaluationContextStore } from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
@@ -55,7 +55,7 @@ describe("Atomic career-intent plan activation", () => {
   let store: SqliteEvaluationContextStore;
 
   beforeEach(async () => {
-    db = new SqliteAdapter(new Database(":memory:"));
+    db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
     await db.execute(
       `UPDATE evaluation_contexts SET policy_version = ? WHERE context_fingerprint = ?`,

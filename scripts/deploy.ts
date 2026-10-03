@@ -2,12 +2,14 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import crypto from "node:crypto";
 import { getDatabaseTargetIdentity } from "../src/data/database";
 import { verifyReleaseDirectory } from "./release/verify";
 
 export type DeployConfig = {
   readonly sha: string;
   readonly artifact: string;
+  readonly artifactSha256?: string;
   readonly host: string;
   readonly user: string;
   readonly keyPath: string;
@@ -44,6 +46,7 @@ function parseConfig(): DeployConfig {
   return {
     sha,
     artifact,
+    artifactSha256: process.env.RADAR_DEPLOY_ARTIFACT_SHA256,
     keyPath,
     host: required("RADAR_DEPLOY_SSH_HOST"),
     user: required("RADAR_DEPLOY_SSH_USER"),
@@ -120,6 +123,17 @@ export function validatePreMutation(config: DeployConfig): void {
   const identity = getDatabaseTargetIdentity();
   if (identity.fingerprint !== config.expectedDatabaseFingerprint)
     throw new Error("DEPLOY_DATABASE_TARGET_MISMATCH");
+  if (config.artifactSha256) {
+    if (
+      !/^[a-f0-9]{64}$/.test(config.artifactSha256) ||
+      crypto.createHash("sha256").update(fs.readFileSync(config.artifact)).digest("hex") !==
+        config.artifactSha256
+    )
+      throw new Error("DEPLOY_ARCHIVE_CHECKSUM_MISMATCH");
+    // CI already performed the portability extraction. The host verifies the
+    // extracted payload before touching processes or the database.
+    return;
+  }
   const extracted = fs.mkdtempSync(path.join(os.tmpdir(), "radar-release-verify-"));
   try {
     execFileSync("tar", ["-xzf", config.artifact, "-C", extracted], { stdio: "inherit" });
@@ -182,9 +196,6 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
 
   // The recovery command is supplied by the operator's actual database
   // provider. Its non-empty result is persisted as the recovery-point ID.
-  const recoveryPoint = runner("ssh", sshArgs(config, `set -eu; ${config.recoveryCommand}`));
-  if (!recoveryPoint) throw new Error("DEPLOY_RECOVERY_POINT_UNVERIFIED");
-
   // Previous-release discovery: reading CURRENT_SHA must succeed when the file does not yet exist.
   const readPriorShaCommand = `if [ -f ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)} ]; then cat ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}; fi`;
   const rawPriorSha = runner("ssh", sshArgs(config, readPriorShaCommand));
@@ -207,6 +218,11 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     }
   }
   if (priorSha && !priorReleaseVerified) throw new Error("DEPLOY_PREVIOUS_RELEASE_NOT_READY");
+
+  // Create the recovery point only after cheap local and previous-release
+  // preflight succeeds, immediately before preparing the new host release.
+  const recoveryPoint = runner("ssh", sshArgs(config, `set -eu; ${config.recoveryCommand}`));
+  if (!recoveryPoint) throw new Error("DEPLOY_RECOVERY_POINT_UNVERIFIED");
 
   runner(
     "ssh",

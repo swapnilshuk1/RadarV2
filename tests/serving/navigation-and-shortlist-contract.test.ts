@@ -1,7 +1,7 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
@@ -25,7 +25,7 @@ describe("current staged-v8 navigation and shortlist contracts", () => {
   let scope: AuthorizedPersonScope;
 
   beforeEach(async () => {
-    db = new SqliteAdapter(new Database(":memory:"));
+    db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
     await db.execute(`INSERT OR IGNORE INTO users (id,email) VALUES ('person_A','a@a.com'),('person_B','b@b.com')`);
     await db.execute(

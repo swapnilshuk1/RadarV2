@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
@@ -32,7 +32,7 @@ describe("Scraped Job Detail & Decision Log Read Model", () => {
   });
 
   beforeEach(async () => {
-    db = new SqliteAdapter(new Database(":memory:"));
+    db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
     await db.execute(`INSERT INTO users(id,email) VALUES('person_A','a@a.com')`);
     await db.execute(

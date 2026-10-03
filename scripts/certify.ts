@@ -21,6 +21,7 @@ export interface Stage {
   command: string;
   description: string;
   execution?: "command" | "manifest" | "reported-by-manifest";
+  requiresToolchain?: boolean;
 }
 
 export const STAGES: Stage[] = [
@@ -41,6 +42,7 @@ export const STAGES: Stage[] = [
   },
   {
     name: "Stage 2: Production SSR Bundle Build",
+    requiresToolchain: true,
     command: "npm run build",
     description: "Nitro server and Vite client bundling required by deployment invariants",
   },
@@ -50,31 +52,7 @@ export const STAGES: Stage[] = [
     description:
       "End-to-end integration across acquisition, semantic policy, decision persistence, and UI rendering",
     execution: "manifest",
-  },
-  {
-    name: "Stage 4: Canonical Ingestion & Lineage Contracts",
-    command: "Unified Vitest certification manifest (executed once in Stage 3)",
-    description: "FK integrity, content hashing, version lineage, and global metric aggregations",
-    execution: "reported-by-manifest",
-  },
-  {
-    name: "Stage 5: Multi-Tenant & Scope Security Isolation",
-    command: "Unified Vitest certification manifest (executed once in Stage 3)",
-    description: "Strict tenant isolation, credential broker boundaries, and scope resolution",
-    execution: "reported-by-manifest",
-  },
-  {
-    name: "Stage 6: Serving Store & Keyset Pagination Invariants",
-    command: "Unified Vitest certification manifest (executed once in Stage 3)",
-    description:
-      "Feed ordering parity, opaque cursor stability, dossier navigation, and singleflight coalescing",
-    execution: "reported-by-manifest",
-  },
-  {
-    name: "Stage 7: Staged-v8 Memo & Serving Contracts",
-    command: "Unified Vitest certification manifest (executed once in Stage 3)",
-    description: "Staged-v8 memo integrity, verdict truth, reviewed serving, and badge mappings",
-    execution: "reported-by-manifest",
+    requiresToolchain: true,
   },
 ];
 
@@ -82,6 +60,7 @@ export const FEEDBACK_STAGES: Stage[] = [
   ...STAGES.slice(0, 3),
   {
     name: "Affected regression tests",
+    requiresToolchain: true,
     command: "npm run certify:affected",
     description: "Changed-file regression feedback; main certification remains authoritative",
   },
@@ -116,6 +95,16 @@ export function runCertification(stages: Stage[] = STAGES, authoritative = true)
     console.log(`  Target: ${stage.description}`);
     console.log(`  Command: ${stage.command}\n`);
 
+    if (stage.requiresToolchain && failures.length > 0) {
+      blocked.push(stage);
+      outcomes.push({
+        name: stage.name,
+        status: "skipped (static checks failed)",
+        seconds: "0.00",
+      });
+      console.error(`Skipped ${stage.name}: static checks must pass before build/tests.`);
+      continue;
+    }
     const stageStart = Date.now();
     try {
       if (stage.execution === "reported-by-manifest") {

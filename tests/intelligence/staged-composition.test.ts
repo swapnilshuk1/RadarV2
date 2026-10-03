@@ -1,5 +1,5 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { describe, expect, it, vi } from "vitest";
-import Database from "better-sqlite3";
 import { GoogleAuth } from "google-auth-library";
 import { adcTokenProvider } from "../../src/lib/model/google-adc";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
@@ -360,7 +360,7 @@ describe("staged dossier editorial boundary", () => {
     },
   );
   it("does not trap a resumed composition in rejected cached proposals", async () => {
-    const db = new SqliteAdapter(new Database(":memory:"));
+    const db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
     let valid = false,
       calls = 0;
@@ -568,7 +568,7 @@ describe("staged dossier editorial boundary", () => {
   });
 
   it("does not persist semantically rejected memo responses across queue retries", async () => {
-    const db = new SqliteAdapter(new Database(":memory:"));
+    const db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
     let repaired = false;
     let calls = 0;
@@ -888,7 +888,7 @@ describe("staged dossier editorial boundary", () => {
     expect(writer.generate).toHaveBeenCalledTimes(1);
   });
   it("resumes an interrupted review without regenerating the complete memo", async () => {
-    const db = new SqliteAdapter(new Database(":memory:"));
+    const db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
     let fail = true;
     const writer = { id: "restart-writer", version: "1", generate: vi.fn(async () => draft()) };
@@ -1102,7 +1102,7 @@ describe("staged dossier editorial boundary", () => {
         return accept(input);
       }),
     };
-    const db = new SqliteAdapter(new Database(":memory:"));
+    const db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
     const cachedWriter = durableDossierModel(db, "outage-test", writer);
     await composeStagedDossier(frozen, stagedEvaluation, cachedWriter, reviewer);
@@ -1299,7 +1299,7 @@ describe("staged dossier editorial boundary", () => {
     );
   });
   it("keeps writer checkpoints when the reviewer model configuration changes", async () => {
-    const db = new SqliteAdapter(new Database(":memory:"));
+    const db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
     const writer = { id: "stable-composer", version: "1", generate: vi.fn(async () => draft()) };
     const review = {

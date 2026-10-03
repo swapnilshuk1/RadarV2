@@ -1,5 +1,5 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import {
@@ -31,7 +31,7 @@ const usable = async () =>
   );
 async function fixture() {
   vi.stubEnv("TAVILY_API_KEY", "host-key-fixture-0000000000");
-  const db = new SqliteAdapter(new Database(":memory:"));
+  const db = await migratedFixtureDatabase();
   adapters.push(db);
   await setupLineageTestFixture(db);
   await db.execute("INSERT INTO users(id,email) VALUES('op','op@example.test')");

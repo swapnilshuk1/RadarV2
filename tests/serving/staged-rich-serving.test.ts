@@ -1,5 +1,5 @@
+import { migratedFixtureDatabase } from "../persistence/migrated-fixture";
 import { compositionSchema } from "../../src/dossier/contracts";
-import Database from "better-sqlite3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
@@ -45,7 +45,7 @@ describe("rich staged serving activation", () => {
     profileVersion: "profile",
   };
   beforeEach(async () => {
-    db = new SqliteAdapter(new Database(":memory:"));
+    db = await migratedFixtureDatabase();
     await setupLineageTestFixture(db);
     await db.execute(`INSERT INTO users(id,email) VALUES('person_A','a@a.com')`);
     await db.execute(
