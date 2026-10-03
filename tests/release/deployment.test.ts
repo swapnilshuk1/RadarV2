@@ -6,7 +6,12 @@ import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
 import { getDatabaseTargetIdentity } from "../../src/data/database";
 import { releasePayloadChecksum } from "../../scripts/release/package";
-import { deploy, type CommandRunner, type DeployConfig } from "../../scripts/deploy";
+import {
+  commandFailureMessage,
+  deploy,
+  type CommandRunner,
+  type DeployConfig,
+} from "../../scripts/deploy";
 
 const digest = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 
@@ -201,10 +206,55 @@ describe("deterministic release deployment", () => {
     );
     expect(capturedActivation).toContain("/health/system");
     expect(capturedActivation).toContain("system_ready=0");
+    expect(capturedActivation).toContain("RADAR_DEPLOY_STAGE=migrate");
     expect(capturedActivation).toContain("readiness_deadline=$((SECONDS + 180))");
     expect(capturedActivation.indexOf("system_ready=0")).toBeLessThan(
       capturedActivation.indexOf("RADAR_PM2_REQUIRED="),
     );
+  });
+
+  it("hands forward migration files to the verified prior release before migrating", () => {
+    const config = makeConfig();
+    const priorSha = "b".repeat(40);
+    let activation = "";
+    const mockRunner: CommandRunner = (command, args) => {
+      if (command === "ssh") {
+        const cmd = args[args.length - 1];
+        if (cmd.includes("echo rec-12345")) return "rec-12345";
+        if (cmd.includes("CURRENT_SHA") && cmd.startsWith("if [ -f ")) return priorSha;
+        if (cmd.startsWith("if [ -d ") && cmd.includes(`releases/${priorSha}`)) return "VERIFIED";
+        if (cmd.includes("RADAR_DEPLOY_STAGE=prior_release_migration_catalog")) activation = cmd;
+      }
+      if (command === "curl") return JSON.stringify({ status: "ready", releaseSha: testSha });
+      return "";
+    };
+
+    deploy(config, mockRunner);
+
+    const handoffIndex = activation.indexOf("RADAR_DEPLOY_STAGE=prior_release_migration_catalog");
+    const migrateIndex = activation.indexOf("RADAR_DEPLOY_STAGE=migrate");
+    expect(activation).toContain(
+      `cp -n \"$migration\" '/srv/radar/releases/${priorSha}/src/data/sqlite/migrations/'`,
+    );
+    expect(handoffIndex).toBeGreaterThan(-1);
+    expect(migrateIndex).toBeGreaterThan(handoffIndex);
+  });
+
+  it("keeps remote failure stages while redacting credential material", () => {
+    const message = commandFailureMessage("ssh", {
+      stdout: "RADAR_DEPLOY_STAGE=migrate\nTURSO_AUTH_TOKEN=secret-value",
+      stderr:
+        "Authorization: Bearer bearer-secret\nhttps://user:password@example.test/path\nre_12345678901234567890",
+    });
+
+    expect(message).toContain("RADAR_DEPLOY_STAGE=migrate");
+    expect(message).toContain("TURSO_AUTH_TOKEN=[redacted]");
+    expect(message).toContain("Authorization: Bearer [redacted]");
+    expect(message).toContain("https://user:[redacted]@example.test/path");
+    expect(message).not.toContain("secret-value");
+    expect(message).not.toContain("bearer-secret");
+    expect(message).not.toContain("password");
+    expect(message).not.toContain("re_12345678901234567890");
   });
 
   it("explicitly passes RADAR_DEPLOY_READINESS_URL and RADAR_RELEASE_SHA to remote smoke", () => {
@@ -419,6 +469,13 @@ describe("deterministic release deployment", () => {
     expect(pm2Index).toBeGreaterThan(cdIndex);
     expect(shaUpdateIndex).toBeGreaterThan(pm2Index);
     expect(successReceiptIndex).toBeGreaterThan(shaUpdateIndex);
+    const schemaIndex = rollbackCmd.indexOf("npm run db:status");
+    const readyIndex = rollbackCmd.indexOf("/health/ready");
+    expect(schemaIndex).toBeGreaterThan(cdIndex);
+    expect(schemaIndex).toBeLessThan(pm2Index);
+    expect(readyIndex).toBeGreaterThan(pm2Index);
+    expect(readyIndex).toBeLessThan(shaUpdateIndex);
+    expect(rollbackCmd.slice(readyIndex, shaUpdateIndex)).toContain(priorSha);
 
     // Atomic subshell verifies all preconditions before success receipt is written
     expect(rollbackCmd).toContain(

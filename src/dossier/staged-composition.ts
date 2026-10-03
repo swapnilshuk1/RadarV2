@@ -1,3 +1,4 @@
+import type { StageObserver } from "../lib/model/stage-observer";
 import { z } from "zod";
 import { bindMemoReferences } from "./bound-memo-schema";
 import {
@@ -453,7 +454,7 @@ async function writeMemo(
   packet: unknown,
   frozen: StagedResearchInput,
   staged: StagedDecisionResult,
-  onStage: (stage: string) => void,
+  onStage: StageObserver,
   previous?: Draft,
   requested?: Repair,
 ) {
@@ -586,7 +587,7 @@ async function writeMemo(
     await writer.discardResponse?.(response);
     if (checked.draft) value = checked.draft;
     repair = checked.repair;
-    onStage("Correcting only the affected memo blocks");
+    onStage("Correcting only the affected memo blocks", { kind: "repair", stage: "memo_validation" });
   }
   await writer.discardResponse?.(lastResponse);
   throw new Error(`Dossier generation needs source/reasoning repair: ${repair?.issue}`);
@@ -623,7 +624,7 @@ export async function composeStagedDraft(
   frozen: StagedResearchInput,
   staged: StagedDecisionResult,
   model: ReasoningModel,
-  onStage: (stage: string) => void = () => {},
+  onStage: StageObserver = () => {},
 ): Promise<Dossier> {
   const result = await writeMemo(
     memoWriter(frozen, staged, model),
@@ -644,7 +645,7 @@ export async function composeStagedDossier(
   staged: StagedDecisionResult,
   model: ReasoningModel,
   factualReviewer: ReasoningModel,
-  onStage: (stage: string) => void = () => {},
+  onStage: StageObserver = () => {},
   initialDraft?: Dossier,
   onDefect: () => Promise<void> = async () => {},
 ) {
@@ -684,7 +685,7 @@ export async function composeStagedDossier(
       if (!(error instanceof MemoReviewRepair) || reviewAttempt === 2) throw error;
       previous = result.draft;
       repair = { sections: error.sections, editorial: false, issue: error.message };
-      onStage("Correcting the memo against its source evidence");
+      onStage("Correcting the memo against its source evidence", { kind: "repair", stage: "factual_review" });
       continue;
     }
     const dossier = assembleMemo(frozen, result.research, result.memo, model);

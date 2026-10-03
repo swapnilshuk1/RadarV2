@@ -4,11 +4,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@libsql/client";
 import { chromium, type Browser, type Page } from "playwright";
-import {
-  attachDecisionsFixtureToActivePlan,
-  fixture,
-  seedBrowserFixture,
-} from "./browser-fixture";
+import { attachDecisionsFixtureToActivePlan, fixture, seedBrowserFixture } from "./browser-fixture";
 
 const ROOT = process.cwd();
 const PORT = 3100;
@@ -17,10 +13,15 @@ const DB_PATH = path.join(ROOT, ".radar", "acceptance", "browser.sqlite");
 const CORPUS_PATH = path.join(ROOT, ".radar", "acceptance", "live-scraped.json");
 const DB_URL = pathToFileURL(DB_PATH).href;
 const DB_TOKEN = "local-acceptance";
+const operations = process.argv.includes("--operations");
 const headed = process.argv.includes("--headed");
 const PROVIDER_CREDENTIAL_KEYS = [
-  "GEMINI_API_KEY", "GROQ_API_KEY", "BEDROCK_MANTLE_API_KEY",
-  "AWS_BEARER_TOKEN_BEDROCK", "TAVILY_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS",
+  "GEMINI_API_KEY",
+  "GROQ_API_KEY",
+  "BEDROCK_MANTLE_API_KEY",
+  "AWS_BEARER_TOKEN_BEDROCK",
+  "TAVILY_API_KEY",
+  "GOOGLE_APPLICATION_CREDENTIALS",
 ] as const;
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -56,14 +57,26 @@ async function queryOne<T>(sql: string, args: unknown[] = []): Promise<T | null>
 async function prepareDatabase(): Promise<string> {
   for (const key of PROVIDER_CREDENTIAL_KEYS) process.env[key] = "";
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  fs.writeFileSync(CORPUS_PATH, JSON.stringify([{
-    normalizedText: "Isolated acceptance corpus record for the candidate and administrator browser journey.",
-    extractorVersion: "acceptance-fixture",
-    dimensions: [{ jdEvidence: { status: "Explicit", value: "Fixture", evidence: ["fixture"] } }],
-  }]));
+  fs.writeFileSync(
+    CORPUS_PATH,
+    JSON.stringify([
+      {
+        normalizedText:
+          "Isolated acceptance corpus record for the candidate and administrator browser journey.",
+        extractorVersion: "acceptance-fixture",
+        dimensions: [
+          { jdEvidence: { status: "Explicit", value: "Fixture", evidence: ["fixture"] } },
+        ],
+      },
+    ]),
+  );
   for (const suffix of ["", "-wal", "-shm"]) {
-    try { fs.unlinkSync(`${DB_PATH}${suffix}`); } catch {}
+    try {
+      fs.unlinkSync(`${DB_PATH}${suffix}`);
+    } catch {}
   }
+  if (operations)
+    process.env.RADAR_CREDENTIAL_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64");
   process.env.RADAR_ENV = "dev";
   process.env.NODE_ENV = "development";
   process.env.TURSO_CONNECTION_URL = DB_URL;
@@ -92,8 +105,14 @@ async function prepareDatabase(): Promise<string> {
         WHERE aec.tenant_id=? AND aec.person_id=? LIMIT 1) active`,
     [fixture.candidateId, fixture.tenantId, fixture.candidateId],
   );
-  assert(initial?.latest === fixture.profileB, "Profile B must be the latest candidate projection.");
-  assert(initial?.active === fixture.profileA, "Recommendations must initially remain pinned to Profile A.");
+  assert(
+    initial?.latest === fixture.profileB,
+    "Profile B must be the latest candidate projection.",
+  );
+  assert(
+    initial?.active === fixture.profileA,
+    "Recommendations must initially remain pinned to Profile A.",
+  );
   return identity.fingerprint;
 }
 
@@ -134,18 +153,20 @@ async function launchBrowser(): Promise<Browser> {
 }
 
 async function addSession(page: Page, token: string): Promise<void> {
-  await page.context().addCookies([{
-    name: "radar_session",
-    value: token,
-    url: BASE_URL,
-    httpOnly: true,
-    sameSite: "Lax",
-  }]);
+  await page.context().addCookies([
+    {
+      name: "radar_session",
+      value: token,
+      url: BASE_URL,
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
 }
 
 async function textareaWithValue(page: Page, fragment: string) {
   const textareas = page.locator("textarea");
-  for (let index = 0; index < await textareas.count(); index += 1) {
+  for (let index = 0; index < (await textareas.count()); index += 1) {
     const area = textareas.nth(index);
     if ((await area.inputValue()).includes(fragment)) return area;
   }
@@ -155,8 +176,10 @@ async function textareaWithValue(page: Page, fragment: string) {
 async function waitEnabled(page: Page, name: string): Promise<void> {
   await page.getByRole("button", { name }).waitFor({ state: "visible" });
   await page.waitForFunction(
-    (label) => [...document.querySelectorAll("button")]
-      .some((button) => button.textContent?.trim() === label && !button.hasAttribute("disabled")),
+    (label) =>
+      [...document.querySelectorAll("button")].some(
+        (button) => button.textContent?.trim() === label && !button.hasAttribute("disabled"),
+      ),
     name,
   );
 }
@@ -193,8 +216,14 @@ async function runCandidateJourney(browser: Browser): Promise<void> {
   await page.goto(`${BASE_URL}/decisions`, { waitUntil: "networkidle" });
   const summary = page.getByTestId(`pursuit-summary-${fixture.jobHash}`);
   await summary.waitFor();
-  assert((await summary.textContent())?.includes("Interviewing"), "Decisions must show pursuit stage.");
-  assert((await summary.textContent())?.includes("Follow up with search partner"), "Decisions must show next action.");
+  assert(
+    (await summary.textContent())?.includes("Interviewing"),
+    "Decisions must show pursuit stage.",
+  );
+  assert(
+    (await summary.textContent())?.includes("Follow up with search partner"),
+    "Decisions must show next action.",
+  );
   assert((await summary.textContent())?.includes("2026-10-03"), "Decisions must show due date.");
 
   await page.goto(`${BASE_URL}/pursuit/${fixture.jobHash}`, { waitUntil: "networkidle" });
@@ -204,13 +233,16 @@ async function runCandidateJourney(browser: Browser): Promise<void> {
     "SELECT profile_version FROM opportunity_pursuits WHERE id=?",
     [fixture.pursuitId],
   );
-  assert(profileARow?.profile_version === fixture.profileA, "Existing pursuit must remain pinned to Profile A.");
+  assert(
+    profileARow?.profile_version === fixture.profileA,
+    "Existing pursuit must remain pinned to Profile A.",
+  );
   const originalBullet = await textareaWithValue(page, "Grew revenue 40%");
   await originalBullet.click();
-  await page.getByTestId("evidence-inspector").getByText(
-    "Grew revenue 40% across the enterprise.",
-    { exact: false },
-  ).waitFor();
+  await page
+    .getByTestId("evidence-inspector")
+    .getByText("Grew revenue 40% across the enterprise.", { exact: false })
+    .waitFor();
 
   await originalBullet.fill("Grew revenue 400% across the enterprise.");
   await originalBullet.blur();
@@ -218,7 +250,10 @@ async function runCandidateJourney(browser: Browser): Promise<void> {
   await page.getByRole("button", { name: "Mark approved" }).click();
   const blockers = page.getByTestId("resume-approval-blockers");
   await blockers.waitFor();
-  assert((await blockers.textContent())?.includes("400%"), "Approval blocker must identify the unsupported figure.");
+  assert(
+    (await blockers.textContent())?.includes("400%"),
+    "Approval blocker must identify the unsupported figure.",
+  );
 
   const correctedBullet = await textareaWithValue(page, "Grew revenue 400%");
   await correctedBullet.fill("Grew revenue 40% across the enterprise.");
@@ -250,7 +285,10 @@ async function runCandidateJourney(browser: Browser): Promise<void> {
   await page.goto(`${BASE_URL}/corpus`, { waitUntil: "networkidle" });
   await page.getByText("Corpus health unavailable", { exact: true }).waitFor();
   await page.getByText("tenant administrators only", { exact: false }).waitFor();
-  assert(await page.getByRole("link", { name: "Corpus" }).count() === 0, "Non-admin navigation must hide Corpus.");
+  assert(
+    (await page.getByRole("link", { name: "Corpus" }).count()) === 0,
+    "Non-admin navigation must hide Corpus.",
+  );
 
   await context.close();
 }
@@ -261,7 +299,10 @@ async function runAdminCorpusCheck(browser: Browser): Promise<void> {
   await addSession(page, fixture.adminToken);
   await page.goto(`${BASE_URL}/corpus`, { waitUntil: "networkidle" });
   await page.getByText("Job Intelligence Corpus", { exact: true }).waitFor();
-  assert(await page.getByRole("link", { name: "Corpus" }).count() === 1, "Admin navigation must expose Corpus.");
+  assert(
+    (await page.getByRole("link", { name: "Corpus" }).count()) === 1,
+    "Admin navigation must expose Corpus.",
+  );
   await context.close();
 }
 
@@ -274,6 +315,14 @@ async function main() {
   try {
     await waitForServer();
     browser = await launchBrowser();
+    if (operations) {
+      const { runOperationsBrowserJourney } = await import("./operations-browser");
+      await runOperationsBrowserJourney(browser, BASE_URL, fingerprint);
+      console.log(
+        "Operations & Recovery browser journey passed: incident, worker validation, activation, uptake, exact preview/resume, reviewed memo, signed recovery delivery.",
+      );
+      return;
+    }
     await runCandidateJourney(browser);
     await runAdminCorpusCheck(browser);
     console.log("\n✅ Isolated authenticated browser acceptance passed.");

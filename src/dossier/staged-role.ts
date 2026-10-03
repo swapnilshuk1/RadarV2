@@ -1,3 +1,4 @@
+import type { PinnedIntelligence } from '../evaluation/intelligence-taxonomy';
 import {z} from 'zod';
 import {candidateConflictSchema, type AcquisitionAttempt, type Claim, type EvidenceSource, type SliceInput} from './contracts';
 
@@ -30,6 +31,7 @@ export interface StagedResearchInput {
   opportunity: SliceInput['opportunity'];
   candidate: SliceInput['candidate'];
   candidateDecisionProfile?: CandidateDecisionProfile;
+  intelligenceTaxonomy?: PinnedIntelligence;
   sources: EvidenceSource[];
   evidence: Claim[];
   candidateSourceRefs: { id: string; title: string }[];

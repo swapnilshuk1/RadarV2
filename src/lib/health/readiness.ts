@@ -8,6 +8,8 @@ import {
   WORKER_HEARTBEAT_STALE_MS,
   requiredWorkersForEnvironment,
 } from "./worker-heartbeat";
+import { operationsInstalled } from "../../admin/operations-runtime";
+import { CRITICAL_EVALUATION_MAINTENANCE_TASKS } from "./maintenance-receipts";
 
 export type ReadinessPayload = {
   readonly status: "ready" | "unavailable";
@@ -35,6 +37,69 @@ export async function readyResponse(): Promise<Response> {
   const readiness = await getReadiness();
   return new Response(JSON.stringify(readiness.body), {
     status: readiness.status,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+  });
+}
+
+/** External uptime monitors can detect maintenance loss without relying on the dead worker's notification loop. */
+export async function getOperationsReadiness(): Promise<{
+  status: number;
+  body: ReadinessPayload;
+}> {
+  try {
+    const db = getDatabaseAdapter();
+    const installed = await operationsInstalled(db);
+    const sha = releaseSha();
+    const fingerprint = getDatabaseTargetIdentity().fingerprint;
+    const now = Date.now();
+    const cutoff = now - WORKER_HEARTBEAT_STALE_MS;
+    const workers = installed
+      ? await db.many<{ instance_id: string }>(
+          `SELECT instance_id FROM worker_heartbeats
+           WHERE worker_name='evaluation' AND release_sha=? AND database_fingerprint=? AND last_seen_at>=?`,
+          [sha, fingerprint, new Date(cutoff).toISOString()],
+        )
+      : [];
+    let healthyWorkerFound = false;
+    for (const worker of workers) {
+      const receipts = await db.many<{
+        task: string;
+        last_success_at: number | null;
+        consecutive_failures: number;
+      }>(
+        `SELECT task,last_success_at,consecutive_failures
+         FROM operations_maintenance_tasks
+         WHERE worker_instance=? AND release_sha=? AND database_fingerprint=?`,
+        [worker.instance_id, sha, fingerprint],
+      );
+      const byTask = new Map(receipts.map((receipt) => [receipt.task, receipt]));
+      const current = CRITICAL_EVALUATION_MAINTENANCE_TASKS.every((task) => {
+        const receipt = byTask.get(task);
+        return Boolean(
+          receipt &&
+          receipt.last_success_at !== null &&
+          receipt.last_success_at >= cutoff &&
+          receipt.consecutive_failures === 0,
+        );
+      });
+      if (current) {
+        healthyWorkerFound = true;
+        break;
+      }
+    }
+    const ready = installed && healthyWorkerFound;
+    return {
+      status: ready ? 200 : 503,
+      body: { status: ready ? "ready" : "unavailable", releaseSha: releaseSha() },
+    };
+  } catch {
+    return { status: 503, body: { status: "unavailable", releaseSha: releaseSha() } };
+  }
+}
+export async function operationsReadyResponse(): Promise<Response> {
+  const result = await getOperationsReadiness();
+  return new Response(JSON.stringify(result.body), {
+    status: result.status,
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
   });
 }

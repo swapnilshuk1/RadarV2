@@ -42,6 +42,7 @@ export class BedrockMantleJsonModel implements JsonModel {
       stageOutputTokens?: Readonly<Record<string, number>>;
       invocationSink?: ModelInvocationSink;
       providerConcurrencyLimit?: number;
+      providerConcurrencyKey?: string;
       random?: () => number;
     } = {},
   ) {
@@ -53,15 +54,11 @@ export class BedrockMantleJsonModel implements JsonModel {
           region: options.region ?? "us-east-1",
           timeoutMs: options.timeoutMs ?? 120_000,
           stageTimeoutMs: Object.fromEntries(
-            Object.entries(options.stageTimeoutMs ?? {}).sort(([a], [b]) =>
-              a.localeCompare(b),
-            ),
+            Object.entries(options.stageTimeoutMs ?? {}).sort(([a], [b]) => a.localeCompare(b)),
           ),
           maxOutputTokens: options.maxOutputTokens ?? 12288,
           stageOutputTokens: Object.fromEntries(
-            Object.entries(options.stageOutputTokens ?? {}).sort(([a], [b]) =>
-              a.localeCompare(b),
-            ),
+            Object.entries(options.stageOutputTokens ?? {}).sort(([a], [b]) => a.localeCompare(b)),
           ),
           structuredOutput: "json_schema-strict",
         }),
@@ -82,10 +79,7 @@ export class BedrockMantleJsonModel implements JsonModel {
       this.options.stageOutputTokens?.[stage] ??
       this.options.maxOutputTokens ??
       12288;
-    const timeoutMs =
-      this.options.stageTimeoutMs?.[stage] ??
-      this.options.timeoutMs ??
-      120_000;
+    const timeoutMs = this.options.stageTimeoutMs?.[stage] ?? this.options.timeoutMs ?? 120_000;
     const backoffKey = `bedrock-mantle:${this.configurationFingerprint}`;
     const invocationId = randomUUID();
     const startedAt = Date.now();
@@ -120,44 +114,58 @@ export class BedrockMantleJsonModel implements JsonModel {
       });
     };
 
-    await record("running");
-
+    let admitted = false;
     try {
-      const response = await withProviderConcurrency(
-        `bedrock-mantle:${this.options.region ?? "us-east-1"}`,
-        this.options.providerConcurrencyLimit ??
-          Number(process.env.RADAR_MODEL_PROVIDER_CONCURRENCY || "6"),
-        async () =>
-          this.request(
-            `https://bedrock-mantle.${this.options.region ?? "us-east-1"}.api.aws/v1/chat/completions`,
-            {
-              method: "POST",
-              signal: AbortSignal.timeout(timeoutMs),
-              headers: {
-                Authorization: `Bearer ${await this.apiKey()}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: this.version,
-                stream: false,
-                messages: [
-                  { role: "system", content: instruction },
-                  { role: "user", content: JSON.stringify(input) },
-                ],
-                max_tokens: maxOutputTokens,
-                response_format: responseSchema
-                  ? {
-                      type: "json_schema",
-                      json_schema: {
-                        name: "radar_research",
-                        strict: true,
-                        schema: responseSchema,
-                      },
-                    }
-                  : { type: "json_object" },
-              }),
+      const dispatch = async () => {
+        await this.options.invocationSink?.beforeCall?.({
+          id: invocationId,
+          instruction,
+          input,
+          schema: responseSchema,
+          maxOutput: maxOutputTokens,
+        });
+        admitted = true;
+        await record("running");
+        return this.request(
+          `https://bedrock-mantle.${this.options.region ?? "us-east-1"}.api.aws/v1/chat/completions`,
+          {
+            method: "POST",
+            signal: AbortSignal.timeout(timeoutMs),
+            headers: {
+              Authorization: `Bearer ${await this.apiKey()}`,
+              "Content-Type": "application/json",
             },
-          ),
+            body: JSON.stringify({
+              model: this.version,
+              stream: false,
+              messages: [
+                { role: "system", content: instruction },
+                { role: "user", content: JSON.stringify(input) },
+              ],
+              max_tokens: maxOutputTokens,
+              response_format: responseSchema
+                ? {
+                    type: "json_schema",
+                    json_schema: {
+                      name: "radar_research",
+                      strict: true,
+                      schema: responseSchema,
+                    },
+                  }
+                : { type: "json_object" },
+            }),
+          },
+        );
+      };
+      const providerKey = `bedrock-mantle:${this.options.region ?? "us-east-1"}`;
+      const hostLimit = Number(process.env.RADAR_MODEL_PROVIDER_CONCURRENCY || "6");
+      const response = await withProviderConcurrency(
+        this.options.providerConcurrencyKey ?? providerKey,
+        this.options.providerConcurrencyLimit ?? hostLimit,
+        () =>
+          this.options.providerConcurrencyKey
+            ? withProviderConcurrency(providerKey, hostLimit, dispatch)
+            : dispatch(),
       );
 
       if (!response.ok) {
@@ -167,9 +175,7 @@ export class BedrockMantleJsonModel implements JsonModel {
         throw new ModelProviderUnavailableError(
           `Bedrock Mantle provider HTTP ${response.status}`,
           response.status,
-          transient
-            ? nextTransientProviderBackoff(backoffKey, retry, this.options.random)
-            : retry,
+          transient ? nextTransientProviderBackoff(backoffKey, retry, this.options.random) : retry,
         );
       }
 
@@ -232,22 +238,20 @@ export class BedrockMantleJsonModel implements JsonModel {
       await record("completed");
       return parsed;
     } catch (error) {
+      if (!admitted) throw error;
       if (error instanceof ModelInvalidOutputError) throw error;
       if (error instanceof ModelProviderUnavailableError) {
         await record("provider_error", error.message);
         throw error;
       }
-      const credential =
-        error instanceof Error && error.message.startsWith("BEDROCK_MANTLE_");
+      const credential = error instanceof Error && error.message.startsWith("BEDROCK_MANTLE_");
       await record(
         "transport_error",
         credential ? "BEDROCK_MANTLE_CREDENTIAL_UNAVAILABLE" : "BEDROCK_MANTLE_TRANSPORT_FAILURE",
       );
       if (credential) {
         clearTransientProviderBackoff(backoffKey);
-        throw new ModelProviderUnavailableError(
-          "Bedrock Mantle credential unavailable",
-        );
+        throw new ModelProviderUnavailableError("Bedrock Mantle credential unavailable");
       }
       throw new ModelProviderUnavailableError(
         "Bedrock Mantle transport failure",

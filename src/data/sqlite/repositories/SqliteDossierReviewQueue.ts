@@ -1,4 +1,7 @@
+import { pinJobConfig } from "../../../admin/config-store";
+import { operationalSettings } from "../../../admin/operations-runtime";
 import { randomUUID } from "node:crypto";
+import { reserveClaim, deferralFilter, renewReservation } from "../../../admin/protection";
 import type { DatabaseAdapter } from "@/data/database";
 import { dossierSchema, type Dossier } from "@/dossier/contracts";
 import { DOSSIER_COMPOSITION_RECIPE, reviewFingerprint } from "@/dossier/factual-review-integrity";
@@ -24,6 +27,7 @@ export interface ReviewJob {
   attempts: number;
   lease_token: string;
   created_at: number;
+  lease_mode?: "serial" | "independent";
 }
 export function reviewJobIdentity(job: ReviewJob): ProductionStagedIdentity {
   return {
@@ -117,32 +121,51 @@ export class SqliteDossierReviewQueue {
     const draft = validateDraft(value, identity, fp),
       key = params(identity, fp),
       now = this.now();
-    await this.db.execute(
-      `INSERT INTO dossier_review_jobs(id,tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,evaluation_fingerprint,recipe,profile_version,draft_json,draft_fingerprint,status,next_attempt_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,'pending',?,?,?) ON CONFLICT DO NOTHING`,
-      [
-        reviewFingerprint(key),
-        ...key,
-        identity.profileVersion,
-        JSON.stringify(draft),
-        reviewFingerprint(draft),
-        now,
-        now,
-        now,
-      ],
-    );
+    await this.db.transaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO dossier_review_jobs(id,tenant_id,person_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,evaluation_fingerprint,recipe,profile_version,draft_json,draft_fingerprint,status,next_attempt_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,'pending',?,?,?) ON CONFLICT DO NOTHING`,
+        [
+          reviewFingerprint(key),
+          ...key,
+          identity.profileVersion,
+          JSON.stringify(draft),
+          reviewFingerprint(draft),
+          now,
+          now,
+          now,
+        ],
+      );
+      await pinJobConfig(tx, "factual_review", reviewFingerprint(key), identity.tenantId);
+    });
   }
   async claim(): Promise<ReviewJob | null> {
     const now = this.now(),
       token = randomUUID();
+    const filter = await deferralFilter(this.db, "factual_review", "drj.id");
+    const config = await operationalSettings(this.db);
+    const independent =
+      config.installed && config.revision > 0 && config.settings.factual_review > 1;
     return this.db.transaction(async (tx) => {
-      const lane = await tx.execute(
-        `UPDATE dossier_review_lane SET lease_token=?,lease_until=? WHERE id='factual-review' AND next_attempt_at<=? AND (lease_until IS NULL OR lease_until<=?)`,
-        [token, now + 180_000, now, now],
-      );
+      const lane = independent
+        ? {
+            rowsAffected: Boolean(
+              await tx.one(
+                "SELECT id FROM dossier_review_lane WHERE id='factual-review' AND next_attempt_at<=? AND (lease_until IS NULL OR lease_until<=?)",
+                [now, now],
+              ),
+            )
+              ? 1
+              : 0,
+          }
+        : await tx.execute(
+            `UPDATE dossier_review_lane SET lease_token=?,lease_until=? WHERE id='factual-review' AND next_attempt_at<=? AND (lease_until IS NULL OR lease_until<=?)`,
+            [token, now + 180_000, now, now],
+          );
       if (!lane.rowsAffected) return null;
       const row = await tx.one<ReviewJob>(
         `SELECT * FROM dossier_review_jobs AS drj
          WHERE recipe=?
+           ${filter}
            AND EXISTS (
              SELECT 1 FROM active_evaluation_contexts aec
              WHERE aec.tenant_id=drj.tenant_id
@@ -160,24 +183,59 @@ export class SqliteDossierReviewQueue {
         );
         return null;
       }
+      if (
+        !(await reserveClaim(
+          tx,
+          {
+            pipeline: "factual_review",
+            id: row.id,
+            tenant: row.tenant_id,
+            token,
+            leaseUntil: now + 180_000,
+          },
+          now,
+        ))
+      ) {
+        await tx.execute(
+          "UPDATE dossier_review_lane SET lease_token=NULL,lease_until=NULL WHERE lease_token=?",
+          [token],
+        );
+        return null;
+      }
       await tx.execute(
-        `UPDATE dossier_review_jobs SET status='processing',lease_token=?,lease_until=?,updated_at=? WHERE id=?`,
-        [token, now + 180_000, now, row.id],
+        `UPDATE dossier_review_jobs SET status='processing',lease_token=?,lease_until=?,updated_at=?${config.installed ? ",lease_mode=?" : ""} WHERE id=?`,
+        [
+          token,
+          now + 180_000,
+          now,
+          ...(config.installed ? [independent ? "independent" : "serial"] : []),
+          row.id,
+        ],
       );
-      return { ...row, status: "processing", lease_token: token };
+      return {
+        ...row,
+        status: "processing",
+        lease_token: token,
+        lease_mode: independent ? "independent" : "serial",
+      };
     });
   }
   async heartbeat(job: ReviewJob) {
     const now = this.now();
-    const result = await this.db.execute(
-      `UPDATE dossier_review_lane SET lease_until=? WHERE id='factual-review' AND lease_token=? AND lease_until>?`,
-      [now + 180_000, job.lease_token, now],
-    );
+    const result =
+      job.lease_mode === "independent"
+        ? { rowsAffected: 1 }
+        : await this.db.execute(
+            `UPDATE dossier_review_lane SET lease_until=? WHERE id='factual-review' AND lease_token=? AND lease_until>?`,
+            [now + 180_000, job.lease_token, now],
+          );
     if (!result.rowsAffected) throw new Error("REVIEW_LEASE_LOST");
-    await this.db.execute(
-      `UPDATE dossier_review_jobs SET lease_until=?,updated_at=? WHERE id=? AND lease_token=?`,
-      [now + 180_000, now, job.id, job.lease_token],
+    await renewReservation(this.db, "factual_review", job.id, job.lease_token!, now + 180_000);
+    const guard = await this.db.execute(
+      `UPDATE dossier_review_jobs SET lease_until=?,updated_at=? WHERE id=? AND lease_token=? AND status='processing' AND lease_until>?`,
+      [now + 180_000, now, job.id, job.lease_token, now],
     );
+    if (!guard.rowsAffected) throw new Error("REVIEW_LEASE_LOST");
   }
   async withhold(job: ReviewJob) {
     await this.db.execute(
@@ -192,10 +250,13 @@ export class SqliteDossierReviewQueue {
         [this.now(), this.now(), job.id, job.lease_token, this.now()],
       );
       if (!guard.rowsAffected) throw new Error("REVIEW_LEASE_LOST");
-      const lane = await tx.execute(
-        `UPDATE dossier_review_lane SET lease_token=NULL,lease_until=NULL,failures=0,next_attempt_at=0 WHERE id='factual-review' AND lease_token=? AND lease_until>?`,
-        [job.lease_token, this.now()],
-      );
+      const lane =
+        job.lease_mode === "independent"
+          ? { rowsAffected: 1 }
+          : await tx.execute(
+              `UPDATE dossier_review_lane SET lease_token=NULL,lease_until=NULL,failures=0,next_attempt_at=0 WHERE id='factual-review' AND lease_token=? AND lease_until>?`,
+              [job.lease_token, this.now()],
+            );
       if (!lane.rowsAffected) throw new Error("REVIEW_LEASE_LOST");
       await save(tx);
     });
@@ -207,17 +268,18 @@ export class SqliteDossierReviewQueue {
   ) {
     return this.db.transaction(async (tx) => {
       const lane = await tx.one<{ failures: number }>(
-        `SELECT failures FROM dossier_review_lane WHERE id='factual-review' AND lease_token=?`,
-        [job.lease_token],
+        `SELECT failures FROM dossier_review_lane WHERE id='factual-review' ${job.lease_mode === "independent" ? "" : "AND lease_token=?"}`,
+        job.lease_mode === "independent" ? [] : [job.lease_token],
       );
-      if (!lane) return 'lease_lost';
+      if (!lane) return "lease_lost";
       const delay = Math.max(
         error.delay ?? 0,
         Math.min(300_000, 30_000 * 2 ** Math.min(lane.failures, 4)) * (0.8 + random() * 0.2),
       );
-      const terminal = !error.provider || this.now() - job.created_at > 24 * 3600_000;
-      await tx.execute(
-        `UPDATE dossier_review_jobs SET status=?,attempts=attempts+1,next_attempt_at=?,lease_token=NULL,lease_until=NULL,last_error=?,updated_at=? WHERE id=? AND lease_token=?`,
+      const quota = error.code.startsWith("QUOTA_DEFERRED:");
+      const terminal = !quota && (!error.provider || this.now() - job.created_at > 24 * 3600_000);
+      const guard = await tx.execute(
+        `UPDATE dossier_review_jobs SET status=?,attempts=attempts+${quota ? 0 : 1},next_attempt_at=?,lease_token=NULL,lease_until=NULL,last_error=?,updated_at=? WHERE id=? AND lease_token=? AND status='processing' AND lease_until>?`,
         [
           terminal ? "needs_attention" : "retry",
           this.now() + delay,
@@ -225,17 +287,26 @@ export class SqliteDossierReviewQueue {
           this.now(),
           job.id,
           job.lease_token,
+          this.now(),
         ],
       );
-      await tx.execute(
-        `UPDATE dossier_review_lane SET lease_token=NULL,lease_until=NULL,failures=?,next_attempt_at=? WHERE id='factual-review' AND lease_token=?`,
-        [
-          error.provider ? lane.failures + 1 : 0,
-          error.provider ? this.now() + delay : 0,
-          job.lease_token,
-        ],
-      );
-      return terminal ? 'needs_attention' : 'retry';
+      if (!guard.rowsAffected) return "lease_lost";
+      if (job.lease_mode === "independent") {
+        if (error.provider && !quota)
+          await tx.execute(
+            "UPDATE dossier_review_lane SET failures=failures+1,next_attempt_at=MAX(next_attempt_at,?) WHERE id='factual-review'",
+            [this.now() + delay],
+          );
+      } else
+        await tx.execute(
+          `UPDATE dossier_review_lane SET lease_token=NULL,lease_until=NULL,failures=?,next_attempt_at=? WHERE id='factual-review' AND lease_token=?`,
+          [
+            error.provider && !quota ? lane.failures + 1 : 0,
+            error.provider && !quota ? this.now() + delay : 0,
+            job.lease_token,
+          ],
+        );
+      return terminal ? "needs_attention" : "retry";
     });
   }
 }

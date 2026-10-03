@@ -28,19 +28,18 @@ import {
   findSemanticInflation,
   hasOverclaim,
 } from "../../src/pursuit/semantic/validate";
-import { deriveDeterministicThesis, enrichThesis, type DerivedThesis } from "../../src/pursuit/thesis";
-import type {
-  CandidateArchetype,
-  CandidateClaim,
-  StyleProfile,
-} from "../../src/pursuit/types";
+import {
+  deriveDeterministicThesis,
+  enrichThesis,
+  type DerivedThesis,
+} from "../../src/pursuit/thesis";
+import type { CandidateArchetype, CandidateClaim, StyleProfile } from "../../src/pursuit/types";
 
 const RUN_LIVE = process.env.RADAR_RUN_LIVE_PURSUIT_MEMO_BENCHMARK === "true";
 const liveIt = RUN_LIVE ? it : it.skip;
 
 const FIXTURES = path.join(__dirname, "../fixtures/pursuit");
-const load = <T>(p: string): T =>
-  JSON.parse(readFileSync(path.join(FIXTURES, p), "utf-8")) as T;
+const load = <T>(p: string): T => JSON.parse(readFileSync(path.join(FIXTURES, p), "utf-8")) as T;
 
 const claims = load<CandidateClaim[]>("candidate-claims.json");
 const archetypes = load<CandidateArchetype[]>("archetypes.json");
@@ -77,7 +76,11 @@ const CASES: BenchmarkCase[] = [
   {
     id: "antal-managing-partner",
     brief: load<RoleBrief>("antal-managing-partner/role.json"),
-    signals: [/executive search|recruitment/i, /franchise|practice/i, /business development|revenue/i],
+    signals: [
+      /executive search|recruitment/i,
+      /franchise|practice/i,
+      /business development|revenue/i,
+    ],
     gap: /executive search|recruitment|franchise/i,
   },
   {
@@ -191,7 +194,9 @@ function qualityProxy(
       ].join("\n"),
     ),
   );
-  const unsupportedFigures = [...new Set(extractFigures(text).filter((f) => !allowedFigures.has(f)))];
+  const unsupportedFigures = [
+    ...new Set(extractFigures(text).filter((f) => !allowedFigures.has(f))),
+  ];
   const leakage = findLeakage(assertionText);
   const strongest =
     deterministic.semantic?.positioning.mode === "DIRECT_DOMAIN" ? "DIRECT" : "ANALOGOUS";
@@ -211,7 +216,8 @@ function qualityProxy(
   grounding = Math.max(0, grounding);
 
   const signalHits = spec.signals.filter((signal) => signal.test(text)).length;
-  const specificity = Math.round((signalHits / spec.signals.length) * 18) +
+  const specificity =
+    Math.round((signalHits / spec.signals.length) * 18) +
     (extractFigures(text).length > 0 ? 4 : 0) +
     (new RegExp(spec.brief.company.replace(/[.*+?^$()|[\]\\]/g, "\\$&"), "i").test(text) ? 3 : 0);
 
@@ -220,7 +226,9 @@ function qualityProxy(
     .join("\n");
   const scepticism =
     (spec.gap.test(objectionText) ? 10 : 0) +
-    (enriched.objections.some((o) => o.severity === "MATERIAL" || o.severity === "MODERATE") ? 5 : 0) +
+    (enriched.objections.some((o) => o.severity === "MATERIAL" || o.severity === "MODERATE")
+      ? 5
+      : 0) +
     (enriched.objections.some((o) => extractFigures(o.counterPosition).length > 0) ? 5 : 0);
 
   const writing =
@@ -269,11 +277,7 @@ describe("Pursuit memo benchmark configuration", () => {
       "msm-unify-csto",
       "weber-shandwick-vp-digital",
     ]);
-    expect(MODELS.map((m) => m.id)).toEqual([
-      "zai.glm-5",
-      "deepseek.v3.2",
-      "moonshotai.kimi-k2.5",
-    ]);
+    expect(MODELS.map((m) => m.id)).toEqual(["zai.glm-5", "deepseek.v3.2", "moonshotai.kimi-k2.5"]);
     expect(CASES).toHaveLength(5);
 
     const original = process.env.RADAR_PURSUIT_MANTLE_MODEL;
@@ -286,6 +290,20 @@ describe("Pursuit memo benchmark configuration", () => {
       if (original === undefined) delete process.env.RADAR_PURSUIT_MANTLE_MODEL;
       else process.env.RADAR_PURSUIT_MANTLE_MODEL = original;
     }
+  });
+  it("reserves a bounded Pursuit package across parallel model calls", () => {
+    const ledger = new PursuitTokenLedger({ inputTokens: 10_000, outputTokens: 1_000 });
+    const reservations = [1, 2, 3, 4].map(() => ledger.reserve(2_000));
+    expect(reservations.every(Boolean)).toBe(true);
+    expect(ledger.reserve(1)).toBeNull();
+    for (const reservation of reservations)
+      ledger.settle(reservation!, { inputTokens: 1_500, outputTokens: 200 });
+    expect(ledger.snapshot()).toMatchObject({ inputTokens: 6_000, outputTokens: 800, calls: 4 });
+    const finalReservation = ledger.reserve(2_000);
+    expect(finalReservation).toEqual({ input: 2_000, output: 200 });
+    ledger.settle(finalReservation!, { inputTokens: 2_000, outputTokens: 200 });
+    expect(ledger.exhausted()).toBe(true);
+    expect(ledger.reserve(1)).toBeNull();
   });
 });
 

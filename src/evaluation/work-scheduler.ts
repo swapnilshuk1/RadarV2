@@ -1,62 +1,104 @@
-import { createHash } from 'node:crypto';
-import type { DatabaseAdapter } from '@/data/database';
-import { STAGED_POLICY_VERSION } from '@/evaluation/policy';
+import { pinJobConfig } from "../admin/config-store";
+import { createHash } from "node:crypto";
+import type { DatabaseAdapter } from "@/data/database";
+import { STAGED_POLICY_VERSION } from "@/evaluation/policy";
 
 export interface EvaluationWorkIdentity {
-  tenantId:string;
-  personId:string;
-  searchPlanId:string;
-  canonicalJobId:string;
-  opportunityVersion:string;
-  evaluationContextFingerprint:string;
+  tenantId: string;
+  personId: string;
+  searchPlanId: string;
+  canonicalJobId: string;
+  opportunityVersion: string;
+  evaluationContextFingerprint: string;
 }
 
 /** The sole durable queue writer for staged-v8 evaluation work. */
 export class EvaluationWorkScheduler {
-  constructor(private readonly db:DatabaseAdapter) {}
+  constructor(private readonly db: DatabaseAdapter) {}
 
-  async ensureWork(input:EvaluationWorkIdentity):Promise<{jobId:string|null;queued:boolean;requirementStatus:string}>{
-    const context=await this.db.one<{policy_version:string}>(
+  async ensureWork(
+    input: EvaluationWorkIdentity,
+  ): Promise<{ jobId: string | null; queued: boolean; requirementStatus: string }> {
+    const context = await this.db.one<{ policy_version: string }>(
       `SELECT policy_version FROM evaluation_contexts WHERE context_fingerprint=? AND tenant_id=? AND person_id=?`,
-      [input.evaluationContextFingerprint,input.tenantId,input.personId],
+      [input.evaluationContextFingerprint, input.tenantId, input.personId],
     );
-    if(!context) throw new Error('EVALUATION_CONTEXT_MISSING');
-    if(context.policy_version!==STAGED_POLICY_VERSION) throw new Error(`UNSUPPORTED_EVALUATION_POLICY:${context.policy_version}`);
+    if (!context) throw new Error("EVALUATION_CONTEXT_MISSING");
+    if (context.policy_version !== STAGED_POLICY_VERSION)
+      throw new Error(`UNSUPPORTED_EVALUATION_POLICY:${context.policy_version}`);
 
-    const enrichment=await this.db.one<{status:string}>(
+    const enrichment = await this.db.one<{ status: string }>(
       `SELECT status FROM enrichment_jobs WHERE canonical_job_id=? AND opportunity_version=? AND pipeline_version='1.0.0' LIMIT 1`,
-      [input.canonicalJobId,input.opportunityVersion],
+      [input.canonicalJobId, input.opportunityVersion],
     );
     // Evaluation depends on exact canonical enrichment. If no enrichment work
     // exists, there is nothing durable to wait on and no evaluation obligation
     // should be manufactured. Fresh ingestion owns creation of enrichment work.
-    if(!enrichment) return {jobId:null,queued:false,requirementStatus:'NO_ENRICHMENT'};
-    const existed=await this.db.one<{id:string}>(
+    if (!enrichment) return { jobId: null, queued: false, requirementStatus: "NO_ENRICHMENT" };
+    const existed = await this.db.one<{ id: string }>(
       `SELECT id FROM evaluation_jobs WHERE tenant_id=? AND search_plan_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=?`,
-      [input.tenantId,input.searchPlanId,input.canonicalJobId,input.opportunityVersion,input.evaluationContextFingerprint],
+      [
+        input.tenantId,
+        input.searchPlanId,
+        input.canonicalJobId,
+        input.opportunityVersion,
+        input.evaluationContextFingerprint,
+      ],
     );
-    const ready=enrichment.status==='COMPLETE';
-    const failed=enrichment.status==='FAILED';
-    const requirementStatus=failed?'FAILED':ready?'READY':'WAITING_ENRICHMENT';
-    const jobStatus=failed?'staged_dead_letter':ready?'staged_pending':'staged_waiting_enrichment';
-    const suffix=createHash('sha256').update(input.evaluationContextFingerprint).digest('hex').slice(0,12);
-    const jobId=`evaljob_${input.tenantId}_${input.searchPlanId}_${input.canonicalJobId}_${input.opportunityVersion}_${suffix}`.replace(/[^a-zA-Z0-9_-]/g,'_');
-    const reqId=`evalreq_${input.tenantId}_${input.searchPlanId}_${input.canonicalJobId}_${input.opportunityVersion}_${suffix}`.replace(/[^a-zA-Z0-9_-]/g,'_');
+    const ready = enrichment.status === "COMPLETE";
+    const failed = enrichment.status === "FAILED";
+    const requirementStatus = failed ? "FAILED" : ready ? "READY" : "WAITING_ENRICHMENT";
+    const jobStatus = failed
+      ? "staged_dead_letter"
+      : ready
+        ? "staged_pending"
+        : "staged_waiting_enrichment";
+    const suffix = createHash("sha256")
+      .update(input.evaluationContextFingerprint)
+      .digest("hex")
+      .slice(0, 12);
+    const jobId =
+      `evaljob_${input.tenantId}_${input.searchPlanId}_${input.canonicalJobId}_${input.opportunityVersion}_${suffix}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        "_",
+      );
+    const reqId =
+      `evalreq_${input.tenantId}_${input.searchPlanId}_${input.canonicalJobId}_${input.opportunityVersion}_${suffix}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        "_",
+      );
 
-    const effectiveStatus=await this.db.transaction(async tx=>{
+    const effectiveStatus = await this.db.transaction(async (tx) => {
       await tx.execute(
         `INSERT INTO evaluation_requirements (id,tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,required_enrichment_pipeline_version,evaluation_context_fingerprint,status)
          VALUES (?,?,?,?,?,?,'1.0.0',?,?)
          ON CONFLICT(tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint)
          DO UPDATE SET status=CASE WHEN evaluation_requirements.status IN ('SATISFIED','FAILED') THEN evaluation_requirements.status ELSE excluded.status END,
                        blocked_reason=CASE WHEN evaluation_requirements.status IN ('SATISFIED','FAILED') THEN evaluation_requirements.blocked_reason ELSE NULL END`,
-        [reqId,input.tenantId,input.personId,input.searchPlanId,input.canonicalJobId,input.opportunityVersion,input.evaluationContextFingerprint,requirementStatus],
+        [
+          reqId,
+          input.tenantId,
+          input.personId,
+          input.searchPlanId,
+          input.canonicalJobId,
+          input.opportunityVersion,
+          input.evaluationContextFingerprint,
+          requirementStatus,
+        ],
       );
-      const requirement=await tx.one<{status:string}>(
+      const requirement = await tx.one<{ status: string }>(
         `SELECT status FROM evaluation_requirements WHERE tenant_id=? AND person_id=? AND search_plan_id=? AND canonical_job_id=? AND opportunity_version=? AND evaluation_context_fingerprint=?`,
-        [input.tenantId,input.personId,input.searchPlanId,input.canonicalJobId,input.opportunityVersion,input.evaluationContextFingerprint],
+        [
+          input.tenantId,
+          input.personId,
+          input.searchPlanId,
+          input.canonicalJobId,
+          input.opportunityVersion,
+          input.evaluationContextFingerprint,
+        ],
       );
-      if(requirement?.status==='FAILED'||requirement?.status==='SATISFIED') return requirement.status;
+      if (requirement?.status === "FAILED" || requirement?.status === "SATISFIED")
+        return requirement.status;
       await tx.execute(
         `INSERT INTO evaluation_jobs (id,tenant_id,person_id,search_plan_id,canonical_job_id,opportunity_version,evaluation_context_fingerprint,status,attempts,max_attempts,next_attempt_at,last_error)
          VALUES (?,?,?,?,?,?,?, ?,0,3,CURRENT_TIMESTAMP,?)
@@ -66,18 +108,33 @@ export class EvaluationWorkScheduler {
            WHEN excluded.status='staged_dead_letter' THEN 'staged_dead_letter'
            ELSE evaluation_jobs.status END,
            last_error=CASE WHEN excluded.status='staged_dead_letter' THEN 'ENRICHMENT_FAILED' ELSE evaluation_jobs.last_error END`,
-        [jobId,input.tenantId,input.personId,input.searchPlanId,input.canonicalJobId,input.opportunityVersion,input.evaluationContextFingerprint,jobStatus,failed?'ENRICHMENT_FAILED':null],
+        [
+          jobId,
+          input.tenantId,
+          input.personId,
+          input.searchPlanId,
+          input.canonicalJobId,
+          input.opportunityVersion,
+          input.evaluationContextFingerprint,
+          jobStatus,
+          failed ? "ENRICHMENT_FAILED" : null,
+        ],
       );
+      await pinJobConfig(tx, "evaluation", jobId, input.tenantId);
       return requirementStatus;
     });
-    return {jobId:existed?.id??jobId,queued:effectiveStatus==='READY'&&!existed,requirementStatus:effectiveStatus};
+    return {
+      jobId: existed?.id ?? jobId,
+      queued: effectiveStatus === "READY" && !existed,
+      requirementStatus: effectiveStatus,
+    };
   }
 
   async retryRecoverableDeadLetters(
     scope: { tenantId: string; personId: string },
     evaluationContextFingerprint: string,
   ): Promise<number> {
-    return this.db.transaction(async tx => {
+    return this.db.transaction(async (tx) => {
       await tx.execute(
         `UPDATE evaluation_requirements
          SET status='READY', blocked_reason=NULL,
@@ -116,5 +173,4 @@ export class EvaluationWorkScheduler {
       return reset.rowsAffected;
     });
   }
-
 }

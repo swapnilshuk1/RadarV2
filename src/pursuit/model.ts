@@ -18,7 +18,6 @@
 import type { ModelCallMetadata, ModelUsage } from "../lib/model/model-invocation";
 import type { PursuitModelContext } from "./budget";
 
-
 /**
  * Mantle bearer keys are base64 and are sometimes stored with the trailing
  * padding clipped. Pure string work, kept local so this module stays portable:
@@ -33,7 +32,6 @@ function normalizeMantleKey(value: string): string {
   if (remainder === 0) return key;
   return key.padEnd(key.length + (4 - remainder), "=");
 }
-
 
 export interface PursuitModel {
   id: string;
@@ -76,21 +74,20 @@ async function mantleModels(context?: PursuitModelContext): Promise<PursuitModel
   const apiKey = normalizeMantleKey(raw);
   const { BedrockMantleJsonModel } = await import("../lib/model/bedrock-mantle-model");
   return pursuitMantleModelIds().map((modelId) => {
-    const model = new BedrockMantleJsonModel(
-      modelId,
-      async () => apiKey,
-      fetch,
-      {
-        region: env("AWS_REGION") || "us-east-1",
-        maxOutputTokens: 10_240,
-        timeoutMs: 120_000,
-        ...(context?.invocationSink ? { invocationSink: context.invocationSink } : {}),
-      },
-    );
+    const model = new BedrockMantleJsonModel(modelId, async () => apiKey, fetch, {
+      region: env("AWS_REGION") || "us-east-1",
+      maxOutputTokens: 10_240,
+      timeoutMs: 120_000,
+      ...(context?.invocationSink ? { invocationSink: context.invocationSink } : {}),
+    });
     return {
       id: `bedrock-mantle:${model.version}`,
-      generate: (instruction: string, input: unknown, schema: Record<string, unknown>, metadata?: ModelCallMetadata) =>
-        model.generate(instruction, input, schema, metadata),
+      generate: (
+        instruction: string,
+        input: unknown,
+        schema: Record<string, unknown>,
+        metadata?: ModelCallMetadata,
+      ) => model.generate(instruction, input, schema, metadata),
       usage: () => model.lastUsage,
     };
   });
@@ -154,7 +151,18 @@ async function geminiModel(context?: PursuitModelContext): Promise<PursuitModel 
 /** Ordered provider chain. Empty means deterministic derivation only. */
 export async function pursuitModelChain(context?: PursuitModelContext): Promise<PursuitModel[]> {
   const [mantle, gemini] = await Promise.all([mantleModels(context), geminiModel(context)]);
-  return [...mantle, ...(gemini ? [gemini] : [])];
+  const normal = [...mantle, ...(gemini ? [gemini] : [])];
+  if (!context?.configuredModels)
+    return context?.wrapModel ? normal.map(context.wrapModel) : normal;
+  // An explicit writing-lane choice controls the first attempt, but should not
+  // turn a transient provider/model failure into an unnecessary deterministic
+  // package. Preserve the established provider chain behind that choice.
+  const configured = context.configuredModels;
+  const models = [
+    ...configured,
+    ...normal.filter((candidate) => !configured.some((selected) => selected.id === candidate.id)),
+  ];
+  return context?.wrapModel ? models.map(context.wrapModel) : models;
 }
 
 /**
@@ -177,13 +185,29 @@ export async function generateWithFallback<T>(
   }
   const failures: string[] = [];
   for (const model of await pursuitModelChain(context)) {
-
+    const reservation =
+      context?.strictBudget && context.ledger
+        ? context.ledger.reserve(
+            new TextEncoder().encode(JSON.stringify({ instruction, input, schema })).length + 2048,
+          )
+        : undefined;
+    if (reservation === null) return null;
+    let settled = false;
     try {
-      const raw = await model.generate(instruction, input, schema, { stage });
-      context?.ledger?.record(model.usage());
+      const raw = await model.generate(instruction, input, schema, {
+        stage,
+        ...(reservation ? { maxOutputTokens: reservation.output } : {}),
+      });
+      if (reservation) context!.ledger!.settle(reservation, model.usage());
+      else context?.ledger?.record(model.usage());
+      settled = true;
       return { value: parse(raw), modelId: model.id };
     } catch (error) {
-      context?.ledger?.record(model.usage());
+      if (error instanceof Error && error.name === "QuotaDeferredError") throw error;
+      if (!settled) {
+        if (reservation) context!.ledger!.settle(reservation, model.usage());
+        else context?.ledger?.record(model.usage());
+      }
       failures.push(`${model.id}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }

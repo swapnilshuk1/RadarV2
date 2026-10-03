@@ -80,21 +80,21 @@ unless composition/publication is explicitly requested.
 
 | Responsibility                                                | Implementation                                                                                                                                             |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Acquisition contracts, planning and web boundary             | `src/acquisition/`                                                                                                                                          |
+| Acquisition contracts, planning and web boundary              | `src/acquisition/`                                                                                                                                         |
 | Acquisition execution and enrichment workers                  | `scripts/scraper/`, `scripts/scrape.ts`, `scripts/enrich.ts`                                                                                               |
-| Opportunity serving, pagination and application actions       | `src/opportunity/`                                                                                                                                          |
-| Dependency scheduling                                         | `src/evaluation/work-scheduler.ts`, `scripts/scraper/persist/queue.ts`                                                                      |
-| Durable claims and worker lifecycle                           | `src/evaluation/worker.ts`                                                                                                                 |
-| Immutable production input                                    | `src/evaluation/staged-input.ts`                                                                                              |
-| Company retrieval and acquisition recipe                      | `src/evaluation/context-provider.ts`, `src/evaluation/context-acquisition-policy.ts`                                                |
+| Opportunity serving, pagination and application actions       | `src/opportunity/`                                                                                                                                         |
+| Dependency scheduling                                         | `src/evaluation/work-scheduler.ts`, `scripts/scraper/persist/queue.ts`                                                                                     |
+| Durable claims and worker lifecycle                           | `src/evaluation/worker.ts`                                                                                                                                 |
+| Immutable production input                                    | `src/evaluation/staged-input.ts`                                                                                                                           |
+| Company retrieval and acquisition recipe                      | `src/evaluation/context-provider.ts`, `src/evaluation/context-acquisition-policy.ts`                                                                       |
 | Claim extraction, source fingerprints and candidate conflicts | `src/dossier/evidence.ts`                                                                                                                                  |
 | Role/mapping contracts and application-assigned IDs           | `src/dossier/staged-role.ts`                                                                                                                               |
 | Screening quote IDs and derived gates                         | `src/dossier/staged-screening.ts`                                                                                                                          |
 | Decision orchestration, contracts and validation              | `src/dossier/staged-decision.ts`, `staged-decision-contract.ts`, `staged-decision-integrity.ts`                                                            |
 | Composition and factual review                                | `src/dossier/composition.ts`, `staged-composition.ts`, `factual-review-integrity.ts`                                                                       |
-| Durable composition requests                                  | `src/dossier/runtime/durable-model.ts`                                                                                                       |
+| Durable composition requests                                  | `src/dossier/runtime/durable-model.ts`                                                                                                                     |
 | Persistence and activation pointers                           | `src/data/sqlite/repositories/SqliteStagedInputStore.ts`, `SqliteStagedEvaluationStore.ts`, `SqliteRichDossierStore.ts`, `SqliteEvaluationContextStore.ts` |
-| Publication and readiness                                     | `src/dossier/runtime/serving-publisher.ts`                                                                                         |
+| Publication and readiness                                     | `src/dossier/runtime/serving-publisher.ts`                                                                                                                 |
 | Canonical dossier presentation                                | `src/dossier/DossierView.tsx`, using the shared `contracts.ts` model                                                                                       |
 
 ## Identity and provenance
@@ -296,7 +296,6 @@ REVIEW is not a shortlist recommendation by itself; PASS, invalid, unevaluated,
 explicitly ineligible and decided rows remain excluded. Acquisition uncertainty
 is retained for reasoning rather than overwritten as proven role equivalence.
 
-
 ## Scraped-job decision log
 
 `/scraped` lists the scoped acquisition population and applies lifecycle filters in
@@ -322,3 +321,100 @@ compose PASS dossiers; persisted verdicts and source identities remain unchanged
 Implementation: `src/acquisition/feed-read-model.ts`, `pipeline-state.ts`,
 `detail-read-model.ts`, authenticated `feed.ts`/`detail-server.ts`, and the two
 Scraped routes. Decision-log regressions are included in release certification.
+
+## Administration foundations
+
+Migrations 085–087 add the Connections and operational recovery slice. Tavily
+versions are encrypted and validated on evaluation workers; incident-linked exact
+work resumes through queue-owned operations. Durable capacity leases, cooldowns,
+runtime receipts, per-stage job limits and signed asynchronous notifications share
+the existing database. Shared model capacity/cooldown covers gateway-managed calls;
+direct Bedrock consumers such as evidence extraction remain outside that boundary.
+Bedrock rotation and ADC remain host-managed. Terminal cohorts have separate
+attention counts and domain recovery classification; they are never blindly replayed.
+Evaluation heartbeat owns operational maintenance and delivery; Admin highlights
+pending maintenance when no matching evaluation worker is available. See the single
+[Operations & Recovery entry point](operations/OPERATIONS_RECOVERY.md) for the
+authoritative checkout, contracts, runbook and verification evidence.
+
+`src/admin` and `/admin` provide Phase 1 visibility, Phase 2 protection and Phase 3 narrow configuration writes.
+Migration 072 separates platform roles and append-only audit from tenant
+memberships, and adds idempotent usage rollups. See
+[Administration](ADMINISTRATION.md). Migration 073 adds tenant quotas, expiring
+quota overrides, scoped claim controls, persistent job/call reservations, deferrals
+and console alerts. Migration 074 separates first-claim month from token month,
+records legacy processing leases and adds count-based storm recovery. Local DB
+adapters serialize same-process operations to avoid async transaction contention.
+Evaluation, composition, factual review, pursuit and scrape
+claims reserve in the same database transaction as their fenced queue claim.
+The invocation sink uses `JobTokenLedger` before Mantle/Gemini dispatch and reconciles
+measured usage after completion. No policy is activated automatically. Deferrals
+are operational state, not opportunity verdicts; existing source identity, engine
+semantics and memo publication rules are preserved. See the administration runbook
+for activation boundaries, conservative input admission and unknown usage.
+
+Migration 075 pins an immutable effective engine revision to each model-backed
+queue job at enqueue. `config-store` owns draft, publish and revert-as-new-draft
+behavior; `model-gateway` resolves the two configured lanes from the pinned row.
+The baseline keeps existing host factories. Explicit Mantle assignments bind
+model and request configuration with no vendor fallback. Candidate intent, stage
+order and source integrity stay in their current domain implementations.
+
+`BenchWorker` processes scoped, leased synthetic fixture runs independently of
+acquisition. It invokes the real evaluator and reviewed Template B composer,
+without canonical or serving writes. Per-dispatch admission reservations retain
+unknown spend. Invocation receipts tagged BENCH are excluded from tenant usage
+and quota accounting. Exact draft/active matching and result validation prevent
+stale or unsafe publish. See Administration for operating limits and exclusions.
+
+Local libSQL transactions use BEGIN IMMEDIATE/COMMIT on the retained client
+connection under the per-file coordinator. The upstream local transaction API
+detaches its native connection per transaction; avoiding that churn prevents the
+observed Windows shutdown access violation and keeps connection PRAGMAs effective.
+Remote Turso transactions continue to use the provider transaction API.
+
+Administration self-audit corrections: fixture acceptance versions are checked at
+publication; bench completion and provider dispatch are fenced against revoked
+access, stale revisions and expired leases. Explicit model lanes have distinct
+tenant/lane process pools under the host provider ceiling. Usage reads classify
+malformed token records as unknown. See [ADMIN_SELF_AUDIT.md](ADMIN_SELF_AUDIT.md).
+
+Migration 076 freezes completed bench evidence and its identity. Migration 077
+binds each bench to a declared deployment identity and worker attestation, adds
+tenant inheritance revisions, protection-write epochs, and explicit quota
+provisioning. Existing tenants hold an auditable compatibility policy while new
+tenants receive bounded defaults. Configuration and protection mutations compare
+their state inside the transaction; operator cancellation fences abandoned bench
+work. Repair evidence is typed and publication shows a field-level diff. The
+optional `admin-bench` worker appears in readiness only when explicitly enabled.
+Remote-Turso validation and exact-SHA CI are operational release evidence, not
+claims made by the code path.
+
+Migration 078 adds an immutable, platform-owned discovery-taxonomy revision
+stream. It covers the portal-query concepts in `config/ontologies/taxonomy.json`
+and `lexicon.json`, not attention eligibility or executive evaluation taxonomy.
+When a future career intent activates a search plan, the active revision produces
+and pins the exact generated query list, revision ID and fingerprint in that
+plan’s criteria snapshot. `ScraperPlanResolver` uses those saved queries; it only
+uses the legacy file compiler for historical plans without them. This preserves
+active acquisition behavior while allowing operators to revise a future plan’s
+discovery wording. Migration 079 adds a bounded structural discovery workflow:
+an operator can add or retire a concept and choose its ring, then must save a
+query-impact shadow against active plans before publishing. It reports discovery query changes; intelligence comparisons use migration 081.
+
+Migration 080 makes taxonomy shadow records immutable. Publication verifies the
+current authoritative context/snapshot cohort fingerprint, requires explicit
+structural confirmation and preserves structural protection through draft edits
+and restores. Discovery ring metadata has no runtime filtering effect.
+
+Migration 081 adds the advisory intelligence graph and durable shadow jobs.
+Search-plan activation pins graph identity, definition and fingerprint into
+criteria; staged input snapshots carry that same graph. Planning, attention and
+staged decision interpretation consume it without treating taxonomy as evidence
+or excluding unfamiliar titles. Existing contexts remain unchanged. Structural
+changes and intelligence alias/name changes require bounded active/draft
+attention and actual staged verdict comparison in the admin bench worker. Each
+job pins effective configuration, cohort and environment, reserves tokens before
+dispatch and records BENCH telemetry. Immutable terminal results are revalidated
+at publication. Retired concepts remain in historical revisions. Combined
+structural edits require both discovery and intelligence proofs.

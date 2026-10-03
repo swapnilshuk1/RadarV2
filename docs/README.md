@@ -5,6 +5,9 @@ This directory contains current guidance only.
 | Document                                                               | Purpose                                                                       |
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | [Product mission](PRODUCT_MISSION.md)                                  | Executive dossier outcome and non-negotiable product requirements             |
+| [Operations & Recovery](operations/OPERATIONS_RECOVERY.md) | Authoritative checkout, Phase 0 evidence, release contracts and continuation status |
+| [Administration self-audit](ADMIN_SELF_AUDIT.md) | Findings corrected after Phase 3, regression coverage and remaining release prerequisites |
+| [Administration](ADMINISTRATION.md) | Operator console, access, quotas, immutable engine revisions, model lanes, intelligence taxonomy and bounded shadow comparisons |
 | [Architecture](ARCHITECTURE.md)                                        | Code map, evidence, identities, semantic stages, persistence and serving      |
 | [Production integration](PRODUCTION_INTEGRATION.md)                    | Current versions, worker commands, Pursuit model configuration and compatibility limits |
 | [OCI storage](OCI_STORAGE.md) | Split-host topology, leases, source refresh, retention, verification and transfer |

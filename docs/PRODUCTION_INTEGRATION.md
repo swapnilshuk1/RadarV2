@@ -116,3 +116,16 @@ homepage shortlist intentionally has narrower selection.
 
 No fixed population count, context ID or rollback pointer in an older report is a
 current operational default. Resolve and record them from the approved target.
+
+
+## Administration branch readiness
+
+Administration requires migrations 072-084 on the same database used by web and
+the enabled workers. Platform operators are explicit `platform_roles` grants;
+tenant-admin membership alone never grants console access. Validate operator,
+viewer and tenant-admin journeys before enabling the console. Query-shadow
+publication requires authoritative active search snapshots; empty scope is not
+a successful proof. Enable the admin bench worker when model-configuration or intelligence-taxonomy
+writes are exercised and its release/environment matches web. Oracle is the
+release target; a Vercel preview is not deployment evidence for this topology.
+Intelligence-taxonomy writes use the same optional bench worker for bounded admission/verdict comparisons. Configure matching bench target, release SHA, allowed hosts and provider settings on web and worker; see ADMINISTRATION.md. Publication affects newly activated plans, preserving existing snapshots.

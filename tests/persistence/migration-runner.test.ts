@@ -59,6 +59,54 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
     expect(stmts[1]).toContain("CREATE INDEX idx_test_val");
   });
 
+  it("fences duplicate pre-083 live shadows and makes scope identity immutable", async () => {
+    const db = getDatabaseAdapter(":memory:");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "radar-shadow-upgrade-"));
+    try {
+      await db.execute(
+        "CREATE TABLE intelligence_taxonomy_shadows(id TEXT PRIMARY KEY,revision_id TEXT,active_revision_id TEXT,status TEXT,created_at INTEGER,error TEXT,completed_at INTEGER,lease_token TEXT,lease_until INTEGER)",
+      );
+      await db.execute(
+        "INSERT INTO intelligence_taxonomy_shadows(id,revision_id,active_revision_id,status) VALUES('old-a','draft','active','queued'),('old-b','draft','active','running')",
+      );
+      for (const name of [
+        "083_intelligence_taxonomy_shadow_scope.sql",
+        "084_intelligence_shadow_scope_identity.sql",
+      ]) {
+        fs.copyFileSync(
+          path.join(process.cwd(), "src/data/sqlite/migrations", name),
+          path.join(dir, name),
+        );
+      }
+      await runMigrations(db, dir, { verifyRequiredSchema: false });
+      const old = await db.many<{ status: string; error: string }>(
+        "SELECT status,error FROM intelligence_taxonomy_shadows ORDER BY id",
+      );
+      expect(old).toHaveLength(2);
+      expect(
+        old.every(
+          (row) =>
+            row.status === "failed" && row.error.includes("MIGRATION_SCOPE_IDENTITY_REQUIRED"),
+        ),
+      ).toBe(true);
+      await db.execute(
+        "INSERT INTO intelligence_taxonomy_shadows(id,revision_id,active_revision_id,status,scope_kind) VALUES('new-a','draft','active','queued','golden')",
+      );
+      await expect(
+        db.execute(
+          "INSERT INTO intelligence_taxonomy_shadows(id,revision_id,active_revision_id,status,scope_kind) VALUES('new-b','draft','active','queued','golden')",
+        ),
+      ).rejects.toThrow();
+      await expect(
+        db.execute(
+          "UPDATE intelligence_taxonomy_shadows SET scope_kind='tenant_sample' WHERE id='new-a'",
+        ),
+      ).rejects.toThrow("INTELLIGENCE_SHADOW_IDENTITY_IMMUTABLE");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("2. Executes migrations against an in-memory DatabaseAdapter", async () => {
     const inMemoryAdapter = getDatabaseAdapter(":memory:");
     const result = await runMigrations(inMemoryAdapter);

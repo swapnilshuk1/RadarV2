@@ -42,7 +42,7 @@ export class ScraperPlanResolver {
     scope: AuthorizedPersonScope,
     activeContext?: ActiveServingContext,
     adapter?: DatabaseAdapter,
-    searchPlanIdOverride?: string
+    searchPlanIdOverride?: string,
   ): Promise<ResolvedScraperPlan> {
     const repos = adapter ? createRepositories(adapter) : getRepositories();
     const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
@@ -61,7 +61,7 @@ export class ScraperPlanResolver {
     const criteria = lineage.criteria;
     if (!criteria) {
       throw new InsufficientSearchCriteriaError(
-        `[ScraperPlanResolver] Search plan '${lineage.planId}' has no valid criteria payload.`
+        `[ScraperPlanResolver] Search plan '${lineage.planId}' has no valid criteria payload.`,
       );
     }
 
@@ -73,19 +73,39 @@ export class ScraperPlanResolver {
     const functions: string[] = Array.isArray(customParams.functions)
       ? (customParams.functions as string[])
       : Array.isArray(customParams.function)
-      ? (customParams.function as string[])
-      : [];
+        ? (customParams.function as string[])
+        : [];
     const operatingModels: string[] = Array.isArray(customParams.operatingModels)
       ? (customParams.operatingModels as string[])
       : [];
     const ownership: string[] = Array.isArray(customParams.ownership)
       ? (customParams.ownership as string[])
       : [];
+    const savedQueries = Array.isArray(customParams.generatedQueries)
+      ? Array.from(
+          new Set(
+            customParams.generatedQueries
+              .filter((value): value is string => typeof value === "string")
+              .map((value) => value.trim())
+              .filter(Boolean),
+          ),
+        )
+      : [];
+
+    if (
+      customParams.taxonomyRevisionId &&
+      (!savedQueries.length ||
+        !Array.isArray(customParams.generatedQueries) ||
+        customParams.generatedQueries.some(
+          (value: unknown) => typeof value !== "string" || !value.trim(),
+        ))
+    )
+      throw new Error("PINNED_SEARCH_QUERIES_INVALID");
 
     // Zero-fallback invariant: Must have at least targetRoles or declared functions
     if (targetRoles.length === 0 && functions.length === 0) {
       throw new InsufficientSearchCriteriaError(
-        `[ScraperPlanResolver] Search plan '${lineage.planId}' has insufficient criteria to compile search queries. Target roles or functions must be defined.`
+        `[ScraperPlanResolver] Search plan '${lineage.planId}' has insufficient criteria to compile search queries. Target roles or functions must be defined.`,
       );
     }
 
@@ -93,32 +113,40 @@ export class ScraperPlanResolver {
     if (targetLevels.size === 0) {
       targetRoles.forEach((title: string) => {
         const lower = title.toLowerCase();
-        if (lower.includes("cmo") || lower.includes("chief") || lower.includes("cco")) targetLevels.add("Chief");
+        if (lower.includes("cmo") || lower.includes("chief") || lower.includes("cco"))
+          targetLevels.add("Chief");
         if (lower.includes("vp") || lower.includes("vice president")) targetLevels.add("VP");
         if (lower.includes("director")) targetLevels.add("Director");
-        if (lower.includes("svp") || lower.includes("senior vice president")) targetLevels.add("SVP");
+        if (lower.includes("svp") || lower.includes("senior vice president"))
+          targetLevels.add("SVP");
         if (lower.includes("head") || lower.includes("lead")) targetLevels.add("Head");
       });
     }
 
-    const { SearchPlanner } = await import("../../scripts/scraper/run/search-planner");
-    const intent = {
-      targetLevel: Array.from(targetLevels),
-      functions,
-      operatingModels,
-      ownership,
-      industries: targetIndustries,
-      exclusions: criteria.excludedCompanies || [],
-      targetTitles: targetRoles,
-      preferredLocations: targetLocations,
-    };
-
-    const compiledPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
-    const queries = (compiledPlan.rankedQueries || []).map((q: any) => q.query);
+    // New plans persist their exact portal queries and the taxonomy revision
+    // that produced them. A later taxonomy publication cannot alter an active
+    // plan or a running scrape. Pre-existing plans retain the legacy compiler.
+    let queries: string[] = savedQueries;
+    if (!queries.length) {
+      const { SearchPlanner } = await import("../../scripts/scraper/run/search-planner");
+      const intent = {
+        targetLevel: Array.from(targetLevels),
+        functions,
+        operatingModels,
+        ownership,
+        industries: targetIndustries,
+        exclusions: criteria.excludedCompanies || [],
+        targetTitles: targetRoles,
+        preferredLocations: targetLocations,
+      };
+      queries = SearchPlanner.plan(intent, taxonomyPath, lexiconPath).rankedQueries.map(
+        (q) => q.query,
+      );
+    }
 
     if (queries.length === 0) {
       throw new InsufficientSearchCriteriaError(
-        `[ScraperPlanResolver] Search plan '${lineage.planId}' generated 0 ranked queries from criteria.`
+        `[ScraperPlanResolver] Search plan '${lineage.planId}' generated 0 ranked queries from criteria.`,
       );
     }
 
@@ -136,4 +164,3 @@ export class ScraperPlanResolver {
 }
 
 export const resolveActiveScraperPlan = ScraperPlanResolver.resolveActivePlan;
-

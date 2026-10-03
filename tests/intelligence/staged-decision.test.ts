@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { pinIntelligence } from '../../src/evaluation/intelligence-taxonomy';
+import { baselineIntelligenceTaxonomy } from '../../src/lib/ontology/intelligence-taxonomy';
 
 import { contextFields, scopeFields, type Claim, type EvidenceSource, type ReasoningModel } from '../../src/dossier/contracts';
 import { chunkStagedDecisionItems, normalizeUnsupportedResolutionDrafts, runStagedFrozenDecisionDetailed, STAGED_DECISION_BATCH_SIZE } from '../../src/dossier/staged-decision';
@@ -428,6 +430,43 @@ describe('staged production decision boundary', () => {
     expect(result.decision).not.toHaveProperty('narrativePlan');
     expect(result.decision.careerCapital).toEqual(noCareerCapital);
     expect(result.decision.decisionHinges[0]).not.toHaveProperty('statement');
+  });
+
+  it('limits pinned advisory taxonomy to role interpretation without changing evidence or screening', async () => {
+    const pin = pinIntelligence('test-pinned-revision', baselineIntelligenceTaxonomy);
+    const calls: any[] = [];
+    const scripted = new ScriptedModel();
+    const model: ReasoningModel = { id: 'taxonomy-reference-test', version: '1', generate: async (instruction, input, _schema, metadata) => {
+      calls.push(input);
+      if(metadata?.stage === 'role-interpretation') expect(instruction).toContain('never candidate-fit levels');
+      else expect(input).not.toHaveProperty('intelligenceTaxonomy');
+      return scripted.generate(instruction, input);
+    }};
+    const original = JSON.stringify(frozen);
+    const result = await runStagedFrozenDecisionDetailed({ ...frozen, intelligenceTaxonomy: pin }, model);
+    expect(calls.length).toBeGreaterThan(4);
+    expect(calls.filter(call => call.intelligenceTaxonomy).length).toBe(1);
+    expect(calls.find(call => call.intelligenceTaxonomy).intelligenceTaxonomy.fingerprint).toBe(pin.fingerprint);
+    expect(result.decision).toMatchObject({ verdict: 'PASS', screeningViability: 'BLOCKED' });
+    expect(JSON.stringify(frozen)).toBe(original);
+  });
+
+  it('keys cached role interpretation by pinned taxonomy and reuses the same pin', async () => {
+    let roleCalls = 0;
+    const model: ReasoningModel = { id: 'taxonomy-cache-regression', version: '1', configurationFingerprint: 'same-config', generate: async (instruction, input, _schema, metadata) => {
+      if (metadata?.stage === 'role-interpretation') roleCalls++;
+      return new ScriptedModel().generate(instruction, input);
+    }};
+    const first = pinIntelligence('revision-a', baselineIntelligenceTaxonomy);
+    const graph = structuredClone(baselineIntelligenceTaxonomy);
+    graph.nodes[0].name += ' revised';
+    const second = pinIntelligence('revision-b', graph);
+    await runStagedFrozenDecisionDetailed({ ...frozen, intelligenceTaxonomy: first }, model);
+    expect(roleCalls).toBe(1);
+    await runStagedFrozenDecisionDetailed({ ...frozen, intelligenceTaxonomy: second }, model);
+    expect(roleCalls).toBe(2);
+    await runStagedFrozenDecisionDetailed({ ...frozen, intelligenceTaxonomy: second }, model);
+    expect(roleCalls).toBe(2);
   });
 
   it('caps staged batch repair blast radius at ten requirements', () => {

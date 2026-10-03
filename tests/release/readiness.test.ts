@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { getReadiness, getSystemReadiness } from "../../src/lib/health/readiness";
+import {
+  getReadiness,
+  getSystemReadiness,
+  getOperationsReadiness,
+  operationsReadyResponse,
+} from "../../src/lib/health/readiness";
 import {
   getDatabaseAdapter,
   getDatabaseTargetIdentity,
@@ -10,6 +15,11 @@ import {
   REQUIRED_WORKERS,
   requiredWorkersForEnvironment,
 } from "../../src/lib/health/worker-heartbeat";
+import {
+  CRITICAL_EVALUATION_MAINTENANCE_TASKS,
+  runMaintenanceTask,
+  runMaintenanceTasks,
+} from "../../src/lib/health/maintenance-receipts";
 
 describe("release readiness", () => {
   const original = { ...process.env };
@@ -17,6 +27,155 @@ describe("release readiness", () => {
   afterEach(() => {
     resetDatabaseAdapter();
     process.env = { ...original };
+  });
+  it("supports an external operations probe with no dependency on other workers or outbound delivery", async () => {
+    process.env.RADAR_ENV = "test";
+    process.env.RADAR_RELEASE_SHA = "d".repeat(40);
+    const db = getDatabaseAdapter();
+    const fingerprint = getDatabaseTargetIdentity().fingerprint;
+    await db.execute("DELETE FROM worker_heartbeats");
+    expect((await getOperationsReadiness()).status).toBe(503);
+    await db.execute("INSERT INTO worker_heartbeats VALUES('evaluation','probe',?,?,?)", [
+      process.env.RADAR_RELEASE_SHA,
+      fingerprint,
+      new Date().toISOString(),
+    ]);
+    expect((await getOperationsReadiness()).status).toBe(503);
+    for (const task of CRITICAL_EVALUATION_MAINTENANCE_TASKS) {
+      await db.execute(
+        `INSERT INTO operations_maintenance_tasks
+         (worker_instance,task,release_sha,database_fingerprint,last_started_at,last_success_at,consecutive_failures,error_code)
+         VALUES('probe',?,?,?,?,?,0,NULL)`,
+        [task, process.env.RADAR_RELEASE_SHA, fingerprint, Date.now() - 1, Date.now()],
+      );
+    }
+    expect((await getOperationsReadiness()).status).toBe(200);
+
+    await db.execute(
+      `UPDATE operations_maintenance_tasks SET last_started_at=?
+       WHERE worker_instance='probe' AND task='notification_delivery'`,
+      [Date.now()],
+    );
+    expect((await getOperationsReadiness()).status).toBe(200);
+
+    await db.execute(
+      `UPDATE operations_maintenance_tasks
+       SET consecutive_failures=1,error_code='MAINTENANCE_TASK_FAILED'
+       WHERE worker_instance='probe' AND task='notification_delivery'`,
+    );
+    expect((await getOperationsReadiness()).status).toBe(503);
+    await db.execute(
+      `UPDATE operations_maintenance_tasks
+       SET consecutive_failures=0,error_code=NULL,last_success_at=?,last_started_at=?
+       WHERE worker_instance='probe' AND task='notification_delivery'`,
+      [Date.now() - 151_000, Date.now() - 151_000],
+    );
+    expect((await getOperationsReadiness()).status).toBe(503);
+    for (const [sha, target, seen] of [
+      ["old-release", fingerprint, new Date().toISOString()],
+      [process.env.RADAR_RELEASE_SHA, "other-db", new Date().toISOString()],
+      [process.env.RADAR_RELEASE_SHA, fingerprint, new Date(Date.now() - 151000).toISOString()],
+    ]) {
+      await db.execute(
+        "UPDATE worker_heartbeats SET release_sha=?,database_fingerprint=?,last_seen_at=?",
+        [sha, target, seen],
+      );
+      const response = await operationsReadyResponse();
+      expect(response.status).toBe(503);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(await response.json()).toEqual({
+        status: "unavailable",
+        releaseSha: process.env.RADAR_RELEASE_SHA,
+      });
+    }
+  });
+
+  it("records failed maintenance independently, then clears the failure after recovery", async () => {
+    process.env.RADAR_ENV = "test";
+    process.env.RADAR_RELEASE_SHA = "f".repeat(40);
+    const db = getDatabaseAdapter();
+    const identity = {
+      workerInstance: "maintenance-failure-probe",
+      releaseSha: "f".repeat(40),
+      databaseFingerprint: getDatabaseTargetIdentity().fingerprint,
+    };
+    await db.execute("DELETE FROM operations_maintenance_tasks WHERE worker_instance=?", [
+      identity.workerInstance,
+    ]);
+    const fingerprint = getDatabaseTargetIdentity().fingerprint;
+    const successfulAt = Date.now() - 1_000;
+    await db.execute(
+      `INSERT INTO worker_heartbeats(worker_name,instance_id,release_sha,database_fingerprint,last_seen_at)
+       VALUES('evaluation',?,?,?,?)`,
+      [identity.workerInstance, identity.releaseSha, fingerprint, new Date().toISOString()],
+    );
+    for (const task of CRITICAL_EVALUATION_MAINTENANCE_TASKS.slice(0, 5))
+      await db.execute(
+        `INSERT INTO operations_maintenance_tasks
+         (worker_instance,task,release_sha,database_fingerprint,last_started_at,last_success_at,consecutive_failures,error_code)
+         VALUES(?,?,?,?,?,?,0,NULL)`,
+        [
+          identity.workerInstance,
+          task,
+          identity.releaseSha,
+          fingerprint,
+          successfulAt,
+          successfulAt,
+        ],
+      );
+    let nextTaskRan = false;
+    const results = await runMaintenanceTasks(db, identity, [
+      {
+        task: "incident_reconciliation",
+        operation: async () => {
+          throw new Error("INCIDENT_RECONCILIATION_FAILED");
+        },
+      },
+      {
+        task: "notification_delivery",
+        operation: async () => {
+          nextTaskRan = true;
+        },
+      },
+    ]);
+    expect(results).toMatchObject([
+      {
+        task: "incident_reconciliation",
+        success: false,
+        errorCode: "INCIDENT_RECONCILIATION_FAILED",
+      },
+      { task: "notification_delivery", success: true },
+    ]);
+    expect(nextTaskRan).toBe(true);
+    expect((await getOperationsReadiness()).status).toBe(503);
+    await expect(
+      db.one<{
+        consecutive_failures: number;
+        error_code: string;
+        last_success_at: number | null;
+      }>(
+        `SELECT consecutive_failures,error_code,last_success_at
+         FROM operations_maintenance_tasks WHERE worker_instance=? AND task='incident_reconciliation'`,
+        [identity.workerInstance],
+      ),
+    ).resolves.toMatchObject({
+      consecutive_failures: 1,
+      error_code: "INCIDENT_RECONCILIATION_FAILED",
+      last_success_at: null,
+    });
+    await runMaintenanceTask(db, identity, "incident_reconciliation", async () => undefined);
+    expect((await getOperationsReadiness()).status).toBe(200);
+    await expect(
+      db.one<{
+        consecutive_failures: number;
+        error_code: string | null;
+        last_success_at: number | null;
+      }>(
+        `SELECT consecutive_failures,error_code,last_success_at
+         FROM operations_maintenance_tasks WHERE worker_instance=? AND task='incident_reconciliation'`,
+        [identity.workerInstance],
+      ),
+    ).resolves.toMatchObject({ consecutive_failures: 0, error_code: null });
   });
 
   it("fails closed without a reachable, verified database and exposes no target details", async () => {

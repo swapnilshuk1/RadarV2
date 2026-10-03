@@ -1,3 +1,4 @@
+import { pinnedIntelligenceSchema, readPinnedIntelligence } from '../../../evaluation/intelligence-taxonomy';
 import {createHash} from 'node:crypto';
 import {z} from 'zod';
 import type {DatabaseAdapter} from '@/data/database';
@@ -24,6 +25,7 @@ const candidateDecisionProfileSchema=z.object({
 const snapshotSchema=z.object({
   opportunity:z.object({id:z.string(),company:z.string(),title:z.string()}),candidate:z.object({name:z.string()}),
   candidateDecisionProfile:candidateDecisionProfileSchema.optional(),
+  intelligenceTaxonomy:pinnedIntelligenceSchema.optional(),
   sources:z.array(sourceSchema),evidence:z.array(claimSchema),candidateSourceRefs:z.array(z.object({id:z.string(),title:z.string()})),
   candidateConflicts:z.array(candidateConflictSchema),validEvidenceClaimIds:z.array(z.string()),fields:z.array(z.string()),
   acquisition:z.array(z.object({provider:z.string(),field:z.string(),operation:z.enum(['retrieve','search']),status:z.enum(['ACQUIRED','RETRIEVED','NO_RESULTS','UNAVAILABLE']),sourceIds:z.array(z.string()),detail:z.string()})),fingerprint:z.string(),
@@ -35,6 +37,7 @@ export function contextInputFingerprint(input:Omit<StagedResearchInput,'fingerpr
 }
 export function validateSnapshot(value:unknown):StagedResearchInput {
   const input=snapshotSchema.parse(value);
+  readPinnedIntelligence(input.intelligenceTaxonomy);
   if(contextInputFingerprint(input)!==input.fingerprint)throw new Error('STAGED_INPUT_SNAPSHOT_HASH_MISMATCH');
   validateClaims(input.evidence,input.sources);
   const candidates=new Set(input.sources.filter(s=>s.plane==='CANDIDATE').map(s=>s.id));

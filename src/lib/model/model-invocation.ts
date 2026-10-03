@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { ModelProviderUnavailableError } from "./provider-unavailable";
 import type { DatabaseAdapter } from "@/data/database";
 
 export type ModelPipeline = "evaluation" | "dossier" | "factual_review" | "pursuit";
@@ -10,6 +11,7 @@ export interface ModelCallMetadata {
 }
 
 export interface ModelInvocationContext {
+  leaseToken?: string;
   pipeline: ModelPipeline;
   tenantId: string;
   personId: string;
@@ -49,7 +51,15 @@ export interface ModelInvocationEvent {
   usage?: ModelUsage;
 }
 
-export type ModelInvocationSink = (event: ModelInvocationEvent) => Promise<void>;
+export type ModelInvocationSink = ((event: ModelInvocationEvent) => Promise<void>) & {
+  beforeCall?: (call: {
+    id: string;
+    instruction: string;
+    input: unknown;
+    schema?: Record<string, unknown>;
+    maxOutput: number;
+  }) => Promise<void>;
+};
 
 export function modelRequestFingerprint(
   instruction: string,
@@ -75,13 +85,11 @@ export function createSqliteModelInvocationSink(
   db: DatabaseAdapter,
   context: ModelInvocationContext,
 ): ModelInvocationSink {
-  return async (event) => {
+  const sink: ModelInvocationSink = async (event) => {
     try {
       const completedAt = event.completedAt ?? null;
       const latencyMs =
-        event.completedAt === undefined
-          ? null
-          : Math.max(0, event.completedAt - event.startedAt);
+        event.completedAt === undefined ? null : Math.max(0, event.completedAt - event.startedAt);
 
       await db.execute(
         `INSERT INTO model_invocations(
@@ -137,6 +145,8 @@ export function createSqliteModelInvocationSink(
           event.errorCode ?? null,
         ],
       );
+      const { JobTokenLedger } = await import("../../admin/protection");
+      await new JobTokenLedger(db, context).settle(event);
 
       const jobId =
         context.evaluationJobId ??
@@ -161,6 +171,16 @@ export function createSqliteModelInvocationSink(
       );
     }
   };
+  sink.beforeCall = async (call) => {
+    const { JobTokenLedger } = await import("../../admin/protection");
+    try {
+      await new JobTokenLedger(db, context).reserve(call);
+    } catch (error) {
+      if (error instanceof ModelProviderUnavailableError) throw error;
+      throw new ModelProviderUnavailableError("QUOTA_RESERVATION_STORE_UNAVAILABLE", 503, 30_000);
+    }
+  };
+  return sink;
 }
 
 class AsyncSemaphore {
@@ -171,13 +191,15 @@ class AsyncSemaphore {
   async run<T>(fn: () => Promise<T>): Promise<T> {
     if (this.active >= this.limit) {
       await new Promise<void>((resolve) => this.waiters.push(resolve));
-    }
-    this.active += 1;
+    } else this.active += 1;
     try {
       return await fn();
     } finally {
-      this.active -= 1;
-      this.waiters.shift()?.();
+      // Transfer the occupied slot directly; a new arrival cannot steal it
+      // before the queued waiter's continuation runs.
+      const next = this.waiters.shift();
+      if (next) next();
+      else this.active -= 1;
     }
   }
 }
@@ -191,7 +213,7 @@ export function withProviderConcurrency<T>(
   limit: number,
   fn: () => Promise<T>,
 ): Promise<T> {
-  const bounded = Math.max(1, Math.floor(limit));
+  const bounded = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : 1;
   const map =
     globalLimiters.__RADAR_MODEL_PROVIDER_LIMITERS__ ??
     (globalLimiters.__RADAR_MODEL_PROVIDER_LIMITERS__ = new Map());
