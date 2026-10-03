@@ -56,11 +56,45 @@ function parseConfig(): DeployConfig {
   };
 }
 
+const MAX_FAILURE_DIAGNOSTIC_CHARS = 4_000;
+
+function outputText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Buffer.isBuffer(value)) return value.toString("utf8");
+  return "";
+}
+
+/** Keeps actionable remote stage output while preventing deploy logs from carrying secrets. */
+export function commandFailureMessage(command: string, failure: unknown): string {
+  const captured = failure as { stdout?: unknown; stderr?: unknown };
+  const diagnostic = [outputText(captured?.stdout), outputText(captured?.stderr)]
+    .filter(Boolean)
+    .join("\n")
+    .replace(
+      /\b(TURSO_(?:AUTH_)?TOKEN|RESEND_API_KEY|TAVILY_API_KEY|BEDROCK_MANTLE_API_KEY|RADAR_CREDENTIAL_ENCRYPTION_KEY|GOOGLE_CLIENT_SECRET|CLOUDFLARE_API_TOKEN|AWS_SECRET_ACCESS_KEY)\s*([:=])\s*(?:"[^"]*"|'[^']*'|\S+)/gi,
+      "$1$2[redacted]",
+    )
+    .replace(/\b(Authorization\s*:\s*Bearer\s+)[^\s]+/gi, "$1[redacted]")
+    .replace(/([a-z][a-z0-9+.-]*:\/\/[^\s:@/]+:)[^@\s/]+@/gi, "$1[redacted]@")
+    .replace(/\bre_[A-Za-z0-9_-]{12,}\b/g, "[redacted]")
+    .trim()
+    .slice(-MAX_FAILURE_DIAGNOSTIC_CHARS);
+  return diagnostic
+    ? `DEPLOY_COMMAND_FAILED: ${command}\n--- remote output ---\n${diagnostic}`
+    : `DEPLOY_COMMAND_FAILED: ${command}`;
+}
+
 function run(command: string, args: string[]): string {
-  return execFileSync(command, args, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  }).trim();
+  try {
+    return execFileSync(command, args, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  } catch (error) {
+    // Do not use error.message: execFileSync includes the entire command, which
+    // may contain a provider recovery command or other operator-supplied secret.
+    throw new Error(commandFailureMessage(command, error));
+  }
 }
 
 export function sshArgs(config: DeployConfig, command: string): string[] {
@@ -76,6 +110,10 @@ export function sshArgs(config: DeployConfig, command: string): string[] {
 
 export function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+function deployStage(stage: string, command: string): string {
+  return `printf '%s\\n' ${shellQuote(`RADAR_DEPLOY_STAGE=${stage}`)} >&2; ${command}`;
 }
 
 export function validatePreMutation(config: DeployConfig): void {
@@ -159,7 +197,7 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
   let priorReleaseVerified = false;
   if (priorSha && priorReleaseDirectory) {
     const verifyPriorCommand = [
-      `if [ -d ${shellQuote(priorReleaseDirectory)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/ecosystem.config.cjs`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/release-manifest.json`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/node_modules/.bin/tsx`)} ]; then`,
+      `if [ -d ${shellQuote(priorReleaseDirectory)} ] && [ -d ${shellQuote(`${priorReleaseDirectory}/src/data/sqlite/migrations`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/ecosystem.config.cjs`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/release-manifest.json`)} ] && [ -f ${shellQuote(`${priorReleaseDirectory}/node_modules/.bin/tsx`)} ]; then`,
       `  (curl --fail --silent --show-error ${shellQuote(`${config.readinessUrl.replace(/\/$/, "")}/health/ready`)} | RADAR_PREVIOUS_SHA=${shellQuote(priorSha)} node -e ${shellQuote('const fs=require("node:fs"); const response=JSON.parse(fs.readFileSync(0,"utf8")); if(response.status!=="ready" || response.releaseSha!==process.env.RADAR_PREVIOUS_SHA) process.exit(1)')} && echo "VERIFIED") || echo "FAILED";`,
       `fi`,
     ].join(" ");
@@ -192,28 +230,51 @@ export function deploy(config = parseConfig(), runner: CommandRunner = run): voi
     ]);
   }
 
+  // Migration ledgers remain forward-only. Seed the retained release directory
+  // with only missing SQL files before migrating so it can validate the changed
+  // database if activation has to return to that release.
+  const preservePriorMigrationCatalog = priorReleaseDirectory
+    ? `for migration in src/data/sqlite/migrations/*.sql; do [ -f "$migration" ] || continue; cp -n "$migration" ${shellQuote(`${priorReleaseDirectory}/src/data/sqlite/migrations/`)}; done`
+    : ":";
+  const activationSteps = [
+    [
+      "extract",
+      `rm -rf ${shellQuote(stagingDirectory)} && mkdir -p ${shellQuote(stagingDirectory)} && tar -xzf ${shellQuote(remoteArtifact)} -C ${shellQuote(stagingDirectory)}`,
+    ],
+    [
+      "release_verify",
+      `cd ${shellQuote(stagingDirectory)} && node_modules/.bin/tsx scripts/release/verify.ts . ${shellQuote(config.sha)}`,
+    ],
+    ["host_environment", loadHostEnvironment],
+    [
+      "runtime_configuration",
+      `export RADAR_RELEASE_SHA=${shellQuote(config.sha)} && export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)} && export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)} && export RADAR_SERVER_SCRAPER_ENABLED=${shellQuote(String(runServerScraper))}`,
+    ],
+    ...(priorReleaseDirectory
+      ? [["prior_release_migration_catalog", preservePriorMigrationCatalog] as const]
+      : []),
+    ["replace_processes", replaceManagedProcesses],
+    ["migrate", "npm run db:migrate"],
+    ["migration_status", "npm run db:status"],
+    ["start_processes", `${startAllProcesses} && ${enforceProcessTopology}`],
+    ["system_readiness", waitForSystemReadiness],
+    ["process_topology", verifyAllProcesses],
+    [
+      "ready",
+      `curl --fail --silent --show-error ${shellQuote(`${config.readinessUrl.replace(/\/$/, "")}/health/ready`)}`,
+    ],
+    [
+      "production_smoke",
+      `RADAR_DEPLOY_READINESS_URL=${shellQuote(config.readinessUrl)} RADAR_RELEASE_SHA=${shellQuote(config.sha)} node_modules/.bin/tsx scripts/smoke_production.ts`,
+    ],
+    [
+      "record_current_sha",
+      `printf '%s' ${shellQuote(config.sha)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}`,
+    ],
+  ] as const;
   const activate = [
     "set -eu",
-    `rm -rf ${shellQuote(stagingDirectory)}`,
-    `mkdir -p ${shellQuote(stagingDirectory)}`,
-    `tar -xzf ${shellQuote(remoteArtifact)} -C ${shellQuote(stagingDirectory)}`,
-    `cd ${shellQuote(stagingDirectory)}`,
-    `node_modules/.bin/tsx scripts/release/verify.ts . ${shellQuote(config.sha)}`,
-    loadHostEnvironment,
-    `export RADAR_RELEASE_SHA=${shellQuote(config.sha)}`,
-    `export RADAR_EXPECTED_DB_TARGET_FINGERPRINT=${shellQuote(config.expectedDatabaseFingerprint)}`,
-    `export RADAR_DEPLOYMENT_MODE=${shellQuote(config.deploymentMode)}`,
-    `export RADAR_SERVER_SCRAPER_ENABLED=${shellQuote(String(runServerScraper))}`,
-    replaceManagedProcesses,
-    "npm run db:migrate",
-    "npm run db:status",
-    startAllProcesses,
-    enforceProcessTopology,
-    waitForSystemReadiness,
-    verifyAllProcesses,
-    `curl --fail --silent --show-error ${shellQuote(`${config.readinessUrl.replace(/\/$/, "")}/health/ready`)}`,
-    `RADAR_DEPLOY_READINESS_URL=${shellQuote(config.readinessUrl)} RADAR_RELEASE_SHA=${shellQuote(config.sha)} node_modules/.bin/tsx scripts/smoke_production.ts`,
-    `printf '%s' ${shellQuote(config.sha)} > ${shellQuote(`${config.appDirectory}/CURRENT_SHA`)}`,
+    ...activationSteps.map(([stage, command]) => deployStage(stage, command)),
   ].join(" && ");
 
   function rollback(errorMessage: string): void {

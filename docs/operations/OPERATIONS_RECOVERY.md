@@ -247,7 +247,11 @@ these migrations or delete operational history. Before cutover, test the rollbac
 artifact against a restored, migrated database: the checksum verifier requires
 all recorded migration files, so an untouched older release missing 085–087 will
 fail readiness. Prepare and verify its forward migration catalog as part of the
-rollback artifact rather than weakening checksum checks. If credentials were
+rollback artifact rather than weakening checksum checks. The release deployer
+copies only missing SQL migration files into the retained prior release directory
+before applying migrations; it never overwrites that release's existing catalog.
+This lets the prior runtime validate the forward-only ledger if activation must
+return to it. If credentials were
 already activated, validate their separate rollback path before release rollback.
 
 Local certification is not deployed evidence. Record the exact deployed SHA and
