@@ -94,13 +94,18 @@ jobs:
           mkdir -p .radar
           # A green CI/package is not proof of deployment. Missing/expired receipts
           # conservatively create a release; no cache can suppress a required rollout.
-          if runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy-oracle.yml --status success --limit 30 --json databaseId --jq '.[].databaseId')"; then
-            for run_id in $runs; do
+          if runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy-oracle.yml --limit 30 --json databaseId,status,conclusion --jq '.[] | [.databaseId,.status,.conclusion] | @tsv')"; then
+            while IFS=$'\t' read -r run_id status conclusion; do
+              # Do not search past an incomplete or failed deployment: rollback
+              # may not have restored the runtime described by an older receipt.
+              if [[ "$status" != completed || "$conclusion" != success ]]; then
+                break
+              fi
               if gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --name radar-deployed-runtime --dir .radar/deployed-receipt 2>/dev/null; then
                 cp .radar/deployed-receipt/deployed-runtime.json .radar/deployed-runtime.json
                 break
               fi
-            done
+            done <<< "$runs"
           fi
 
       - name: Compare runtime inputs with the deployed release

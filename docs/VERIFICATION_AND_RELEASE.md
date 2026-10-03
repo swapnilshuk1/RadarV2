@@ -36,6 +36,44 @@ deployment accepts only that successful main CI run and its matching artifact.
 A failed PR feedback run should be fixed as a batch where practical; do not run
 a local full certification merely to duplicate the PR feedback checks.
 
+## Deployment-process hardening
+
+`scripts/certification/registry.ts` owns test membership, certification groups,
+and source ownership. The release suite retains 81 files; affected checks use
+source ownership and conservatively select every group for unknown paths.
+Generate the inventory with `npm run tests:inventory`, and check drift with
+`npm run tests:inventory:check`. Migration fixtures clone an empty migrated
+SQLite snapshot per worker and migration checksum; upgrade tests continue to
+exercise migrations directly.
+
+Certification runs five actual commands: lint, formatting, TypeScript, build,
+and the unified test manifest. Independent static failures are collected before
+dependent build/test work. The eight logical test groups remain visible in the
+manifest report. A separate weekly/manual workflow exercises the full estate
+without packaging or deploying a release.
+
+Main CI compares runtime inputs with a receipt from a successful Oracle
+deployment. A matching receipt permits a verification-only run. Missing,
+invalid, or unavailable receipts conservatively require packaging. Git commit
+and tree identities remain provenance; runtime input, payload, and archive
+digests serve distinct purposes. Runtime artifacts include production
+dependencies and operational scripts, with certification metadata retained.
+CI checks portability, the runner checks the archive digest, and the host
+checks the extracted payload. Cheap preflight precedes recovery-point creation.
+
+Local verification cannot establish Linux artifact portability or successful
+Oracle activation. Those checks remain in CI and deployment. Worker compilation
+and consolidation of readiness/smoke checks remain follow-up work.
+
+Local hardening verification (2026-10-04): complete certification passed all
+five commands, with 831 tests passed and one skipped across 81 files. Five
+changed fixture suites outside certification passed another 42 tests. A later
+workflow-only correction prevents receipt reuse across a newer failed or
+incomplete deployment; the seven focused release tests passed after that change.
+The local Windows bundle for `830f05a0` was 94,057,489 bytes compressed and its
+extracted payload passed integrity verification. This is local evidence, not a
+deployment receipt or Linux portability result.
+
 ## Invalidation rules
 
 A new commit does not automatically invalidate every previous result. Determine

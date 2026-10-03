@@ -119,6 +119,15 @@ describe("certified release artifacts", () => {
     expect(feedback?.if).toBe("${{ github.event_name == 'pull_request' }}");
     expect(feedback?.run).toBe("npm run certify:feedback");
     expect(feedback?.env?.CERTIFY_AFFECTED_BASE).toBe("${{ github.event.pull_request.base.sha }}");
+    const receipt = workflow.jobs.verify.steps.find(
+      (step) => step.name === "Read the last successful deployment receipt",
+    )?.run;
+    expect(receipt).toContain("--json databaseId,status,conclusion");
+    expect(receipt).not.toContain("--status success");
+    expect(receipt).toContain('if [[ "$status" != completed || "$conclusion" != success ]]; then');
+    expect(receipt?.indexOf('"$conclusion" != success')).toBeLessThan(
+      receipt?.indexOf("gh run download") ?? -1,
+    );
   });
 
   it("certifies and publishes release artifacts only on main after full certification", () => {
