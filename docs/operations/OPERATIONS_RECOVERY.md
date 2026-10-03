@@ -133,15 +133,19 @@ code policy.
 
 ## Current candidate evidence and continuation
 
-Candidate: resolve `git rev-parse HEAD` on `codex/admin-connections`; the Phase 0
-SHA records the starting baseline. Source corrections after `269c99b2` require new
-final certification. Current cycle verification is in progress; update these
-results after the checks actually finish:
+Certified source: `9f2ff832220a1c37c21bb192cdf6e4672753f125` on
+`codex/admin-connections`, verified on 3 October 2026. The documentation-only
+evidence update does not change that source; the Phase 0 SHA is the starting
+baseline.
 
-- Focused regressions: 38 passed (33 Operations + 5 readiness).
+- Focused regressions: 38 passed (33 Operations + 5 readiness), followed by a
+  passing exclusion-after-preview regression. Final certification includes all
+  34 Operations and 5 readiness tests.
 - Authenticated browser acceptance: passed; exact audited exclusion and external
   heartbeat endpoint precede activation/uptake/resume/reviewed memo/signed delivery.
-- Final `npm run certify`: pending final source candidate.
+- Final `npm run certify`: all nine stages passed in 170.94 seconds; 78 test files
+  passed, with 803 tests passed and 1 skipped. Lint reported no errors and 21
+  existing Fast Refresh warnings; TypeScript and the production build passed.
 - Live migration, deployment, external monitor registration, operator webhook and
   model-backed recovery: unverified. Local fixtures are not deployment evidence.
 
