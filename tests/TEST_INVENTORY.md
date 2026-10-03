@@ -324,7 +324,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/regression/stage-3f-comparisons.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 4 |
 | `tests/regression/stage-3f-hashing.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 6 |
 | `tests/regression/stage-4b-singleflight.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 1 | 5 |
-| `tests/release/artifact-integrity.test.ts` | Release Engineering | **KEEP** | Full Suite | 2 | 3 |
+| `tests/release/artifact-integrity.test.ts` | Release Engineering | **KEEP** | Full Suite | 4 | 22 |
 | `tests/release/deployment.test.ts` | Release Engineering | **KEEP** | Full Suite | 11 | 58 |
 | `tests/release/readiness.test.ts` | Release Engineering | **KEEP** | Full Suite | 5 | 15 |
 | `tests/release/runtime-topology.test.ts` | Release Engineering | **KEEP** | Full Suite | 3 | 9 |

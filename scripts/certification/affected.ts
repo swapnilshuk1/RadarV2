@@ -15,6 +15,8 @@ type CertificationGroupId = (typeof certificationManifest)[number]["id"];
 const allGroupIds = certificationManifest.map((group) => group.id);
 
 function groupsForKnownSource(file: string): CertificationGroupId[] | null {
+  if (file === "tests/TEST_INVENTORY.md" || file === "scripts/certify.ts")
+    return ["boundary-journeys"];
   if (file.startsWith("docs/") || file.endsWith(".md")) return [];
   if (file.startsWith("src/pursuit/") || /^src\/data\/sqlite\/migrations\/0(6[5-9]|70)_/.test(file))
     return ["pursuit"];
@@ -93,7 +95,7 @@ function changedFilesFromGit(): string[] {
   const explicitBase =
     baseIndex >= 0 ? process.argv[baseIndex + 1] : process.env.CERTIFY_AFFECTED_BASE;
   const diffTarget = explicitBase ? `${explicitBase}...HEAD` : "HEAD";
-  const tracked = gitLines(["diff", "--name-only", "--diff-filter=ACMR", diffTarget]);
+  const tracked = gitLines(["diff", "--name-only", "--diff-filter=ACMRD", diffTarget]);
   const untracked = gitLines(["ls-files", "--others", "--exclude-standard"]);
   return [...new Set([...tracked, ...untracked])].sort();
 }

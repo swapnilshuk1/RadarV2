@@ -7,12 +7,13 @@
  * boundary journeys, and production builds in a deterministic sequence.
  *
  * Invariants:
- * 1. Fails immediately on any compilation, test, or build failure.
+ * 1. Collects independent stage failures and exits nonzero after all diagnostics.
  * 2. Emits unambiguous CERTIFICATION PASS or CERTIFICATION FAIL status.
  * 3. Independent of nondeterministic external portal availability.
  */
 
 import { execSync } from "child_process";
+import { appendFileSync } from "node:fs";
 import { certificationManifest } from "./certification/manifest";
 
 export interface Stage {
@@ -77,9 +78,19 @@ export const STAGES: Stage[] = [
   },
 ];
 
-export function runCertification(stages: Stage[] = STAGES) {
+export const FEEDBACK_STAGES: Stage[] = [
+  ...STAGES.slice(0, 3),
+  {
+    name: "Affected regression tests",
+    command: "npm run certify:affected",
+    description: "Changed-file regression feedback; main certification remains authoritative",
+  },
+];
+
+export function runCertification(stages: Stage[] = STAGES, authoritative = true) {
+  const label = authoritative ? "CERTIFICATION" : "FEEDBACK";
   console.log("\n============================================================");
-  console.log("     RADAR v2 — CONTINUOUS CERTIFICATION GATE");
+  console.log(`     RADAR v2 — ${label}`);
   console.log("============================================================\n");
 
   const startTime = Date.now();
@@ -87,6 +98,12 @@ export function runCertification(stages: Stage[] = STAGES) {
   const profile = process.argv.includes("--profile");
   const verboseTestProfile = process.env.CERTIFY_PROFILE_VERBOSE === "1";
   let manifestCompleted = false;
+  const failures: Stage[] = [];
+  const blocked: Stage[] = [];
+  const outcomes: Array<{ name: string; status: string; seconds: string }> = [];
+  const baseIndex = process.argv.indexOf("--base");
+  const affectedBase =
+    baseIndex >= 0 ? process.argv[baseIndex + 1] : process.env.CERTIFY_AFFECTED_BASE;
 
   if (profile) {
     console.log(
@@ -94,8 +111,8 @@ export function runCertification(stages: Stage[] = STAGES) {
     );
   }
 
-  for (const stage of stages) {
-    console.log(`\n▶ [${completedStages + 1}/${stages.length}] ${stage.name}`);
+  for (const [index, stage] of stages.entries()) {
+    console.log(`\n▶ [${index + 1}/${stages.length}] ${stage.name}`);
     console.log(`  Target: ${stage.description}`);
     console.log(`  Command: ${stage.command}\n`);
 
@@ -103,9 +120,10 @@ export function runCertification(stages: Stage[] = STAGES) {
     try {
       if (stage.execution === "reported-by-manifest") {
         if (!manifestCompleted) {
-          throw new Error(
-            "The unified certification manifest did not complete before logical group reporting.",
-          );
+          blocked.push(stage);
+          outcomes.push({ name: stage.name, status: "skipped (manifest failed)", seconds: "0.00" });
+          console.error(`Skipped ${stage.name}: requires a successful unified manifest.`);
+          continue;
         }
         console.log("  Verified by the single Stage 3 Vitest invocation.");
       } else {
@@ -115,7 +133,10 @@ export function runCertification(stages: Stage[] = STAGES) {
             : verboseTestProfile && stage.execution === "manifest"
               ? `${stage.command} --reporter=verbose`
               : stage.command;
-        execSync(command, { stdio: "inherit", env: process.env });
+        execSync(command, {
+          stdio: "inherit",
+          env: { ...process.env, ...(affectedBase ? { CERTIFY_AFFECTED_BASE: affectedBase } : {}) },
+        });
         if (stage.execution === "manifest") {
           manifestCompleted = true;
           console.log(
@@ -124,30 +145,60 @@ export function runCertification(stages: Stage[] = STAGES) {
         }
       }
       const elapsed = ((Date.now() - stageStart) / 1000).toFixed(2);
+      outcomes.push({ name: stage.name, status: "passed", seconds: elapsed });
       console.log(`✔ ${stage.name} passed (${elapsed}s)`);
       completedStages++;
-    } catch (err: any) {
+    } catch {
+      failures.push(stage);
       const elapsed = ((Date.now() - stageStart) / 1000).toFixed(2);
+      outcomes.push({ name: stage.name, status: "failed", seconds: elapsed });
       console.error(`\n❌ ${stage.name} FAILED after ${elapsed}s`);
-      console.error(`\n============================================================`);
-      console.error(`              ❌ CERTIFICATION FAIL`);
-      console.error(`============================================================`);
-      console.error(`Failed Stage: ${stage.name}`);
-      console.error(`Command: ${stage.command}`);
-      process.exit(1);
     }
   }
 
   const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const escapeCell = (value: string) => value.replaceAll("|", "\\|").replaceAll("\n", " ");
+    const summary = [
+      `## ${label}: ${failures.length || blocked.length ? "FAIL" : "PASS"}`,
+      `Elapsed: ${totalElapsed}s. ${authoritative ? "Authoritative release checks." : "PR feedback only; no release artifact."}`,
+      "",
+      "| Check | Result | Seconds |",
+      "| --- | --- | ---: |",
+      ...outcomes.map(
+        (result) => `| ${escapeCell(result.name)} | ${result.status} | ${result.seconds} |`,
+      ),
+      "",
+    ].join("\n");
+    try {
+      appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + "\n");
+    } catch {
+      console.warn("CHECK_SUMMARY_WRITE_UNAVAILABLE");
+    }
+  }
+  if (failures.length || blocked.length) {
+    console.error(`\n❌ ${label} FAIL (${totalElapsed}s)`);
+    console.error(
+      `Passed: ${completedStages}; failed: ${failures.length}; dependent groups skipped: ${blocked.length}`,
+    );
+    for (const stage of failures)
+      console.error(`Failed Stage: ${stage.name}\nCommand: ${stage.command}`);
+    process.exit(1);
+  }
   console.log("\n============================================================");
-  console.log("              ✅ CERTIFICATION PASS");
+  console.log(`              ✅ ${label} PASS`);
   console.log("============================================================");
-  console.log(`All ${stages.length} certification stages passed cleanly in ${totalElapsed}s.`);
   console.log(
-    "Deterministic certification gate passed; production deployment remains subject to post-deployment smoke verification.\n",
+    `All ${stages.length} ${label.toLowerCase()} stages passed cleanly in ${totalElapsed}s.`,
+  );
+  console.log(
+    authoritative
+      ? "Deterministic certification gate passed; production deployment remains subject to post-deployment smoke verification.\n"
+      : "Developer feedback passed; this does not certify or package a release.\n",
   );
 }
 
 if (process.argv[1]?.endsWith("certify.ts") || process.argv[1]?.endsWith("certify.js")) {
-  runCertification();
+  const feedback = process.argv.includes("--feedback");
+  runCertification(feedback ? FEEDBACK_STAGES : STAGES, !feedback);
 }

@@ -32,6 +32,7 @@
     "test:regression": "vitest run --config vitest.regression.config.ts",
     "test:full": "vitest run --config vitest.full.config.ts",
     "certify": "tsx scripts/certify.ts",
+    "certify:feedback": "tsx scripts/certify.ts --feedback",
     "certify:profile": "tsx scripts/certify.ts --profile",
     "certify:affected": "tsx scripts/certification/affected.ts",
     "certify:radar": "npm run certify",
